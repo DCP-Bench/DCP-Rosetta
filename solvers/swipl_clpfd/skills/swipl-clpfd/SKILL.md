@@ -93,6 +93,20 @@ labeling_options([ffc, bisect]).
 - **`=` is not `#=`.** `X = Y` unifies terms; `X #= Y` is the arithmetic
   constraint. `is/2` evaluates only ground arithmetic and throws on a
   constrained variable.
+- **`findall/3` copies its template, so it cannot collect decision variables.**
+  Constraints posted on what it returned hold over copies and never reach the
+  model, which the evaluator reports as `invalid_solution` — a solution that
+  ignores a constraint you can see in the source. Use `findall/3` for ground
+  data such as index pairs, and build lists of variables by mapping or
+  recursion, which unify rather than copy.
+- **A lambda shares only the variables named in its `{...}` set.** `library(yall)`
+  expands a lambda at compile time, so a variable from the surrounding clause
+  that is not declared is local to the lambda however bound it is at call time.
+  `maplist({Cells}/[Row]>>(length(Row, N), Row ins 1..Cells), Rows)` with `N`
+  left out silently labels rows of every length instead of length `N`.
+- **`maplist/5` is the widest there is** — a goal and four lists. A model that
+  needs to walk more lists in step maps over the indices and reads each list
+  with `nth1/3`.
 
 ## The API, verified against SWI-Prolog 9.2.9
 
