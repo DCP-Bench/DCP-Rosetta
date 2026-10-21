@@ -23,7 +23,7 @@ RUN apt-get update \
       make=4.3-4.1 \
       zlib1g-dev=1:1.2.13.dfsg-1 \
       wget=1.21.3-1+deb12u1 \
-      ca-certificates=20250419~deb12u1 \
+      ca-certificates=20250419~deb12u2 \
  && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir paramita==1.2.0
