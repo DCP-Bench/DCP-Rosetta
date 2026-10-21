@@ -2,18 +2,17 @@
 
 [![Website](https://img.shields.io/badge/Website-DCP%20Rosetta-4f46e5?logo=googlechrome&logoColor=white)](https://dcp-bench.github.io/DCP-Rosetta/)
 [![Deploy](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml/badge.svg)](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml)
-[![Paper](https://img.shields.io/badge/Paper-arXiv%3A2506.06052-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2506.06052)
 [![License](https://img.shields.io/github/license/DCP-Bench/DCP-Rosetta)](LICENSE)
 
-DCP Rosetta collects executable models of the [DCP-Bench Open](https://github.com/DCP-Bench/DCP-Bench-Open) problems, written in many modelling frameworks and solved by many solvers. It holds the evaluator that accepts or rejects each model, the solver integrations the evaluator runs, the agent skills that write the models, and the catalogue website. The problems themselves live in DCP-Bench Open, checked out here as the `bench/` submodule.
+DCP Rosetta collects executable models of the [DCP-Bench Open](https://github.com/DCP-Bench/DCP-Bench-Open) problems, written in many modelling frameworks and solved by many solvers. It holds the evaluator that accepts or rejects each model, the solver integrations the evaluator runs, the agent skills that write the models, and the catalogue website. The problems live in that repository, checked out here as the `bench/` submodule.
 
 [**Open the interactive catalogue →**](https://dcp-bench.github.io/DCP-Rosetta/)
 
 The generated models shown on the website are a draft collection: every one was
 accepted by this repository's evaluator, but coverage is still growing, so the
 collection is not yet a settled generated-model benchmark. When reporting
-results, cite the DCP Rosetta commit you used; it pins the DCP-Bench Open commit
-through `bench/`.
+results, cite the DCP Rosetta commit you used; it also pins the version of the
+problems in `bench/`.
 
 ## Getting started
 
@@ -30,8 +29,8 @@ the longest tracked path is 184 characters, and Windows limits a full path to
 260 unless long paths are enabled for both Git (`core.longpaths`) and the
 system.
 
-`bench/` is pinned to one DCP-Bench Open commit. To move to its latest `main`,
-run `git submodule update --remote bench` and commit the new pointer.
+`bench/` is pinned to one commit of the problems. To move to their latest
+`main`, run `git submodule update --remote bench` and commit the new pointer.
 
 ## The catalogue website
 
@@ -59,7 +58,7 @@ The models and the catalogue:
 
 | Path | What it holds |
 | --- | --- |
-| `bench/` | DCP-Bench Open as a git submodule: the problems, their instances and `SOURCES.md`. Changes to it go to that repository. |
+| `bench/` | The problems, as a git submodule: per problem a CPMpy reference with its description, and its instances. Changes to it go to that repository. |
 | `generated_models/` | Models produced by generative systems, with the verdict each one received. Not ground truth. |
 | `web/` | Source for the catalogue website. `generate_site.py` builds it into `site/`, which is generated and not committed. |
 
@@ -86,23 +85,19 @@ The container-based [evaluation package](evaluation/README.md) provides a Python
 
 A model is accepted by falsification rather than by comparison: the evaluator enumerates the candidate's solutions and looks for one the reference rejects. Finding none within the budget is what acceptance means, so a larger solution limit is a stronger test.
 
-### Automated evaluation of solution accuracy
+### Checking a file of models
 
-The `eval.py` script can be used to automate this evaluation process provided that there exists a file containing the generated models. For example, if you have the file `sample_test.jsonl` with generated models, you can run:
+`eval.py` checks every model in a JSONL file against the example instance of its problem:
 
 ```bash
- python eval.py --dataset_file bench/dcp-bench-open.jsonl --test_file sample_test.jsonl --modelling_framework CPMpy
+python eval.py --dataset_file bench/dcp-bench-open.jsonl --test_file sample_test.jsonl --modelling_framework CPMpy
 ```
 
-Here, `--dataset_file` specifies the path to the jsonl version of the benchmark (built by `jsonl_convert.py` in `bench/`, or downloaded from a [DCP-Bench Open release](https://github.com/DCP-Bench/DCP-Bench-Open/releases)), `--test_file` specifies the path to the file with generated models, and `--modelling_framework` indicates a registered container integration. Legacy aliases are `CPMpy`, `OR-Tools`/`ortools`, and `MiniZinc`; unsupported frameworks fail explicitly.
+`--dataset_file` is the jsonl that `jsonl_convert.py` builds inside `bench/`, `--test_file` holds the models, and `--modelling_framework` names a registered container integration. Legacy aliases are `CPMpy`, `OR-Tools`/`ortools`, and `MiniZinc`; unsupported frameworks fail explicitly.
 
-### Creating your test file with models to be evaluated
+Each line of the test file is a JSON object with two keys: `id`, the problem ID (e.g. `csplib_001_car_sequencing`), and `model`, the model as runnable code. A model must print its solution as JSON whose keys are the problem's declared outputs; unexpected keys or value types count as wrong.
 
-Regarding the test file, each line should be a JSON object with two keys: `id` and `model`.
-* `id`: The ID of the problem exactly as it appears in the dataset (e.g., `csplib_001_car_sequencing`).
-* `model`: The generated model for the problem (as a string representing runnable code). Make sure that it eventually outputs the solution as a json with key(s) as described in the `decision_variables` entry and values as would be expected in the problem. This is part of the evaluation as well: unexpected keys, or value types are considered incorrect. This is because our automatic evaluation is based on the solution printed by the submitted models.
-
-An example test file with 5 generated models is included ([sample_test.jsonl](sample_test.jsonl)). Four of them are wrong on purpose, so running it shows what each kind of rejection looks like:
+[sample_test.jsonl](sample_test.jsonl) holds 5 models, four of them wrong on purpose, so running it shows what each kind of rejection looks like:
 
 ```
 FAIL csplib_001_car_sequencing   execution_error  TypeError: list indices must be integers or slices, not _IntVarImpl
@@ -114,7 +109,7 @@ PASS csplib_007_all_interval     accepted
 1/5 accepted. Full JSON in summary.txt.
 ```
 
-`eval.py` checks the embedded example instance only. To check a model against the other instances of a problem, use the evaluation package directly — see [evaluation/README.md](evaluation/README.md).
+To check a model against the other instances of a problem, use the evaluation package directly; see [evaluation/README.md](evaluation/README.md).
 
 ## Generating models
 
@@ -132,35 +127,6 @@ what the evaluator said, and what was kept, including the attempts that failed.
 
 ## How to Contribute
 
-New problems and new instances for existing problems go to
-[DCP-Bench Open](https://github.com/DCP-Bench/DCP-Bench-Open); its
-[Contributing Guide](https://github.com/DCP-Bench/DCP-Bench-Open/blob/main/CONTRIBUTING.md)
-has the format. A new solver integration follows `skills/solver-setup`, and new
-models follow `skills/model-generator`.
-
-## Citation
-
-Feel free to cite our work as follows:
-
-```bibtex
-@misc{michailidis2026dcpbenchopenevaluatingllmsconstraint,
-      title={DCP-Bench-Open: Evaluating LLMs for Constraint Modelling of Discrete Combinatorial Problems}, 
-      author={Kostis Michailidis and Dimos Tsouros and Tias Guns},
-      year={2026},
-      eprint={2506.06052},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2506.06052}, 
-}
-```
-
-```bibtex
-@dataset{dcpbenchopen,
-  author       = {Michailidis, K. and Tsouros, D. and Guns, T.},
-  title        = {DCP-Bench-Open},
-  year         = {2025},
-  publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.17800138},
-  url          = {https://doi.org/10.5281/zenodo.17800138}
-}
-```
+A new solver integration follows `skills/solver-setup`, and new models follow
+`skills/model-generator`. New problems and instances belong in the problem
+repository linked above.
