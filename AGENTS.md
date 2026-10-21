@@ -8,6 +8,13 @@
   generated model on its own, and say in the message what the batch carries.
 - After coding is done, the user and the agent review whether the request is done.
 
+## The dataset
+
+`bench/` is the DCP-Bench Open repository, checked out as a git submodule pinned to
+one commit. The problems are under `bench/dataset/` and their sources in
+`bench/SOURCES.md`. Change it only through `skills/instance-curator`: a dataset change
+is a commit inside `bench/`, followed by a commit here that moves the pointer.
+
 ## Writing models for this benchmark
 
 Follow `skills/model-generator`, which runs a

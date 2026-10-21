@@ -87,7 +87,7 @@ as `unsupported_capability`. That fails the pair, because every instance is
 checked. So:
 
 - Count before you write, for the largest instance in
-  `dataset/<problem>/<problem>.json`, not only the example: `n * n * n` one-hot
+  `bench/dataset/<problem>/<problem>.json`, not only the example: `n * n * n` one-hot
   binaries for an `n`-by-`n` grid of values `1..n` is 729 at `n = 9`, 4096 at 16.
 - Docplex's logical and functional helpers add variables and constraints of
   their own. Measured, with the variable on the left counted:

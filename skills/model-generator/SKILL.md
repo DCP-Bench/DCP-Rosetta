@@ -61,7 +61,7 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
 
    **Start blind**: model from the brief, the instance JSON, the integration's
    skill and the evaluator's feedback, without opening the reference
-   (`dataset/<problem>/<problem>.cpmpy.py`) or other integrations' models. If
+   (`bench/dataset/<problem>/<problem>.cpmpy.py`) or other integrations' models. If
    that is not working, read the reference and say so in the attempt's
    `lessons.md`. Never execute its solve tail, never carry over a constraint it
    keeps commented out between `<SYMMETRY_BREAKING_CONSTRAINT_START>` and

@@ -92,7 +92,7 @@ is checked. So:
 
 - Count before you write: `n * n * n` one-hot binaries for an `n`-by-`n` grid of
   values `1..n` is 729 at `n = 9` and 4096 at `n = 16`. Check the largest
-  instance in `dataset/<problem>/<problem>.json`, not only the example.
+  instance in `bench/dataset/<problem>/<problem>.json`, not only the example.
 - **Never multiply two variables.** It drops the variable limit to 200. A
   product of a binary and a bounded integer has a linear encoding (below);
   use it.

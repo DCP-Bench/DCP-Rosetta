@@ -199,4 +199,4 @@ Skipped container tests are not evidence of end-to-end success: the container
 run is the authoritative one.
 
 Dataset changes and the reasoning behind them are recorded in
-[SOURCES.md](../SOURCES.md).
+[SOURCES.md](https://github.com/DCP-Bench/DCP-Bench-Open/blob/main/SOURCES.md) in DCP-Bench.

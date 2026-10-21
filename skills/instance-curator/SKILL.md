@@ -21,6 +21,7 @@ engine is a blocker to report. Never skip the recheck because of it.
 
 ```sh
 git switch -c instances/<batch>                    # never commit to main, never push
+git -C bench switch -c instances/<batch>           # the same branch in the bench/ submodule
 python -m generation.instances status              # what can take more instances
 python -m generation.brief PROBLEM                 # the fields and their shapes
 #   read the reference and its description; write candidates to a scratch file
@@ -29,21 +30,22 @@ python -m generation.instances check PROBLEM candidates.json --append
 python -m generation.instances recheck PROBLEM --instances json:K ... --jobs 4
 python -m generation.instances recheck PROBLEM --instances json:K ... --flag   # once you have decided
 python -m unittest tests.test_evaluation
-#   commit the batch, then take the next problem
+#   commit the batch in bench/, then flags.json and the bench pointer here; take the next problem
 ```
 
 1. **Branch first.** One branch per batch, named `instances/<batch>`, created
-   off whatever branch you are on. If the checkout has uncommitted work, stop
-   and ask.
+   off whatever branch you are on, in this repository and in the `bench/`
+   submodule, which holds the dataset. If either checkout has uncommitted
+   work, stop and ask.
 2. **Pick the problem.** `status` lists problems with fewer than 5 distinct
    instances, fewest first. Among equal counts it puts the problems with more
    retained models first, since a new instance there rechecks more of them. It
-   leaves out the problems under "Instances not added" in `SOURCES.md`. It also
+   leaves out the problems under "Instances not added" in `bench/SOURCES.md`. It also
    leaves out problems with no data fields, whose data is written into the
    model itself. Adding an instance to one of those means rewriting its
    reference, which is out of scope here.
 3. **Read the problem before looking for data.** Read the description, the
-   reference (`dataset/<problem>/<problem>.cpmpy.py`) and `generation.brief`.
+   reference (`bench/dataset/<problem>/<problem>.cpmpy.py`) and `generation.brief`.
    Then decide whether the problem can take another instance at all.
    - The description is the text a model is written from, and a new instance
      must not contradict it. A value the description states is fixed for
@@ -62,7 +64,7 @@ python -m unittest tests.test_evaluation
      while meaning something else.
 4. **Find candidates, published ones first.** Start from the problem's own
    `# Source`, `# Source description` and `# Problem instances` headers. The
-   repository's sources are listed in `SOURCES.md`: CSPLib problem pages, Hakan
+   dataset's sources are listed in `bench/SOURCES.md`: CSPLib problem pages, Hakan
    Kjellerstrand's model pages, the CPMpy examples, the ComplexOR repository and
    the APLAI course material. Check whether the source has further data for the
    same model. Translate faithfully: index base, units, row against column
@@ -121,7 +123,8 @@ python -m unittest tests.test_evaluation
      delete or edit a retained model.
    - **`most_failed` is true.** Stop and suspect the reference or the instance
      first: recheck your translation against the rules from step 3. If the
-     reference is wrong, restore the JSON file (`git checkout -- <file>`) and
+     reference is wrong, restore the JSON file
+     (`git -C bench checkout -- dataset/<problem>/<problem>.json`) and
      report the reference bug to the user. Never edit a reference in this
      skill. If the instance and the reference both hold up and the models share
      one misreading, flag them, and say so in the commit message.
@@ -130,15 +133,17 @@ python -m unittest tests.test_evaluation
      An `infrastructure_error` means rerun. None of these is ever flagged.
 10. **Run the dataset audit** (`tests.test_evaluation`). CI runs the same
     audit.
-11. **Commit in batches.** Put several problems in one commit, and commit the
-    dataset files together with `flags.json`. The message names the problems,
-    how many instances each gained, and the models flagged. For example:
-    "Add 11 instances to 4 problems; flag 2 models". Never push.
+11. **Commit in batches.** Put several problems in one commit. The dataset
+    files are committed inside `bench/` first; then commit `flags.json` here
+    together with the updated `bench` pointer, so the flags and the instances
+    they cite land as one change. Both messages name the problems, how many
+    instances each gained, and the models flagged. For example: "Add 11
+    instances to 4 problems; flag 2 models". Never push.
 
 ## Recording what was not added
 
 A problem judged unable to take more instances goes under the `## Instances not
-added` heading of `SOURCES.md`, one line each:
+added` heading of `bench/SOURCES.md`, one line each:
 
 ```markdown
 - `sudoku`: the description fixes a 9x9 grid, so another size contradicts it.

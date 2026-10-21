@@ -40,7 +40,7 @@ python -m generation.instances recheck PROBLEM --instances json:K ... [--flag] [
 
 `skills/instance-curator` is the procedure. `status` lists problems with data
 fields and fewer than 5 distinct instances, leaving out those listed under
-"Instances not added" in `SOURCES.md`. `check` takes a JSON list of candidate
+"Instances not added" in `bench/SOURCES.md`. `check` takes a JSON list of candidate
 records and refuses one with missing or extra fields, a changed value type or
 nesting, a new ragged or mixed-type field, inputs equal to a listed instance,
 no `note`, or a reference that does not find a solution (or prove the optimum)

@@ -1,65 +1,52 @@
-# DCP-Bench Open
+# DCP Rosetta
 
-[![Website](https://img.shields.io/badge/Website-DCP--Bench%20Open-4f46e5?logo=googlechrome&logoColor=white)](https://dcp-bench.github.io/DCP-Bench-Open/)
-[![Deploy](https://github.com/DCP-Bench/DCP-Bench-Open/actions/workflows/deploy.yml/badge.svg)](https://github.com/DCP-Bench/DCP-Bench-Open/actions/workflows/deploy.yml)
+[![Website](https://img.shields.io/badge/Website-DCP%20Rosetta-4f46e5?logo=googlechrome&logoColor=white)](https://dcp-bench.github.io/DCP-Rosetta/)
+[![Deploy](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml/badge.svg)](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml)
 [![Paper](https://img.shields.io/badge/Paper-arXiv%3A2506.06052-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2506.06052)
-[![Release](https://img.shields.io/github/v/release/DCP-Bench/DCP-Bench-Open?label=release)](https://github.com/DCP-Bench/DCP-Bench-Open/releases)
-[![License](https://img.shields.io/github/license/DCP-Bench/DCP-Bench-Open)](LICENSE)
+[![License](https://img.shields.io/github/license/DCP-Bench/DCP-Rosetta)](LICENSE)
 
-DCP-Bench Open is a collaborative benchmark of natural language Discrete Combinatorial Problems, using only integer and Boolean decision variables. Many problem formulations come from the Constraint Programming (CP) community, as well as the Integer Programming community (without continuous variables), Pseudo-Boolean and Satisfiability communities.
+DCP Rosetta collects executable models of the [DCP-Bench Open](https://github.com/DCP-Bench/DCP-Bench-Open) problems, written in many modelling frameworks and solved by many solvers. It holds the evaluator that accepts or rejects each model, the solver integrations the evaluator runs, the agent skills that write the models, and the catalogue website. The problems themselves live in DCP-Bench Open, checked out here as the `bench/` submodule.
 
-[**Open the interactive catalogue (DCP Rosetta) →**](https://dcp-bench.github.io/DCP-Bench-Open/)
-
-This benchmark has two primary goals:
-
-1.  **To provide a centralized repository** of discrete combinatorial optimisation and satisfaction problems, including clear natural language descriptions, corresponding data instances and ground-truth constraint models. You are more than welcome to contribute new problems and/or problem instances for existing problems (please see the [Contributing Guide](CONTRIBUTING.md) for more details).
-2.  **To serve as an evaluation framework** for evaluating generative AI systems (e.g. LLMs) in their ability to generate executable constraint models from natural language descriptions.
-
-In the repository, the ground-truth models are (currently) using the CPMpy library. The evaluation package runs registered solver integrations in containers and checks their declared outputs against the CPMpy reference. See [evaluation setup and usage](evaluation/README.md).
+[**Open the interactive catalogue →**](https://dcp-bench.github.io/DCP-Rosetta/)
 
 The generated models shown on the website are a draft collection: every one was
 accepted by this repository's evaluator, but coverage is still growing, so the
-collection is not yet a settled generated-model benchmark. Use a tagged release
-when reporting results.
+collection is not yet a settled generated-model benchmark. When reporting
+results, cite the DCP Rosetta commit you used; it pins the DCP-Bench Open commit
+through `bench/`.
 
-This benchmark is an open source project that welcomes additional problems, data instances and evaluation tooling from interested developers. For reproducibility, always use a specific 'Release' in your research (see below). This project started as an extension of the original [CP-Bench](https://huggingface.co/datasets/kostis-init/CP-Bench) published at ECAI 2025.
+## Getting started
 
-## Getting the Dataset
+```bash
+git clone --recurse-submodules https://github.com/DCP-Bench/DCP-Rosetta.git
+```
 
-There are two main ways to get the benchmark dataset:
+You need Python 3.12 and the libraries in `requirements.txt`, which also cover
+the dataset tooling in `bench/`. Evaluating a model needs a running Docker Linux
+engine.
 
-### 1. Recommended: Download from a Release
+On Windows, keep the checkout in a short folder such as `C:\code\DCP-Rosetta`:
+the longest tracked path is 184 characters, and Windows limits a full path to
+260 unless long paths are enabled for both Git (`core.longpaths`) and the
+system.
 
-This is the best way to get a stable, versioned copy of the dataset and all corresponding evaluation scripts.
-
-1.  Visit the project's [**GitHub Releases page**](https://github.com/DCP-Bench/DCP-Bench-Open/releases).
-2.  From the latest release, download the `dcp-bench-open.jsonl` file (and if you need more files, e.g. eval scripts etc., then download the `Source code` archive as well).
-
-### 2. Generate from Source
-
-If you want to use the very latest (unreleased) version of the problems, you can generate the dataset file yourself.
-
-1.  Clone the repository.
-2.  Run `python jsonl_convert.py` to create `dcp-bench-open.jsonl`.
-
-The notebook [stats.ipynb](stats.ipynb) shows how to load that file and gather
-statistics from it.
-
+`bench/` is pinned to one DCP-Bench Open commit. To move to its latest `main`,
+run `git submodule update --remote bench` and commit the new pointer.
 
 ## The catalogue website
 
 From the repository root, build the static site and serve it:
 
 ```bash
-python jsonl_convert.py
+(cd bench && python jsonl_convert.py)
 python generate_site.py
 python -m http.server 8000 --directory site
 ```
 
-Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Bench-Open/).
+Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
 
 Alongside the problem catalogue, the
-[solver breakdown](https://dcp-bench.github.io/DCP-Bench-Open/paradigms.html)
+[solver breakdown](https://dcp-bench.github.io/DCP-Rosetta/paradigms.html)
 groups the verified models by the kind of model they are — constraint
 programming, CLP, MIP, SMT, ASP and so on — with the solvers behind each kind,
 how much of the catalogue each one reaches, and which problems have been
@@ -68,12 +55,12 @@ side.
 
 ## Repository Structure
 
-The benchmark itself:
+The models and the catalogue:
 
 | Path | What it holds |
 | --- | --- |
-| `dataset/` | The problems. Per problem, `<name>.cpmpy.py` with the natural language description, a sample instance and the ground-truth CPMpy model, plus `<name>.json` with one or more instances. |
-| `generated_models/` | Models produced by generative systems, with the verdict each one received. Not ground truth — see [SOURCES.md](SOURCES.md). |
+| `bench/` | DCP-Bench Open as a git submodule: the problems, their instances and `SOURCES.md`. Changes to it go to that repository. |
+| `generated_models/` | Models produced by generative systems, with the verdict each one received. Not ground truth. |
 | `web/` | Source for the catalogue website. `generate_site.py` builds it into `site/`, which is generated and not committed. |
 
 The evaluation framework:
@@ -89,10 +76,8 @@ The model generation framework:
 
 | Path | What it holds |
 | --- | --- |
-| `skills/` | Instructions an agent follows: `model-generator` runs a "campaign", `solver-setup` adds a framework. |
+| `skills/` | Instructions an agent follows: `model-generator` runs a "campaign", `solver-setup` adds a framework, `instance-curator` adds instances to the problems in `bench/`. |
 | `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
-
-The source catalogue for the problems is documented in [SOURCES.md](SOURCES.md).
 
 
 ## Evaluation framework
@@ -101,27 +86,15 @@ The container-based [evaluation package](evaluation/README.md) provides a Python
 
 A model is accepted by falsification rather than by comparison: the evaluator enumerates the candidate's solutions and looks for one the reference rejects. Finding none within the budget is what acceptance means, so a larger solution limit is a stronger test.
 
-To use the evaluation framework, you will need Python 3.12 and the libraries listed in `requirements.txt`.
-
-### Verifying Problem Consistency
-
-The `self_consistency.py` script ensures that the example solution provided in each problem's `.py` file is valid and executes correctly. It works by adding the generated solution as a constraint and re-solving the model.
-
-To run the check on all problems:
-
-```bash
-python self_consistency.py
-```
-
 ### Automated evaluation of solution accuracy
 
 The `eval.py` script can be used to automate this evaluation process provided that there exists a file containing the generated models. For example, if you have the file `sample_test.jsonl` with generated models, you can run:
 
 ```bash
- python eval.py --dataset_file dcp-bench-open.jsonl --test_file sample_test.jsonl --modelling_framework CPMpy
+ python eval.py --dataset_file bench/dcp-bench-open.jsonl --test_file sample_test.jsonl --modelling_framework CPMpy
 ```
 
-Here, `--dataset_file` specifies the path to the jsonl version of the benchmark, `--test_file` specifies the path to the file with generated models, and `--modelling_framework` indicates a registered container integration. Legacy aliases are `CPMpy`, `OR-Tools`/`ortools`, and `MiniZinc`; unsupported frameworks fail explicitly.
+Here, `--dataset_file` specifies the path to the jsonl version of the benchmark (built by `jsonl_convert.py` in `bench/`, or downloaded from a [DCP-Bench Open release](https://github.com/DCP-Bench/DCP-Bench-Open/releases)), `--test_file` specifies the path to the file with generated models, and `--modelling_framework` indicates a registered container integration. Legacy aliases are `CPMpy`, `OR-Tools`/`ortools`, and `MiniZinc`; unsupported frameworks fail explicitly.
 
 ### Creating your test file with models to be evaluated
 
@@ -157,15 +130,13 @@ accepts it.
 Every campaign leaves a ledger under `generation/runs/`: what was attempted,
 what the evaluator said, and what was kept, including the attempts that failed.
 
-## Benchmark Design
-
-*   **Satisfiable Problems:** All problems are designed to have at least one feasible solution. For multi-instance problems, at least the first instance is guaranteed to be satisfiable, the rest are not guaranteed to be solvable in a short amount of time, information about runtimes is currently not part of the dataset.
-*   **Human-Readable Descriptions:** Problem descriptions are written to be clear and preferably non-technical.
-*   **Clear Output Format:** The required output format for each problem is explicitly specified to facilitate automated evaluation of solution accuracy.
-
 ## How to Contribute
 
-We encourage contributions to expand the benchmark! If you have a new problem you'd like to add, please follow the guidelines outlined in our **[Contributing Guide](CONTRIBUTING.md)**.
+New problems and new instances for existing problems go to
+[DCP-Bench Open](https://github.com/DCP-Bench/DCP-Bench-Open); its
+[Contributing Guide](https://github.com/DCP-Bench/DCP-Bench-Open/blob/main/CONTRIBUTING.md)
+has the format. A new solver integration follows `skills/solver-setup`, and new
+models follow `skills/model-generator`.
 
 ## Citation
 
