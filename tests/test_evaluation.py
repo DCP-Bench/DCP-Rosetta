@@ -33,7 +33,7 @@ print(json.dumps(solution))
 def dataset_entries():
     """Yield (problem, source, label, instance) for every listed instance, plus the
     embedded example of problems whose instance list is empty."""
-    for path in sorted((ROOT / "dataset").rglob("*.cpmpy.py")):
+    for path in sorted((ROOT / "bench/dataset").rglob("*.cpmpy.py")):
         source = path.read_text(encoding="utf-8-sig")
         json_path = path.parent / f"{path.parent.name}.json"
         records = strict_json(json_path.read_text(encoding="utf-8-sig")) if json_path.is_file() else []
@@ -117,11 +117,11 @@ if model.solve():
         self.assertEqual(caught.exception.reason, "reference_timeout")
 
     def test_real_abbots_and_golomb(self):
-        path = ROOT / "dataset/abbots_puzzle/abbots_puzzle.cpmpy.py"
+        path = ROOT / "bench/dataset/abbots_puzzle/abbots_puzzle.cpmpy.py"
         ref = Reference(path.read_text(), {}, 5)
         ref.check({"men": 5, "women": 25, "children": 70})
         with self.assertRaises(EvaluationError): ref.check({"men": 5})
-        path = ROOT / "dataset/csplib_006_golomb_rulers/csplib_006_golomb_rulers.cpmpy.py"
+        path = ROOT / "bench/dataset/csplib_006_golomb_rulers/csplib_006_golomb_rulers.cpmpy.py"
         ref = Reference(path.read_text(), {"size": 4}, 5)
         ref.check({"marks": [0, 1, 4, 6], "length": 6})
         with self.assertRaises(EvaluationError) as caught:
@@ -185,7 +185,7 @@ solution = {"t": t.value().tolist(), "cost": int(model.objective_value())}
                 select_instances(SOURCE, records, **kwargs)
         with self.assertRaisesRegex(EvaluationError, "missing fields"):
             select_instances(SOURCE, [{"name": "missing inputs"}])
-        folder = ROOT / "dataset/csplib_002_template_design"
+        folder = ROOT / "bench/dataset/csplib_002_template_design"
         source = (folder / "csplib_002_template_design.cpmpy.py").read_text()
         records = strict_json((folder / "csplib_002_template_design.json").read_text())
         selected = select_instances(source, records, 2)
@@ -194,7 +194,7 @@ solution = {"t": t.value().tolist(), "cost": int(model.objective_value())}
                               for _, value in selected])
 
     def test_quasigroup_necessary_order_condition(self):
-        path = ROOT / "dataset/csplib_003_quasigroup_existence/csplib_003_quasigroup_existence.json"
+        path = ROOT / "bench/dataset/csplib_003_quasigroup_existence/csplib_003_quasigroup_existence.json"
         for instance in strict_json(path.read_text()):
             with self.subTest(order=instance["m"]):
                 self.assertIn(instance["m"] % 4, (0, 1))
@@ -210,7 +210,7 @@ solution = {"t": t.value().tolist(), "cost": int(model.objective_value())}
     def test_dataset_audit(self):
         unsupported = {}
         standard = {}
-        files = list((ROOT / "dataset").rglob("*.cpmpy.py"))
+        files = list((ROOT / "bench/dataset").rglob("*.cpmpy.py"))
         self.assertTrue(files)
         for path in files:
             source = path.read_text(encoding="utf-8-sig")
@@ -262,7 +262,7 @@ solution = {"t": t.value().tolist(), "cost": int(model.objective_value())}
         cases = {"csplib_012_nonogram": "board", "curious_set_of_integers": "number"}
         for problem, key in cases.items():
             with self.subTest(problem=problem):
-                path = ROOT / "dataset" / problem / f"{problem}.cpmpy.py"
+                path = ROOT / "bench/dataset" / problem / f"{problem}.cpmpy.py"
                 source = path.read_text(encoding="utf-8-sig")
                 instance = embedded_instance(source)
                 ref = Reference(source, instance, 30)
@@ -283,7 +283,7 @@ solution = {"t": t.value().tolist(), "cost": int(model.objective_value())}
 
     def test_multiple_nonogram_instances(self):
         """Name-bearing csplib instances pass through the reference loader."""
-        folder = ROOT / "dataset" / "csplib_012_nonogram"
+        folder = ROOT / "bench/dataset" / "csplib_012_nonogram"
         source = (folder / "csplib_012_nonogram.cpmpy.py").read_text(encoding="utf-8-sig")
         records = strict_json((folder / "csplib_012_nonogram.json").read_text(encoding="utf-8-sig"))
         named = [x for x in records if "name" in x]

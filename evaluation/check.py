@@ -61,7 +61,7 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
         model_bytes = model_path.read_bytes()
         result["model_hash"] = digest(model_bytes)
         if reference_source is None:
-            base = Path(dataset_dir) if dataset_dir is not None else ROOT / "dataset"
+            base = Path(dataset_dir) if dataset_dir is not None else ROOT / "bench" / "dataset"
             folder = base / problem_id
             try:
                 reference_source = (folder / f"{problem_id}.cpmpy.py").read_text(encoding="utf-8-sig")

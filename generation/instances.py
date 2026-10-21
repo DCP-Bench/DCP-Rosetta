@@ -42,7 +42,7 @@ from .next_work import FLAGS, GENERATED
 BAR_SECONDS = 10
 RUNS = 3
 TARGET = 5
-SOURCES = ROOT / "SOURCES.md"
+SOURCES = ROOT / "bench" / "SOURCES.md"
 SKIPPED_HEADING = "## Instances not added"
 NEXT_HEADING = "\n## "
 METADATA_KEYS = ("name", "note")
@@ -54,7 +54,7 @@ MODEL_FAILURES = ("invalid_solution", "suboptimal_solution", "no_solution", "exe
 
 
 def dataset_files(problem):
-    folder = ROOT / "dataset" / problem
+    folder = ROOT / "bench" / "dataset" / problem
     source = folder / f"{problem}.cpmpy.py"
     if not source.is_file():
         raise EvaluationError("invalid_request", f"No reference for {problem}")
@@ -171,7 +171,7 @@ def status(target=TARGET):
     except (OSError, ValueError, KeyError, TypeError):
         pass
     open_problems, fixed = [], 0
-    for folder in sorted(path.parent for path in (ROOT / "dataset").glob("*/*.cpmpy.py")):
+    for folder in sorted(path.parent for path in (ROOT / "bench" / "dataset").glob("*/*.cpmpy.py")):
         source, path = dataset_files(folder.name)
         if not embedded_instance(source):
             fixed += 1

@@ -2,7 +2,7 @@
 """Generate the static DCP Rosetta website from dcp-bench-open.jsonl.
 
 Usage:
-    python jsonl_convert.py   # optional, to refresh the jsonl from dataset/
+    (cd bench && python jsonl_convert.py)   # refresh the jsonl from bench/dataset/
     python generate_site.py
 
 Output: site/ (build output, not committed; the deploy workflow regenerates it).
@@ -20,16 +20,18 @@ from urllib.parse import quote, unquote, urlparse
 
 from evaluation.results import digest
 
-DATASET_JSONL = Path("dcp-bench-open.jsonl")
+DATASET_JSONL = Path("bench") / "dcp-bench-open.jsonl"
 WEB_SRC = Path("web")
 OUTPUT_DIR = Path("site")
 GENERATED_DIR = Path("generated_models")
 FLAGS_PATH = Path("generation") / "flags.json"
 SOLVERS_DIR = Path("solvers")
 
-REPO_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
+REPO_URL = "https://github.com/DCP-Bench/DCP-Rosetta"
+# The problems live in DCP-Bench, checked out as the bench/ submodule.
+BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 # Where the deploy workflow publishes site/: link previews need absolute URLs.
-SITE_URL = "https://dcp-bench.github.io/DCP-Bench-Open/"
+SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
 ASSET_VERSION = "catalogue-v54"
@@ -295,7 +297,7 @@ def parse_metadata(metadata: list) -> dict:
 
 def reference_model_code(problem_id: str, fallback: str) -> str:
     """Load the runnable reference model body, omitting metadata and its description."""
-    path = Path("dataset") / problem_id / f"{problem_id}.cpmpy.py"
+    path = Path("bench") / "dataset" / problem_id / f"{problem_id}.cpmpy.py"
     try:
         code = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
@@ -401,7 +403,7 @@ try {{ if (localStorage.getItem("dcp-theme") === "dark") document.documentElemen
 <body>
 <header><nav>{"".join(nav)}</nav>{hero}</header>
 <main>{body}</main>
-<footer>{TITLE} is part of <a href="{REPO_URL}" target="_blank" rel="noopener">DCP-Bench Open</a> &middot; <a href="{REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>{commit}</footer>
+<footer>{TITLE} is part of <a href="{BENCH_URL}" target="_blank" rel="noopener">DCP-Bench Open</a> &middot; <a href="{REPO_URL}/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>{commit}</footer>
 {chr(10).join(f'<script src="{src}"></script>' for src in scripts)}
 </body>
 </html>
@@ -558,7 +560,7 @@ def normalize_badge(metrics: dict) -> str:
 @functools.cache
 def row_positions(problem: str) -> dict:
     """The problem's current JSON rows, by the hash the evaluator records for each."""
-    path = Path("dataset") / problem / f"{problem}.json"
+    path = Path("bench") / "dataset" / problem / f"{problem}.json"
     try:
         rows = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
@@ -1144,7 +1146,7 @@ def build_index(problems: list, generated: dict, breakdown: dict) -> None:
       </div>
     </div>
     <noscript><p class="empty-state">The catalogue needs JavaScript. The problems are also listed in
-      <a href="{REPO_URL}/tree/main/dataset">the repository</a>.</p></noscript>
+      <a href="{BENCH_URL}/tree/main/dataset">the repository</a>.</p></noscript>
     <div class="problem-section" data-type="optimization" role="tabpanel" id="panel-optimization"
       aria-labelledby="tab-optimization"><div class="problem-table"></div></div>
     <div class="problem-section" data-type="satisfaction" role="tabpanel" id="panel-satisfaction"
@@ -1229,7 +1231,7 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
     best = select_best_generated(generated)
     sources = sources_html(meta)
     reference = code_block(p["display_model"], "python", copy_id=f"model-{idx}", head_label="Python",
-                           link=f"{REPO_URL}/blob/main/dataset/{p['id']}/{p['id']}.cpmpy.py")
+                           link=f"{BENCH_URL}/blob/main/dataset/{p['id']}/{p['id']}.cpmpy.py")
     panes = [
         f'<div class="tab-pane active" data-pane="ground_truth">'
         + (f'<div class="card-box provenance"><h3>Sources</h3>{sources}</div>' if sources else "") +
@@ -1314,7 +1316,7 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
 
     <p class="desc" style="margin-top:26px">{shown_above} shown above;
       the files live in
-      <a href="{REPO_URL}/tree/main/dataset/{pid}" target="_blank" rel="noopener">dataset/{pid}</a>.</p>
+      <a href="{BENCH_URL}/tree/main/dataset/{pid}" target="_blank" rel="noopener">dataset/{pid}</a>.</p>
     {prev_next}
     """
 
@@ -1379,7 +1381,7 @@ def sources_html(meta: dict) -> str:
 def main() -> None:
     if not DATASET_JSONL.is_file():
         raise SystemExit(
-            f"Missing {DATASET_JSONL}. Run `python jsonl_convert.py` first."
+            f"Missing {DATASET_JSONL}. Run `python jsonl_convert.py` inside bench/ first."
         )
 
     if OUTPUT_DIR.exists():

@@ -244,10 +244,10 @@ class GenerationTests(unittest.TestCase):
 
     def test_work_queue_reports_blockers_and_remaining_pairs(self):
         """An integration without readiness is unusable, so its pairs are not offered."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
-        (self.root / "dataset" / "p2").mkdir(parents=True)
-        (self.root / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
         (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
         generated = self.root / "generated_models"
@@ -259,10 +259,10 @@ class GenerationTests(unittest.TestCase):
             # Listing an unusable integration is opt-in, and still not coverage.
             self.assertEqual(next_work.report(include_unready=True)["eligible_pairs"], 2)
             # A problem with several instances comes first: hardcoding cannot hide there.
-            (self.root / "dataset" / "p2" / "p2.json").write_text('[{}, {}, {}]', encoding="utf-8")
+            (self.root / "bench" / "dataset" / "p2" / "p2.json").write_text('[{}, {}, {}]', encoding="utf-8")
             ordered = next_work.report(include_unready=True)["next_pairs"]
             self.assertEqual([x["problem"] for x in ordered], ["p2", "p1"])
-            (self.root / "dataset" / "p2" / "p2.json").unlink()
+            (self.root / "bench" / "dataset" / "p2" / "p2.json").unlink()
             (self.root / "solvers" / "s1" / "readiness.json").write_text("{}", encoding="utf-8")
             kept = generated / "p1" / "s1" / "run-attempt-001"
             kept.mkdir(parents=True)
@@ -289,10 +289,10 @@ class GenerationTests(unittest.TestCase):
 
     def test_recorded_blockers_leave_the_queue(self):
         """A pair known not to be worth retrying must not keep being offered."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
-        (self.root / "dataset" / "p2").mkdir(parents=True)
-        (self.root / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
         (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
         blockers = self.root / "blockers.json"
@@ -316,8 +316,8 @@ class GenerationTests(unittest.TestCase):
 
     def test_flagged_models_no_longer_cover_their_pair(self):
         """A model a later instance disproved is shown, but its pair is offered again."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
         (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
         kept = self.root / "generated_models" / "p1" / "s1" / "run-attempt-001"

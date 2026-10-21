@@ -102,7 +102,7 @@ def listed_instances(problem):
     Exact identity needs the reference loader; this is enough to prefer problems
     where a hardcoded model can actually be caught.
     """
-    path = ROOT / "dataset" / problem / f"{problem}.json"
+    path = ROOT / "bench" / "dataset" / problem / f"{problem}.json"
     if not path.is_file():
         return 1
     try:
@@ -113,7 +113,7 @@ def listed_instances(problem):
 
 
 def report(limit=20, include_unready=False):
-    problems = sorted(path.parent.name for path in (ROOT / "dataset").glob("*/*.cpmpy.py"))
+    problems = sorted(path.parent.name for path in (ROOT / "bench" / "dataset").glob("*/*.cpmpy.py"))
     counts = {problem: listed_instances(problem) for problem in problems}
     declared = integrations()
     usable = [item["id"] for item in declared if item["ready"] or include_unready]
