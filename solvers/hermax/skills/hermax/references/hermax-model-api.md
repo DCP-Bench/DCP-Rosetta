@@ -1,6 +1,6 @@
 # The `hermax.model` surface, exactly
 
-Signatures taken from hermax 1.2.5 as installed in the integration image. The
+Signatures taken from hermax 1.2.9 as installed in the integration image. The
 image installs nothing of this repository's own beside `run.py`, so this is the
 whole modelling vocabulary available to a submission.
 
@@ -73,10 +73,10 @@ result.status      # "sat" | "optimum" | "unsat" | "interrupted"
                    # | "interrupted_sat" | "unknown" | "error"
 result.cost        # int, or None when the model declares no soft clauses
 result.ok          # True for sat, optimum AND interrupted_sat
+result.proven      # True only for sat, optimum and unsat
 result.backend     # which solver actually ran
 result[var]        # value; a container yields nested lists
-                   # a PBExpr (any sum) raises TypeError here; the runner
-                   # evaluates a declared PBExpr output itself
+result[expr]       # a PBExpr or Term decodes to its integer value
 ```
 
 **`result.ok` is broader than "this is an answer."** It includes
@@ -87,6 +87,11 @@ runner treats that as a timeout.
 
 - **Integer variables are encoded**, so a wide domain is not free the way it is
   in a CP or pseudo-Boolean solver. Bound them by what the instance can reach.
+- **`intvar == pbexpr` has a fast path in 1.2.9**, an order of magnitude
+  cheaper than before. Adding `intvar <= value` on top of it is still much
+  slower than writing `pbexpr <= value` directly, because hermax does not
+  tighten the variable's domain from its constraints. Bound the expression
+  itself where you can.
 - **A pseudo-Boolean equality is the expensive shape.** `sum(c[j] * x[j]) == t`
   over a wide `t` dominated the run time of every model where it appeared.
   Measured: 43 s to build, against 0.21 s for the same problem expressed with

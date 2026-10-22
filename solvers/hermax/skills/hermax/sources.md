@@ -3,7 +3,7 @@
 Documentation this skill's instructions were written from. Add an entry whenever
 a claim here comes from a specific page or version.
 
-- <https://github.com/josalhor/hermax> — hermax 1.2.5, and `hermax.model`, the
+- <https://github.com/josalhor/hermax> — hermax 1.2.9, and `hermax.model`, the
   modelling layer submissions are written against.
 - `solvers/hermax/run.py` and `Dockerfile` in this repository — the contract
   this skill describes.
@@ -55,11 +55,10 @@ taken from documentation alone.
   such as a `DivExpr`) and `constant`. An `IntVar` inside a sum is lowered to
   its threshold literals, so `sum(10**(2-i) * d[i])` over 0..9 IntVars holds 27
   Terms and no `int_terms`; `2 * (x // 3)` keeps the `DivExpr` in `int_terms`.
-- **`result[expression]` raises `TypeError: Unsupported decode target`** for a
-  PBExpr, while `result[literal]` and `result[DivExpr]` decode. Adding
-  `constant + sum(c * result[item])` reproduced the value computed from the
-  decoded variables on every one of five enumerated solutions, with negated
-  literals, subtraction and a `DivExpr` in the sum.
+- **`result[expression]` raised `TypeError: Unsupported decode target`** for a
+  PBExpr in 1.2.5. Since 1.2.9 it decodes; `10 * x + y == 42` gave
+  `result[10 * x + y] == 42`. `result.proven` is true for `sat`, `optimum` and
+  `unsat`, and the default MaxSAT backend is RC2 stratified.
 - A ten-digit all-different number as `sum(10**(9-i) * digit[i])` imported,
   built and solved in 0.25 s, and `sum(2**k * bit[k]) == 2**39 + 4613732` over
   40 Booleans solved in 0.013 s. A lone `IntVar` over a ten-digit range, or

@@ -132,12 +132,11 @@ the same in binary. The ten-digit model above imports, builds and solves in
 0.25 s; a lone `m.int` over the ten-digit range does not fit in 2048 MB.
 
 Such a sum is hermax's own `PBExpr` (a single `c * literal` is a `Term`).
-`result[...]` raises `TypeError` on both, so the runner adds the decoded terms
-itself. Rules:
+`result[...]` decodes both, so declare the sum as the output. Rules:
 
 - Sum only Booleans, `IntVar`s, and integers derived as `IntVar`s (`m.max`,
   `m.min`, `m.sum_var`). `x // k` stays a `DivExpr` inside the sum, which the
-  runner can read but cannot block when enumerating, so the model fails with
+  runner can decode but cannot block when enumerating, so the model fails with
   `solution_limit` above 1. Tie it to an `IntVar` first.
 - Coefficients must be integers.
 - Constrain the expression with linear comparisons. hermax has no `%` on a

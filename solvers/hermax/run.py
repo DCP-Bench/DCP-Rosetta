@@ -26,9 +26,9 @@ how a value too wide for one `IntVar` is declared: hermax encodes an IntVar
 with one literal per value, so an IntVar over a ten-digit range exhausts memory
 by itself, while `sum(10**(9-i) * digit[i])` over 0..9 IntVars or
 `sum(2**k * bit[k])` over Booleans does not. Such a sum is hermax's own
-`PBExpr` (a single weighted literal is a `Term`); `result[...]` cannot decode
-either, so the runner adds up the decoded terms itself, and when enumerating it
-blocks the literals and variables the expression sums. Another combination of
+`PBExpr` (a single weighted literal is a `Term`), which `result[...]` decodes
+since 1.2.9; when enumerating, the runner blocks the literals and variables
+the expression sums. Another combination of
 those can reach the same total, so a declared output equal to one already
 reported is skipped rather than emitted twice.
 """
@@ -47,9 +47,9 @@ from runtime import emit, finish, mapped  # noqa: E402
 from hermax.model import (BoolMatrix, IntMatrix, IntVar, Literal, Model,  # noqa: E402
                           PBExpr, Term)
 
-# `ok` on a SolveResult also covers interrupted_sat, which is not an answer here.
+# `ok` on a SolveResult also covers interrupted_sat, which is not an answer here;
+# `proven` is true only for sat, optimum and unsat.
 ANSWERED = ("sat", "optimum")
-UNPROVEN = ("interrupted", "interrupted_sat", "unknown")
 
 
 def load(instance):
@@ -91,23 +91,6 @@ def summed(expression):
         return [(expression.coefficient, expression.literal)], 0
     return ([(term.coefficient, term.literal) for term in expression.terms]
             + list(expression.int_terms), expression.constant)
-
-
-def read(leaf, result):
-    """The value of one declared output under a solve result.
-
-    hermax decodes variables and containers itself; a PBExpr or Term is summed
-    here from its decoded terms, since `result[expression]` raises TypeError.
-    """
-    if not isinstance(leaf, (PBExpr, Term)):
-        return result[leaf]
-    pairs, total = summed(leaf)
-    for coefficient, item in pairs:
-        if isinstance(coefficient, bool) or not isinstance(coefficient, int):
-            raise ValueError("an output expression must have integer coefficients; got "
-                             f"{coefficient!r}")
-        total += coefficient * int(result[item])
-    return total
 
 
 def blocking_clause(outputs, result):
@@ -167,7 +150,7 @@ def main():
         status = result.status
         if status == "error":
             return finish("error", "the MaxSAT solver reported an error", solve_seconds=spent)
-        if status in UNPROVEN:
+        if not result.proven:
             detail = ("the optimum was not proven" if result.cost is not None
                       else "the search did not finish")
             return finish("timeout", detail, solve_seconds=spent)
@@ -183,7 +166,7 @@ def main():
                 # Every remaining answer is worse, so the optimal ones are done.
                 return finish("complete", solve_seconds=spent)
 
-        values = mapped(outputs, lambda leaf: read(leaf, result))
+        values = mapped(outputs, lambda leaf: result[leaf])
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)

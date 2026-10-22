@@ -185,7 +185,7 @@ from hermax.model import BoolVector, IntVector, Model
 
 
 def build(instance):
-    assert hermax.__version__ == "1.2.5", hermax.__version__
+    assert hermax.__version__ == "1.2.9", hermax.__version__
     # The modelling layer the submissions are written against, not a wrapper
     # shipped alongside the runner.
     assert Model.__module__.startswith("hermax."), Model.__module__
