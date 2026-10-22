@@ -29,7 +29,7 @@ python -m generation.instances check PROBLEM candidates.json
 python -m generation.instances check PROBLEM candidates.json --append
 python -m generation.instances recheck PROBLEM --instances json:K ... --jobs 4
 python -m generation.instances recheck PROBLEM --instances json:K ... --flag   # once you have decided
-python -m unittest tests.test_evaluation
+(cd bench && python -m unittest tests.test_dataset)    # the dataset audit
 #   commit the batch in bench/, then flags.json and the bench pointer here; take the next problem
 ```
 
@@ -131,8 +131,8 @@ python -m unittest tests.test_evaluation
    - **Inconclusive.** An `execution_timeout` on most models means the instance
      is too hard in practice: remove it. So does `memory_limit` on most models.
      An `infrastructure_error` means rerun. None of these is ever flagged.
-10. **Run the dataset audit** (`tests.test_evaluation`). CI runs the same
-    audit.
+10. **Run the dataset audit** (`tests.test_dataset`, inside `bench/`). DCP-Bench
+    Open's CI runs the same audit.
 11. **Commit in batches.** Put several problems in one commit. The dataset
     files are committed inside `bench/` first; then commit `flags.json` here
     together with the updated `bench` pointer, so the flags and the instances

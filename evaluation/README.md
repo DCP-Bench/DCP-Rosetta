@@ -158,6 +158,10 @@ mounting a submission directory.
 
 ## The reference loader
 
+The loader lives with the problems in DCP-Bench Open, at
+`bench/dcp_bench/reference.py`, and the evaluator imports it from there; its own
+tests and the dataset audit run in that repository.
+
 References are trusted dataset scripts. The loader parses the AST, substitutes
 instance values for the marked `# Data` section, and drops the solve/output
 tail — that tail never executes. Declared outputs are mapped back to reference
@@ -184,15 +188,19 @@ retains a model.
 python -m unittest tests.test_evaluation -v
 ```
 
-The dataset audit runs every time: all references must load, the first instance
+The dataset audit runs in `bench/`: all references must load, the first instance
 entry must equal the embedded example exactly, every listed instance must build
 the reference, and only `name`/`note` extra keys are permitted.
+
+```sh
+(cd bench && python -m unittest tests.test_dataset -v)
+```
 
 Two checks are opt-in:
 
 ```sh
 DCP_CONTAINER_TESTS=1 python -m unittest tests.test_solvers -v   # needs built images
-DCP_UNSAT_AUDIT=1 python -m unittest tests.test_evaluation.ReferenceTests.test_no_unsat_instances
+(cd bench && DCP_UNSAT_AUDIT=1 python -m unittest tests.test_dataset.ReferenceTests.test_no_unsat_instances)
 ```
 
 Skipped container tests are not evidence of end-to-end success: the container

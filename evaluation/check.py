@@ -8,7 +8,7 @@ import sys
 import time
 
 from .execution import ROOT, execute, image_identity, integration, validate_records
-from .reference import ReferenceSession, available_instances, choose_instances
+from bench.dcp_bench.reference import ReferenceSession, available_instances, choose_instances
 from .results import EvaluationError, canonical, digest, strict_json
 
 
