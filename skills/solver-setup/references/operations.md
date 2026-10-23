@@ -1,43 +1,54 @@
-# Operations and skill improvement
+# Operations: evidence and skill changes
 
-Use the repository's `generation.manage` and `generation.skills` commands;
-read repository `generation/AGENTS.md` for exact syntax and schemas. They are
-shared executable helpers, not another agent layer. Run from the repository root
-using its Python environment. Preserve complete stdout/stderr for every build,
-test and failed setup attempt in `generation/runs/RUN/setup/SOLVER/ATTEMPT/`.
-Create setup attempts with `generation.manage setup-attempt --run RUN --solver
-SOLVER --skill SETUP_SKILL_PATH`. It freezes the complete bundle and records
-the agent from run configuration. Use its returned path. Record setup_finished,
-setup_blocked or interrupted with `generation.manage event`; include evidence
-paths. Set the actual agent in run config; unknown is recorded if unavailable.
+Recording a setup attempt, and changing a skill after a failure. Run the helpers from
+the repository root with its Python environment; syntax and schemas are in
+`generation/AGENTS.md`.
 
-Freeze the entire setup skill at the start of each attempt; skill edits do not
-change instructions already used. A diagnosed setup mistake may suggest a runner
-repair, a solver instruction correction, or a setup procedure improvement. Apply
-code repairs with integration regressions; propose instruction changes only when
-there is a supported general lesson. Do not treat every failure as a skill bug.
+## Recording an attempt
 
-All skill levels use the same workflow:
-1. Record observed failure, cause evidence, affected skill, and reproducer.
-2. Copy the canonical bundle to a working candidate with the same directory name.
-3. Add a behavioural regression scenario; keep its independent acceptance checks
-   outside the candidate bundle's editable instructions.
-4. Run `generation.skills validate --project` on the candidate to verify its
-   format, resource links, `sources.md` and eval schema.
-5. Use `generation.skills propose`, then `check` with coordinator-owned trusted
-   commands targeting `{skill}`. Both old and candidate versions are tested.
-6. Apply only a validated unchanged proposal using `generation.skills apply`.
-   Rejected or untested proposals remain pending with evidence. Meta/setup-skill
-   changes take effect on the next attempt/run, never retroactively.
+1. **Open the attempt** before writing any file:
+   ```bash
+   python -m generation.manage setup-attempt --run RUN --solver ID --skill skills/solver-setup
+   ```
+   It freezes the setup skill (later edits do not apply to this attempt) and records the
+   agent named in the run configuration. Use the path it returns.
+2. **Keep the complete stdout and stderr** of every build and test, failed ones included,
+   under `generation/runs/RUN/setup/ID/ATTEMPT/`.
+3. **Close it** with an event pointing at the evidence:
+   ```bash
+   python -m generation.manage event --run RUN --kind setup_finished \
+       --data '{"solver_id":"ID","evidence":"PATH"}'
+   ```
+   The kind is `setup_finished`, `setup_blocked` or `interrupted`.
 
-A command passing means that check passed, not that a general improvement was
-proved. Behavioural scenarios need an executing agent plus evidence assessment;
-format validators cannot substitute for them. The helpers automatically log
-`skill_proposed`, `skill_checked` (validated/rejected), and `skill_applied`
-under the same run ID. Use an explicit event for pending/deferred decisions.
-No new agent is needed just to follow this update procedure.
+## After a failure: what to fix
 
-The standalone solver skill follows add-solver's own rules for `sources.md` and
-`evals/evals.json`. Run behavioural cases through a capable agent and store observed
-results outside the installed skill bundle. Do not write 'passed' merely from reading a
-scenario. Consult `generation/AGENTS.md` for the evaluation evidence format.
+Diagnose first: a wrong runner gets a code repair with a regression test; a wrong
+solver skill or a misleading setup procedure gets a skill change (below). Not every
+failure is a skill bug: change instructions only for a lesson that holds beyond this case.
+
+## Changing a skill
+
+1. Record the failure, the evidence for its cause, the affected skill and a reproducer.
+2. Copy the canonical bundle to a candidate with the same directory name; edit that.
+3. Add a behavioural regression scenario, with its acceptance checks outside the
+   candidate so the edit cannot change how it is judged.
+4. Validate format, links, `sources.md` and eval schema:
+   `python -m generation.skills validate <candidate> --project`.
+5. Propose, then check old and candidate bundles alike:
+   ```bash
+   python -m generation.skills propose --run RUN --skill <skill> --candidate <candidate> --evidence "<cause and evidence path>"
+   python -m generation.skills check PROPOSAL_PATH --checks trusted-checks.json
+   ```
+   `trusted-checks.json` lists your own commands; `{skill}` becomes each bundle's path:
+   ```json
+   [{"argv": ["python", "tests/my_skill_regression.py", "{skill}"], "timeout": 60}]
+   ```
+6. Apply only a proposal that passed, unchanged: `python -m generation.skills apply
+   PROPOSAL_PATH`. A rejected or untested one stays pending; record that with an event.
+
+A passing check proves that check, not a general improvement. A behavioural scenario
+needs an agent that executes it and an assessment of the evidence; neither a format
+validator nor reading the scenario counts as "passed". Keep results outside the skill
+bundle. The helpers log `skill_proposed`, `skill_checked` and `skill_applied` themselves.
+A change takes effect from the next attempt, never retroactively.

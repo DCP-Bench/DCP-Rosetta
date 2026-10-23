@@ -1,25 +1,113 @@
 # Integration files
 
-What `solvers/<id>/` must contain beyond the standalone skill, and the rules the
-repository enforces on it. The runner realises the submission contract `solvers/CONTRACT.md`,
-and `solvers/<id>/CONTRACT.md` documents how. Repository `evaluation/README.md` (runner protocol) and
-`tests/test_solvers.py` are the current contract; read them when this summary and the
-code disagree.
+What `solvers/<id>/` holds besides the standalone skill, in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
 
-Check your work against this page with
+## Contents
+
+1. [Who converts the instance](#1-who-converts-the-instance): decide this first
+2. [`Dockerfile`](#2-dockerfile)
+3. [`run.py`](#3-runpy)
+4. [`metadata.json`](#4-metadatajson)
+5. [`CONTRACT.md`](#5-contractmd)
+6. [`readiness_test.py`](#6-readiness_testpy)
+7. [Once certified](#7-once-certified)
+
+Check the files as you go (PASS/WARN/FAIL per rule, exit 1 on failure; behaviour is
+left to `readiness_test.py`):
 
 ```bash
 python <this-skill>/scripts/check_integration.py ID --static   # while building; no Docker needed
-python <this-skill>/scripts/check_integration.py ID            # at the end: also verifies readiness.json
+python <this-skill>/scripts/check_integration.py ID            # at the end; also verifies readiness.json
 ```
 
-It prints PASS/WARN/FAIL per rule and exits 1 on any failure. It checks files and
-metadata, not behaviour: that is what `readiness_test.py` is for.
+## 1. Who converts the instance
 
-## `metadata.json`
+Every model for this integration inherits this choice, so pick the pattern closest to how
+the standalone skill already models:
 
-Read an existing `solvers/*/metadata.json` and **match its key set**: do not invent or
-drop keys, because readiness and evaluation both read this file.
+| Pattern | Who converts | Used by |
+| --- | --- | --- |
+| The model reads the dict | the submission, via `instance["n"]` | `cpmpy_python`, `ortools_cp_sat_python`, `z3_python` |
+| The framework binds it | `run.py`, feeding each JSON key to the framework's data API | `minizinc_gecode` |
+| A harness parses it | code baked into the image hands the parsed object to a fixed entrypoint | `ortools_cp_sat_cpp` |
+
+When the input is generated source (facts for an ASP grounder, a bespoke data file),
+either the submission or `run.py` emits it; that choice is the contract for every model.
+Conversion happens inside the container, and only one submission file is staged: shared
+conversion code goes in the image or `run.py`, and a design needing more files is
+unsupported (report it).
+
+`instance_binding` in `metadata.json` says what the runner can bind, so
+`generation.next_work` withholds only the pairs it never could:
+
+| Value | Use when | What happens |
+| --- | --- | --- |
+| omitted (`"any"`) | the submission reads the instance itself | nothing is withheld |
+| `"rectangular_uniform"` | the data interface takes only rectangular arrays of one type | pairs with ragged or mixed-type fields are withheld |
+| `"reshaped"` | `run.py` reshapes fields itself (padding, splitting) | `run.py` defines `refusal(name, value)` to say what it cannot bind; see `essence_prime_minion`, `idp_z3` |
+
+`generation.brief` imports `refusal()` on the host, so it must not import the solver or
+write to stdout. It covers reshaping only; a string field is refused at run time, when
+the model declares it. Do not use the brief's generic `unbindable_fields` instead: it is
+not per integration and was wrong for several runners.
+
+When the framework binds the data (a typed modelling language):
+
+- **Bind only the fields the model declares.** Instances carry strings (`name`, `note`)
+  and data a given model may not use; binding every key fails those instances.
+- **Offer derived sizes.** Finite index sets cannot change size between instances, so let
+  the model declare optional sizes per field (`F_dim1`, `F_dim2`), pad ragged lists and
+  offer their lengths (`F_len`), and split mixed-type rows into one field per column.
+- **Escape reserved words.** For a field or output named like a keyword (`matrix`, `E`),
+  let the model write `name_`, and map it back on input and output.
+
+## 2. `Dockerfile`
+
+- Pin the base image by digest and every dependency by version.
+- It runs unprivileged, read-only, without network, with bounded scratch space;
+  compilation happens inside it, within its own budget.
+- Check `.dockerignore` before relying on a build file; never widen the context to
+  datasets, references, credentials or models.
+- The final `ENTRYPOINT` runs the intended runner.
+
+## 3. `run.py`
+
+The protocol is in `evaluation/README.md`. In short:
+
+- Read `/input/model.<ext>` and `/input/request.json`; write JSONL `solution` records
+  with `values`, then exactly one `status`; log to stderr. Reuse `runner/runtime.py`.
+- Return explicit `unsupported`, `error` and `compilation_error` statuses.
+- Never invent solutions, alter the submission or emit more solutions than requested;
+  fewer only with `complete` (search exhausted).
+
+Each rule below fixes a bug a campaign found; the readiness check that catches it is in
+brackets ([section 6](#6-readiness_testpy)).
+
+- **Prove the optimum before emitting** (`optimization_timeout`). Know whether there is an
+  objective before solving, so every kill, crash and deadline path does too. On a timeout
+  before the proof, emit no solutions, only `timeout`: the evaluator checks solutions
+  first, so an unproven incumbent is rejected as suboptimal, not inconclusive.
+- **Parenthesise a re-posted objective** (`optimum_enumeration`). To enumerate at the
+  optimum, post `(objective) = optimum`; where a sum or quantifier extends as far right as
+  possible, the appended text is otherwise swallowed.
+- **Check that a strict-bound call is strict** (`minimization_step_one`). When the runner
+  bounds the objective itself, confirm from the docs and a test whether "better than the
+  bound" is strict; an off-by-one skips the optimum.
+- **Count distinct declared outputs** (`auxiliary_free_distinct`). A free auxiliary
+  variable makes the solver repeat outputs; deduplicate on the declared outputs and
+  re-solve with a nogood per assignment until the count is reached or search is exhausted.
+- **Use the solver's own solution checker if it has one.** ACE accepted wrong tuples for a
+  product of four or more variables; reject such a solution and keep searching.
+- **Report a failure, never a timeout** (`error_detail`). A crash, out-of-memory,
+  reserved-identifier or compile error returns `error` or `compilation_error` with the
+  tool's own message. Find where the solver hides it (a log file, stdout, a verbose flag)
+  and forward it; without it, modelling agents cannot fix their model.
+- **Send the solver's stdout to stderr** (`stray_stdout`); the protocol owns stdout.
+
+## 4. `metadata.json`
+
+Copy an existing `solvers/*/metadata.json` (JSON) and use only the keys below:
+readiness, evaluation and the website read them.
 
 ```json
 {
@@ -32,193 +120,104 @@ drop keys, because readiness and evaluation both read this file.
   "image": "dcp-eval/framework_language:v1",
   "extension": ".py",
   "enumeration": true,
+  "readiness_level": 2,
   "protocol_version": 1
 }
 ```
 
-- **`id`**: lowercase letters, digits and underscores; unique and stable. Skill names use
-  hyphens instead. `id`, `image`, `extension` and `enumeration` are what the evaluator
-  requires.
-- **`optimization: false`** only for an integration that genuinely cannot optimise, and
-  **`compilation: true`** only for one that compiles. Both change which readiness checks
-  are required. Use literal Booleans and never advertise a capability that was not tested.
-- **`readiness_level: 2`** for every new integration: it adds the bug-class readiness checks
-  below. An existing integration without the key is at level 1 until it is upgraded.
-- **`instance_binding`** says which instances this runner can bind, so `next_work`
-  withholds the pairs it never could. Omit it (`"any"`) when the submission reads the
-  instance itself. `"rectangular_uniform"`: the data interface takes only rectangular,
-  single-type arrays, and pairs with ragged or mixed-type fields are withheld.
-  `"reshaped"`: the runner reshapes fields itself (padding, splitting) and decides what it
-  cannot bind through a `refusal(name, value)` function in `run.py` that `generation.brief`
-  imports on the host, so it must not import the solver or write to stdout; see
-  `essence_prime_minion` and `idp_z3`. Refusal covers reshaping only, never strings: a
-  string field is refused at run time, and only when the model declares it.
-- **`name`** is what the website shows; the `id` never is. A library that drives one
-  solver is named after that solver with the host language in brackets: `CPLEX (Python)`,
-  `Choco (Python)`, `OR-Tools CP-SAT (C++)`; its package name (`docplex`, `pychoco`) goes
-  in `framework`. A modelling layer over several solvers is named after the layer:
-  `CPMpy (Python)`, `PuLP (Python)`, `JuMP (Julia)`. A system with its own language stands
-  alone: `MiniZinc`, `Picat`, `clingo`, `SWI-Prolog`. Neither the paradigm nor the backend
-  goes in the name; the backend goes in `solver`, and the website prints it beside the
-  name (`MiniZinc · Gecode`). Brackets hold only the host language, never a solver or
-  system. When a modelling language and the system that runs it have different names, the
-  language is the name and the system goes in `solver`. Every `solver` value needs a
-  display label in `BACKEND_NAMES` in `generate_site.py`, unless the name already contains
-  it. Names must be distinct; `tests/test_solvers.py` and `tests/test_site.py` enforce
-  these rules, and nothing can enforce a name being clear. Renaming
-  is cheap: the catalogue reads `name` on every build and it is not part of the readiness
-  record.
-- **`language`** is what a submission is written in. It picks the label and syntax
-  highlighting on the website. For a new value, add a row to `LANGUAGES` in
-  `generate_site.py`; if highlight.js has no grammar for it, pair the right label with
-  `plaintext`. A new `extension` also needs an `EXTENSION_LANGUAGE` entry there.
-- **`paradigms`** is required. Use IDs from `solvers/paradigms.json`, tagging the paradigm
-  a **submission is written in**, not the backend's technology: CP-SAT is `["cp"]`.
-  Declare several tags when a submission really belongs to more than one (`swipl_clpfd`
-  is `["cp", "clp"]`). If nothing fits, add an entry to `solvers/paradigms.json` in the
-  same commit; `tests/test_solvers.py` fails on an unknown tag.
+| Key | Rule |
+| --- | --- |
+| `id` | Required. Lowercase letters, digits and underscores; unique and stable. Skill names use hyphens instead. |
+| `image` | Required. `dcp-eval/<id>:v1`. |
+| `extension` | Required. The submission's file extension. A new one needs an `EXTENSION_LANGUAGE` entry in `generate_site.py`. |
+| `enumeration` | Required. Literal Boolean. |
+| `optimization` | Add `false` only when the integration genuinely cannot optimise. |
+| `compilation` | Add `true` only when submissions are compiled. |
+| `readiness_level` | `2` for every new integration; it adds the bug-class checks. Existing integrations without the key are at level 1 until upgraded. |
+| `instance_binding` | See [section 1](#1-who-converts-the-instance). |
+| `name` | What the website shows (it never shows `id`). See the naming rules below. |
+| `framework` | The package name (`cpmpy`, `docplex`, `pychoco`). |
+| `solver` | The backend. Needs a display label in `BACKEND_NAMES` in `generate_site.py`, unless `name` already contains it. |
+| `language` | What a submission is written in; sets the website's label and syntax highlighting. A new value needs a row in `LANGUAGES` in `generate_site.py` (use `plaintext` when highlight.js has no grammar for it). |
+| `paradigms` | Required. IDs from `solvers/paradigms.json` for the paradigm a **submission is written in**, not the backend's technology: CP-SAT is `["cp"]`. Several tags when a submission really belongs to several (`swipl_clpfd` is `["cp", "clp"]`). A new tag goes into `solvers/paradigms.json` in the same commit. |
+| `protocol_version` | `1`. |
 
-## Who converts the instance
+`optimization`, `compilation` and `enumeration` select the required readiness checks:
+never declare an untested capability.
 
-The decision with the most consequences. Pick the pattern closest to how the standalone
-skill already models.
+**Naming** (enforced by `tests/test_solvers.py` and `tests/test_site.py`; renaming is
+cheap, since `name` is not in the readiness record):
 
-| Pattern | Who converts | Used by |
-| --- | --- | --- |
-| the model reads the dict | the submission, via `instance["n"]` | `cpmpy_python`, `ortools_cp_sat_python`, `z3_python` |
-| the framework binds it | `run.py`, feeding each JSON key to the framework's data API | `minizinc_gecode` |
-| a harness parses it | code baked into the image, handing the parsed object to a fixed entrypoint | `ortools_cp_sat_cpp` |
+- A library that drives one solver is named after the solver, with the host language in
+  brackets: `CPLEX (Python)`, `Choco (Python)`, `OR-Tools CP-SAT (C++)`.
+- A modelling layer over several solvers is named after the layer: `CPMpy (Python)`,
+  `PuLP (Python)`, `JuMP (Julia)`.
+- A system with its own language stands alone: `MiniZinc`, `Picat`, `clingo`,
+  `SWI-Prolog`. When the language and the system that runs it have different names, the
+  language is the `name` and the system goes in `solver`.
+- Brackets hold only the host language. Neither the paradigm nor the backend goes in the
+  name; the website prints the backend beside it (`MiniZinc · Gecode`).
+- Names are distinct.
 
-A framework whose input is generated source (facts for an ASP grounder, a bespoke data
-file) fits none cleanly: either the submission emits that text or `run.py` does, and that
-choice becomes the contract for every model.
+## 5. `CONTRACT.md`
 
-When the framework binds the data (a typed modelling language), these rules kept problems
-usable that would otherwise be lost:
+Tells modellers how this runner realises `solvers/CONTRACT.md`. The model-generator
+reads it beside the standalone skill; a model attempt refuses an integration without it.
 
-- **Bind only the fields the model declares, and ignore the rest.** Instances carry
-  metadata such as `name` and `note` (strings), and some carry data a given model does
-  not need. Binding every key makes such instances fail whatever the model says.
-- **Offer derived size parameters.** Languages that need finite index sets cannot declare
-  a matrix whose size differs between instances. Let the model declare optional sizes per
-  field (e.g. `F_dim1`, `F_dim2` for `F`) and bind them from the data; pad ragged lists and
-  offer their row lengths (`F_len`); split a row of mixed types into one field per column.
-- **Escape reserved words.** When an output or field name is a keyword of the language
-  (`matrix`, `E`, ...), let the model use `name_` and map it back on both input and output.
-- **The runner decides what is bindable.** The brief's generic `unbindable_fields` is not
-  per integration and was wrong for several runners; use `instance_binding: "reshaped"`
-  with the runner's own `refusal()` (above), so a pair is withheld only when this runner
-  can never bind it.
+- Use exactly the headings of the *Mapping checklist* in `solvers/CONTRACT.md`:
+  `## Submission file`, `## Entrypoint`, `## Instance`, `## Outputs`, `## Objective`,
+  `## Solving`, `## Compilation`, `## Environment`, `## Traps`, `## Example`. Follow
+  `solvers/cpmpy_python/CONTRACT.md` as a model.
+- State what `run.py` does, not what you meant it to do: signatures, how the instance is
+  represented, the output container, the objective form, the settings the runner forces.
+- Every fact about the container (binary paths, environment variables, network,
+  preinstalled packages) goes under `## Environment`, never into the standalone skill.
+- `## Example` is the pilot fixture (see [section 7](#7-once-certified)).
+- Leave out what `solvers/CONTRACT.md` already says and what the standalone skill teaches
+  about the solver's API.
 
-Conversion always happens inside the container. **Only one submission file is staged**, so shared conversion code goes in the
-image or `run.py`; anything needing extra staging is unsupported: report it.
+## 6. `readiness_test.py`
 
-## `run.py`
+Adapt `solvers/cpmpy_python/readiness_test.py`, which implements every check below with
+a trusted reference. It drives the real evaluator against the built image, prints a JSON
+object of check name to Boolean, and exits nonzero on any failure. Each check must be
+able to fail, with its submission in this integration's own form.
 
-- Reads `/input/model.<ext>` and `/input/request.json`; writes JSONL `solution` records
-  with `values`, then exactly one `status`. Logs go to stderr. Reuse `runner/runtime.py`
-  helpers as the existing runners do.
-- Never invent solutions, alter the submission, or emit more solutions than requested.
-- Optimisation: prove the optimum before emitting; when enumerating, fix the objective to
-  it. A timeout before proving optimality must not report success; what to emit then is
-  set by the protocol in `evaluation/README.md` (`timeout`, and optimisation runners emit
-  only final optimal outputs), so follow it rather than choosing per integration. Decide
-  whether an objective exists before solving starts, so every kill, crash or deadline path
-  knows it: the evaluator checks solutions before the status, so an unproven incumbent
-  emitted before a `timeout` is rejected as suboptimal, not treated as inconclusive. Fewer
-  solutions than requested only with `complete` (exhausted).
-- **Count distinct declared outputs, not solver solutions.** Solvers enumerate over every
-  variable, so a model with a free auxiliary variable returns the same outputs several
-  times. Deduplicate on the declared outputs and re-solve with a nogood on each assignment
-  already found until the count is reached or the search is exhausted.
-- **Parenthesise the objective when you re-post it** (e.g. as `(objective) = optimum` to
-  enumerate at the optimum). In languages where a quantifier or sum extends as far right
-  as possible, the appended text is otherwise swallowed by the objective. In an API with a
-  strict-bound call, check from the docs and a test whether "better than the bound" is
-  already strict: an off-by-one there skips the true optimum.
-- **Check emitted solutions with the solver's own checker when it has one.** A solver can
-  return assignments that violate the model: ACE accepted wrong tuples for a product of
-  four or more variables. Reject such solutions and continue the search instead of passing
-  them on.
-- **A failure is never a timeout.** A solver crash, an out-of-memory, a reserved-identifier
-  error or a compile error must come back as `error` (or `compilation_error`) with the
-  tool's own message in the detail. Solvers often print it somewhere unusual (a log file,
-  stdout, a verbose flag only); find it and forward it. When the message is hidden,
-  modelling agents cannot fix their model and start running it outside the container to
-  see what went wrong. The protocol owns the real stdout: send the solver's own stdout to
-  stderr.
-- Return explicit `unsupported`, `error` and `compilation_error` statuses.
+**Required at every level:** `satisfaction`, `changed_instances`, `malformed_output`,
+`empty_output`, `timeout_cleanup`, `isolation`, `missing_image`; `minimization` and
+`maximization` (or `unsupported_optimization`); `enumeration` (or
+`unsupported_enumeration`); `compilation_error` when compiled.
 
-## `Dockerfile`
+**Added at `readiness_level: 2`**, because tiny `x + y` models never reach the runner
+bugs real models hit:
 
-Pin the base image by digest and every dependency by version. The image must work
-unprivileged, read-only, without network and with bounded scratch space; compilation
-happens inside the container within its own budget. Check `.dockerignore` before relying
-on a build file; never widen the context to datasets, references, credentials or models.
-Verify the final `ENTRYPOINT` invokes the intended runner.
+| Check | Required when | Bug class | The submission, and what must happen |
+| --- | --- | --- | --- |
+| `output_shapes` | always | outputs the runner cannot carry | a three-level integer array, a Boolean matrix and a value beyond 32 bits: accepted, or `unsupported` with the limit documented under `## Outputs` |
+| `instance_shapes` | always | instance binding | ragged rows, rows of mixed types, an unused string field and `name`/`note`, on two instances of different shapes: accepted (for `rectangular_uniform`, the refusal the contract documents) |
+| `error_detail` | always | errors hidden as timeouts or bare exit codes | a submission that makes the solver or its library raise: `execution_error` with that tool's own message in the detail |
+| `stray_stdout` | always | output corrupting the protocol | a submission that prints: accepted |
+| `large_model` | always | stack and recursion limits | a sum over 3000 Booleans, used as an output: accepted within 120 s |
+| `optimization_timeout` | it optimises | an unproven optimum emitted when time runs out | an easy reference; the submission adds an unrelated hard part to its objective (a Golomb ruler), so a solution comes fast but cannot be proven within a 3 s budget: `execution_timeout` with **zero solutions received** |
+| `minimization_step_one` | it optimises | an off-by-one bound in a runner that bounds the objective itself | a minimisation whose first solution is exactly optimum + 1 (steer the search there if the runner does branch and bound): accepted |
+| `auxiliary_free_distinct` | it enumerates | duplicate outputs from free auxiliaries | a free auxiliary variable outside the outputs, `solution_limit=3`: accepted with 3 distinct solutions |
+| `optimum_enumeration` | it optimises and enumerates | a re-posted objective parsed or pinned wrongly | a compound objective (a sum) with ten optima, `solution_limit=3`: accepted with 3 solutions checked |
 
-## `CONTRACT.md`
+Full list: *Integration readiness* in `generation/AGENTS.md`.
 
-The integration contract, for modellers: how this runner realises `solvers/CONTRACT.md`.
-Use exactly the headings of that file's *Mapping checklist* (`## Submission file`,
-`## Entrypoint`, `## Instance`, `## Outputs`, `## Objective`, `## Solving`,
-`## Compilation`, `## Environment`, `## Traps`, `## Example`) and follow an existing one
-such as `solvers/cpmpy_python/CONTRACT.md`. State what the code does, not what you meant
-it to do: signatures, the instance representation, the output container, the objective
-form, the settings the runner forces. Every fact about the container (binary paths,
-environment variables, network, preinstalled packages) goes under `## Environment`, never
-into the standalone skill. Put the pilot fixture in `## Example`. Leave out what `solvers/CONTRACT.md` already says and
-what the standalone skill teaches about the solver's API. A model attempt refuses an
-integration without this file, and records its hash.
+## 7. Once certified
 
-## `readiness_test.py`
+**Register the pilot**, which `tests/test_solvers.py` requires of every integration with
+a `readiness.json`: add it to `PILOTS` with a fixture model under `tests/fixtures/`;
+unless it cannot optimise, add it to `MAXIMIZATION_SWAPS` with the fixture's
+minimise/maximise spelling; and name it by its `name` in `README.md`.
 
-Adapt an existing one (`solvers/cpmpy_python/readiness_test.py` is the cleanest). It
-drives the real evaluator against the built image, prints a JSON object of check name to
-Boolean, and exits nonzero on any failure. Required checks: `satisfaction`,
-`changed_instances`, `malformed_output`, `empty_output`, `timeout_cleanup`, `isolation`,
-`missing_image`; `minimization` and `maximization` (or `unsupported_optimization`);
-`enumeration` (or `unsupported_enumeration`); `compilation_error` when compiled. The
-exact list is in repository `generation/AGENTS.md`. Write each check to be able to fail.
+**Re-certify after a change.** The record binds the image identity, the hashes of
+`run.py`, `Dockerfile` and `readiness_test.py`, and every `metadata.json` field except
+`name` and `paradigms`. Changing any of them, or rebuilding the image (image IDs are not
+reproducible), invalidates it. The record is write-once:
 
-Beyond the required names, add a check that a solver crash is reported as `error` with the
-solver's own message in the detail. Without it, modelling agents cannot see why a model
-failed.
-
-### Bug-class checks (`readiness_level: 2`)
-
-Tiny `x + y` models prove their optimum instantly and output flat integers, so they never
-reach the runner bugs that real models hit. Each of these checks covers one class that a
-modelling campaign exposed in some integration; `solvers/cpmpy_python/readiness_test.py`
-implements all of them, with a trusted reference each. Write the submission in this
-integration's own form, and make each check able to fail.
-
-| Check | Bug class | The submission, and what must happen |
-|---|---|---|
-| `optimization_timeout` | an unproven optimum emitted when time runs out | an easy reference; the submission adds an unrelated hard part to its objective (a Golomb ruler) so the solver finds a solution fast but cannot prove it within a 3 s budget: `execution_timeout` with **zero solutions received** |
-| `minimization_step_one` | an off-by-one bound in a runner that bounds the objective itself | a minimisation whose first solution is exactly optimum + 1 (steer the search there if the runner does branch and bound): accepted |
-| `optimum_enumeration` | a re-posted objective parsed or pinned wrongly | a compound objective (a sum) with ten optima, `solution_limit=3`: accepted with 3 solutions checked |
-| `output_shapes` | outputs the runner cannot carry | a three-level integer array, a Boolean matrix and a value beyond 32 bits: accepted, or `unsupported` with the limit documented under `## Outputs` |
-| `instance_shapes` | instance binding | ragged rows, rows of mixed types, an unused string field and `name`/`note`, on two instances of different shapes: accepted (for `rectangular_uniform`, the refusal the contract documents) |
-| `error_detail` | errors hidden as timeouts or bare exit codes | a submission that makes the solver or its library raise: `execution_error` with that tool's own message in the detail |
-| `stray_stdout` | solver or model output corrupting the protocol | a submission that prints: accepted |
-| `auxiliary_free_distinct` | duplicate outputs from free auxiliaries | a free auxiliary variable outside the outputs, `solution_limit=3`: accepted with 3 distinct solutions |
-| `large_model` | stack and recursion limits | a sum over 3000 Booleans, used as an output: accepted within 120 s |
-
-The checks that need optimisation or enumeration are required only when the metadata
-declares those capabilities.
-
-## Once certified
-
-`tests/test_solvers.py` requires every integration with a `readiness.json` to be a pilot:
-add it to `PILOTS` with a fixture model under `tests/fixtures/`, and, unless it cannot
-optimise, to `MAXIMIZATION_SWAPS` with the minimise/maximise spelling that fixture uses.
-`README.md` must name the integration by its `name`.
-
-The readiness record binds the image identity and the hashes of `run.py`, `Dockerfile`,
-the check script and every `metadata.json` field except `name` and `paradigms`, so
-changing any of those means running the check again. The record is write-once: to
-re-certify after a fix, rebuild the image, delete `readiness.json`, then run `check` and
-`verify` again. While models are being evaluated on the `:v1` image, build and test a
-runner fix on a separately tagged image, and rebuild `:v1` only once no evaluation is
-running on it.
+1. Rebuild. While models are evaluated on `:v1`, test the fix on a separately tagged
+   image and rebuild `:v1` only once nothing runs on it.
+2. Delete `readiness.json`.
+3. Run `generation.readiness check`, then `verify`.
