@@ -1,0 +1,70 @@
+{
+  "accepted": false,
+  "detail": "list index out of range",
+  "evaluator_version": 1,
+  "image": {
+    "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+    "tag": "dcp-eval/hermax:v1"
+  },
+  "instances": [
+    {
+      "accepted": false,
+      "checking_seconds": 1.08394306153059e-06,
+      "detail": "list index out of range",
+      "execution_wall_seconds": 0.6428590950090438,
+      "id": "example",
+      "instance_hash": "51e910f5a550f16337f1842709c61c7f5754e9c49f7d3512c1e9b0fa6117d549",
+      "is_optimization": false,
+      "oom_killed": false,
+      "optimum": null,
+      "outputs": [
+        "grid"
+      ],
+      "reason": "execution_error",
+      "reference_setup_seconds": 0.8678409070707858,
+      "runner_status": {
+        "detail": "list index out of range",
+        "status": "error",
+        "type": "status"
+      },
+      "solutions_checked": 0,
+      "solutions_received": 0,
+      "stderr": "Traceback (most recent call last):\n  File \"/opt/runner/run.py\", line 186, in <module>\n    main()\n  File \"/opt/runner/run.py\", line 136, in main\n    model, outputs = load(request[\"instance\"])\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/runner/run.py\", line 61, in load\n    returned = module.build(instance)\n               ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/input/model.py\", line 37, in build\n    m &= (grid[i1][j1] < grid[i2][j2])\n                         ~~~~~~~~^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/variables.py\", line 1815, in __getitem__\n    return super().__getitem__(i)\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/variables.py\", line 1528, in __getitem__\n    return self._items[i]\n           ~~~~~~~~~~~^^^\nIndexError: list index out of range\n"
+    }
+  ],
+  "instances_available": 5,
+  "instances_checked": 0,
+  "limits": {
+    "compilation_timeout": 300,
+    "cpus": 1,
+    "execution_timeout": 180,
+    "memory_mb": 2048,
+    "reference_timeout": 180
+  },
+  "model_hash": "9cca0be40e75c55aea4bd592c2bc691348b8461b901fd9f28b6e289cc60dfbe2",
+  "problem_id": "futoshiki",
+  "reason": "execution_error",
+  "reference_hash": "5e63b7680c69f18a900266ef73e52dc69bcb149134d1bd3cbaeb9907e4a6918d",
+  "reference_runtime": {
+    "cpmpy": "1.0.0",
+    "numpy": "2.4.6",
+    "ortools": "9.15.6755",
+    "python": "3.13.2"
+  },
+  "requested": {
+    "instance_count": 99,
+    "instance_ids": null,
+    "solution_limit": 2,
+    "tolerate_inconclusive": true
+  },
+  "skipped_instances": [],
+  "solutions_checked": 0,
+  "solver_id": "hermax",
+  "total_wall_seconds": 1.706697687972337,
+  "unperformed_instances": [
+    "json:1",
+    "json:2",
+    "json:3",
+    "json:4"
+  ]
+}

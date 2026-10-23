@@ -1,0 +1,69 @@
+{
+  "accepted": false,
+  "detail": "list indices must be integers or slices, not IntVar",
+  "evaluator_version": 1,
+  "image": {
+    "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+    "tag": "dcp-eval/hermax:v1"
+  },
+  "instances": [
+    {
+      "accepted": false,
+      "checking_seconds": 1.3400567695498466e-06,
+      "detail": "list indices must be integers or slices, not IntVar",
+      "execution_wall_seconds": 0.8003762071020901,
+      "id": "example",
+      "instance_hash": "1cc194e8360679e6aecbf80ed5058c055c8d37c880c79d9c745d29c2c495581b",
+      "is_optimization": false,
+      "oom_killed": false,
+      "optimum": null,
+      "outputs": [
+        "quasigroup"
+      ],
+      "reason": "execution_error",
+      "reference_setup_seconds": 4.04922969895415,
+      "runner_status": {
+        "detail": "list indices must be integers or slices, not IntVar",
+        "status": "error",
+        "type": "status"
+      },
+      "solutions_checked": 0,
+      "solutions_received": 0,
+      "stderr": "Traceback (most recent call last):\n  File \"/opt/runner/run.py\", line 186, in <module>\n    main()\n  File \"/opt/runner/run.py\", line 136, in main\n    model, outputs = load(request[\"instance\"])\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/runner/run.py\", line 61, in load\n    returned = module.build(instance)\n               ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/input/model.py\", line 32, in build\n    quasigroup &= (table.row(ab)[ba] == a)\n                   ^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/variables.py\", line 2173, in row\n    return IntVector(self._model, f\"{self.name}.row({r})\", self._grid[r])\n                                                           ~~~~~~~~~~^^^\nTypeError: list indices must be integers or slices, not IntVar\n"
+    }
+  ],
+  "instances_available": 4,
+  "instances_checked": 0,
+  "limits": {
+    "compilation_timeout": 300,
+    "cpus": 1,
+    "execution_timeout": 180,
+    "memory_mb": 2048,
+    "reference_timeout": 180
+  },
+  "model_hash": "6217b75886d19f505e19db4b81ffdd552a78e564a3c6233e2e3dcb65fb2efaf5",
+  "problem_id": "csplib_003_quasigroup_existence",
+  "reason": "execution_error",
+  "reference_hash": "39241214933f23929abe88c9a07f451c2717786c0df5b3c8149954d00ebd5c36",
+  "reference_runtime": {
+    "cpmpy": "1.0.0",
+    "numpy": "2.4.6",
+    "ortools": "9.15.6755",
+    "python": "3.13.2"
+  },
+  "requested": {
+    "instance_count": 99,
+    "instance_ids": null,
+    "solution_limit": 2,
+    "tolerate_inconclusive": true
+  },
+  "skipped_instances": [],
+  "solutions_checked": 0,
+  "solver_id": "hermax",
+  "total_wall_seconds": 5.024563434068114,
+  "unperformed_instances": [
+    "json:1",
+    "json:2",
+    "json:3"
+  ]
+}

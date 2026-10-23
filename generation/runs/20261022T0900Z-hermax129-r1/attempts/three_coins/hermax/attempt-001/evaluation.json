@@ -1,0 +1,65 @@
+{
+  "accepted": false,
+  "detail": "AND only supports Literal operands.",
+  "evaluator_version": 1,
+  "image": {
+    "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+    "tag": "dcp-eval/hermax:v1"
+  },
+  "instances": [
+    {
+      "accepted": false,
+      "checking_seconds": 9.520445019006729e-07,
+      "detail": "AND only supports Literal operands.",
+      "execution_wall_seconds": 0.59971455601044,
+      "id": "example",
+      "instance_hash": "51c05f7db7b17e89aac3baa80ea6ae9b89899f8a667e9e3477df2bd0f4b9afc1",
+      "is_optimization": false,
+      "oom_killed": false,
+      "optimum": null,
+      "outputs": [
+        "steps"
+      ],
+      "reason": "execution_error",
+      "reference_setup_seconds": 0.6076963609084487,
+      "runner_status": {
+        "detail": "AND only supports Literal operands.",
+        "status": "error",
+        "type": "status"
+      },
+      "solutions_checked": 0,
+      "solutions_received": 0,
+      "stderr": "Traceback (most recent call last):\n  File \"/opt/runner/run.py\", line 186, in <module>\n    main()\n  File \"/opt/runner/run.py\", line 136, in main\n    model, outputs = load(request[\"instance\"])\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/runner/run.py\", line 61, in load\n    returned = module.build(instance)\n               ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/input/model.py\", line 42, in build\n    m &= ((flipped & (coin_state[move + 1][coin_idx] == (1 - coin_state[move][coin_idx]))) |\n           ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/expressions.py\", line 726, in __and__\n    raise TypeError(\"AND only supports Literal operands.\")\nTypeError: AND only supports Literal operands.\n"
+    }
+  ],
+  "instances_available": 1,
+  "instances_checked": 0,
+  "limits": {
+    "compilation_timeout": 300,
+    "cpus": 1,
+    "execution_timeout": 180,
+    "memory_mb": 2048,
+    "reference_timeout": 180
+  },
+  "model_hash": "c916270aae28fe37c0830500ad8fe037398104c9549cd65b36b1f751c8872857",
+  "problem_id": "three_coins",
+  "reason": "execution_error",
+  "reference_hash": "08b36faac12c45cc1929aef73e4851fb3dade4d1f44f0a295202c83c6757bca3",
+  "reference_runtime": {
+    "cpmpy": "1.0.0",
+    "numpy": "2.4.6",
+    "ortools": "9.15.6755",
+    "python": "3.13.2"
+  },
+  "requested": {
+    "instance_count": 99,
+    "instance_ids": null,
+    "solution_limit": 2,
+    "tolerate_inconclusive": true
+  },
+  "skipped_instances": [],
+  "solutions_checked": 0,
+  "solver_id": "hermax",
+  "total_wall_seconds": 1.328180862008594,
+  "unperformed_instances": []
+}
