@@ -110,7 +110,9 @@ sum can actually reach.
 
 ## The modelling surface
 
-Constraints are posted with `m &= constraint`.
+Constraints are posted with `m &= constraint`. Every constraint, including
+`iv.all_different()`, `bv.exactly_one()` and `x.forbid_value(v)`, does nothing
+until it is posted this way; a bare call is silently dropped.
 
 | Need | Call |
 | --- | --- |
@@ -139,7 +141,9 @@ m &= (r1 | r2)                       # (a + b <= 1) or (c == d)
 
 - `x != y` between two IntVars has no `.iff`; reify the equality and negate it:
   `(x == y).iff(~r)`.
-- Half reification: `(pb).only_if(lit)`, or `lit.implies(pb)`.
+- Half reification: `(consequent).only_if(condition)` means the condition
+  implies the consequent, so `(root == s).only_if(x == c)` says `x == c`
+  implies `root == s`. `lit.implies(pb)` is the same direction.
 - An IntVar compared with a constant is already a `Literal`, so
   `(x <= 3) | (y >= 2)` and `(x == 3) & (y == 4)` work directly.
 - `m.obj[w] += (pb)` makes the constraint soft (pays `w` when violated).
@@ -161,6 +165,10 @@ m &= (r1 | r2)                       # (a + b <= 1) or (c == d)
 | `b * x`, Boolean times IntVar | `p = m.int(..., 0, x.ub); m &= (p == x).only_if(b); m &= (p == 0).only_if(~b)` |
 | `x * y`, two IntVars | `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)` |
 | `x * x` | `sum(k * k * (x == k) for k in range(x.lb, x.ub + 1))` |
+
+Products or squares over wide domains (about 1000 and up) exhaust memory or
+time: loop over the smaller factor, and write a long number as a digit-weighted
+sum of small `IntVar`s instead of one wide `IntVar`.
 
 Plain Python lists, `BoolVector` and `IntMatrix` cannot be indexed by an
 IntVar (`TypeError`). `m.enum` takes string choices only; use an IntVar for
@@ -185,6 +193,8 @@ for i in range(n):
 m &= (sum(c[i] * bits[i] for i in range(n)) <= T)
 ```
 
+The same holds for an equality: `189*b + 180*o + 175*g == 15750` over IntVars
+never finished building, and over the bits it built in 0.0005 s.
 A diet model with coefficients 10 to 400 went from more than 100 s to 0.9 s.
 Keep using `x[i]` for the objective, comparisons with constants,
 `all_different` and outputs. The cheap `IntVar == weighted Boolean sum` path
@@ -216,7 +226,9 @@ whichever the brief asked for. Leaves must be `IntVar`, `Literal`, or a sum of t
 **Take every size from the instance.** The brief shows the shapes of the
 *example* instance only. Build the outputs as Python lists sized from the
 instance argument (`n = len(instance["durations"])`, then
-`m.int_vector("start", n, 0, H)`); other instances have other sizes.
+`m.int_vector("start", n, 0, H)`); other instances have other sizes. A count the problem itself fixes
+(for example four traffic roads) stays a constant, even when a list in the
+instance varies in length.
 
 Booleans render as `true`/`false`. If the brief declares 0/1 integers, use
 `m.int(name, 0, 1)` instead of `m.bool(name)`.
