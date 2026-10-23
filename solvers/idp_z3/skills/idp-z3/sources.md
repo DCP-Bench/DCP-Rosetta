@@ -1,30 +1,30 @@
 # Sources for `idp-z3`
 
-IDP-Z3's documentation covers the language at the level of a tutorial and says
-little about the Python engine's behaviour, so most of what this skill and the
-runner rely on was established by experiment against the pinned versions, and
-by reading the installed library's source. Each entry says which.
+Tested with idp-engine 0.12.1 (z3-solver 4.11.2.0, sli-lib 0.4.6, textX 2.3.0), Python
+3.12.11, Linux, no network.
+
+Independent toy test: 18/18
+
+Existing skills: none found for IDP-Z3 or FO(.) when this skill was written.
+
+The modelling lessons in `references/gotchas.md` (performance, implied encodings, parser
+traps) come from several hundred FO(.) models written for constraint and optimisation
+problems and checked against reference answers.
+
+IDP-Z3's documentation covers the language at the level of a tutorial and says little about
+the Python engine's behaviour, so most of what this skill relies on was established by
+experiment against the pinned versions, and by reading the installed library's source. Each
+entry says which.
 
 - <https://docs.idp-z3.be/en/stable/FO-dot.html>, <https://docs.idp-z3.be/en/stable/summary.html>,
   <https://docs.idp-z3.be/en/stable/IDP-Z3.html> — FO(.) reference, syntax summary and
-  Python API, consulted 2026-10-01; the prototype's cheat-sheet was adapted from them
-- `idp_engine/Idp.tx` in the installed idp-engine 0.12.1 wheel — the textX grammar,
-  read directly for type declarations, the `$( )` construct and procedure strings
+  Python API, consulted 2026-10-01
+- `idp_engine/Idp.tx` in the installed idp-engine 0.12.1 wheel — the textX grammar, read
+  directly for type declarations, the `$( )` construct, procedure strings and the operator
+  precedence levels
 - `idp_engine/Theory.py` in the same wheel — the source of `Theory.expand`,
   `Theory.optimize` and `Theory._add_assignment`, read directly
-- <https://pypi.org/project/idp-engine/0.12.1/> — the version pinned in the image, and
-  still the latest release on 2026-10-20
-- <https://gitlab.com/krr/IDP-Z3> at a8b9d55 (2026-10-16): `idp_engine/Idp.tx`
-  (`RangeElement: fromI=Number ('..' toI=Number)?`, so a range bound is a literal in a
-  vocabulary and in a structure alike), `docs/IDPLanguage/structure.inc`, and the
-  examples, which hand data to a theory in a `structure` block that also interprets the
-  data-sized types: `tests/124 FO{Core, Sugar, Int}/minesweeper.idp` declares
-  `type Range <: Int` and `max: () -> Int` and gives `Range := {0..2}. max := 2.` in
-  `structure S:V`; `tests/Benchmark/nqueens_mx_*.idp` write one file per size. The
-  runner generates that structure per instance, which is why models carry no data
-- `prototype/solvers/kb/idp-z3/docs/notes.md` in this repository's prototype — earlier
-  findings (Assignment values are always truthy; quantified variables need commas;
-  interpolate with `%`, not f-strings), re-checked where this skill relies on them
+- <https://pypi.org/project/idp-engine/0.12.1/> — the version pinned in the image
 
 ## Environment
 
@@ -51,7 +51,7 @@ by reading the installed library's source. Each entry says which.
   a fast `unknown` would be reported as exhaustion. Not reproduced: on the
   nonlinear cases tried (three cubes summing to 33, `x*y` equal to a large
   semiprime) z3 used the full budget before answering `unknown` ("incomplete
-  (theory arithmetic)"). The runner checks `solver.check()` itself regardless.
+  (theory arithmetic)").
 - **`Theory.optimize` raises the same `AssertionError("Optimization requires
   satisfiable specification")` for an unsatisfiable theory and for a timeout**,
   and takes no timeout. Driving `theory.optimize_solver` (a `z3.Optimize`)
@@ -66,41 +66,36 @@ by reading the installed library's source. Each entry says which.
   constraint sentences (`'x() + y() = 2'`, an `AComparison` whose `symbol_decl`
   is `x`), so output terms are selected as `AppliedSymbol`s by `sentence.decl.name`.
 - `IDP.from_str` succeeds on a vocabulary whose `<: Int` types are uninterpreted;
-  "Expected an interpretation for type X" is raised only by `Theory()`. That is
-  what lets the runner parse once to read the declarations, then bind the data.
+  "Expected an interpretation for type X" is raised only by `Theory()`. A program can
+  therefore parse once to read the declarations, then add a structure and parse again.
 - A `TypeDeclaration` for `type A <: Int` has `interpretation None` and `super_set`
   ℤ; `type B := {1..4}` has an interpretation and `super_set` ℤ but `is_subtype`
   False; a constructor type has `super_set` None.
 - Every vocabulary contains the built-ins `abs`, `relevant`, `goal_symbol`,
   `Concept`, `true`, `false`. Redeclaring `abs` fails with `IndexError: list index
   out of range`. `a`, `S`, `T`, `V`, `min`, `sum`, `type`, `minimize` and uppercase
-  names all work as symbols — checked one by one. No dataset field or declared
-  output collides with a built-in.
+  names all work as symbols — checked one by one.
 - `procedure` blocks are run only by an explicit `IDP.execute()`, never by
   parsing, `Theory()` or solving; inside one, RestrictedPython rejects `import os`.
 
-## Bugs found while building the runner
+## Bugs found while testing
 
 - **z3 `Optimize` answers `sat` for an unbounded objective, and
-  `model().eval(objective)` gives the witness model's finite value.** The first
-  version of the runner reported `x = 1` as the optimum of `maximize x()` with
-  `x() > 0`. It now requires `lower(handle)` and `upper(handle)` to be finite and
-  equal, and reports "The objective is unbounded: between oo and oo" (or
-  `-1*oo`) as an error.
-- The first runner substituted `${...}` expressions into the model text before
-  parsing. The IDP-Z3 lead developer had never seen this: FO(.) users hand data in
-  through a structure. It was replaced by the generated structure's `Range_f` types
-  (2026-10-20); a leftover `${n}` is now an ordinary FO(.) parse error, "Expected
-  IDPFLOAT or INT".
+  `model().eval(objective)` gives the witness model's finite value.** An early test
+  reported `x = 1` as the optimum of `maximize x()` with `x() > 0`. An optimum is
+  therefore accepted only when the objective's lower and upper bounds are finite and
+  equal; an infinite bound is reported as "The objective is unbounded: between oo and oo"
+  (or `-1*oo`).
 
 ## FO(.) syntax (each checked on 0.12.1)
 
 - Type ranges must be integer literals: `type Row := {1..n()}` in a vocabulary and
-  `Row := {1..n}.` in a structure are both "Expected IDPFLOAT or INT". This is why
-  the generated structure interprets data-sized types, `Range_f` among them.
+  `Row := {1..n}.` in a structure are both "Expected IDPFLOAT or INT". Sizes are therefore
+  computed in the program and written as literals, or taken from `${...}` in a submission.
 - A bare `type Row` (no `<: Int`) is not numeric even when the structure gives it
   integers: arithmetic on it fails with "ℤ value expected (Row found: queens(r1))".
-  `type Row <: Int` interpreted later as `Row := {1..6}.` works.
+  `type Row <: Int` interpreted later as `Row := {1..6}.` works, and so does a literal
+  range in the vocabulary, `type Row := {1..6}`, used in arithmetic.
 - Structure syntax: 2-D needs tuple parentheses, `cost := {(0,0)->1, (0,1)->2}.`
   (bare `0,0->1` is a parse error); negative values are fine; a predicate takes
   the set of its true tuples, `flag := {0, 1}.` or `{}` — `{0->true}` fails with
@@ -113,23 +108,14 @@ by reading the installed library's source. Each entry says which.
   `if c then a else b`, definitions with `<-`, Python's `and`/`or`/`not` and
   `abs()` work; `sum{{ cost(t, p) | t in Task, p in Person: x(t, p) }}` over two
   variables works.
+- Precedence, from the grammar's levels: `&` binds tighter than `|`, which binds tighter
+  than `=>`. Checked: `p() | q() & r()` with p true, q and r false is satisfiable, and
+  `a() & b() => c()` with a false, b true, c false is satisfiable.
+- `$` is already FO(.) syntax, but only as `$( expr )` (a symbol computed from an
+  expression) — so `${name}` cannot collide with anything valid.
 - Procedure strings are double-quoted with no escapes: the grammar's
   `f?"(\.|[^"])*"` matches a literal dot, not a backslash escape, so a string can
   never contain `"`; `print('x')` and `print("{\"a\"}")` are parse errors.
-
-- Partial functions, `diffs: Range_n -> Int (domain: gap)` with `gap` defined from
-  `n()`, work on 0.12.1, but the well-definedness check does not use the definition:
-  each sentence applying `diffs` needs `gap(i)` in its guard, and `x(i + 1)` needs
-  `i < n()` as well. `theory.assignments` still holds every `diffs(i)` over `Range_n`,
-  so the runner filters an output by its domain predicate in each model.
-- `Theory()` folds a sentence over data symbols to a number before any solving:
-  `Pos_size() = sum{{ demand(i) | i in I }} + 2 * k()` appears in `theory.constraints`
-  as `Pos_size() = 10`, even with `Pos := {}` interpreted provisionally and other
-  sentences quantifying over `Pos`. That is how the runner sizes a `T_size` type.
-
-- `max{ e | ... }` over data is not folded: `Pos_size() = max{ demand(i) | i in I }`
-  stays as an auxiliary symbol `__max{...}()`, so it cannot size a type. `base() ^ n()`
-  with two data constants fails with "Can't determine the type of base() ^ n()".
 
 ## Arithmetic (each value observed directly)
 
@@ -142,18 +128,48 @@ by reading the installed library's source. Each entry says which.
   appropriate guards." even when the theory states `y() = 2`; an implication
   guard, an `if y() ~= 0 then ... else ...` term, or a divisor type without 0 are
   all accepted. `%` by a symbol has no such check.
+- Partial functions, `diffs: N -> Int (domain: gap)` with `gap` defined from `n()`,
+  work on 0.12.1, but the well-definedness check does not use the definition: each
+  sentence applying `diffs` needs `gap(i)` in its guard, and `x(i + 1)` needs `i < n()`
+  as well. `theory.assignments` still holds every `diffs(i)` over `N`.
+- `Theory()` folds a sentence over data symbols to a number before any solving:
+  `s() = sum{{ demand(i) | i in I }} + 2 * k()` appears in `theory.constraints` as
+  `s() = 10`. `max{ e | ... }` over data is not folded (it stays as an auxiliary symbol
+  `__max{...}()`), and `base() ^ n()` with two data constants fails with "Can't
+  determine the type of base() ^ n()".
+
+## Models and values
+
+- `expand(complete=False)` (the default) reads a Boolean that no sentence mentions as
+  `None` in every model; `complete=True` gives it `false` and `true` in turn. Checked on
+  0.12.1.
+- Counting a defined predicate, `{ ! c in Colour: used(c) <- ? v in Node: colour(v) = c. }`
+  with `n() = #{ c in Colour: used(c) }.`, gives the number of colours the models use, and
+  `optimize("n()", minimize=True)` returns the optimum (3 for a triangle).
 
 ## Performance
 
 - A generated structure for a `[1000]int` field parses in 0.36s, `Theory()` takes
-  0.29s and a check 0.22s; a 60x9 table parses in 0.42s. The runner parses twice
-  (to read the declarations, then with the data), which this makes cheap.
+  0.29s and a check 0.22s; a 60x9 table parses in 0.42s.
 
-## End to end against this repository's evaluator
+## Verified by running (idp-engine 0.12.1, in the image)
 
-- `assignment_costs` (data-sized `Task`/`Person`, minimize): all 5 instances accepted,
-  about 0.9s each.
-- `csplib_054_n_queens` (`Range_n`, function output): all 6 instances
-  accepted with 3 solutions each, about 1.1s each.
-- `capital_budget` (1-D arrays and a scalar, maximize): all 5 instances accepted.
-- `huey_dewey_louie` (three propositions as Boolean outputs): accepted.
+- Every example in `assets/` runs and prints its **Expected** lines.
+- The Quick start prints an 8-queens placement and the "More models may be available"
+  message.
+- `idp-engine` without `procedure main()` fails with `KeyError: 'main'`; with one it
+  runs `pretty_print(model_expand(...))`, `minimize(T, S, term=...)`, `maximize(...)`,
+  `model_check` (`unsat` / `No models.`) and `model_propagate`. A procedure containing a
+  `for` loop over `Theory(...).optimize(...).expand(...)` failed to parse.
+- An f-string FO(.) text halves `sum{{` to `sum{` and fails with "Expected '{{' ...".
+- `bool(model["p()"].value)` is `True` for `false`; with `complete=False` a free
+  predicate's value is `None`.
+- A free `aux: () -> V` gives 9 models for 3 distinct `(x, y)`; `_aux` also 9;
+  `aux() = x() + 1.` and a definition of `aux` give 3.
+- `T := {}.` (an empty type) is accepted; a recursive definition (reachability) gives the
+  least model.
+- `IDP.from_str` on a vocabulary without a theory block fails with `StopIteration`.
+- `Theory.optimize` on an infeasible theory raises `AssertionError("Optimization requires
+  satisfiable specification")` (infeasible-roster example).
+- Package metadata: `Requires-Python >=3.11,<3.15`, licence "GNU LGPL 3".
+</content>

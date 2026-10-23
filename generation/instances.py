@@ -33,7 +33,7 @@ from pathlib import Path
 
 from evaluation import evaluate
 from evaluation.execution import ROOT
-from evaluation.reference import ReferenceSession, available_instances, embedded_instance
+from bench.dcp_bench.reference import ReferenceSession, available_instances, embedded_instance
 from evaluation.results import EvaluationError
 
 from .brief import describe, scalar_type

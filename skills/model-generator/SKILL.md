@@ -1,28 +1,27 @@
 ---
 name: model-generator
-description: Populate DCP-Bench Open with constraint models that the repository evaluator has accepted. Pick an uncovered problem and solver integration, write an instance-agnostic model, verify it against the reference, keep it, and move to the next one. Use for model generation campaigns, including building a solver integration that does not exist yet.
+description: Populate the DCP-Bench Open repository (submodule `/bench`) with constraint models. Pick an uncovered problem and solver combination, write an instance-agnostic model, verify it against the reference, keep it, and move to the next one. Use this skill for model generation campaigns.
 ---
 
 # Model generator
 
-Add models to this repository that a real evaluator has accepted: choose a
-problem and a solver integration, write a model, prove it holds up, keep it,
-move on.
+Add models to the DCP-Bench Open repository (submodule `/bench`) that a real evaluator has accepted: choose a problem and a solver integration, write a model, prove it holds up, keep it, move on.
 
-You need this repository, its Python environment
-(`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a
-running Docker Linux engine. Run every command from the repository root; all
-paths here are relative to it. An unavailable engine is a blocker to report, not
-something to work around: candidate code never runs on the host.
+You need this repository, a Python environment (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a running Docker Linux engine. Run every command from the repository root; all paths here are relative to it. An unavailable engine is a blocker to report, not something to work around: candidate code never runs on the host.
 
-**You are the only agent**, unless the user asks you to coordinate subagents
-(see *Running a campaign with subagents*). You are the coordinator and the modeller; "invoke a
-skill" only ever means "read that file and follow it". There are three kinds of
-skill and only three: this one, the campaign loop; `skills/solver-setup`, read
-only when the integration you need does not exist; and
-`solvers/<id>/skills/<name>`, one per integration, read every time you write a
-model for it. The third kind is the only one this workflow edits; the other two
-change through the procedure in [operations](references/operations.md).
+**You are the only agent**, unless the user asks you to coordinate subagents (see [Running a campaign with subagents](#running-a-campaign-with-subagents)). You are the coordinator and the modeller; "invoke a skill" only ever means "read that file and follow it".
+
+What a model must look like comes from three layers, read in this order every time you write one:
+
+| Layer | Where | What it gives you |
+|---|---|---|
+| The submission contract | `solvers/CONTRACT.md` | What every model must do to be evaluated, for any solver: input, declared outputs, objective, what the runner does, what a model must not do |
+| The integration contract | `solvers/<id>/CONTRACT.md` | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
+| The solver skill | the `skill` path (under `solvers/<id>/skills/`) for the integration | How to model with that solver: its API and pitfalls. |
+
+The contracts are Rosetta's; the solver skill is not, and knows nothing about this repository. Where a skill and a contract disagree on how a submission looks, **the contracts win**.
+
+Read `skills/solver-setup` when the integration you need does not exist. This skill and `solver-setup` self-improve through the procedure in [operations](references/operations.md).
 
 ## The loop
 
@@ -31,9 +30,10 @@ git switch -c models/<run-id>                       # never commit to main, neve
 python -m generation.manage init --run <run-id> --config config.json
 python -m generation.next_work                      # what is uncovered, and what is not usable
 python -m generation.brief PROBLEM                  # the contract: outputs, objective, fields
-python -m generation.manage attempt --run <run-id> --problem P --solver S --skill solvers/S/skills/N \
+python -m generation.manage attempt --run <run-id> --problem P --solver S \
+    --skill rosetta-skills/model-generator --skill <the integration's skill path from next_work> \
     --agent "TOOL (MODEL-ID)"                        # the model that writes this attempt
-#   write the model into the attempt directory, following that integration's skill
+#   write the model into the attempt directory, following the contracts and the solver skill
 python -m generation.manage evaluate --attempt ATTEMPT --model ATTEMPT/model.EXT
 python -m generation.manage retain  --attempt ATTEMPT        # only when it was accepted
 #   commit each batch of accepted models, then take the next pair
@@ -59,8 +59,8 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    description, the declared output names with their shapes, the objective
    direction, and every instance field with its shape.
 
-   **Start blind**: model from the brief, the instance JSON, the integration's
-   skill and the evaluator's feedback, without opening the reference
+   **Start blind**: model from the brief, the instance JSON, the two contracts,
+   the solver skill and the evaluator's feedback, without opening the reference
    (`bench/dataset/<problem>/<problem>.cpmpy.py`) or other integrations' models. If
    that is not working, read the reference and say so in the attempt's
    `lessons.md`. Never execute its solve tail, never carry over a constraint it
@@ -73,10 +73,13 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    The brief takes every shape from the *example* instance. Other instances can
    be larger or smaller (a board, a number of items, a matrix of classes), so
    take sizes from each instance's own data unless the description fixes them.
-6. **Write the model** into the attempt directory, following the frozen
-   modelling skill for that integration. It must build the model *from* the
-   instance argument. Fixed mathematical constants are fine; embedding a known
-   answer is the one failure this whole system exists to catch.
+6. **Write the model** into the attempt directory: `solvers/CONTRACT.md` for what
+   it must do, `solvers/<id>/CONTRACT.md` for the shape it takes in that
+   integration (start from its example), and the solver skill for the API. It
+   must build the model *from* the instance argument. Fixed mathematical
+   constants are fine; embedding a known answer is the one failure this whole
+   system exists to catch. The attempt cites both skills and both contracts, so
+   none of them may change while it is open.
 7. **Evaluate through the helper**, which preserves the exact evaluated bytes.
    On a rejection, read `reason` and `detail` and route the failure with the
    table in [the run protocol](references/run-protocol.md). Repair the model and
@@ -84,7 +87,9 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    After the attempt cap, mark the pair exhausted and take the next one.
 
    Iterate first with `python -m evaluation.check MODEL --problem P --solver S
-   --instance-count 2 --solution-limit 2`, which spends no attempt. Keep the
+   --instance-count 2 --solution-limit 2 --execution-timeout 180 --reference-timeout 180`,
+   which spends no attempt. Pass the run profile's timeouts: the defaults are 60 s,
+   and a model that needs longer would look like a failure there. Keep the
    solution limit at 2: a second solution often exposes a reading looser than
    the reference's. Never edit an attempt's files after it was evaluated;
    `evaluate` will not run it again, so read its `evaluation.json` instead.
@@ -147,17 +152,21 @@ one model it recognises.
 
 - **The integration does not exist, or is not usable.** Both cases are in
   [integrations](references/integrations.md): building one means following
-  `skills/solver-setup` yourself and recording the setup skill *before* writing
+  `rosetta-skills/solver-setup` yourself and recording the setup skill *before* writing
   any integration file; certifying an existing one whose `readiness.json` is
   missing or stale is a separate, smaller job. Neither is a reason to rebuild a
   working integration.
-- **A failure taught you about the framework** — an API needs integer
-  coefficients, a constraint has another name, a compiler mangles a shape. That
-  belongs in the integration's modelling skill so the next model benefits, via
-  the propose/check/apply procedure in [operations](references/operations.md):
-  evidence and a regression, never a hunch. Problem-specific insight belongs in
-  that pair's attempt history and nowhere else. Record a proposal you decided
-  against, with your reasoning.
+- **A failure taught you something general.** Put it where the next model will
+  read it, with evidence and a reproducer, never on a hunch:
+
+  | The lesson is about | It goes into |
+  |---|---|
+  | the solver or its API (an API needs integer coefficients, a constraint has another name) | the solver skill `solvers/<id>/skills/<name>/`, via propose/check/apply in [operations](references/operations.md) |
+  | how this integration's runner reads a model (an output container it rejects, a shape it mangles) | that integration's `solvers/<id>/CONTRACT.md`, edited directly with the evidence. The runner's code is the authority, so check the claim against `run.py` |
+  | what every model must do | nothing: `solvers/CONTRACT.md` binds every integration, so report it to the user as a proposal |
+
+  Problem-specific insight belongs in that pair's attempt history and nowhere
+  else. Record a proposal you decided against, with your reasoning.
 - **A pair is not worth attempting again.** Add it to
   `generation/blockers.json` with its evidence, so the queue stops offering it.
 
@@ -172,16 +181,20 @@ you keep the decisions and they do the modelling.
   one exhausted its share of the attempts, and only with the user's consent.
 - **Bound the load.** At most 8 agents at once, each running at most 2
   evaluations at once; more makes timeouts near the limit unreliable.
-- **Give each agent a fixed prompt**: the run, its problems, the skill path,
-  its own model id for `--agent`, a working directory of its own, and what to
-  report (a table per problem plus the skill gaps it hit, each with the exact
+- **Give each agent a fixed prompt**: the run, its problems, both skill paths
+  (this one and the solver skill `next_work` reports), the two contracts, its own
+  model id for `--agent`, a working directory of its own, and what to report (a table per problem plus the skill gaps it hit, each with the exact
   error message and the fix).
-- **Freeze the integration's skill while a wave runs.** Collect the reported
-  gaps in one file and apply them between waves. Before adding a syntax claim,
+- **Freeze the solver skill and the integration's contract while a wave runs**
+  (an attempt refuses changes to either anyway). Collect the reported gaps in one
+  file and apply them between waves, each where the lesson table above sends it:
+  the solver skill's development copy, the integration's `CONTRACT.md`, or the
+  runner. Before adding a syntax claim,
   confirm it with a tiny model in the solver image; agents report wrong claims
   too.
 - **Fix the runner, not the models, when many agents hit the same wall.** Tell
-  the running agents to skip such pairs instead of spending attempts on them.
+  the running agents to skip such pairs instead of spending attempts on them, and
+  bring the integration's `CONTRACT.md` in line with the fixed runner.
 - **Audit each wave** before committing it: search the agents' transcripts for
   reference reads their `lessons.md` does not mention and for candidate code run
   outside the container.

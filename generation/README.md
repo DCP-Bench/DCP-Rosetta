@@ -2,7 +2,7 @@
 
 Bookkeeping for models written by an agent rather than by hand.
 
-The agent itself is not here — it lives in `skills/`. This package only keeps
+The agent's instructions are not here: they live in `rosetta-skills/`. This package only keeps
 the records that make a generated model trustworthy: what was attempted, what
 the evaluator said, and whether an integration was in a state to be trusted at
 all. No module calls an LLM or decides what to model.

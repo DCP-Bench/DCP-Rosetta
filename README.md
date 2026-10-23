@@ -71,17 +71,21 @@ The evaluation framework:
 | `runner/` | The protocol that runs inside those images. |
 | `tests/` | Unit tests, plus container tests behind `DCP_CONTAINER_TESTS=1`. |
 
-The model generation framework:
+The model generation framework. *Rosetta* names the collection of models (one per problem
+and framework, shown side by side in the catalogue) and the machinery here that writes and
+checks them: integrations, contracts, evaluator and campaign harness. A Rosetta-independent
+skill works outside this repository; a skill in `rosetta-skills/` works only inside it.
 
 | Path | What it holds |
 | --- | --- |
-| `skills/` | Instructions an agent follows: `model-generator` runs a "campaign", `solver-setup` adds a framework, `instance-curator` adds instances to the problems in `bench/`. |
+| `skills/` | Public, Rosetta-independent skills: `add-solver` writes a standalone skill for any solver. |
+| `rosetta-skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework (on top of `add-solver`), `instance-curator` adds instances to the problems in `bench/`. |
 | `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
 
 
 ## Evaluation framework
 
-The container-based [evaluation package](evaluation/README.md) provides a Python API, a JSON CLI and configurable instance/solution counts. The certified integrations are CPMpy (Python), OR-Tools CP-SAT (Python), OR-Tools CP-SAT (C++), Chuffed (C++), Gecode (C++), MiniZinc, Z3 (Python), clingo, SWI-Prolog, PuLP (Python), Choco (Python), Choco (Java), PyCSP3 (Python), Pumpkin (Rust), PySAT (Python), Paramita (Python), hermax (Python), Exact (Python), Gurobi (Python), CPLEX (Python), SCIP (Python), Picat, JuMP (Julia), Essence' and FO(·), named here as the catalogue names them. Build their images explicitly with `python -m evaluation.build`. That is all the evaluator needs; the model-generation workflow additionally wants `python -m generation.readiness check` once per integration after a build, because a readiness record is tied to the exact image it was checked against.
+The container-based [evaluation package](evaluation/README.md) provides a Python API, a JSON CLI and configurable instance/solution counts. The certified integrations are CPMpy (Python), OR-Tools CP-SAT (Python), OR-Tools CP-SAT (C++), Chuffed (C++), Gecode (C++), HiGHS (C++), MiniZinc, Z3 (Python), cvc5 (Python), clingo, SWI-Prolog, PuLP (Python), Python-MIP (Python), Choco (Python), Choco (Java), MaxiCP (Java), PyCSP3 (Python), Pumpkin (Rust), Huub (Rust), PySAT (Python), Paramita (Python), hermax (Python), Exact (Python), Gurobi (Python), CPLEX (Python), SCIP (Python), Picat, ECLiPSe, JuMP (Julia), Essence' and FO(·), named here as the catalogue names them. Build their images explicitly with `python -m evaluation.build`. That is all the evaluator needs; the model-generation workflow additionally wants `python -m generation.readiness check` once per integration after a build, because a readiness record is tied to the exact image it was checked against.
 
 A model is accepted by falsification rather than by comparison: the evaluator enumerates the candidate's solutions and looks for one the reference rejects. Finding none within the budget is what acceptance means, so a larger solution limit is a stronger test.
 
@@ -116,7 +120,7 @@ To check a model against the other instances of a problem, use the evaluation pa
 The same problem modelled in many frameworks is more useful than the same
 problem modelled once, so this repository also contains the machinery to write and evaluate models.
 
-An agent follows `skills/model-generator`: it picks work from a queue ordered
+An agent follows `rosetta-skills/model-generator`: it picks work from a queue ordered
 so that problems with several instances come first (a model that hardcoded the
 example cannot survive a second instance), writes a model from the reference,
 and submits it to the evaluator. A model is kept only when the evaluator
@@ -127,6 +131,6 @@ what the evaluator said, and what was kept, including the attempts that failed.
 
 ## How to Contribute
 
-A new solver integration follows `skills/solver-setup`, and new models follow
-`skills/model-generator`. New problems and instances belong in the problem
+A new solver integration follows `rosetta-skills/solver-setup`, and new models follow
+`rosetta-skills/model-generator`. New problems and instances belong in the problem
 repository linked above.

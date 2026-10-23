@@ -17,7 +17,7 @@ ROOT = EVALUATION_ROOT
 SCHEMA = 1
 CHECK_SCRIPT = "readiness_test.py"
 
-# Fields of metadata.yaml the catalogue reads and readiness does not. Renaming
+# Fields of metadata.json the catalogue reads and readiness does not. Renaming
 # an integration or re-tagging its paradigms changes nothing about how it runs,
 # so it must not invalidate evidence about how it runs. Everything else is
 # behaviour: `image` names what was tested, `enumeration` and `optimization`
@@ -25,6 +25,9 @@ CHECK_SCRIPT = "readiness_test.py"
 # what a submission may be.
 DESCRIPTIVE_METADATA = ("name", "paradigms")
 CHECK_TIMEOUT = 1800
+# Required at readiness_level 2 whatever the integration's capabilities; the
+# optimisation and enumeration ones are added in _required.
+BUG_CLASS_CHECKS = ("output_shapes", "instance_shapes", "error_detail", "stray_stdout", "large_model")
 
 
 class ReadinessError(ValueError):
@@ -67,7 +70,7 @@ def _write_new(path: Path, value: Any) -> None:
 def _files(solver_id: str) -> tuple[dict[str, Any], dict[str, str]]:
     metadata = integration(solver_id)
     folder = ROOT / "solvers" / solver_id
-    paths = {"metadata": folder / "metadata.yaml", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
+    paths = {"metadata": folder / "metadata.json", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
              "checks": folder / CHECK_SCRIPT}
     missing = [name for name, path in paths.items() if not path.is_file()]
     if missing:
@@ -93,6 +96,17 @@ def _required(metadata: dict[str, Any]) -> set[str]:
         names.add("unsupported_enumeration")
     if metadata.get("compilation") is True:
         names.add("compilation_error")
+    # Level 2 adds one check per runner bug class the modelling campaigns exposed: tiny
+    # x + y models never reach them. An integration opts in with "readiness_level": 2;
+    # new integrations start there, existing ones move up one at a time.
+    if metadata.get("readiness_level", 1) >= 2:
+        names.update(BUG_CLASS_CHECKS)
+        if metadata.get("optimization", True) is not False:
+            names.update(("optimization_timeout", "minimization_step_one"))
+            if metadata.get("enumeration") is True:
+                names.add("optimum_enumeration")
+        if metadata.get("enumeration") is True:
+            names.add("auxiliary_free_distinct")
     return names
 
 

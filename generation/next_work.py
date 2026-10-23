@@ -25,12 +25,21 @@ BLOCKERS = ROOT / "generation" / "blockers.json"
 FLAGS = ROOT / "generation" / "flags.json"
 
 
+def solver_skill(solver_id):
+    """The integration's solver skill, `solvers/<id>/skills/<name>/`, or None when it has
+    none or several to choose from."""
+    found = sorted((ROOT / "solvers" / solver_id / "skills").glob("*/SKILL.md"))
+    return found[0].parent.relative_to(ROOT).as_posix() if len(found) == 1 else None
+
+
 def integrations():
     """Every declared integration, with whether it is usable right now."""
     result = []
-    for path in sorted((ROOT / "solvers").glob("*/metadata.yaml")):
+    for path in sorted((ROOT / "solvers").glob("*/metadata.json")):
         solver_id = path.parent.name
         record = {"id": solver_id, "ready": False}
+        # The solver skill to pass to `generation.manage attempt --skill`.
+        record["skill"] = solver_skill(solver_id)
         readiness = path.parent / "readiness.json"
         try:
             metadata = integration(solver_id)

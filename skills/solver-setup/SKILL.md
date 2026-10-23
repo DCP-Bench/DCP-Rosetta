@@ -1,281 +1,175 @@
 ---
 name: solver-setup
-description: Create or repair a DCP-Bench solver integration from official documentation, including pinned container environment, runner, capability metadata, portable modelling skill, and real evaluation tests. Use when model-generator selects a missing or broken language/framework/backend integration.
+description: Meta skill to generate solver skills for the DCP-Rosetta project. 1) generates a standalone skill for a combinatorial (optimisation) solver, 2) adds the Rosetta-specific infrastructure (metadata, Docker image, runner, readiness test) to be able to evaluate the standalone solver skill. Use this skill when asked to add a solver skill or indirectly when the model-generator skill needs an intagration that is missing or broken.
+compatibility: Requires a python environment, Docker and a DCP-Rosetta checkout
 ---
 
-# Solver setup
+# Create a new solver skill
 
-Return a tested integration or an evidence-backed blocker to the caller. Work
-inside the caller's repository, branch, owned paths, run ID, and remaining budget.
-When invoked alone, locate DCP-Bench Open, follow AGENTS.md, initialize a run with
-`python -m generation.manage init --run RUN`, and default to one integration,
-two setup attempts and 30 minutes. Do not initialize a nested run when called
-from model-generator.
+Produce two artifacts: 1) a standalone skill teaching an agent how to model using the interface of a combinatorial (optimisation) solver, 2) infrastructure needed for the DCP-Rosetta framework to evaluate this new skill (Dockerfile, tests, runner, etc). The two must clearly be separated, no details of Rosetta can leak into the independent solver skill, that skill should be sharable publically and thus usable outside of Rosetta.
 
-Read [operations and learning](references/operations.md) first. All paths to
-`generation/`, `evaluation/`, and `solvers/` mean repository-root paths, so this
-bundle can be installed elsewhere. The generation helper modules are explicit
-repository prerequisites. Never install candidate libraries on the host.
 
-## Inputs and scope
+## 1. Inputs and bookkeeping
 
-Receive the exact language/framework/backend target, required satisfaction and
-optimization/enumeration capabilities, current error if any, allowed setup
-attempts, remaining wall time, and owned integration/test/skill paths. Clarify
-only material ambiguity (e.g. a commercial license or unavailable requested
-backend); research ordinary API/build choices through official documentation.
+The caller gives the target for the new skill (which solver + which programming language API), optionally the remaining (time) budget, a potential error from a previous attempt, etc. Run on your own, follow `AGENTS.md`. Start a run with `python -m generation.manage init --run RUN`, and default to one integration, two attempts and 30 minutes. Never start a nested run when called from model-generator.
 
-Read repository `evaluation/README.md`, `evaluation/execution.py`,
-`evaluation/build.py`, relevant `runner/` code, `.dockerignore`, and
-`tests/test_solvers.py`. They define the actual current contract. Reuse an existing
-integration when it really supports the target; never relabel a different solver
-to claim the requested framework works.
+Before writing any file, record the attempt:
 
-Do not change evaluator/reference acceptance logic, disable isolation, install
-candidate dependencies on the host, or start another generation coordinator.
-An extension needing evaluator protocol changes returns a concrete blocker and
-proposal for a separate task. Keep setup changes isolated from passing integrations.
+```bash
+python -m generation.manage setup-attempt --run RUN --solver ID \
+    --skill skills/solver-setup
+```
 
-## Produce the integration
+Reuse an existing integration when it already fully supports the target; never relabel another solver to claim the target works. Do not change evaluator or reference acceptance logic or disable isolation. A target that needs a protocol change is a blocker with a proposal. 
+Details: [operations](references/operations.md).
 
-1. Record authoritative API/build sources and exact dependency versions. Resolve
-   licensing/platform requirements. Use a unique stable integration ID for the
-   language/framework/backend combination, preserving existing IDs.
-2. Create `solvers/<id>/metadata.yaml`, `run.py`, and `Dockerfile`. Read an
-   existing `solvers/*/metadata.yaml` and **match its key set** — do not invent
-   or drop keys, because readiness and evaluation both read this file:
+## 2. Stand-alone solver skill
 
-   ```json
-   {
-     "id": "framework_language",
-     "name": "CPMpy",
-     "language": "python",
-     "framework": "cpmpy",
-     "solver": "ortools",
-     "paradigms": ["cp"],
-     "image": "dcp-eval/framework_language:v1",
-     "extension": ".py",
-     "enumeration": true,
-     "protocol_version": 1
-   }
+Produce one self-contained skill folder `<name>/`, named as a combination of the solver's name and the API language (e.g. `choco-python` and `choco-java` for one solver with bindings in two languages; `minizinc`, `clingo` for a tool with its own name), that teaches a fresh agent to install the solver or modelling framework and model with it. Below, "solver" covers both solvers and modelling frameworks. The skill to produce is about that tool only; benchmarks, runners and any Rosetta details stay out.
+
+### 2.1 Workflow
+
+| Step | Output |
+|---|---|
+| 0. Ask the user for the target: solver (+ language) | name/target |
+| 1. Search for existing skills | each one classified: source / companion / ignore |
+| 2. Research, check the licence, install, run a hello-world | `research.md`, working install |
+| 3. Write the skill; run `check_assets.py` and `skills-ref` | the skill's skill folder |
+| 4. Fresh agent on the toy problems; fix the skill until they pass | test table, `evals/evals.json` |
+| 5. Report: path, decision, tested version, test table, related skills, known gaps | `report.md` |
+
+After each step, send the user a one-line progress note: done, next, rough time left. Don't wait for a reply.
+
+**Interface.** Build exactly what the user named. A modelling framework (JuMP, MiniZinc, CPMpy, Pyomo) uses its default backend unless one is named. A solver gets its **own** API, the one its developers ship (Chuffed → C++, Pumpkin → Rust, Choco → Java/pychoco), unless the user names a combination ("Chuffed via MiniZinc"). With several native interfaces, ask, proposing the one its docs use most. A missing compiler is installed (ask before `sudo`) or reported; it never changes the interface.
+
+**Workspace.** Everything that is not the skill goes in a sibling folder, kept afterwards:
+
+```
+<name>-workspace/
+  research.md           filled-in references/research.md
+  probes/               install and API experiments
+  round-N/models/       the test agent's programs, exactly as written
+  round-N/results.txt   output of run_toy_tests.py
+  report.md
+```
+
+### 2.2 Find an existing skill
+
+| Where | How |
+|---|---|
+| skills.sh registry | `npx skills find <solver>`, also the package name (`pychoco`, `docplex`) |
+| A repo's skills | `npx skills add <owner>/<repo> --list` |
+| Solver's repo | `skills/`, `.agents/skills/`, `.claude/skills/`, root `SKILL.md`; `gh search code "filename:SKILL.md <solver>"` |
+| Python wheel | after installing: `uvx library-skills` |
+| Vendor collections | [NVIDIA/skills](https://github.com/NVIDIA/skills), [google/skills](https://github.com/google/skills) |
+| Agent-friendly docs | `<docs-site>/llms.txt`, `llms-full.txt`: the best thing to link to |
+| Rosetta skills | look around in this repo for inspiration | 
+
+You always write your own skill. Spot-check each find by running one of its examples, then classify it:
+
+| Found skill | Role | What to do |
+|---|---|---|
+| Overlaps with yours (modelling with this solver) | **Source** | Verify its claims by running them, write your own text, credit it in `sources.md` (URL, version, licence) |
+| Covers something else (docs navigation, deployment, tuning) | **Companion** | Recommend it: `metadata.related-skills: "<owner>/<repo>"`, a *Related skill* note under the intro, the install command in the report. Installing is the user's call |
+| Stale, broken, or irrelevant | **Ignore** | Say why in the report |
+
+An overlapping skill is a source, never a companion: two skills with the same triggers compete.
+
+### 2.3 Research and install
+
+Fill in [references/research.md](references/research.md) from **official** docs, API reference, examples and changelog. Closed issues ("wrong result", "objective ignored") are the best source of gotchas.
+
+- **Licence**: needing a key, account or registration (full Gurobi, CPLEX, Xpress, Hexaly) → stop and ask. A free edition that installs without one (gurobipy's size-limited licence, CPLEX Community) is fine; put its limits in `compatibility` and *Common issues*.
+- Install as the docs recommend, project-local where possible; ask before `sudo` (prevent if possible). Record the tested version in `sources.md`; the skill stays unpinned.
+- Done when you have run one tiny model of each kind (satisfy, enumerate all, all optimal, maximise, minimise, infeasible) and one broken on purpose, to see where errors appear.
+
+### 2.4 Write the skill
+
+Start from [references/skill-template.md](references/skill-template.md). Rules:
+
+- **Only what an agent lacks**: exact API names, status semantics, gotchas. No CP/MIP theory.
+- **One default per task**, alternatives only when they matter.
+- **Tables over prose**, code over tables. Every snippet is run before it goes in.
+- **Examples are runnable files** in `assets/<example>/`; only the Quick start lives inline. Check them with `python scripts/check_assets.py <skill-folder>`; when the solver lives in a container rather than on this machine, add `--image <image>` (and `--env` for what the image needs, such as a binary on `PATH`).
+- **Link in place**: each section links its doc page, each table row its API entry.
+- **One place per fact**: *Common issues* maps symptom → fix and links back.
+- `SKILL.md` under ~200 lines; references one level deep.
+
+Validate with [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref), installed from git into a hidden environment:
+
+```bash
+uvx --from "git+https://github.com/agentskills/agentskills#subdirectory=skills-ref" skills-ref validate <skill-folder>   # a folder path; `.` fails the name check
+```
+
+Without uv, use a venv in `~/.cache/skills-ref/` and `pip install` the same URL.
+
+### 2.5 Test on the toy problems
+
+Seven problems, 18 instances ([README](assets/toy-problems/README.md)).
+
+1. Export what the tester may see, so the answer keys stay out of reach: `python scripts/run_toy_tests.py --export <workspace>/toy`. Spawn a **fresh subagent** given only the new skill and `<workspace>/toy`. Task: *one program per problem in `<workspace>/round-N/models/`, taking the instance path as argument, printing solutions as in problem.md; report where the skill was missing, wrong or unclear*.
+2. Check every instance:
+   ```bash
+   python scripts/run_toy_tests.py --public <workspace>/toy --logs <workspace>/round-N/logs \
+       --cmd 'python <workspace>/round-N/models/{problem}.py {instance}' | tee <workspace>/round-N/results.txt
    ```
+   Adapt `--cmd` to the language; `--problems a,b` reruns a subset. The runner itself runs here, next to the answer keys; when the solver lives in a container, put only the model run in it and mount just the exported copy, at the same path: `--cmd 'docker run --rm --network none -v <workspace>/toy:<workspace>/toy:ro -v <workspace>/round-N/models:/m:ro IMAGE python3 /m/{problem}.py {instance}'`. Each run has 120 s (`--timeout`); a correct but slow paradigm may need more, so raise it and say so in the report. Run the suite in the background, and build compiled models once before it.
+3. On failure, the README's table says what the skill lacks. Fix the **skill**, add the test agent's mistake with the solver to its *Common issues*, and rerun with a new fresh agent in `round-N+1/`. Problems, answer keys and checkers stay as they are. A mistake with the toy problems' output convention or file layout is not a skill gap: the test format never enters the skill (no status lines, JSON-per-line output, "declared outputs" or test-machine details). After 3 failed rounds, show the user the failing instances, checker messages and what you tried, and ask whether to continue, accept the gap or stop (unavailable: stop and report).
+4. Ship the skill that passed: any later edit needs another round.
+5. Write `evals/evals.json` as in the template.
 
-   **`name` is what the community reads on the website, and the `id` is never
-   shown.** A library that exists to drive one solver is named after that
-   solver, with the host language in brackets: `CPLEX (Python)`,
-   `Choco (Python)`, `Gurobi (Python)`, `OR-Tools CP-SAT (C++)`. The model is
-   written for that solver in that language, and the package name (`docplex`,
-   `pychoco`, `gurobipy`) goes in `framework`. A modelling layer that can drive
-   several solvers is named after the layer, with its language in brackets:
-   `CPMpy (Python)`, `PuLP (Python)`, `JuMP (Julia)`. A system with its own
-   modelling language stands alone: `MiniZinc`, `Picat`, `clingo`,
-   `SWI-Prolog`. The paradigm never belongs in the name, and neither does the
-   backend of a modelling layer: the backend goes in `solver` and the website
-   prints it beside the name (`MiniZinc · Gecode`, `SWI-Prolog · CLP(FD)`),
-   and the paradigm goes in `paradigms`. Brackets hold only the host
-   language, never a solver or system. When a modelling language and the
-   system that runs it have different names, the language is the name and the
-   system goes in `solver`. Every `solver` value needs a display label in
-   `BACKEND_NAMES` in `generate_site.py`, unless the name already contains it.
-   Names must be distinct; `tests/test_solvers.py` and
-   `tests/test_site.py` enforce these rules, and nothing can enforce a name
-   being clear.
+## 3. Rosetta infrastructure
 
-   Renaming is cheap: the catalogue resolves `name` from this file on every
-   build, so no retained model has to be touched. Do not add a display name to
-   `record.json`.
+This part adds what Rosetta needs around the skill: `metadata.json`, `Dockerfile`, `run.py`, `readiness_test.py` and a readiness record. How a Rosetta submission (a model written in a solver's interface) must look is the model-generator skill's job, not this one's.
 
-   `id`, `image`, `extension` and `enumeration` are what the evaluator requires.
-   Add `"optimization": false` only for an integration that genuinely cannot
-   optimize, and `"compilation": true` only for one that compiles; both change
-   which readiness tests are required, so declaring them wrongly either hides a
-   gap or demands a test that makes no sense. Use literal Booleans, and never
-   advertise a capability that was not tested.
+Paths to `generation/`, `evaluation/`, `solvers/` and `skills/` mean repository-root paths. Return **ready** or **blocked** to the caller.
 
-   **`language` names what a submission is written in, and the website reads
-   it.** It picks the label and the syntax highlighting above every model of
-   this integration, so `cpp` gets a block headed `C++` and `prolog` one headed
-   `Prolog`. Add a row to `LANGUAGES` in `generate_site.py` for a value that is
-   not there yet: it maps the language to a highlight.js grammar and a label.
-   highlight.js ships 36 grammars in the bundle the site loads; for a language
-   it has none for, pair the correct label with `plaintext` rather than a
-   grammar that would colour the model as something it is not.
+The repository's own tools run on the host, in its Python environment: `.venv/bin/python` (`.venv/Scripts/python.exe` on Windows). A fresh checkout or worktree has none; create it with `python -m venv .venv` and install `requirements.txt` into it. `generation.readiness` needs it, since it runs `readiness_test.py` and the CPMpy reference with that interpreter.
 
-   **`paradigms` is required, and it is not decorative.** The catalogue website
-   groups every verified model by it, so an integration that omits the key or
-   invents a tag either vanishes from the breakdown or silently splits a column
-   in two. Use one or more IDs from `solvers/paradigms.json`, which is the whole
-   vocabulary and describes what a model in each paradigm looks like. Tag the
-   paradigm a **submission is written in**, not the technology the backend
-   solves with: a CP-SAT integration is `["cp"]` even though its core is a SAT
-   solver, because a CP model is what the modeller writes. Declare several tags
-   when a submission genuinely belongs to more than one — `swipl_clpfd` is
-   `["cp", "clp"]`, because a CLP(FD) model is a constraint model and someone
-   looking for a CP encoding should be shown it. If nothing fits, add the
-   entry to `solvers/paradigms.json` in the same commit, saying in prose what a
-   model in that paradigm looks like — `tests/test_solvers.py` fails on a tag
-   that is not in the file.
+## 3.1 Generate the standalone skill
 
-   The loader parses **JSON syntax despite the `.yaml` extension**; emit a JSON
-   object, not general YAML. Integration IDs allow lowercase letters, digits and
-   underscores; skill names instead use hyphens. Keep those separate.
-3. Implement the current runner protocol: `/input/model.<ext>` and
-   `/input/request.json`; JSONL solution records with `values`, followed by exactly
-   one final status. Keep logs on stderr. Return explicit unsupported/error/
-   timeout/compilation statuses. The runner must not invent solutions, silently
-   alter the submission, or output more solutions than requested.
+Follow [section 2](#2-stand-alone-solver-skill):
 
-   **A failure is never a timeout.** A solver crash, an out-of-memory, a
-   reserved-identifier error or a compile error must come back as `error` (or
-   `compilation_error`) with the tool's own message in the detail. Solvers often
-   print it somewhere unusual (a log file, stdout, a verbose flag only); find it
-   and forward it. When the message is hidden, modelling agents cannot fix their
-   model and start running it outside the container to see what went wrong.
-4. **Decide who turns the JSON instance into the framework's input, and say so
-   in the modelling skill.** This is the design decision with the most
-   consequences, and the three existing integrations answer it three ways:
+| add-solver asks | Answer |
+|---|---|
+| Solver and language | The caller's target |
+| Where to write the skill | `solvers/<id>/skills/<name>/` |
+| Workspace | `generation/runs/RUN/setup/<id>/<attempt>/add-solver-workspace/` |
 
-   | Pattern | Who converts | Used by |
-   | --- | --- | --- |
-   | the model reads the dict | the submission, via `instance["n"]` | `cpmpy_python`, `ortools_cp_sat_python`, `z3_python` |
-   | the framework binds it | `run.py`, feeding each JSON key to the framework's own data API | `minizinc_gecode` |
-   | a harness parses it | code baked into the image, handing the parsed object to a fixed entrypoint | `ortools_cp_sat_cpp` |
+Two Rosetta rules on top:
 
-   The first two suit a framework whose model is an API you call or a file with
-   declared parameters. A framework whose input is *generated source* — facts for
-   an ASP grounder, a bespoke data file — fits none of them cleanly: either the
-   submission emits that text itself, or `run.py` does, and whichever you choose
-   becomes the contract every model for this integration must follow. Choose
-   deliberately rather than by accident, and write the choice into the skill with
-   a worked example.
+- **The solver is never installed on the host.** Write the `Dockerfile` first (step 3), build it,
+  and run the probes and toy tests inside the image, e.g.
+  `run_toy_tests.py --cmd 'docker run --rm --network none -v "$PWD":/w -w /w --entrypoint python IMAGE <workspace>/round-N/models/{problem}.py {instance}'`.
+- **The skill stays standalone.** No DCP-Rosetta, runner or submission instructions in it, and no facts about this integration's container (those go in `solvers/<id>/CONTRACT.md`); it must work outside this repository. Check it three ways:
+  `python -m generation.skills validate --project <skill-folder>`, `python -m generation.skills rosetta-mentions skill-folder>` (names), and a [standalone review](references/standalone-review.md) by a fresh agent (meaning). If this setup itself runs as a subagent and cannot start one, return the skill path, and the caller runs the review. Save the clean review's JSON as `solvers/<id>/standalone-review.json`.
 
-   When the framework binds the data (a typed modelling language), these rules
-   kept problems usable that would otherwise be lost:
+## 3.2 Add the Rosetta infrastructure
 
-   - **Bind only the fields the model declares, and ignore the rest.** Instances
-     carry metadata such as `name` and `note` (strings), and some carry data a
-     given model does not need. Binding every key makes such instances fail
-     whatever the model says.
-   - **Offer derived size parameters.** Languages that need finite index sets
-     cannot declare a matrix whose size differs between instances. Let the model
-     declare optional sizes per field (e.g. `F_dim1`, `F_dim2` for `F`) and bind
-     them from the data; pad ragged lists and offer their row lengths.
-   - **Escape reserved words.** When an output or field name is a keyword of the
-     language (`matrix`, `E`, ...), let the model use `name_` and map it back on
-     both input and output.
-   - **The runner decides what is bindable.** `generation.next_work` withholds
-     pairs it believes cannot bind. The brief's generic `unbindable_fields` is not
-     per integration and was wrong for several runners; have `next_work` ask the
-     runner's own refusal function (see how `essence_prime_minion` does it), so a
-     pair is withheld only when this runner can never bind it.
+Read the submission contract `solvers/CONTRACT.md` first: it is what every model must do, for any solver, and the runner you build is what lets a model in this solver's own terms do it. Then copy the closest existing integration under `solvers/` (same language, or same way of receiving the instance) and adapt `metadata.json`, `Dockerfile`, `run.py` and `readiness_test.py`.
 
-   Conversion always happens inside the candidate container. **Only one
-   submission file is staged**, so a submission cannot ship a helper module: put
-   shared conversion in the image or in `run.py`. Anything needing extra staging
-   is unsupported today — report it rather than working around it.
-5. Implement minimization/maximization semantics honestly: establish optimum
-   before emitting optimal assignments, fix it when enumerating, and count
-   distinct declared outputs. A timeout before proving optimum must not report
-   success; what to emit in that case is set by the protocol in
-   `evaluation/README.md`, so follow it rather than choosing per integration.
-   Satisfaction enumeration may finish below the requested count only on
-   exhaustion. Mark unsupported enumeration explicitly.
+Write the integration contract `solvers/<id>/CONTRACT.md`: how this runner realises the submission contract, under the headings of its *Mapping checklist*, with the pilot fixture as its example. Every claim in it must be true of your `run.py`. It is what the model-generator skill reads to write a model for this integration, next to the standalone skill, so the standalone skill itself stays free of it.
 
-   - **Count distinct declared outputs, not solver solutions.** Solvers enumerate
-     over every variable, so a model with a free auxiliary variable returns the
-     same outputs several times. Deduplicate on the declared outputs and re-solve
-     with a nogood on each assignment already found until the count is reached
-     or the search is exhausted.
-   - **Parenthesise the objective when you re-post it** (e.g. as
-     `(objective) = optimum` to enumerate at the optimum). In languages where a
-     quantifier or sum extends as far right as possible, the appended text is
-     otherwise swallowed by the objective.
-   - **Check emitted solutions with the solver's own checker when it has one.**
-     A solver can return assignments that violate the model: ACE accepted wrong
-     tuples for a product of four or more variables. Reject such solutions and
-     continue the search instead of passing them on.
-6. Pin build/runtime dependencies and supply an image compatible with the
-   evaluator's unprivileged, read-only, networkless execution and bounded scratch
-   space. Compile inside the candidate container within its separate budget.
-   Read the Docker context whitelist before relying on a build file; avoid
-   expanding context to include datasets, reference code, credentials, or models.
-7. Write the solver's modelling skill using the **Skill packaging** section below.
-   Include the tested entrypoint/outputs contract, API patterns, objective/status
-   semantics, supported types, exact environment versions, known limits, and
-   runnable tiny examples. Separate long documentation into bundled references.
-8. Build explicitly with the repository Python environment:
-   `python -m evaluation.build <id>`. Bound the process by the remaining setup
-   budget. Evaluation itself must never build or install implicitly. Record the
-   actual image ID and test evidence, not just a mutable tag.
+The rules for each file, and the choice of who converts the JSON instance, are in [integration files](references/integration.md). Check them as you go:
 
-## Readiness gate
+```bash
+python <this-skill>/scripts/check_integration.py ID --static
+```
 
-Create small independent tests following `tests/test_solvers.py`. Exercise the
-actual image through the evaluator/runner, with explicit expected outcomes:
+Build with `python -m evaluation.build <id>`, bounded by the remaining budget. Evaluation never builds or installs implicitly.
 
-- Valid satisfaction, minimization, and maximization where supported; change
-  instance data and verify the submission responds to it.
-- Multiple distinct solutions and exhausted enumeration where advertised.
-- Invalid/malformed/empty output rejection and accurate unsupported statuses.
-- Compilation failure for compiled targets; execution timeout and cleanup.
-- Current isolation guarantees and missing-image diagnostics.
+## 3.3 Readiness
 
-Beyond the required names, add a check that a solver crash is reported as
-`error` with the solver's own message. Without it, modelling agents cannot see
-why a model failed.
-
-Use tiny trusted synthetic references for integration fixtures if needed, never
-replace a corpus reference to make a generated candidate pass. Reuse existing
-shared tests where applicable and add target-specific invocations. Tests skipped
-because Docker or an image is absent do not meet this gate. After shared runner
-changes, rerun affected existing integrations as well.
-
-Write setup evidence under the run's `setup/<solver_id>/`: files changed, sources,
-versions, actual commands/results, image identity, capabilities and limitations.
-
-Every integration ships its own check script at `solvers/<id>/readiness_test.py`.
-It is a required artifact, like the runner and the Dockerfile. It must drive the
-repository evaluator against the built image for every required check, print a
-JSON object mapping check name to Boolean on stdout, and exit nonzero if any of
-them failed. Write it against the real evaluator — an assertion about the
-integration's behaviour, never a restatement of what you hope is true.
-
-```sh
+```bash
 python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
 ```
 
-This runs your script, keeps its stdout and stderr as the evidence, and records
-the result only when the script exits zero with every required check true. The
-record binds the image identity, the hashes of `run.py`, `Dockerfile` and the
-check script, and the behavioural fields of `metadata.yaml` — everything except
-`name` and `paradigms`, which the catalogue reads and the container does not.
-So editing any of them except those two invalidates the record and the
-checks must run again. The record is write-once: to re-certify after a fix,
-rebuild the image, delete `readiness.json`, then run `check` and `verify`
-again. While models are being evaluated on the `:v1` image, build and test a
-runner fix on a separately tagged image, and rebuild `:v1` only once no
-evaluation is running on it.
+This runs `solvers/<id>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.json`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
+rebuild, delete `readiness.json`, and check and verify again (on a separately tagged image while a campaign is still evaluating on `:v1`). Then register it as a pilot (see *Once certified* in [integration files](references/integration.md)) and run `scripts/check_integration.py ID` without `--static`: it must exit 0 before you return **ready**. After changing shared runner code, rerun the affected existing integrations too.
 
-`solvers/cpmpy_python/readiness_test.py`
-is a working example. See repository `generation/AGENTS.md` for the exact list of
-required check names. One green smoke test does not cover all failure cases. Verify the image's final ENTRYPOINT
-invokes the intended callable; do not assume a shared runtime module runs itself.
-Return **ready** only after real tests pass; otherwise return **blocked**, exact
-failure, attempts spent, and remaining work. The coordinator then resumes the
-original pair or continues elsewhere. Stop after its setup budget; no recursion.
+## 3.4. Return
 
-## Skill packaging
+Write the evidence under `generation/runs/RUN/setup/<id>/`: changed files, sources, versions, commands and their output, image identity, capabilities and limitations, and add-solver's report with its toy-test table. Record `setup_finished` or `setup_blocked` with `generation.manage event`.
 
-Apply [the skill standard](references/skill-standard.md). For a new integration, a self-contained standard bundle can live at
-`solvers/<id>/skills/<hyphenated-skill-name>/SKILL.md`. Its sibling resources live
-inside that same bundle. Keep `solvers/<id>/SKILL.md` as a short repository-facing
-pointer to the canonical bundle so existing discovery still works; the pointer
-is not another installable skill. Existing direct instructions can remain until
-explicitly packaged; avoid wholesale migration during an unrelated setup.
+Return **ready** only after readiness passed. Otherwise return **blocked** with the exact failure, the attempts spent and what is left. Stop when the budget is spent; never recurse.
 
-Do not keep duplicate editable instruction copies. Installing a skill means
-copying/linking the complete canonical bundle to the authorized client's skill
-directory, preserving its folder name and resources, then verifying discovery
-using that client's documented mechanism. Repository creation alone does not
-mean an agent client has installed or activated it. Global installation requires
-user scope; the generator can read the repository bundle directly without it.

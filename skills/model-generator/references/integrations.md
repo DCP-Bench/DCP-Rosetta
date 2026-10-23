@@ -4,17 +4,19 @@ Read this only when the integration you need is missing or unusable.
 
 ## When the integration you need does not exist
 
-Read `skills/solver-setup/SKILL.md` and follow it yourself. It covers choosing an
-openly available CPU-capable framework, writing `metadata.yaml`, `run.py`, a
-`Dockerfile`, a modelling skill under `solvers/<id>/skills/<name>/`, and running
-the full readiness checklist before the integration may be used.
+Read `rosetta-skills/solver-setup/SKILL.md` and follow it yourself. It needs the
+`skills/add-solver` skill, which generates the standalone skill under
+`solvers/<id>/skills/<name>/`; it then adds `metadata.json`, `Dockerfile`, `run.py`,
+`readiness_test.py` and the integration contract `solvers/<id>/CONTRACT.md`, and runs the
+readiness checklist before the integration may be used. An integration without a
+`CONTRACT.md` cannot be used for modelling: `generation.manage attempt` refuses it.
 
 Create the run and record the setup skill **before writing any integration
 file**, so the record freezes the instructions that guided the work rather than
 whatever they became afterwards:
 
 ```sh
-python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill skills/solver-setup
+python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill rosetta-skills/solver-setup --skill skills/add-solver
 ```
 
 Doing it the other way round records the skill after the fact, which
@@ -49,7 +51,7 @@ any change that invalidates an existing record:
    python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
    ```
 
-The record binds the image identity and the hashes of `metadata.yaml`, `run.py`,
+The record binds the image identity and the hashes of `metadata.json`, `run.py`,
 `Dockerfile` and the check script, so it must be redone whenever any of them
 changes. The helper runs the checks rather than believing a summary — but it
 cannot judge whether your script tests the right things. Write it to fail.

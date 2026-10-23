@@ -31,7 +31,7 @@ class ReadinessTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         folder = self.root / "solvers" / "demo"
         folder.mkdir(parents=True)
-        (folder / "metadata.yaml").write_text('{"id":"demo","image":"demo:image","enumeration":true}', encoding="utf-8")
+        (folder / "metadata.json").write_text('{"id":"demo","image":"demo:image","enumeration":true}', encoding="utf-8")
         (folder / "run.py").write_text("runner", encoding="utf-8")
         (folder / "Dockerfile").write_text("FROM scratch", encoding="utf-8")
         self.script = folder / readiness.CHECK_SCRIPT
@@ -80,6 +80,21 @@ class ReadinessTests(unittest.TestCase):
                     "isolation", "missing_image", "unsupported_optimization", "unsupported_enumeration", "compilation_error"}
         readiness.check("demo", self.write_report(self.report(required)), self.root / "record.json")
 
+    def test_readiness_level_2_adds_the_bug_class_checks(self):
+        base = {"satisfaction", "changed_instances", "malformed_output", "empty_output", "timeout_cleanup",
+                "isolation", "missing_image", "minimization", "maximization", "enumeration"}
+        bug_classes = {"output_shapes", "instance_shapes", "error_detail", "stray_stdout", "large_model",
+                       "optimization_timeout", "minimization_step_one", "optimum_enumeration",
+                       "auxiliary_free_distinct"}
+        metadata = {"id": "demo", "image": "demo:image", "enumeration": True}
+        self.assertEqual(readiness._required(metadata), base)
+        self.assertEqual(readiness._required({**metadata, "readiness_level": 2}), base | bug_classes)
+        # Checks a capability cannot have are not asked for.
+        limited = readiness._required({**metadata, "readiness_level": 2, "enumeration": False, "optimization": False})
+        self.assertFalse(limited & {"optimization_timeout", "minimization_step_one", "optimum_enumeration",
+                                    "auxiliary_free_distinct"})
+        self.assertTrue(set(readiness.BUG_CLASS_CHECKS) <= limited)
+
     def test_verify_detects_changed_evidence_and_runner(self):
         record_path = self.root / "record.json"
         readiness.check("demo", self.write_report(self.report()), record_path)
@@ -91,7 +106,7 @@ class ReadinessTests(unittest.TestCase):
 
     def test_renaming_or_retagging_leaves_the_record_valid(self):
         """A display name and a paradigm tag are read by the catalogue, not by
-        the container. Hashing metadata.yaml whole once invalidated all nine
+        the container. Hashing metadata.json whole once invalidated all nine
         records over a rename, so the record pins behaviour only."""
         record_path = self.root / "record.json"
         readiness.check("demo", self.write_report(self.report()), record_path)

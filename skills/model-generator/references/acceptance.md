@@ -83,6 +83,10 @@ instance field, the problem statement, or a derivation you did), and **why an
 encoding was chosen** when a more obvious one exists. A workaround for a
 framework limitation should name the limitation.
 
+In Python, a comment containing `coding:` or `coding=` in the first two lines is read as
+the file's encoding declaration (`# Encoding: one-hot` fails with "unknown encoding"), so
+keep notes about encodings below the opening lines.
+
 This is not something the evaluator or any test can judge — a comment count
 cannot tell the reference's wording from `# constraint 1`. It is yours to
 check, on the same reading pass that checks for hardcoded data.

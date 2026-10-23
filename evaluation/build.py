@@ -9,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("solver_ids", nargs="*")
     args = parser.parse_args()
-    ids = args.solver_ids or sorted(p.parent.name for p in (ROOT / "solvers").glob("*/metadata.yaml"))
+    ids = args.solver_ids or sorted(p.parent.name for p in (ROOT / "solvers").glob("*/metadata.json"))
     for solver_id in ids:
         metadata = integration(solver_id)
         subprocess.run(["docker", "build", "--platform=linux/amd64", "-t", metadata["image"],

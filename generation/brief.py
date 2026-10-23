@@ -24,7 +24,7 @@ import sys
 import types
 
 from evaluation.execution import ROOT
-from evaluation.reference import embedded_instance, load_reference
+from bench.dcp_bench.reference import embedded_instance, load_reference
 from evaluation.results import EvaluationError
 
 RECTANGULAR_UNIFORM = "rectangular_uniform"
