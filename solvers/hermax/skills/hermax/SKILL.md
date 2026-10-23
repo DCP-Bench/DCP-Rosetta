@@ -52,8 +52,44 @@ literal is false**. That polarity is the whole trick:
   minimum total forgone is the maximum total taken.
 
 Either way the solver minimises the broken weight, which is what MaxSAT is.
-`m.obj += expression` also works and reads well for small models, but see the
-next section before reaching for it.
+
+### A linear objective over integers
+
+`m.obj += expression` minimises a linear expression exactly. It accepts
+`IntVar`, `Literal` and weighted sums, with negative coefficients and a
+constant, and `result.cost` equals the expression's value:
+
+```python
+m.obj += sum(cost[i] * x[i] for i in range(n))      # minimise
+m.obj += 0 - sum(profit[i] * x[i] for i in range(n))   # maximise: negate with 0 - E
+```
+
+Each literal of an `IntVar` becomes one soft unit clause, so this is cheap.
+**Never enumerate thresholds** such as `(total >= c)` for every `c`: that posts
+one pseudo-Boolean encoding per threshold (29 s to build against 0.01 s for
+`m.obj += sum(c*x)` on a six-variable diet model).
+
+Polarity differs between the two forms for a bare `Literal`:
+`m.obj[w] += lit` is a soft clause and **maximises** `lit`; `m.obj += lit`,
+`m.obj += 5 * lit` and `m.obj[w] += 1 * lit` **minimise** it. `m.obj[w]` takes
+a positive integer weight only; put a sign in the expression.
+Unary minus is not defined on an `IntVar` or `Literal`; write `0 - x` or
+`-1 * x`.
+
+**Absolute deviation** of `S = sum(c_i * x_i)` from a target `T`: two one-sided
+slack integers and inequalities, then `m.obj += p + n`:
+
+```python
+p = m.int("p", 0, S_max - T); n = m.int("n", 0, T)
+m &= (p >= S - T)
+m &= (n >= T - S)
+m.obj += p + n
+```
+
+Avoid the equality form `S - T == p - n` (17 times slower to solve). For one
+`IntVar` `x` against a constant `t`, the deviation is a sum of `x`'s own ladder
+literals: `m.obj[1] += (x >= k) if k <= t else (x < k)` for each `k` in the
+domain beyond `lb`.
 
 ## Do not route the objective through an integer variable
 
@@ -89,6 +125,78 @@ Constraints are posted with `m &= constraint`.
 | value tests | `x == v`, `x != v`, `x.in_range(lo, hi)`, `x.forbid_value(v)` |
 | scheduling | `m.interval(...)`, `m.cumulative(starts, durations, demands, cap)` |
 
+## Combining constraints: reify with `.iff`
+
+`|` and `&` between two constraints, and `Literal == constraint`, do not exist.
+Give each sub-constraint a Boolean with `.iff`, then combine the Booleans:
+
+```python
+r1, r2 = m.bool(), m.bool()          # unnamed auxiliaries never collide
+m &= (a + b <= 1).iff(r1)            # a PB constraint
+m &= (c == d).iff(r2)                # IntVar == IntVar
+m &= (r1 | r2)                       # (a + b <= 1) or (c == d)
+```
+
+- `x != y` between two IntVars has no `.iff`; reify the equality and negate it:
+  `(x == y).iff(~r)`.
+- Half reification: `(pb).only_if(lit)`, or `lit.implies(pb)`.
+- An IntVar compared with a constant is already a `Literal`, so
+  `(x <= 3) | (y >= 2)` and `(x == 3) & (y == 4)` work directly.
+- `m.obj[w] += (pb)` makes the constraint soft (pays `w` when violated).
+- Give auxiliaries no name (`m.bool()`), or a unique f-string name:
+  every name is unique per model, and `bool_vector("x", 2)` reserves `x[0]`
+  and `x[1]`. `m.int` needs a name string, so use `f"aux_{i}_{j}"`.
+
+## Lookups, min/max and products
+
+| Need | Idiom |
+| --- | --- |
+| constant list indexed by IntVar | `m &= ((arr @ i) == y)`; `arr[0]` pairs with `i.lb` |
+| list value as an expression | `sum(arr[k] * (i == k) for k in range(i.lb, i.ub + 1))` |
+| IntVector element by IntVar | `m &= (v[k] == z)`, absolute index, `z` an int or IntVar |
+| 2-D table lookup | `m &= m.table([r, c, val], allowed=[(i, j, tab[i][j]) for ...])` |
+| anything else indexed by IntVar | `for j: m &= (y == bv[j]).only_if(k == j)` |
+| max / min | `m.max(intvars)`, `m.min(intvars)`; tie expressions to IntVars first |
+| `x // k`, `x % k` | `m.floor_div(x, k)`, `m.modulo(x, k)` |
+| `b * x`, Boolean times IntVar | `p = m.int(..., 0, x.ub); m &= (p == x).only_if(b); m &= (p == 0).only_if(~b)` |
+| `x * y`, two IntVars | `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)` |
+| `x * x` | `sum(k * k * (x == k) for k in range(x.lb, x.ub + 1))` |
+
+Plain Python lists, `BoolVector` and `IntMatrix` cannot be indexed by an
+IntVar (`TypeError`). `m.enum` takes string choices only; use an IntVar for
+integer choices.
+
+## Weighted constraints over integers: channel to bits once
+
+`sum(c[i] * x[i]) <= T` over IntVars with coefficients above about 5 can take
+tens of seconds to build and more than a minute with larger coefficients; the
+cost lands inside `m &= ...`, before the solve, so `time_limit` does not
+bound it. Tie each integer once to binary Booleans and write the weighted
+constraint over the bits:
+
+```python
+x = m.int_vector("x", n, 0, U)
+bits = []
+for i in range(n):
+    b = m.bool_vector(f"xb{i}", U.bit_length())
+    expr = sum(2 ** k * b[k] for k in range(len(b)))
+    m &= (x[i] == expr)               # IntVar with lb 0 == Boolean sum: cheap
+    bits.append(expr)
+m &= (sum(c[i] * bits[i] for i in range(n)) <= T)
+```
+
+A diet model with coefficients 10 to 400 went from more than 100 s to 0.9 s.
+Keep using `x[i]` for the objective, comparisons with constants,
+`all_different` and outputs. The cheap `IntVar == weighted Boolean sum` path
+needs `lb == 0` and no constant term. An equality with coefficients around
+10^8 over several integers stays hard whichever encoding is used.
+
+When the same sum has a constraint and an objective, put the constraint on the
+expression (`sum(w*b) <= cap`) and the objective on the expression too; routing
+through `W == sum(w*b)` followed by `W <= cap` doubles the solve time, and
+adding `W <= value` on top of the fast path is much slower than the inequality
+on the expression itself.
+
 A matrix gives `.row(i)`, `.col(j)` and `.flatten()`; the row and column views
 carry the cardinality helpers, so `m &= x.row(i).exactly_one()` is the direct
 way to say "exactly one per row".
@@ -101,8 +209,14 @@ Linear constraints accept ordinary Python sums over variables:
 `outputs` maps each name the brief declares to variables of this model. A
 vector or matrix can be handed over whole — the runner reads
 `result[container]` and gets back nested lists of `bool` or `int`, matching
-whichever the brief asked for. Leaves must be `IntVar` or `Literal`; do not put
-plain Python values in the dictionary.
+whichever the brief asked for. Leaves must be `IntVar`, `Literal`, or a sum of them
+(`PBExpr`, decoded by `result[...]` since 1.2.9); for a constant use
+`m.as_int(c)`, never a plain Python value.
+
+**Take every size from the instance.** The brief shows the shapes of the
+*example* instance only. Build the outputs as Python lists sized from the
+instance argument (`n = len(instance["durations"])`, then
+`m.int_vector("start", n, 0, H)`); other instances have other sizes.
 
 Booleans render as `true`/`false`. If the brief declares 0/1 integers, use
 `m.int(name, 0, 1)` instead of `m.bool(name)`.

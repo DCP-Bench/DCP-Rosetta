@@ -31,7 +31,7 @@ class Model:
     def min(self, vec_or_items, name=None) -> IntVar
     def lower_bound(self, vec_or_items, name=None) -> IntVar
     def upper_bound(self, vec_or_items, name=None) -> IntVar
-    def scale(self, x, factor, name=None) -> IntVar      # factor must be > 0
+    def scale(self, x, factor, name=None) -> IntVar      # factor must be nonzero (negative allowed since 1.2.9)
     def floor_div(self, x, divisor, name=None) -> IntVar
 
     # global
@@ -96,8 +96,7 @@ runner treats that as a timeout.
   over a wide `t` dominated the run time of every model where it appeared.
   Measured: 43 s to build, against 0.21 s for the same problem expressed with
   soft clauses.
-- `m.scale` rejects a non-positive factor, so a sign flip has to be written as
-  a complement against a known upper bound.
+- `m.scale(x, k)` accepts a negative `k` (the domain flips); only `0` is rejected.
 - Solving with `time_limit` selects a portfolio backend, which is slightly
   slower than the default on easy models (3.15 s against 1.81 s on the
   four-by-four assignment problem) and is what makes the budget enforceable.
