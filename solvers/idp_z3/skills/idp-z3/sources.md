@@ -128,6 +128,15 @@ entry says which.
   appropriate guards." even when the theory states `y() = 2`; an implication
   guard, an `if y() ~= 0 then ... else ...` term, or a divisor type without 0 are
   all accepted. `%` by a symbol has no such check.
+- Partial functions, `diffs: N -> Int (domain: gap)` with `gap` defined from `n()`,
+  work on 0.12.1, but the well-definedness check does not use the definition: each
+  sentence applying `diffs` needs `gap(i)` in its guard, and `x(i + 1)` needs `i < n()`
+  as well. `theory.assignments` still holds every `diffs(i)` over `N`.
+- `Theory()` folds a sentence over data symbols to a number before any solving:
+  `s() = sum{{ demand(i) | i in I }} + 2 * k()` appears in `theory.constraints` as
+  `s() = 10`. `max{ e | ... }` over data is not folded (it stays as an auxiliary symbol
+  `__max{...}()`), and `base() ^ n()` with two data constants fails with "Can't
+  determine the type of base() ^ n()".
 
 ## Models and values
 

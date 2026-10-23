@@ -105,6 +105,17 @@ writing several hundred FO(.) models for constraint and optimisation problems.
   no such check.
 - The same "Domain error ... is not a tautology" appears for `p - 1` landing outside a
   type; quantify over a type one shorter instead (see adjacent pairs below).
+- **A partial function's guard must be in each sentence.** `diffs: N -> Int (domain: gap)`
+  with `gap` defined from the data works, but the well-definedness check does not use the
+  definition: every sentence applying `diffs` needs `gap(i)` in its guard, and `x(i + 1)`
+  needs `i < n()` as well, or IDP-Z3 stops with "Domain error: ... is not a tautology".
+  `theory.assignments` still lists `diffs(i)` for every `i` in `N`: filter by `gap` when
+  reading a model.
+- **Which data expressions fold to a number.** A sentence over data symbols only, such as
+  `s() = sum{{ demand(i) | i in I }} + 2 * k()`, is folded to `s() = 10` before solving;
+  `sum{{ }}`, `#{ }` and `+ - * /` fold. `max{ }` and `min{ }` over data do not (they stay
+  as an auxiliary `__max{...}()` symbol), and `base() ^ n()` over two data constants fails
+  with "Can't determine the type of base() ^ n()".
 
 ## Performance
 
