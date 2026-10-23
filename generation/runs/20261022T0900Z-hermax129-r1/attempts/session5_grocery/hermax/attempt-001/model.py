@@ -45,12 +45,10 @@ def build(instance):
     for i in range(n):
         m &= choice.row(i).exactly_one()
 
-    # Each price is the candidate its choice selects.
-    prices = []
-    for i in range(n):
-        x = m.int(f"price_{i}", 0, total)
-        m &= (x == sum(d * choice[i][c] for c, d in enumerate(candidates)))
-        prices.append(x)
+    # Each price is the candidate its choice selects, written as a weighted sum
+    # of the item's choices.
+    prices = [sum(d * choice[i][c] for c, d in enumerate(candidates))
+              for i in range(n)]
 
     # The items add up to the total price.
     m &= (sum(prices) == total)
