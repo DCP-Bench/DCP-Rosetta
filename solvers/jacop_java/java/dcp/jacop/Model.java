@@ -43,6 +43,25 @@ public final class Model {
         return this;
     }
 
+    /**
+     * Declares a number beyond the 32-bit range of an {@code IntVar} as its digits, most significant
+     * first, in {@code base}. The output is the number they spell, as a 64-bit integer.
+     */
+    public Model putDigits(String name, IntVar[] digits, int base) {
+        if (outputs.containsKey(name)) {
+            throw new IllegalArgumentException("output " + name + " was declared twice");
+        }
+        if (base < 2 || digits.length == 0) {
+            throw new IllegalArgumentException("output " + name + ": digits need a base of at least 2 and one digit");
+        }
+        outputs.put(name, new Digits(digits.clone(), base));
+        return this;
+    }
+
+    /** A number given by its digits. */
+    record Digits(IntVar[] digits, int base) {
+    }
+
     /** Minimises {@code objective}. Success is reported only once JaCoP has proven the optimum. */
     public Model minimize(IntVar objective) {
         this.objective = objective;
@@ -71,7 +90,8 @@ public final class Model {
     }
 
     private static void check(String path, Object value) {
-        if (value instanceof IntVar || value instanceof Integer || value instanceof Boolean) {
+        if (value instanceof IntVar || value instanceof Integer || value instanceof Boolean
+                || value instanceof Long || value instanceof long[]) {
             return;
         }
         if (value instanceof int[] || value instanceof boolean[]) {
@@ -106,6 +126,10 @@ public final class Model {
     private static void walk(Object value, List<IntVar> out) {
         if (value instanceof IntVar v) {
             out.add(v);
+        } else if (value instanceof Digits d) {
+            for (IntVar v : d.digits()) {
+                out.add(v);
+            }
         } else if (value instanceof Object[] array) {
             for (Object item : array) {
                 walk(item, out);

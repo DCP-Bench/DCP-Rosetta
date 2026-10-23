@@ -58,7 +58,11 @@ public final class Runner {
         } catch (Throwable error) {
             Throwable cause = error instanceof InvocationTargetException wrapped ? wrapped.getCause() : error;
             cause.printStackTrace(System.err);
-            runner.status("error", String.valueOf(cause));
+            String detail = String.valueOf(cause);
+            if (cause instanceof org.jacop.core.FailException) {
+                detail += " (JaCoP refused the model while it was built: an empty domain or a constraint refuted at once)";
+            }
+            runner.status("error", detail);
         }
         PROTOCOL.flush();
     }
@@ -268,11 +272,22 @@ public final class Runner {
         if (value instanceof IntVar v) {
             return v.value();
         }
-        if (value instanceof Integer || value instanceof Boolean) {
+        if (value instanceof Model.Digits d) {
+            long number = 0;
+            for (IntVar digit : d.digits()) {
+                number = number * d.base() + digit.value();
+            }
+            return number;
+        }
+        if (value instanceof Integer || value instanceof Boolean || value instanceof Long) {
             return value;
         }
         JSONArray array = new JSONArray();
-        if (value instanceof int[] ints) {
+        if (value instanceof long[] longs) {
+            for (long item : longs) {
+                array.put(item);
+            }
+        } else if (value instanceof int[] ints) {
             for (int item : ints) {
                 array.put(item);
             }

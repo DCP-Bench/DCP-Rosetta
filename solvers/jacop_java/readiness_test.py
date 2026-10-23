@@ -54,7 +54,7 @@ model = cp.Model(x + y >= n if optimize else x + y == n)
 if optimize:
     model.minimize(x + y)
 model.solve()
-solution = {"x": int(x.value()), "y": y.value()}
+solution = {"x": int(x.value()), "y": int(y.value())}
 print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
@@ -167,6 +167,155 @@ NATIVE = (HEAD
           + "        own.impose(new Reified(new XeqC(x, 0), flag));\n"
           + EXPORT + "        return m;\n" + TAIL)
 
+# --- readiness level 2: the bug classes tiny x + y models never reach ---
+FOOT = "    }\n}\n"
+IMPORTS = ("import org.jacop.core.*;\nimport org.jacop.constraints.*;\nimport org.jacop.search.*;\n"
+           "import org.json.*;\nimport dcp.jacop.Model;\n\n")
+CLS = "public class Submission {\n    public static Model build(JSONObject inst, Store store) {\n"
+
+
+def ref(data, body):
+    return f"\n# Data\n{data}\n# End of data\nimport cpmpy as cp\nimport json\n{body}\nprint(json.dumps(solution))\n"
+
+
+# output_shapes: three levels, a Boolean matrix, a value beyond 32 bits.
+SHAPES_REF = ref("n = 2", '''cube = cp.intvar(0, 10, shape=(2, 2, 2), name="cube")
+grid = cp.boolvar(shape=(2, 2), name="grid")
+big = cp.intvar(0, 40000000000, name="big")
+model = cp.Model([cube[i, j, k] == i + j + k + n for i in range(2) for j in range(2) for k in range(2)],
+                 [grid[i, j] == (i == j) for i in range(2) for j in range(2)],
+                 big == 30000000000 + n)
+model.solve()
+solution = {"cube": cube.value().tolist(), "grid": grid.value().tolist(), "big": int(big.value())}''')
+SHAPES = (IMPORTS + CLS + '''        int n = inst.getInt("n");
+        IntVar[][][] cube = new IntVar[2][2][2];
+        for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) for (int k = 0; k < 2; k++) {
+            cube[i][j][k] = new IntVar(store, 0, 10);
+            store.impose(new XeqC(cube[i][j][k], i + j + k + n));
+        }
+        BooleanVar[][] grid = new BooleanVar[2][2];
+        for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
+            grid[i][j] = new BooleanVar(store);
+            store.impose(new XeqC(grid[i][j], i == j ? 1 : 0));
+        }
+        IntVar[] digits = new IntVar[11];
+        for (int i = 0; i < 11; i++) digits[i] = new IntVar(store, 0, 9);
+        store.impose(new XeqC(digits[0], 3));
+        for (int i = 1; i < 10; i++) store.impose(new XeqC(digits[i], 0));
+        store.impose(new XeqC(digits[10], n));
+        return new Model().put("cube", cube).put("grid", grid).putDigits("big", digits, 10);
+''' + FOOT)
+
+# instance_shapes: ragged rows, mixed-type rows, an unused string, name/note, two shapes.
+SHAPED_REF = ref('n = 2\nrows = [[1], [2, 3]]\nmixed = [[1, "a"], [2, "b"]]\nlabel = "first"',
+                 '''total = cp.intvar(0, 1000, name="total")
+key = cp.intvar(0, 1000, name="key")
+model = cp.Model(total == n + sum(sum(row) for row in rows), key == sum(row[0] for row in mixed))
+model.solve()
+solution = {"total": int(total.value()), "key": int(key.value())}''')
+SHAPED_INSTANCE = {"n": 3, "rows": [[4, 5, 6], [], [1]], "mixed": [[3, "c"]], "label": "second",
+                   "name": "readiness", "note": "ragged rows, mixed rows, an unused string"}
+SHAPED = (IMPORTS + CLS + '''        int total = inst.getInt("n");
+        JSONArray rows = inst.getJSONArray("rows");
+        for (int i = 0; i < rows.length(); i++) {
+            JSONArray row = rows.getJSONArray(i);
+            for (int j = 0; j < row.length(); j++) total += row.getInt(j);
+        }
+        int key = 0;
+        JSONArray mixed = inst.getJSONArray("mixed");
+        for (int i = 0; i < mixed.length(); i++) key += mixed.getJSONArray(i).getInt(0);
+        IntVar t = new IntVar(store, "t", 0, 1000);
+        IntVar k = new IntVar(store, "k", 0, 1000);
+        store.impose(new XeqC(t, total));
+        store.impose(new XeqC(k, key));
+        return new Model().put("total", t).put("key", k);
+''' + FOOT)
+
+# error_detail: JaCoP throws FailException for an empty domain; that must come back in the detail.
+FAILING = IMPORTS + CLS + '        IntVar bad = new IntVar(store, "bad", 3, 1);\n        return new Model().put("x", bad);\n' + FOOT
+# A heap the size of the container: the JVM's own OutOfMemoryError must be reported.
+HOG = (HEAD + "        store.impose(new XplusYeqC(x, y, n));\n"
+       "        java.util.List<long[]> hog = new java.util.ArrayList<>();\n"
+       "        while (true) hog.add(new long[10_000_000]);\n    }\n}\n")
+# stray_stdout: the model prints on System.out; NOISY covers it.
+CHATTY = NOISY
+
+# optimum_enumeration: a sum objective with ten optima.
+SUM_REF = ref("n = 2", '''x = cp.intvar(0, 2, shape=4, name="x")
+model = cp.Model(cp.sum(x) >= n)
+model.minimize(cp.sum(x))
+model.solve()
+solution = {"x": x.value().tolist()}''')
+SUM = (IMPORTS + CLS + '''        int n = inst.getInt("n");
+        IntVar[] x = new IntVar[4];
+        for (int i = 0; i < 4; i++) x[i] = new IntVar(store, "x" + i, 0, 2);
+        IntVar total = new IntVar(store, "total", 0, 8);
+        store.impose(new SumInt(store, x, "==", total));
+        store.impose(new XgteqC(total, n));
+        return new Model().put("x", x).minimize(total);
+''' + FOOT)
+
+# minimization_step_one: the first solution found is optimum + 1 (x = 0 gives 10; the optimum 9 is at x = 1).
+STEP_REF = ref("n = 2", '''x = cp.intvar(0, 10, name="x")
+model = cp.Model(x <= n - 1)
+model.minimize(10 - x)
+model.solve()
+solution = {"x": int(x.value())}''')
+STEP = (IMPORTS + CLS + '''        int n = inst.getInt("n");
+        IntVar x = new IntVar(store, "x", 0, 10);
+        IntVar cost = new IntVar(store, "cost", 0, 10);
+        store.impose(new XlteqC(x, n - 1));
+        store.impose(new XplusYeqC(x, cost, 10));
+        return new Model().put("x", x).minimize(cost).search(new IntVar[]{x}, null, new IndomainMin<IntVar>());
+''' + FOOT)
+
+# optimization_timeout: easy reference, but the submission adds a Golomb ruler (11 marks) to its
+# objective, so a solution comes fast and the proof does not within 3 s.
+EASY_MIN = ref("n = 2", '''x = cp.intvar(0, 10, name="x")
+model = cp.Model(x >= n)
+model.minimize(x)
+model.solve()
+solution = {"x": int(x.value())}''')
+UNPROVABLE = (IMPORTS + CLS + '''        int n = inst.getInt("n");
+        IntVar x = new IntVar(store, "x", 0, 10);
+        store.impose(new XgteqC(x, n));
+        IntVar[] marks = new IntVar[11];
+        for (int i = 0; i < 11; i++) marks[i] = new IntVar(store, "m" + i, 0, 200);
+        store.impose(new XeqC(marks[0], 0));
+        for (int i = 0; i < 10; i++) store.impose(new XltY(marks[i], marks[i + 1]));
+        IntVar[] diffs = new IntVar[55];
+        int k = 0;
+        for (int i = 0; i < 11; i++)
+            for (int j = i + 1; j < 11; j++) {
+                diffs[k] = new IntVar(store, "d" + k, 0, 200);
+                store.impose(new XplusYeqZ(marks[i], diffs[k], marks[j]));
+                k++;
+            }
+        store.impose(new Alldiff(diffs));
+        IntVar cost = new IntVar(store, "cost", 0, 10000 + 200);
+        store.impose(new LinearInt(store, new IntVar[]{x, marks[10], cost}, new int[]{1000, 1, -1}, "==", 0));
+        return new Model().put("x", x).minimize(cost);
+''' + FOOT)
+
+# auxiliary_free_distinct: a free variable outside the outputs repeats each (x, y) six times.
+AUXILIARY = (HEAD + "        store.impose(new XplusYeqC(x, y, n));\n"
+             + '        IntVar unused = new IntVar(store, "unused", 0, 5);\n' + EXPORT + "        return m;\n" + TAIL)
+
+# large_model: 3000 Booleans in one sum, reported as an output.
+LARGE_REF = ref("n = 1500", '''b = cp.boolvar(shape=3000, name="b")
+count = cp.intvar(0, 3000, name="count")
+model = cp.Model(count == cp.sum(b), count == n)
+model.solve()
+solution = {"b": b.value().tolist(), "count": int(count.value())}''')
+LARGE = (IMPORTS + CLS + '''        int n = inst.getInt("n");
+        BooleanVar[] b = new BooleanVar[3000];
+        for (int i = 0; i < 3000; i++) b[i] = new BooleanVar(store, "b" + i);
+        IntVar count = new IntVar(store, "count", 0, 3000);
+        store.impose(new SumBool(store, b, "==", count));
+        store.impose(new XeqC(count, n));
+        return new Model().put("b", b).put("count", count);
+''' + FOOT)
+
 
 def main():
     results = {}
@@ -178,13 +327,15 @@ def main():
             path.write_text(source, encoding="utf-8")
             return path
 
-        def check(name, source, reference=REFERENCE, expected=None, **kwargs):
+        def check(name, source, reference=REFERENCE, expected=None, detail=None, **kwargs):
             result = evaluate(candidate(name, source), "readiness", SOLVER,
                               reference_source=reference, **kwargs)
             results[name] = result["accepted"] if expected is None else (
                 not result["accepted"] and result["reason"] in expected)
+            if results[name] and detail is not None:
+                results[name] = detail in json.dumps(result)
             if not results[name]:
-                print(f"{name}: {result.get('reason')} {result.get('detail')}", file=sys.stderr)
+                print(f"{name}: {json.dumps(result)[:1500]}", file=sys.stderr)
             return result
 
         check("satisfaction", GOOD)
@@ -205,6 +356,26 @@ def main():
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
         check("compilation_error", UNCOMPILABLE, expected={"compilation_error"})
+        check("out_of_memory", HOG, expected={"execution_error"}, detail="OutOfMemoryError")
+
+        # Bug-class checks (readiness level 2).
+        result = evaluate(candidate("optimization_timeout", UNPROVABLE), "readiness", SOLVER,
+                          reference_source=EASY_MIN, execution_timeout=3)
+        results["optimization_timeout"] = (result["reason"] == "execution_timeout"
+                                           and all(item.get("solutions_received", 0) == 0
+                                                   for item in result["instances"]))
+        if not results["optimization_timeout"]:
+            print("optimization_timeout:", json.dumps(result)[:1500], file=sys.stderr)
+        check("minimization_step_one", STEP, reference=STEP_REF)
+        result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
+        results["optimum_enumeration"] = results["optimum_enumeration"] and result["solutions_checked"] == 3
+        check("output_shapes", SHAPES, reference=SHAPES_REF)
+        check("instance_shapes", SHAPED, reference=SHAPED_REF, instances=[SHAPED_INSTANCE], instance_count=2)
+        check("error_detail", FAILING, expected={"execution_error"}, detail="FailException")
+        check("stray_stdout", CHATTY)
+        result = check("auxiliary_free_distinct", AUXILIARY, solution_limit=3)
+        results["auxiliary_free_distinct"] = results["auxiliary_free_distinct"] and result["solutions_checked"] == 3
+        check("large_model", LARGE, reference=LARGE_REF, execution_timeout=120, reference_timeout=120)
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})
