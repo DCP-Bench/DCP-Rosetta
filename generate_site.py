@@ -962,16 +962,9 @@ def browse_button(solver: str, count: int) -> str:
 
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
-    one integration: the released copy under skills/solvers/ once there is one,
-    otherwise the development copy under solvers/<id>/skills/, the same choice
-    `generation.next_work` reports. The skill's folder is named after the skill,
-    not the integration, so the development copy is found by globbing."""
-    from generation.release import skill_for
-    path, _ = skill_for(solver, Path(".").resolve())
-    if path:
-        found = [Path(path) / "SKILL.md"]
-    else:
-        found = sorted((SOLVERS_DIR / solver / "skills").glob("*/SKILL.md"))
+    one integration, under solvers/<id>/skills/. The skill's folder is named after
+    the skill, not the integration, so it is found by globbing."""
+    found = sorted((SOLVERS_DIR / solver / "skills").glob("*/SKILL.md"))
     if not found:
         return ""
     name = found[0].parent.name

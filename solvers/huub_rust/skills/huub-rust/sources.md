@@ -3,8 +3,7 @@
 Tested with huub 100.1.0 (crate, MPL-2.0), Rust 1.98.1 and g++ 12.2 on Linux with Docker.
 The skill text is Apache-2.0.
 
-Existing skills: not searched for beyond the spike that preceded this skill. Run
-`npx skills find huub` before a public release.
+Existing skills: not searched for beyond the spike that preceded this skill.
 
 Documentation this skill's instructions were written from:
 

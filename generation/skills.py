@@ -55,10 +55,10 @@ def hashes(folder):
 
 
 # Text that ties a skill to this repository. A solver skill under solvers/<id>/skills/
-# must work outside it, and a release ships every file in the bundle, sources.md and
-# evals/ included, so all of them are checked. This catches names only; whether a skill
-# teaches a submission harness or the runner's behaviour is judged by the standalone
-# review (rosetta-skills/solver-setup/references/standalone-review.md). A repository path
+# must work outside it, every file in the bundle included (sources.md and evals/ too),
+# so all of them are checked. This catches names only; whether a skill teaches a
+# submission harness or the runner's behaviour is judged by the standalone review
+# (skills/solver-setup/references/standalone-review.md). A repository path
 # such as solvers/<id>/ counts only where it starts a path, not inside an upstream URL.
 ROSETTA_TEXT = re.compile(
     r"(?i:DCP[-_ ]?Bench|Rosetta|dcp-eval|\bscratchpad\b)|generation[./]\w+|readiness_test|readiness\.json"

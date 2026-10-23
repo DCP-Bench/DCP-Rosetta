@@ -142,7 +142,7 @@ Two Rosetta rules on top:
   and run the probes and toy tests inside the image, e.g.
   `run_toy_tests.py --cmd 'docker run --rm --network none -v "$PWD":/w -w /w --entrypoint python IMAGE <workspace>/round-N/models/{problem}.py {instance}'`.
 - **The skill stays standalone.** No DCP-Rosetta, runner or submission instructions in it, and no facts about this integration's container (those go in `solvers/<id>/CONTRACT.md`); it must work outside this repository. Check it three ways:
-  `python -m generation.skills validate --project <skill-folder>`, `python -m generation.skills rosetta-mentions skill-folder>` (names), and a [standalone review](references/standalone-review.md) by a fresh agent (meaning). If this setup itself runs as a subagent and cannot start one, return the digest and the skill path, and the caller runs the review. Keep the clean review's JSON with the setup evidence: a release needs it.
+  `python -m generation.skills validate --project <skill-folder>`, `python -m generation.skills rosetta-mentions skill-folder>` (names), and a [standalone review](references/standalone-review.md) by a fresh agent (meaning). If this setup itself runs as a subagent and cannot start one, return the skill path, and the caller runs the review. Save the clean review's JSON as `solvers/<id>/standalone-review.json`.
 
 ## 3.2 Add the Rosetta infrastructure
 

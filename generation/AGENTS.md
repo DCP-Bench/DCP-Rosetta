@@ -7,9 +7,8 @@ overview; this file is the exact syntax, schemas and rules.
 repairs integrations. One agent reads them and does the work. What a model must look
 like is in two repository files both skills share: the submission contract
 `solvers/CONTRACT.md`, and each integration's `solvers/<id>/CONTRACT.md` saying how that
-integration realises it. How to model with a solver is in its standalone skill: the
-released copy under `skills/solvers/`, or the development copy under `solvers/<id>/skills/`
-until it is released; `next_work` reports which as each integration's `skill`. These Python
+integration realises it. How to model with a solver is in its standalone skill under
+`solvers/<id>/skills/`; `next_work` reports it as each integration's `skill`. These Python
 commands provide records and checks; they do not choose a solver, call an LLM
 provider, or replace the skills.
 Use the repository Python environment from the repository root. All operations
@@ -209,46 +208,6 @@ Propose/check/apply emit shared `skill_proposed`, `skill_checked`, and
 attempt records the skill afresh; existing attempts never adopt edits retroactively.
 Tests executed by these helpers are evidence, not an adversarial security
 boundary against another process with write access to the repository.
-
-## Releasing a solver skill
-
-Solver skills are developed in `solvers/<id>/skills/<name>/` and released, when the user
-decides, to the public skill repository `skills/solvers/<name>/`. Never edit a released copy
-directly; change the source and release again.
-
-```sh
-python -m generation.release digest ID                 # what a standalone review must name
-python -m generation.release publish ID -m "what changed" --review REVIEW.json [--bump patch|minor|major | --version X.Y.Z] [--dry-run]
-python -m generation.release status [--strict]
-python -m generation.release withdraw NAME -m "why"
-```
-
-`publish` stages the git-tracked files of the source, refuses uncommitted changes (unless
-`--allow-dirty`, which is recorded), a skill that fails `generation.skills validate --project`,
-and one that names this repository (`generation.skills rosetta-mentions`: `DCP-Bench`,
-image tags, repository paths, `build(instance)`, ...). It also needs a clean standalone
-review (`rosetta-skills/solver-setup/references/standalone-review.md`): a fresh agent's JSON
-verdict that the skill teaches the solver, not this benchmark's harness, naming the digest
-`release digest` prints, so it covers exactly what ships. `--skip-review` releases without
-one and the ledger records that. It
-copies the skill wholesale and stamps `metadata.version` into the published `SKILL.md`. The
-first release is `0.1.0`, and `--bump` defaults to `patch`, so `--bump major` declares a
-skill stable at `1.0.0`. It records the release in `skills/versions.json`: version, the
-digest of the published folder, the digest of the source content, the source commit and git
-tree, whether the source was dirty, the review (reviewer and file hash), the readiness record and image, the `Tested with` line
-of `sources.md`, and the earlier releases. It regenerates the catalog table in
-`skills/README.md`. Once `skills/.claude-plugin/marketplace.json` exists it also rewrites
-the `solvers` plugin there, which lists every released solver skill so install tools show
-them as one group (meta skills such as add-solver sit in a hand-maintained `meta` plugin).
-That plugin has no `version`, so Claude Code follows commits and picks up every release.
-The marketplace file is not in the repository yet: the plugin format is still open, and
-until it is added a release prints a warning and skips this step. It prepends to `skills/CHANGELOG.md`,
-and prints a commit message. It never commits. Unchanged content is a no-op unless
-`--bump`/`--version` is given.
-
-`status` lists every solver skill as unreleased, up to date, or changed since release, and
-flags a published copy that was edited directly, is missing or is not in the ledger;
-`--strict` exits 1 on those.
 
 ## Behavioural evaluations
 

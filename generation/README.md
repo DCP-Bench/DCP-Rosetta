@@ -15,7 +15,6 @@ all. No module calls an LLM or decides what to model.
 | `instances` | Gates a new instance before it joins the dataset, and rechecks retained models on it. |
 | `skills` | Validates a skill bundle, and reviews proposed changes to one. |
 | `behaviour` | Runs a skill's behavioural evals. |
-| `release` | Publishes a solver skill from `solvers/<id>/skills/` to the public `skills/solvers/`, after its checks, and records the version. |
 
 ## The two commands worth knowing
 

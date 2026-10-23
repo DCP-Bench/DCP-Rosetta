@@ -2,21 +2,14 @@
 
 A solver skill must work outside this repository. `python -m generation.skills
 rosetta-mentions <skill>` catches project names; this review catches a skill that teaches
-this benchmark's way of submitting a model instead of the solver's own use. A release
-needs a clean review (`python -m generation.release publish ... --review FILE`).
+this benchmark's way of submitting a model instead of the solver's own use.
 
 ## Running it
 
-1. **Take the digest** of what will be released. It covers git-tracked files only, so
-   `git add` new files first (it warns about untracked ones).
-   ```bash
-   python -m generation.release digest <solver_id>   # prints "<skill> sha256:..."
-   ```
-2. **Give a fresh agent only the skill folder and this file**, not `CONTRACT.md`,
+1. **Give a fresh agent only the skill folder and this file**, not `CONTRACT.md`,
    `run.py` or an older skill: a reviewer who knows the harness reads it into the text.
    Without a fresh agent, review it yourself as `self`.
-3. **On findings**, fix the skill, take a new digest and review again: a review covers
-   exactly the digest it names.
+2. **On findings**, fix the skill and review again, until a review finds nothing.
 
 ## What counts as a leak
 
@@ -38,13 +31,11 @@ and one in the problem's words before each block of constraints.
 
 ## Output
 
-Write one JSON object to a file **outside** the skill folder (inside, it changes the
-digest):
+Write one JSON object to `solvers/<id>/standalone-review.json`, outside the skill folder:
 
 ```json
 {
   "skill": "<skill name>",
-  "source_digest": "<the digest from step 1>",
   "reviewer": "<agent and model, or 'self'>",
   "verdict": "standalone",
   "findings": []
