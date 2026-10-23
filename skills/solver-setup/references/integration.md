@@ -22,8 +22,7 @@ python <this-skill>/scripts/check_integration.py ID            # at the end; als
 
 ## 1. Who converts the instance
 
-Every model for this integration inherits this choice, so pick the pattern closest to how
-the standalone skill already models:
+Every model for this integration inherits this choice, so pick the pattern closest to how the standalone skill already models:
 
 | Pattern | Who converts | Used by |
 | --- | --- | --- |
@@ -31,14 +30,9 @@ the standalone skill already models:
 | The framework binds it | `run.py`, feeding each JSON key to the framework's data API | `minizinc_gecode` |
 | A harness parses it | code baked into the image hands the parsed object to a fixed entrypoint | `ortools_cp_sat_cpp` |
 
-When the input is generated source (facts for an ASP grounder, a bespoke data file),
-either the submission or `run.py` emits it; that choice is the contract for every model.
-Conversion happens inside the container, and only one submission file is staged: shared
-conversion code goes in the image or `run.py`, and a design needing more files is
-unsupported (report it).
+When the input is generated source (facts for an ASP grounder, a bespoke data file), either the submission or `run.py` emits it; that choice is the contract for every model. Conversion happens inside the container, and only one submission file is staged: shared conversion code goes in the image or `run.py`, and a design needing more files is unsupported (report it).
 
-`instance_binding` in `metadata.json` says what the runner can bind, so
-`generation.next_work` withholds only the pairs it never could:
+`instance_binding` in `metadata.json` says what the runner can bind, so `generation.next_work` withholds only the pairs it never could:
 
 | Value | Use when | What happens |
 | --- | --- | --- |

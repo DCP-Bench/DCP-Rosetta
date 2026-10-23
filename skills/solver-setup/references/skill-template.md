@@ -1,14 +1,6 @@
 # Solver skill template
 
-The shape of the standalone solver skill.
-
-## Contents
-
-- [Layout](#layout)
-- [SKILL.md](#skillmd)
-- [Runnable examples](#runnable-examples)
-- [sources.md](#sourcesmd)
-- [evals/evals.json](#evalsevalsjson)
+The shape / template a standalone solver skill should follow.
 
 ## Layout
 
@@ -28,6 +20,8 @@ No empty folders or placeholder files.
 Adapt the sections to the solver; drop those that do not apply.
 
 - **Description**: what and when, in at most ~400 characters; not a list of contents.
+- **License**: always `Apache-2.0`. It licenses the skill text, not the solver; the
+  solver's own licence and limits go in `compatibility`.
 - **Link docs where needed**: each section links its doc page, each table row its API
   entry. Prefer `llms.txt`, `.md` or plain HTML; *Further reading* keeps entry points only.
 - **Link files, not folders**: validators reject a directory link, so link an example's
@@ -39,7 +33,7 @@ Adapt the sections to the solver; drop those that do not apply.
 ---
 name: <skill-name>
 description: <What the solver or framework is: language, paradigm, package/import names.> Use when <writing, debugging or explaining models with it; typical problem words; the user has chosen this tool>.
-license: <licence of the skill text, e.g. Apache-2.0>
+license: Apache-2.0
 compatibility: Requires <language/runtime version> and <package>; <licence or size limits, if any>
 metadata:
   domain: constraint-programming
