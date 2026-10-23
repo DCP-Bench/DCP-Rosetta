@@ -1,40 +1,27 @@
 ---
 name: model-generator
-description: Populate DCP-Bench Open with constraint models that the repository evaluator has accepted. Pick an uncovered problem and solver integration, write an instance-agnostic model, verify it against the reference, keep it, and move to the next one. Use for model generation campaigns, including building a solver integration that does not exist yet.
+description: Populate the DCP-Bench Open repository (submodule `/bench`) with constraint models. Pick an uncovered problem and solver combination, write an instance-agnostic model, verify it against the reference, keep it, and move to the next one. Use this skill for model generation campaigns.
 ---
 
 # Model generator
 
-Add models to this repository that a real evaluator has accepted: choose a
-problem and a solver integration, write a model, prove it holds up, keep it,
-move on.
+Add models to the DCP-Bench Open repository (submodule `/bench`) that a real evaluator has accepted: choose a problem and a solver integration, write a model, prove it holds up, keep it, move on.
 
-You need this repository, its Python environment
-(`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a
-running Docker Linux engine. Run every command from the repository root; all
-paths here are relative to it. An unavailable engine is a blocker to report, not
-something to work around: candidate code never runs on the host.
+You need this repository, a Python environment (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a running Docker Linux engine. Run every command from the repository root; all paths here are relative to it. An unavailable engine is a blocker to report, not something to work around: candidate code never runs on the host.
 
-**You are the only agent**, unless the user asks you to coordinate subagents
-(see *Running a campaign with subagents*). You are the coordinator and the modeller;
-"invoke a skill" only ever means "read that file and follow it".
+**You are the only agent**, unless the user asks you to coordinate subagents (see [Running a campaign with subagents](#running-a-campaign-with-subagents)). You are the coordinator and the modeller; "invoke a skill" only ever means "read that file and follow it".
 
-What a model must look like comes from three layers, read in this order every time
-you write one:
+What a model must look like comes from three layers, read in this order every time you write one:
 
 | Layer | Where | What it gives you |
 |---|---|---|
 | The submission contract | `solvers/CONTRACT.md` | What every model must do to be evaluated, for any solver: input, declared outputs, objective, what the runner does, what a model must not do |
 | The integration contract | `solvers/<id>/CONTRACT.md` | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
-| The solver skill | the `skill` path `next_work` reports for the integration | How to model with that solver: its API and pitfalls. The released copy under `skills/solvers/` when there is one, otherwise the development copy under `solvers/<id>/skills/` |
+| The solver skill | the `skill` path (under `skills/solvers/`) for the integration | How to model with that solver: its API and pitfalls. |
 
-The contracts are Rosetta's; the solver skill is not, and knows nothing about this
-repository. Where a skill and a contract disagree on how a submission looks, **the
-contracts win**.
+The contracts are Rosetta's; the solver skill is not, and knows nothing about this repository. Where a skill and a contract disagree on how a submission looks, **the contracts win**.
 
-Two other skills exist: `rosetta-skills/solver-setup`, read only when the
-integration you need does not exist, and this one. This one and solver-setup
-change through the procedure in [operations](references/operations.md).
+Read `skills/solver-setup` when the integration you need does not exist. This skill and `solver-setup` self-improve through the procedure in [operations](references/operations.md).
 
 ## The loop
 
