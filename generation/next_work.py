@@ -29,7 +29,7 @@ FLAGS = ROOT / "generation" / "flags.json"
 def integrations():
     """Every declared integration, with whether it is usable right now."""
     result = []
-    for path in sorted((ROOT / "solvers").glob("*/metadata.yaml")):
+    for path in sorted((ROOT / "solvers").glob("*/metadata.json")):
         solver_id = path.parent.name
         record = {"id": solver_id, "ready": False}
         # The solver skill to pass to `generation.manage attempt --skill`: the released copy

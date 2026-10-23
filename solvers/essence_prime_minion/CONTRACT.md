@@ -5,7 +5,7 @@ through Savile Row 1.11.1 and Minion expresses it. Runner: [run.py](run.py), whi
 Essence' parameter file from the instance, runs Savile Row with Minion, and plugs its own
 `essence_solver` into `main("essence")` of [runner/runtime.py](../../runner/runtime.py)
 (request parsing, the overall timer and error handling stay runtime's).
-[metadata.yaml](metadata.yaml) declares `instance_binding: reshaped`: the runner's own
+[metadata.json](metadata.json) declares `instance_binding: reshaped`: the runner's own
 `refusal()` decides which instance fields no model can bind (see [Instance](#instance)).
 
 ## Submission file

@@ -17,7 +17,7 @@ ROOT = EVALUATION_ROOT
 SCHEMA = 1
 CHECK_SCRIPT = "readiness_test.py"
 
-# Fields of metadata.yaml the catalogue reads and readiness does not. Renaming
+# Fields of metadata.json the catalogue reads and readiness does not. Renaming
 # an integration or re-tagging its paradigms changes nothing about how it runs,
 # so it must not invalidate evidence about how it runs. Everything else is
 # behaviour: `image` names what was tested, `enumeration` and `optimization`
@@ -70,7 +70,7 @@ def _write_new(path: Path, value: Any) -> None:
 def _files(solver_id: str) -> tuple[dict[str, Any], dict[str, str]]:
     metadata = integration(solver_id)
     folder = ROOT / "solvers" / solver_id
-    paths = {"metadata": folder / "metadata.yaml", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
+    paths = {"metadata": folder / "metadata.json", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
              "checks": folder / CHECK_SCRIPT}
     missing = [name for name, path in paths.items() if not path.is_file()]
     if missing:

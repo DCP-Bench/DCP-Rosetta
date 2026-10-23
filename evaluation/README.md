@@ -79,11 +79,11 @@ startup and compilation, so it is not comparable to the runner's
 
 ## Submitting a model
 
-Pick an integration: any `solvers/<id>/` with a `metadata.yaml`. What a model
+Pick an integration: any `solvers/<id>/` with a `metadata.json`. What a model
 must do, for every integration, is the submission contract
 [solvers/CONTRACT.md](../solvers/CONTRACT.md); how a given integration takes it
 (file, entrypoint, instance, outputs, objective) is its `solvers/<id>/CONTRACT.md`.
-Each `solvers/<id>/` holds `metadata.yaml`, `run.py`, a `Dockerfile`, the
+Each `solvers/<id>/` holds `metadata.json`, `run.py`, a `Dockerfile`, the
 `readiness_test.py` that certifies it, that contract, and a standalone skill for
 the solver under `solvers/<id>/skills/` (released copies go to the top-level `skills/solvers/`).
 

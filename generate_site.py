@@ -54,7 +54,7 @@ SOURCE_COLLECTIONS = {
     "hakan_examples": ("Hakan Kjellerstrand's CPMpy models", "https://github.com/hakank/hakank/tree/master/cpmpy"),
 }
 
-# What a model is written in, per `language` in solvers/<id>/metadata.yaml:
+# What a model is written in, per `language` in solvers/<id>/metadata.json:
 # the highlight.js grammar to ask for, and the label above the code block.
 #
 # The grammar is cosmetic and the label is the claim, so an approximation is
@@ -450,7 +450,7 @@ def load_generated_models() -> dict:
     """Scan generated_models/<problem>/<solver>/<submission>/ -> {problem: {solver id: [entries]}}.
 
     Keyed on the integration id, never on its display name: the name is read
-    from `solvers/<id>/metadata.yaml` at render time so renaming an integration
+    from `solvers/<id>/metadata.json` at render time so renaming an integration
     is a one-line metadata edit, and two integrations sharing a display name
     cannot collapse into one group.
     """
@@ -750,7 +750,7 @@ def select_best_generated(gen_by_fw: dict) -> dict:
 
 
 # --------------------------------------------------------------------------
-# Paradigms (solvers/paradigms.json + solvers/*/metadata.yaml)
+# Paradigms (solvers/paradigms.json + solvers/*/metadata.json)
 # --------------------------------------------------------------------------
 
 # Filled in by main(); the per-model renderers need them and threading them
@@ -773,7 +773,7 @@ def load_paradigm_vocabulary() -> list:
 def load_integrations() -> dict:
     """Solver integrations by ID. The metadata files are JSON despite the suffix."""
     out = {}
-    for path in sorted(SOLVERS_DIR.glob("*/metadata.yaml")):
+    for path in sorted(SOLVERS_DIR.glob("*/metadata.json")):
         try:
             out[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -898,7 +898,7 @@ def solver_link(solver_id: str, prefix: str) -> str:
             f'{esc(name)}</a>')
 
 
-# What `solver` in metadata.yaml names, as a reader would recognise it. An
+# What `solver` in metadata.json names, as a reader would recognise it. An
 # integration missing here shows its raw value.
 BACKEND_NAMES = {
     "choco": "Choco",

@@ -29,7 +29,7 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
 # entry, because there is no direction in their fixture to turn around.
 def satisfaction_only(solver):
-    path = ROOT / "solvers" / solver / "metadata.yaml"
+    path = ROOT / "solvers" / solver / "metadata.json"
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
@@ -90,7 +90,7 @@ class MetadataTests(unittest.TestCase):
             (ROOT / "solvers/paradigms.json").read_text(encoding="utf-8"))
         self.integrations = {
             path.parent.name: json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted((ROOT / "solvers").glob("*/metadata.yaml"))
+            for path in sorted((ROOT / "solvers").glob("*/metadata.json"))
         }
         # An integration counts as certified once it carries a readiness record,
         # which is also what next_work uses to decide it may be used at all.
@@ -198,7 +198,7 @@ class MetadataTests(unittest.TestCase):
         integrations once shipped a repository-local modelling layer instead,
         and every model for them imported that rather than the framework, which
         no evaluator could notice: the answers were right, the models were not
-        in the language they were advertised in. `framework` in metadata.yaml
+        in the language they were advertised in. `framework` in metadata.json
         matches the import name for every Python integration here.
 
         This only covers Python. The Rust, MiniZinc, Prolog and C++

@@ -31,7 +31,7 @@ class ReadinessTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         folder = self.root / "solvers" / "demo"
         folder.mkdir(parents=True)
-        (folder / "metadata.yaml").write_text('{"id":"demo","image":"demo:image","enumeration":true}', encoding="utf-8")
+        (folder / "metadata.json").write_text('{"id":"demo","image":"demo:image","enumeration":true}', encoding="utf-8")
         (folder / "run.py").write_text("runner", encoding="utf-8")
         (folder / "Dockerfile").write_text("FROM scratch", encoding="utf-8")
         self.script = folder / readiness.CHECK_SCRIPT
@@ -106,7 +106,7 @@ class ReadinessTests(unittest.TestCase):
 
     def test_renaming_or_retagging_leaves_the_record_valid(self):
         """A display name and a paradigm tag are read by the catalogue, not by
-        the container. Hashing metadata.yaml whole once invalidated all nine
+        the container. Hashing metadata.json whole once invalidated all nine
         records over a rename, so the record pins behaviour only."""
         record_path = self.root / "record.json"
         readiness.check("demo", self.write_report(self.report()), record_path)

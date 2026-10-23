@@ -406,7 +406,7 @@ def retained_record(record: dict[str, Any], evaluation: dict[str, Any], model_fi
         "schema": 2,
         "problem": record["problem_id"],
         # No display name here. The catalogue reads it from
-        # solvers/<id>/metadata.yaml, so renaming an integration never has to
+        # solvers/<id>/metadata.json, so renaming an integration never has to
         # chase a copy frozen into every record it ever produced.
         "solver": record["solver_id"],
         "model_file": model_file,

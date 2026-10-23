@@ -21,7 +21,7 @@ REQUIRED_KEYS = {"id", "name", "language", "framework", "solver", "paradigms", "
                  "extension", "enumeration", "protocol_version"}
 OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level"}
 BINDINGS = {"any", "rectangular_uniform", "reshaped"}
-FILES = ("metadata.yaml", "Dockerfile", "run.py", "readiness_test.py")
+FILES = ("metadata.json", "Dockerfile", "run.py", "readiness_test.py")
 
 results = []
 
@@ -75,7 +75,7 @@ def check_metadata(root, solver_id, metadata):
               f"one of {sorted(BINDINGS)}")
 
     others = {}
-    for path in (root / "solvers").glob("*/metadata.yaml"):
+    for path in (root / "solvers").glob("*/metadata.json"):
         if path.parent.name != solver_id:
             try:
                 others[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
@@ -221,10 +221,10 @@ def main():
     metadata = {}
     if present[0]:
         try:
-            metadata = json.loads((folder / "metadata.yaml").read_text(encoding="utf-8"))
+            metadata = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
             check("metadata: JSON object", isinstance(metadata, dict), "the file must hold one JSON object")
         except ValueError as error:
-            report("FAIL", "metadata: JSON object", f"metadata.yaml is parsed as JSON: {error}")
+            report("FAIL", "metadata: JSON object", f"metadata.json is parsed as JSON: {error}")
         if isinstance(metadata, dict) and metadata:
             check_metadata(root, args.solver_id, metadata)
         else:

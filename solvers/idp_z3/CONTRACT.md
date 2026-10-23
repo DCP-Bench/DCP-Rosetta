@@ -4,7 +4,7 @@ Read [the submission contract](../CONTRACT.md) first; this file only says how FO
 IDP-Z3 expresses it. Runner: [run.py](run.py), self-contained (it does not use
 `runner/runtime.py`, although the image carries a copy): it parses the model exactly as
 written, binds the instance into a generated structure, and drives z3 itself.
-[metadata.yaml](metadata.yaml) declares `instance_binding: reshaped`: the runner's own
+[metadata.json](metadata.json) declares `instance_binding: reshaped`: the runner's own
 `refusal()` decides which instance fields no model can bind (see [Instance](#instance)).
 
 ## Submission file

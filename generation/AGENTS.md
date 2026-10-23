@@ -163,7 +163,7 @@ consult readiness, so evaluating models needs only the built image.
 integration whose checks genuinely cannot run from one script; prefer the script.
 
 The record binds actual image identity, the hashes of `run.py`, `Dockerfile`
-and `readiness_test.py`, the behavioural fields of `metadata.yaml`, and the
+and `readiness_test.py`, the behavioural fields of `metadata.json`, and the
 evidence hashes, so editing any of them invalidates it. `name` and `paradigms`
 are excluded: the catalogue reads them, the container does not, and hashing the
 whole file once invalidated every record over a rename. Attempt creation, evaluation, and retention

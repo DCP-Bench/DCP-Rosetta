@@ -120,7 +120,7 @@ Seven problems, 18 instances ([README](assets/toy-problems/README.md)).
 
 ## 3. Rosetta infrastructure
 
-This part adds what Rosetta needs around the skill: `metadata.yaml`, `Dockerfile`, `run.py`, `readiness_test.py` and a readiness record. How a Rosetta submission (a model written in a solver's interface) must look is the model-generator skill's job, not this one's.
+This part adds what Rosetta needs around the skill: `metadata.json`, `Dockerfile`, `run.py`, `readiness_test.py` and a readiness record. How a Rosetta submission (a model written in a solver's interface) must look is the model-generator skill's job, not this one's.
 
 Paths to `generation/`, `evaluation/`, `solvers/` and `skills/` mean repository-root paths. Return **ready** or **blocked** to the caller.
 
@@ -146,7 +146,7 @@ Two Rosetta rules on top:
 
 ## 3.2 Add the Rosetta infrastructure
 
-Read the submission contract `solvers/CONTRACT.md` first: it is what every model must do, for any solver, and the runner you build is what lets a model in this solver's own terms do it. Then copy the closest existing integration under `solvers/` (same language, or same way of receiving the instance) and adapt `metadata.yaml`, `Dockerfile`, `run.py` and `readiness_test.py`.
+Read the submission contract `solvers/CONTRACT.md` first: it is what every model must do, for any solver, and the runner you build is what lets a model in this solver's own terms do it. Then copy the closest existing integration under `solvers/` (same language, or same way of receiving the instance) and adapt `metadata.json`, `Dockerfile`, `run.py` and `readiness_test.py`.
 
 Write the integration contract `solvers/<id>/CONTRACT.md`: how this runner realises the submission contract, under the headings of its *Mapping checklist*, with the pilot fixture as its example. Every claim in it must be true of your `run.py`. It is what the model-generator skill reads to write a model for this integration, next to the standalone skill, so the standalone skill itself stays free of it.
 
@@ -164,7 +164,7 @@ Build with `python -m evaluation.build <id>`, bounded by the remaining budget. E
 python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
 ```
 
-This runs `solvers/<id>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.yaml`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
+This runs `solvers/<id>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.json`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
 rebuild, delete `readiness.json`, and check and verify again (on a separately tagged image while a campaign is still evaluating on `:v1`). Then register it as a pilot (see *Once certified* in [integration files](references/integration.md)) and run `scripts/check_integration.py ID` without `--static`: it must exit 0 before you return **ready**. After changing shared runner code, rerun the affected existing integrations too.
 
 ## 3.4. Return

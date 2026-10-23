@@ -4,7 +4,7 @@ Read [the submission contract](../CONTRACT.md) first; this file only says how Py
 with the ACE 2.6 solver expresses it. Runner: [run.py](run.py), which plugs its own
 `pycsp3_solver` into `main("pycsp3")` of [runner/runtime.py](../../runner/runtime.py)
 (request parsing, the overall timer and error handling stay runtime's) and runs the model
-in a child process per solve round. [metadata.yaml](metadata.yaml) declares no
+in a child process per solve round. [metadata.json](metadata.json) declares no
 `instance_binding`: the instance is passed as it is, so no problem is withheld for its
 shape.
 

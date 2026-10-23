@@ -59,10 +59,9 @@ def run_process(command, timeout, input_bytes=None):
 def integration(solver_id):
     if not isinstance(solver_id, str) or not solver_id or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789_" for c in solver_id):
         raise EvaluationError("unsupported_solver", "Use an installed solver integration ID")
-    path = ROOT / "solvers" / solver_id / "metadata.yaml"
+    path = ROOT / "solvers" / solver_id / "metadata.json"
     if not path.is_file():
         raise EvaluationError("unsupported_solver", f"No integration: {solver_id}")
-    # JSON is a YAML subset; avoids a YAML dependency in the orchestration package.
     metadata = strict_json(path.read_text(encoding="utf-8"))
     if metadata["id"] != solver_id:
         raise EvaluationError("infrastructure_error", "Integration metadata ID mismatch")

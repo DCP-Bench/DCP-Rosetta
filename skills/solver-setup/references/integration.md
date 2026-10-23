@@ -16,11 +16,10 @@ python <this-skill>/scripts/check_integration.py ID            # at the end: als
 It prints PASS/WARN/FAIL per rule and exits 1 on any failure. It checks files and
 metadata, not behaviour: that is what `readiness_test.py` is for.
 
-## `metadata.yaml`
+## `metadata.json`
 
-Read an existing `solvers/*/metadata.yaml` and **match its key set**: do not invent or
-drop keys, because readiness and evaluation both read this file. The loader parses
-**JSON syntax despite the `.yaml` extension**.
+Read an existing `solvers/*/metadata.json` and **match its key set**: do not invent or
+drop keys, because readiness and evaluation both read this file.
 
 ```json
 {
@@ -217,7 +216,7 @@ optimise, to `MAXIMIZATION_SWAPS` with the minimise/maximise spelling that fixtu
 `README.md` must name the integration by its `name`.
 
 The readiness record binds the image identity and the hashes of `run.py`, `Dockerfile`,
-the check script and every `metadata.yaml` field except `name` and `paradigms`, so
+the check script and every `metadata.json` field except `name` and `paradigms`, so
 changing any of those means running the check again. The record is write-once: to
 re-certify after a fix, rebuild the image, delete `readiness.json`, then run `check` and
 `verify` again. While models are being evaluated on the `:v1` image, build and test a

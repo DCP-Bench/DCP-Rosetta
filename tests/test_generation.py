@@ -294,7 +294,7 @@ class GenerationTests(unittest.TestCase):
         (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
         (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         generated = self.root / "generated_models"
         with patch.multiple(next_work, ROOT=self.root, GENERATED=generated),              patch.object(next_work, "integration", return_value={"id": "s1", "enumeration": True}):
             unready = next_work.report()
@@ -339,7 +339,7 @@ class GenerationTests(unittest.TestCase):
         (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
         (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         blockers = self.root / "blockers.json"
         with patch.multiple(next_work, ROOT=self.root, GENERATED=self.root / "generated_models",
                             BLOCKERS=blockers),              patch.object(next_work, "integration", return_value={"id": "s1", "enumeration": True}):
@@ -364,7 +364,7 @@ class GenerationTests(unittest.TestCase):
         (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
         (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         kept = self.root / "generated_models" / "p1" / "s1" / "run-attempt-001"
         kept.mkdir(parents=True)
         (kept / "record.json").write_text(
