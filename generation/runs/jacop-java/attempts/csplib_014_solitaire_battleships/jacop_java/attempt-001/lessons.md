@@ -1,0 +1,1 @@
+The first check run gave no_solution (unsat on the example). Cause: the fleet count passed a weight array made with Arrays.copyOf(ones, n) where n (the number of ship indicators, 100 for submarines) exceeded the length of ones (10), so most weights were 0. Fixed by sizing the weight array to the term count before evaluation. A model bug, not a skill gap.

@@ -1,0 +1,3 @@
+- The brief does not say whether sequence[0] is the initial state or the first pour's result. This model uses sequence[0] = initial state, goal at index cost, padding after. The evaluator accepted it (optimum 7 on the single instance).
+- Only one instance exists, so the hardcoding check relies on reading the model: capacities, start, goal, MAX_STEPS and PADDING_VALUE are all read from the instance.
+- Transitions are one Table constraint per step over (state before, state after, pour flag). The table holds every legal pour and the stop transitions (goal to padding, padding to padding).

@@ -105,6 +105,15 @@ read-only filesystem except `/tmp`, unprivileged. No licence key or size limits.
   `execution_error`, not `unsat`.
 - **Unbounded variables.** `new IntVar(store)` spans about +-10^9 and propagates poorly; give every
   variable tight bounds.
+- **Constraints must be imposed.** `Element.choose(...)` and every other constraint object does
+  nothing until `store.impose(c)`; a dropped constraint shows up as `invalid_solution`.
+- **Default search order.** The runner labels every integer variable, smallest domain first, so
+  auxiliary 0/1 helpers are labelled before your decision variables. Pass the variables that matter to
+  `model.search(order, null, null)` (it chains after `put`/`minimize`); several models timed out
+  until they did. For a 0/1 matrix, column-major order with `new IndomainMax<>()` helped.
+- **`Cumulative` rejects zero durations and zero needs** (`... must be greater than 0`): filter those
+  tasks out.
+- **The JDK standard library** (for example `java.time`) is on the class path.
 - **Printing** is harmless: the driver points `System.out` at stderr.
 - **A declared output not given** by the model only logs a warning; the evaluator then rejects the
   result as missing that output.

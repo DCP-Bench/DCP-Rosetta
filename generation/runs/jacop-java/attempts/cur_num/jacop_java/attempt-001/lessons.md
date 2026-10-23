@@ -1,0 +1,2 @@
+- The brief asks for "another number", so the example 48 is excluded with XneqC. The only other solution in 1..10000 is 1680 (p + 1 = 41^2, p / 2 + 1 = 29^2). The evaluator accepted 1680.
+- "Its half" is read as p / 2, so p is even (p = 2h). Squares are XmulYeqZ on a root variable.

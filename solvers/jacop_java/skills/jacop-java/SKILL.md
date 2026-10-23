@@ -86,12 +86,12 @@ Comparison strings are `"=="`, `"!="`, `"<"`, `"<="`, `">"`, `">="`.
 | `x + y = z`, `x + c = z`, `x + c <= z` | `XplusYeqZ`, `XplusCeqZ`, `XplusClteqZ` |
 | `x * y = z`, `x * c = z`, `x / y = z`, `x mod y = z`, `abs(x) = y` | `XmulYeqZ`, `XmulCeqZ`, `XdivYeqZ`, `XmodYeqZ`, `AbsXeqY` |
 | weighted sum `Σ w·x rel c` (or rel a variable) | `new LinearInt(IntVar[] x, int[] w, "<=", c)` |
-| plain sum into a variable | `new SumInt(IntVar[] x, "==", total)` |
+| plain sum into a variable | `new SumInt(IntVar[] x, "==", total)`; the right side is an `IntVar`, never an `int` (use `new IntVar(store, n, n)`, or `LinearInt` with unit weights for a constant) |
 | max / min of an array | `new Max(IntVar[] x, max)`, `new Min(IntVar[] x, min)` |
-| all different | `Alldifferent` (bounds), `Alldistinct` (stronger pruning) |
-| `a[i] = v` (array indexed by a variable) | [`Element.choose(i, int[] or IntVar[] a, v, offset)`](https://javadoc.io/doc/org.jacop/jacop/4.10.0/org/jacop/constraints/Element.html): **1-based**, pass `-1` for 0-based |
+| all different | `Alldifferent` (bounds); prefer it to `Alldistinct`, which threw a `NullPointerException` in 4.10.0 on a 45-variable set and once produced wrong solutions when enumerating (pairwise `XneqY` also works) |
+| `a[i] = v` (array indexed by a variable) | [`Element.choose(i, int[] or IntVar[] a, v, offset)`](https://javadoc.io/doc/org.jacop/jacop/4.10.0/org/jacop/constraints/Element.html): **1-based**, pass `-1` for 0-based (an index already 1-based takes offset `0`; `-1` then prunes the index domain and the model is infeasible). It only returns the constraint: `store.impose(Element.choose(...))` |
 | allowed tuples | `new org.jacop.constraints.table.Table(IntVar[] x, int[][] tuples)` |
-| no overlap on one machine / resource limit | `cumulative.CumulativeUnary(starts, durations, resources, limit)`, `cumulative.Cumulative(...)` (all `IntVar[]`) |
+| no overlap on one machine / resource limit | `cumulative.CumulativeUnary(starts, durations, resources, limit)`, `cumulative.Cumulative(...)` (all `IntVar[]`; import `org.jacop.constraints.cumulative.Cumulative`). Durations and resource needs must be above 0, so leave zero-duration or zero-need tasks out |
 | non-overlapping rectangles | `Diff2(IntVar[][] rects)`, each row `{x, y, w, h}` |
 | Hamiltonian circuit (successor array) | `Circuit(IntVar[] next)`: values are **1-based** |
 | count occurrences | `Count(IntVar[] x, counter, value)`, `GCC(IntVar[] x, IntVar[] counters)` |
@@ -125,6 +125,12 @@ assigned in the variables: read it with `x.value()`. Outcomes:
 - **Heuristics**: `new SimpleSelect<>(vars, comparator, indomain)`; comparator `null`
   keeps input order, `SmallestDomain` is first-fail, `SmallestMin` suits start
   times; values via `IndomainMin`, `IndomainMax`, `IndomainMiddle`, `IndomainRandom`.
+- **Search order and value choice decide many models.** `SimpleSelect` over every
+  variable in input order, or smallest-domain over auxiliary 0/1 helpers, can fail
+  where an explicit order succeeds. Label the decision variables first and the helper
+  Booleans last; for a minimisation over Boolean flips label the smaller group first;
+  for a 0/1 matrix try column-major order with `IndomainMax`. Test two or three orders
+  on the largest instance before concluding the model is too weak.
 - **Which variables to label**: label every variable whose value you read, plus
   any auxiliary that propagation does not fix once those are fixed. When unsure,
   label all of them (decisions first) and de-duplicate, as below.
@@ -162,6 +168,13 @@ method so it can be built twice ([assets/all-optimal](assets/all-optimal/README.
 | optimum reported after a timeout | only `found` was checked | also require `!search.timeOutOccured` ([Solving](#solving)) |
 | maximisation returns the minimum | `labeling(..., cost)` always minimises | label with the negated objective |
 | second search on the same `Store` gives stale or wrong results | the first solution stays assigned in the store, and constraints added afterwards are not reliably kept | build a fresh `Store` for every search |
+| a constraint seems ignored; a wrong value is accepted | the constraint was built, not imposed (`Element.choose` returns an object) | `store.impose(c)` for every constraint |
+| `Arrays.copyOf(w, n)` weights give an infeasible model with no error | it pads with zeros when `n` exceeds the length, so weights and variables no longer match | give `LinearInt` weight and variable arrays of equal length |
+| `cannot find symbol ... setDom` | `IntVar` has no such method | give the domain in the constructor |
+| `no suitable constructor found for SumInt(..., String, int)` | the sum's right side must be an `IntVar` | `new IntVar(store, n, n)` or `LinearInt` |
+| `... durations must be greater than 0 violated` from `Cumulative` | a zero duration or resource need | drop those tasks from the constraint |
+| a conditional step such as `x - 3 = y` fails on every branch | an unconditional `XplusCeqZ` holds on all branches | `Reified(XeqC(selector, k), b)` then `Implies(b, c)` |
+| a product-of-sums objective, or squares via `XmulYeqZ`, never proves the optimum | weak propagation | use Boolean membership with linear sums, or a Table, where possible |
 | `ArrayIndexOutOfBoundsException` inside `LinearInt` / `SumInt` | posted over an empty array | skip the constraint, or compare the constant 0 directly |
 | `is not abstract and does not override` / generic errors with `SimpleSelect` | raw types | use `IntVar[]` and `new SimpleSelect<>(..)`, `new IndomainMin<>()` |
 | global constraint passed to `Reified` / `Or` will not compile | those take `PrimitiveConstraint` only | reify a decomposition ([Modelling](#modelling)) |
