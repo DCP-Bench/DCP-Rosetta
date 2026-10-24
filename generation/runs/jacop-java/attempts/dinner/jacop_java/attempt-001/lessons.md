@@ -1,0 +1,1 @@
+- Counted in half dollars (grandparent 6, parent 4, child 1, total 40) so the bill is an integer equation. With 20 people the solution is unique: 1 grandparent, 5 parents, 14 children.

@@ -1,0 +1,3 @@
+- The instance data is an empty list; the puzzle lives entirely in the description. The grid and clues are written as Java constants. Words are read off the grid as maximal open runs of length >= 2, named by the clue label on their first cell.
+- Readings used (accepted by the evaluator, unique solution): "Dozen in six gross" = 72; "X divided by n" = exact division (X = n * quotient); leading digit of every word is nonzero.
+- Square and prime clues are Table constraints over the word's digits, built for the word's own length (A20 has four digits).
