@@ -138,6 +138,9 @@ assigned in the variables: read it with `x.value()`. Outcomes:
   equalities where the problem says exactly, a `Table` over an enumerated pattern space
   (build the tuples in Java; tens of thousands are fine), and symmetry breaking only
   where the problem allows it.
+- **Prefer a deterministic order to `IndomainRandom`.** Random value choice without
+  restarts solved a hard puzzle one run in three. Labelling the counters one group at a
+  time, so each new group closes constraints against groups already fixed, was reliable.
 - **Check the first solution, not a later one.** A model can emit a wrong first solution
   and a right second one when a constraint loses propagation.
 - **Which variables to label**: label every variable whose value you read, plus
@@ -183,6 +186,8 @@ method so it can be built twice ([assets/all-optimal](assets/all-optimal/README.
 | `no suitable constructor found for SumInt(..., String, int)` | the sum's right side must be an `IntVar` | `new IntVar(store, n, n)` or `LinearInt` |
 | `... durations must be greater than 0 violated` from `Cumulative` | a zero duration or resource need | drop those tasks from the constraint |
 | `... not in the allowed range` on a large constant | `IntDomain.MaxInt` is 536870909, not 2^31-1 | split a big product into two halves and join them with a `Table` over (x, target/x) |
+| `GCC failure : join domain of x variables doesn't cover all count variables` | `GCC` counts the values 0, 1, 2, ... in order, and a counter's value is one no `x` variable can take | shift the variables so they start at 0 (`XplusCeqZ`) and use one counter per shifted value |
+| an invalid first solution with overlapping or inconsistent items, and no error | an auxiliary placement Boolean was left outside `search`, so channelling from coordinates did not fix it | put the Booleans that define the model in the labelled array, not only the coordinates derived from them |
 | a conditional step such as `x - 3 = y` fails on every branch | an unconditional `XplusCeqZ` holds on all branches | `Reified(XeqC(selector, k), b)` then `Implies(b, c)` |
 | a product-of-sums objective, or squares via `XmulYeqZ`, never proves the optimum | weak propagation | use Boolean membership with linear sums, or a Table, where possible |
 | `ArrayIndexOutOfBoundsException` inside `LinearInt` / `SumInt` | posted over an empty array | skip the constraint, or compare the constant 0 directly |
