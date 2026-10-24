@@ -88,13 +88,14 @@ Comparison strings are `"=="`, `"!="`, `"<"`, `"<="`, `">"`, `">="`.
 | weighted sum `Σ w·x rel c` (or rel a variable) | `new LinearInt(IntVar[] x, int[] w, "<=", c)` |
 | plain sum into a variable | `new SumInt(IntVar[] x, "==", total)`; the right side is an `IntVar`, never an `int` (use `new IntVar(store, n, n)`, or `LinearInt` with unit weights for a constant) |
 | max / min of an array | `new Max(IntVar[] x, max)`, `new Min(IntVar[] x, min)` |
-| all different | `Alldifferent` (bounds); prefer it to `Alldistinct`, which threw a `NullPointerException` in 4.10.0 on a 45-variable set and once produced wrong solutions when enumerating (pairwise `XneqY` also works) |
+| all different | `Alldifferent` (bounds); use it, or pairwise `XneqY`, and avoid `Alldistinct`: in 4.10.0 it threw a `NullPointerException` on a 45-variable set and produced a wrong second solution when enumerating, twice |
 | `a[i] = v` (array indexed by a variable) | [`Element.choose(i, int[] or IntVar[] a, v, offset)`](https://javadoc.io/doc/org.jacop/jacop/4.10.0/org/jacop/constraints/Element.html): **1-based**, pass `-1` for 0-based (an index already 1-based takes offset `0`; `-1` then prunes the index domain and the model is infeasible). It only returns the constraint: `store.impose(Element.choose(...))` |
 | allowed tuples | `new org.jacop.constraints.table.Table(IntVar[] x, int[][] tuples)` |
 | no overlap on one machine / resource limit | `cumulative.CumulativeUnary(starts, durations, resources, limit)`, `cumulative.Cumulative(...)` (all `IntVar[]`; import `org.jacop.constraints.cumulative.Cumulative`). Durations and resource needs must be above 0, so leave zero-duration or zero-need tasks out |
 | non-overlapping rectangles | `Diff2(IntVar[][] rects)`, each row `{x, y, w, h}` |
 | Hamiltonian circuit (successor array) | `Circuit(IntVar[] next)`: values are **1-based** |
-| count occurrences | `Count(IntVar[] x, counter, value)`, `GCC(IntVar[] x, IntVar[] counters)` |
+| count occurrences | `Count(IntVar[] x, counter, value)` (the counter must not be a member of `x`: that is unsound), `GCC(IntVar[] x, IntVar[] counters)` (counts the values 0, 1, ... in order, so it covers self-describing sequences) |
+| sliding window, stretch, among, regular | `Sequence(list, IntervalDomain set, q, min, max)` and kin are decomposed constraints: post with `store.imposeDecomposition(c)`, not `store.impose` |
 | reification `b <-> c` | `new Reified(PrimitiveConstraint c, IntVar b)` |
 | implication, if-then, logic | `Implies(b, c)`, `IfThen(c1, c2)`, `Or(c1, c2)` / `Or(c[])`, `And(...)`, `Not(c)` |
 
@@ -131,6 +132,14 @@ assigned in the variables: read it with `x.value()`. Outcomes:
   Booleans last; for a minimisation over Boolean flips label the smaller group first;
   for a 0/1 matrix try column-major order with `IndomainMax`. Test two or three orders
   on the largest instance before concluding the model is too weak.
+- **No restarts, no dom/wdeg.** For a hard satisfaction instance a static order after
+  ranking values by difficulty, or `SmallestDomain` with `IndomainRandom`, worked where
+  the defaults did not. Cheap wins before any of that: implied sums and prefix bounds,
+  equalities where the problem says exactly, a `Table` over an enumerated pattern space
+  (build the tuples in Java; tens of thousands are fine), and symmetry breaking only
+  where the problem allows it.
+- **Check the first solution, not a later one.** A model can emit a wrong first solution
+  and a right second one when a constraint loses propagation.
 - **Which variables to label**: label every variable whose value you read, plus
   any auxiliary that propagation does not fix once those are fixed. When unsure,
   label all of them (decisions first) and de-duplicate, as below.
@@ -173,6 +182,7 @@ method so it can be built twice ([assets/all-optimal](assets/all-optimal/README.
 | `cannot find symbol ... setDom` | `IntVar` has no such method | give the domain in the constructor |
 | `no suitable constructor found for SumInt(..., String, int)` | the sum's right side must be an `IntVar` | `new IntVar(store, n, n)` or `LinearInt` |
 | `... durations must be greater than 0 violated` from `Cumulative` | a zero duration or resource need | drop those tasks from the constraint |
+| `... not in the allowed range` on a large constant | `IntDomain.MaxInt` is 536870909, not 2^31-1 | split a big product into two halves and join them with a `Table` over (x, target/x) |
 | a conditional step such as `x - 3 = y` fails on every branch | an unconditional `XplusCeqZ` holds on all branches | `Reified(XeqC(selector, k), b)` then `Implies(b, c)` |
 | a product-of-sums objective, or squares via `XmulYeqZ`, never proves the optimum | weak propagation | use Boolean membership with linear sums, or a Table, where possible |
 | `ArrayIndexOutOfBoundsException` inside `LinearInt` / `SumInt` | posted over an empty array | skip the constraint, or compare the constant 0 directly |

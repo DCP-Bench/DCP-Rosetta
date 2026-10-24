@@ -105,6 +105,7 @@ read-only filesystem except `/tmp`, unprivileged. No licence key or size limits.
   `execution_error`, not `unsat`.
 - **Unbounded variables.** `new IntVar(store)` spans about +-10^9 and propagates poorly; give every
   variable tight bounds.
+- **`Alldistinct` is unsafe under enumeration; `Count` with its counter inside the list is unsound.** Use `Alldifferent` and `GCC`. `Sequence` and other decomposed constraints go through `store.imposeDecomposition(c)`.
 - **Constraints must be imposed.** `Element.choose(...)` and every other constraint object does
   nothing until `store.impose(c)`; a dropped constraint shows up as `invalid_solution`.
 - **Default search order.** The runner labels every integer variable, smallest domain first, so
