@@ -1071,8 +1071,6 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 # Index page (Problem view)
 # --------------------------------------------------------------------------
 
-IS_OPT_RE = re.compile(r"\b(minimize|maximize)\s*\(")
-
 
 def source_group(meta: dict) -> str:
     """Return the dataset's original source/category identifier."""
@@ -1403,6 +1401,13 @@ def main() -> None:
             if not line:
                 continue
             data = json.loads(line)
+            # The reference model says whether it optimises: an objective can be a
+            # keyword of Model, which a search of the source for minimize( misses.
+            if not isinstance(data.get("is_optimization"), bool):
+                raise SystemExit(
+                    f"{DATASET_JSONL}: {data['id']} has no is_optimization. "
+                    "Rebuild it with `python jsonl_convert.py` inside bench/."
+                )
             meta = parse_metadata(data.get("metadata", []))
             problems.append(
                 {
@@ -1414,7 +1419,7 @@ def main() -> None:
                     "example_solution": data.get("example_solution", {}),
                     "decision_variables": data.get("decision_variables", []),
                     "source": source_group(meta),
-                    "type": "optimization" if IS_OPT_RE.search(data.get("model", "")) else "satisfaction",
+                    "type": "optimization" if data["is_optimization"] else "satisfaction",
                     "meta": meta,
                     "snippet": snippet(plain_text(data.get("description", ""))),
                 }
