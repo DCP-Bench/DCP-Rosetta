@@ -176,8 +176,9 @@ def check_skill(root, solver_id, folder):
         skills = sorted(found.parent for found in (folder / "skills").glob("*/SKILL.md"))
     else:
         # A nested integration uses the skill its solver's bindings share, which
-        # routes to one interface entry each.
-        skills = [root / path] if (root / path / "SKILL.md").is_file() else []
+        # routes to one interface entry each. integration_skill gives no path while
+        # the solver has no skill bundle yet, or more than one.
+        skills = [root / path] if path and (root / path / "SKILL.md").is_file() else []
         if skills and check(f"skill: has the interface {interface}",
                             interface_entry(root / path, interface) is not None,
                             f"set interface and write {path}/interfaces/<interface>.md "
@@ -188,7 +189,8 @@ def check_skill(root, solver_id, folder):
                   f"add {path}/assets/{interface}/<example>/README.md")
     if not check("skill: standalone skill exists", bool(skills),
                  f"no {path}/SKILL.md" if path else
-                 f"no skills/<name>/SKILL.md in {folder.parent if interface else folder}"):
+                 f"one skills/<name>/SKILL.md expected in {folder.parent.relative_to(root).as_posix()}" if interface else
+                 f"no skills/<name>/SKILL.md in {folder.relative_to(root).as_posix()}"):
         return
     for skill in skills:
         try:
