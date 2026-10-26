@@ -137,6 +137,29 @@ class SkillWorkflowTests(unittest.TestCase):
         skills.validate(self.bundle, project=True)
         manifest.write_text(kept)
 
+    def test_every_interface_is_linked_from_the_entrypoint(self):
+        """A skill shared by a solver's bindings routes to one file per interface."""
+        (self.bundle / "interfaces").mkdir()
+        (self.bundle / "interfaces/python.md").write_text("# Python\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/python.md is not linked"):
+            skills.validate(self.bundle)
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Python](interfaces/python.md) |\n")
+        skills.validate(self.bundle)
+
+    def test_integration_skill_prefers_metadata_over_its_own_folder(self):
+        legacy = self.root / "solvers/old_python"
+        (legacy / "skills/old-python").mkdir(parents=True)
+        (legacy / "skills/old-python/SKILL.md").write_text(self.text)
+        (legacy / "metadata.json").write_text('{"id": "old_python"}')
+        self.assertEqual(skills.integration_skill(self.root, "old_python"),
+                         ("solvers/old_python/skills/old-python", None))
+        shared = self.root / "solvers/new_java"
+        shared.mkdir()
+        (shared / "metadata.json").write_text(json.dumps(
+            {"id": "new_java", "skill": "solvers/new/skills/new", "interface": "java"}))
+        self.assertEqual(skills.integration_skill(self.root, "new_java"), ("solvers/new/skills/new", "java"))
+        self.assertEqual(skills.integration_skill(self.root, "missing"), (None, None))
+
 
 if __name__ == "__main__":
     unittest.main()

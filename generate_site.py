@@ -962,13 +962,15 @@ def browse_button(solver: str, count: int) -> str:
 
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
-    one integration, under solvers/<id>/skills/. The skill's folder is named after
-    the skill, not the integration, so it is found by globbing."""
-    found = sorted((SOLVERS_DIR / solver / "skills").glob("*/SKILL.md"))
-    if not found:
+    one integration: the interface file it reads when the skill serves several
+    bindings of one solver, else the skill's SKILL.md."""
+    from generation.skills import integration_skill
+    skill, interface = integration_skill(SOLVERS_DIR.resolve().parent, solver)
+    if not skill:
         return ""
-    name = found[0].parent.name
-    href = f"{REPO_URL}/blob/main/{found[0].as_posix()}"
+    name = Path(skill).name
+    page = f"{skill}/interfaces/{interface}.md" if interface else f"{skill}/SKILL.md"
+    href = f"{REPO_URL}/blob/main/{page}"
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')
 

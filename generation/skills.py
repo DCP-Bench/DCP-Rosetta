@@ -79,6 +79,27 @@ def rosetta_mentions(folder):
                  for match in [ROSETTA_TEXT.search(line)] if match]
     return hits
 
+def integration_skill(root, solver_id):
+    """The solver skill an integration's models are written from, and which of its
+    interfaces they use, as (path relative to root, interface).
+
+    `skill` and `interface` in solvers/<id>/metadata.json name a skill that every
+    binding of one solver shares, `solvers/<solver>/skills/<solver>/` with an
+    `interfaces/<interface>.md` per binding. Without them the skill is the single
+    bundle under solvers/<id>/skills/, with no interface; the path is None when
+    there is none or several.
+    """
+    root = Path(root)
+    try:
+        metadata = read(root / "solvers" / solver_id / "metadata.json")
+    except (OSError, ValueError):
+        metadata = {}
+    if isinstance(metadata, dict) and isinstance(metadata.get("skill"), str):
+        return metadata["skill"], metadata.get("interface")
+    found = sorted((root / "solvers" / solver_id / "skills").glob("*/SKILL.md"))
+    return (found[0].parent.relative_to(root).as_posix() if len(found) == 1 else None), None
+
+
 def validate(folder, project=False):
     folder = Path(folder).resolve()
     text = (folder / "SKILL.md").read_text(encoding="utf-8")
@@ -114,6 +135,14 @@ def validate(folder, project=False):
             if not target.is_file():
                 raise ValueError(f"Broken resource link: {link} (links must point at an existing file; "
                                  "for a folder, link a file in it such as its README.md)")
+    # The entrypoint routes to each interface, so an interface it does not link
+    # is one no agent finds.
+    linked = {(folder / link.split("#")[0]).resolve() for link in re.findall(r"\]\(([^)]+)\)", text)
+              if "://" not in link and not link.startswith("#") and "<" not in link}
+    for interface in sorted((folder / "interfaces").glob("*.md")):
+        if interface.resolve() not in linked:
+            raise ValueError(f"interfaces/{interface.name} is not linked from SKILL.md "
+                             "(add it to the interface table)")
     if project:
         # Provenance is a plain sources.md: which documentation the instructions
         # came from. Bundle bytes are hashed per attempt, where it matters.

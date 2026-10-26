@@ -19,7 +19,7 @@ import sys
 
 REQUIRED_KEYS = {"id", "name", "language", "framework", "solver", "paradigms", "image",
                  "extension", "enumeration", "protocol_version"}
-OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level"}
+OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level", "skill", "interface"}
 BINDINGS = {"any", "rectangular_uniform", "reshaped"}
 FILES = ("metadata.json", "Dockerfile", "run.py", "readiness_test.py")
 
@@ -164,11 +164,28 @@ def check_contract(folder):
     check("contract: has every checklist heading", not missing, f"missing {missing}")
 
 
-def check_skill(root, folder):
-    skills = sorted(path.parent for path in (folder / "skills").glob("*/SKILL.md"))
-    if not check("skill: standalone skill exists", bool(skills), f"no {folder.name}/skills/<name>/SKILL.md"):
+def check_skill(root, folder, metadata):
+    from generation.skills import integration_skill, rosetta_mentions, validate
+    path, interface = integration_skill(root, folder.name)
+    if "skill" not in metadata:
+        # An older integration keeps its own flat skill under solvers/<id>/skills/.
+        path = None
+        skills = sorted(found.parent for found in (folder / "skills").glob("*/SKILL.md"))
+    else:
+        # A skill named in metadata.json can be shared by the solver's bindings and
+        # routes to one interface file each.
+        skills = [root / path] if (root / path / "SKILL.md").is_file() else []
+        if skills and check("metadata: interface names the skill's interface file",
+                            isinstance(interface, str)
+                            and (root / path / "interfaces" / f"{interface}.md").is_file(),
+                            f"set interface and write {path}/interfaces/<interface>.md"):
+            assets = root / path / "assets" / interface
+            check(f"skill: runnable examples under assets/{interface}/",
+                  assets.is_dir() and any(p.is_dir() for p in assets.iterdir()),
+                  f"add {path}/assets/{interface}/<example>/README.md")
+    if not check("skill: standalone skill exists", bool(skills),
+                 f"no {path}/SKILL.md" if path else f"no {folder.name}/skills/<name>/SKILL.md"):
         return
-    from generation.skills import rosetta_mentions, validate
     for skill in skills:
         try:
             validate(skill, project=True)
@@ -234,7 +251,7 @@ def main():
     if all(present[2:]):
         check_scripts(root, folder, metadata)
     check_contract(folder)
-    check_skill(root, folder)
+    check_skill(root, folder, metadata)
     if not args.static:
         check_readiness(root, args.solver_id)
         if metadata and (folder / "readiness.json").is_file():

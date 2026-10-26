@@ -22,8 +22,9 @@ CHECK_SCRIPT = "readiness_test.py"
 # so it must not invalidate evidence about how it runs. Everything else is
 # behaviour: `image` names what was tested, `enumeration` and `optimization`
 # decide which tests are required, `extension` and `instance_binding` decide
-# what a submission may be.
-DESCRIPTIVE_METADATA = ("name", "paradigms")
+# what a submission may be. `skill` and `interface` say which skill models are
+# written from, which the runner never reads.
+DESCRIPTIVE_METADATA = ("name", "paradigms", "skill", "interface")
 CHECK_TIMEOUT = 1800
 # Required at readiness_level 2 whatever the integration's capabilities; the
 # optimisation and enumeration ones are added in _required.
