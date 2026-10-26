@@ -145,6 +145,33 @@ class SkillWorkflowTests(unittest.TestCase):
             skills.validate(self.bundle)
         (self.bundle / "SKILL.md").write_text(self.text + "| [Python](interfaces/python.md) |\n")
         skills.validate(self.bundle)
+        self.assertEqual(skills.interface_entry(self.bundle, "python"), self.bundle / "interfaces/python.md")
+
+    def test_an_interface_may_be_a_folder_entered_through_its_readme(self):
+        """An interface that needs several files gets interfaces/<interface>/README.md."""
+        folder = self.bundle / "interfaces/java"
+        folder.mkdir(parents=True)
+        (folder / "README.md").write_text("# Java\n")
+        (folder / "search.md").write_text("# Search\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/java/README.md is not linked from SKILL.md"):
+            skills.validate(self.bundle)
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Java](interfaces/java/README.md) |\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/java/search.md is not linked from interfaces/java/README.md"):
+            skills.validate(self.bundle)
+        (folder / "README.md").write_text("# Java\n\n[Search](search.md)\n")
+        skills.validate(self.bundle)
+        self.assertEqual(skills.interface_entry(self.bundle, "java"), folder / "README.md")
+        # The same interface as a file and as a folder is ambiguous.
+        (self.bundle / "interfaces/java.md").write_text("# Java\n")
+        (self.bundle / "SKILL.md").write_text(self.text + "[a](interfaces/java/README.md) [b](interfaces/java.md)\n")
+        with self.assertRaisesRegex(ValueError, "both a file and a folder"):
+            skills.validate(self.bundle)
+        self.assertIsNone(skills.interface_entry(self.bundle, "java"))
+        (self.bundle / "interfaces/java.md").unlink()
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Java](interfaces/java/README.md) |\n")
+        (self.bundle / "interfaces/notes").mkdir()
+        with self.assertRaisesRegex(ValueError, "not \\['notes'\\]"):
+            skills.validate(self.bundle)
 
     def test_integration_skill_prefers_metadata_over_its_own_folder(self):
         legacy = self.root / "solvers/old_python"

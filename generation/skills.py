@@ -85,7 +85,7 @@ def integration_skill(root, solver_id):
 
     `skill` and `interface` in solvers/<id>/metadata.json name a skill that every
     binding of one solver shares, `solvers/<solver>/skills/<solver>/` with an
-    `interfaces/<interface>.md` per binding. Without them the skill is the single
+    interface entry per binding (see interface_entry). Without them the skill is the single
     bundle under solvers/<id>/skills/, with no interface; the path is None when
     there is none or several.
     """
@@ -98,6 +98,15 @@ def integration_skill(root, solver_id):
         return metadata["skill"], metadata.get("interface")
     found = sorted((root / "solvers" / solver_id / "skills").glob("*/SKILL.md"))
     return (found[0].parent.relative_to(root).as_posix() if len(found) == 1 else None), None
+
+
+def interface_entry(skill, interface):
+    """The file an agent reads for one interface of a skill: `interfaces/<interface>.md`,
+    or `interfaces/<interface>/README.md` when the interface needs more than one file.
+    None when there is neither, or both."""
+    folder = Path(skill) / "interfaces"
+    found = [path for path in (folder / f"{interface}.md", folder / interface / "README.md") if path.is_file()]
+    return found[0] if len(found) == 1 else None
 
 
 def validate(folder, project=False):
@@ -136,13 +145,32 @@ def validate(folder, project=False):
                 raise ValueError(f"Broken resource link: {link} (links must point at an existing file; "
                                  "for a folder, link a file in it such as its README.md)")
     # The entrypoint routes to each interface, so an interface it does not link
-    # is one no agent finds.
-    linked = {(folder / link.split("#")[0]).resolve() for link in re.findall(r"\]\(([^)]+)\)", text)
-              if "://" not in link and not link.startswith("#") and "<" not in link}
-    for interface in sorted((folder / "interfaces").glob("*.md")):
-        if interface.resolve() not in linked:
-            raise ValueError(f"interfaces/{interface.name} is not linked from SKILL.md "
-                             "(add it to the interface table)")
+    # is one no agent finds. An interface with a folder of its own enters through
+    # its README.md, which in turn links every other file of the folder.
+    def links(file):
+        return {(file.parent / link.split("#")[0]).resolve()
+                for link in re.findall(r"\]\(([^)]+)\)", file.read_text(encoding="utf-8"))
+                if "://" not in link and not link.startswith("#") and "<" not in link}
+    interfaces = folder / "interfaces"
+    linked = links(folder / "SKILL.md")
+    entries = sorted(interfaces.glob("*.md")) + sorted(interfaces.glob("*/README.md"))
+    for entry in entries:
+        shown = entry.relative_to(folder).as_posix()
+        if entry.resolve() not in linked:
+            raise ValueError(f"{shown} is not linked from SKILL.md (add it to the interface table)")
+        if entry.name == "README.md":
+            if (interfaces / f"{entry.parent.name}.md").is_file():
+                raise ValueError(f"interfaces/{entry.parent.name} is both a file and a folder; keep one")
+            inside_links = links(entry)
+            for file in sorted(entry.parent.rglob("*")):
+                if file.is_file() and file != entry and file.resolve() not in inside_links:
+                    raise ValueError(f"{file.relative_to(folder).as_posix()} is not linked from {shown}")
+    if interfaces.is_dir():
+        strays = [path.name for path in sorted(interfaces.iterdir())
+                  if not (path.is_file() and path.suffix == ".md") and not (path / "README.md").is_file()]
+        if strays:
+            raise ValueError("interfaces/ holds an <interface>.md file or an <interface>/ folder "
+                             f"with a README.md, not {strays}")
     if project:
         # Provenance is a plain sources.md: which documentation the instructions
         # came from. Bundle bytes are hashed per attempt, where it matters.

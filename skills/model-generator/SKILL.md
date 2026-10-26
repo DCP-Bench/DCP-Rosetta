@@ -17,7 +17,7 @@ What a model must look like comes from three layers, read in this order every ti
 |---|---|---|
 | The submission contract | `solvers/CONTRACT.md` | What every model must do to be evaluated, for any solver: input, declared outputs, objective, what the runner does, what a model must not do |
 | The integration contract | `solvers/<id>/CONTRACT.md` | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
-| The solver skill | the `skill` path `next_work` reports for the integration, and its `interface` | How to model with that solver: its API and pitfalls. A skill shared by several bindings of one solver routes from its `SKILL.md` to `interfaces/<interface>.md`: read `SKILL.md` and that one file. |
+| The solver skill | the `skill` path `next_work` reports for the integration, and its `interface` | How to model with that solver: its API and pitfalls. A skill shared by several bindings of one solver routes from its `SKILL.md` to `interfaces/<interface>.md` or `interfaces/<interface>/README.md`: read `SKILL.md` and that interface, nothing of the others. |
 
 The contracts are Rosetta's; the solver skill is not, and knows nothing about this repository. Where a skill and a contract disagree on how a submission looks, **the contracts win**.
 

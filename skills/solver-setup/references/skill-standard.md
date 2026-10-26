@@ -22,7 +22,9 @@ skill-name/
   for third-party material or infer tool permissions from `allowed-tools`.
 - Keep the entrypoint and each interface file below 500 lines; put conditional
   detail into linked references, one level deep. A solver skill links every
-  `interfaces/*.md` from its entrypoint (`generation.skills validate` checks it). Every bundled supporting file must have a purpose and a discoverable
+  interface entry from its entrypoint: `interfaces/<interface>.md`, or
+  `interfaces/<interface>/README.md`, which links every other file of its folder
+  (`generation.skills validate` checks both). Every bundled supporting file must have a purpose and a discoverable
   link or command. Avoid placeholders and redundant manuals.
 - Resource links are relative to the bundle and resolve after it is copied alone.
   Describe repository-root prerequisites explicitly; do not use `../../...` links

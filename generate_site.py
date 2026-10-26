@@ -962,14 +962,16 @@ def browse_button(solver: str, count: int) -> str:
 
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
-    one integration: the interface file it reads when the skill serves several
+    one integration: the interface entry it reads when the skill serves several
     bindings of one solver, else the skill's SKILL.md."""
-    from generation.skills import integration_skill
-    skill, interface = integration_skill(SOLVERS_DIR.resolve().parent, solver)
+    from generation.skills import integration_skill, interface_entry
+    root = SOLVERS_DIR.resolve().parent
+    skill, interface = integration_skill(root, solver)
     if not skill:
         return ""
     name = Path(skill).name
-    page = f"{skill}/interfaces/{interface}.md" if interface else f"{skill}/SKILL.md"
+    entry = interface_entry(root / skill, interface) if interface else None
+    page = entry.relative_to(root).as_posix() if entry else f"{skill}/SKILL.md"
     href = f"{REPO_URL}/blob/main/{page}"
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')

@@ -12,6 +12,9 @@ shape, so another binding is added later without renaming or moving anything.
 <solver>/
   SKILL.md                         shared: concepts, statuses, search, enumeration, interface table
   interfaces/<interface>.md        per binding: install, quick start, API, solving, all solutions, issues
+  interfaces/<interface>/          instead of the file, when one binding needs several pages:
+    README.md                        its entry, with the sections of the file below
+    <topic>.md                       further pages, each linked from README.md
   assets/<interface>/<example>/    one runnable example per folder: the program and its README.md
   references/                      only when needed; per-interface ones in references/<interface>/
   sources.md
@@ -22,6 +25,13 @@ shape, so another binding is added later without renaming or moving anything.
 language. `<interface>` is the language (`java`, `python`, `cpp`, `rust`, `julia`); use the
 binding's own name (`pychoco`) only when one language has two bindings. No empty folders or
 placeholder files.
+
+**One file or a folder per interface.** Start with `interfaces/<interface>.md`. When it grows
+past what one page should hold (~200 lines), or a binding has topics of its own (a build
+system, a second API layer, a long catalogue), turn it into `interfaces/<interface>/` with a
+`README.md` that keeps the sections below and links each further page; the interface table
+then links `interfaces/<interface>/README.md`. Never both for one interface. Runnable examples
+stay in `assets/<interface>/` either way.
 
 **Shared or per interface.** `SKILL.md` states only what holds in every interface. A claim
 that holds for some bindings only (a constraint, a search option, lazy clause generation,
@@ -70,7 +80,7 @@ metadata:
 
 ## Pick an interface
 
-Read this file and the one interface file below that matches the language.
+Read this file and the one interface below that matches the language.
 
 | | <Language A> | <Language B> |
 |---|---|---|
@@ -128,7 +138,7 @@ Details: [<enumeration page>](<URL>)
 - Global constraint catalogue: <URL>
 ````
 
-## interfaces/\<interface\>.md
+## interfaces/\<interface\>.md (or interfaces/\<interface\>/README.md)
 
 ````markdown
 # <Solver> in <Language> (<package>)

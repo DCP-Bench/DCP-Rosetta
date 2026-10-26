@@ -27,7 +27,7 @@ Details: [operations](references/operations.md).
 
 Produce one self-contained skill folder `<name>/` that teaches a fresh agent to install the solver or modelling framework and model with it. Below, "solver" covers both solvers and modelling frameworks. The skill to produce is about that tool only; benchmarks, runners and any Rosetta details stay out.
 
-**One skill per solver, one interface file per binding.** The skill is named after the solver alone (`choco`, `pumpkin`, `ortools-cp-sat`; `minizinc`, `clingo` for a tool that is its own language), never after solver and language. Its `SKILL.md` holds what is true of the solver in every binding and a table that routes to `interfaces/<interface>.md`, one file per language binding (`java`, `python`, `cpp`, `rust`; the binding's name, such as `pychoco`, only when one language has two). Examples sit in `assets/<interface>/<example>/`. A skill with one binding has this shape too, so a second binding is added without renaming or moving anything. The layout is in [the template](references/skill-template.md).
+**One skill per solver, one interface per binding.** The skill is named after the solver alone (`choco`, `pumpkin`, `ortools-cp-sat`; `minizinc`, `clingo` for a tool that is its own language), never after solver and language. Its `SKILL.md` holds what is true of the solver in every binding and a table that routes to one entry per language binding (`java`, `python`, `cpp`, `rust`; the binding's name, such as `pychoco`, only when one language has two): `interfaces/<interface>.md`, or a folder `interfaces/<interface>/` entered through its `README.md` when one file is not enough. Examples sit in `assets/<interface>/<example>/`. A skill with one binding has this shape too, so a second binding is added without renaming or moving anything. The layout is in [the template](references/skill-template.md).
 
 **New skill or new interface.** Look for a skill of the same solver API first: one bundle shared by several bindings, or another binding's flat skill (`<solver>-<language>`, the older layout). If one exists, the task is to **add an interface** to it, not to write a second skill: follow [adding an interface](references/merge-interfaces.md), which also turns a flat skill into the shared layout. A different modelling layer over the same backend (JuMP or MiniZinc over HiGHS or Gecode, PuLP over CBC, CPMpy over OR-Tools) is a different API and gets its own skill.
 
@@ -98,7 +98,7 @@ Start from [references/skill-template.md](references/skill-template.md). Rules:
 - **Examples are runnable files** in `assets/<interface>/<example>/`; only the Quick start lives inline. Check them with `python scripts/check_assets.py <skill-folder> --interface <interface>`; when the solver lives in a container rather than on this machine, add `--image <image>` (and `--env` for what the image needs, such as a binary on `PATH`).
 - **Link in place**: each section links its doc page, each table row its API entry.
 - **One place per fact**: *Common issues* maps symptom → fix and links back.
-- `SKILL.md` and each interface file under ~200 lines; references one level deep.
+- `SKILL.md` and each interface page under ~200 lines (split a longer interface into a folder, see the template); references one level deep.
 
 Validate with [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref), installed from git into a hidden environment:
 

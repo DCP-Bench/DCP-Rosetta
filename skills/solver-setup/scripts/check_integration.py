@@ -165,7 +165,7 @@ def check_contract(folder):
 
 
 def check_skill(root, folder, metadata):
-    from generation.skills import integration_skill, rosetta_mentions, validate
+    from generation.skills import integration_skill, interface_entry, rosetta_mentions, validate
     path, interface = integration_skill(root, folder.name)
     if "skill" not in metadata:
         # An older integration keeps its own flat skill under solvers/<id>/skills/.
@@ -173,12 +173,12 @@ def check_skill(root, folder, metadata):
         skills = sorted(found.parent for found in (folder / "skills").glob("*/SKILL.md"))
     else:
         # A skill named in metadata.json can be shared by the solver's bindings and
-        # routes to one interface file each.
+        # routes to one interface entry each.
         skills = [root / path] if (root / path / "SKILL.md").is_file() else []
-        if skills and check("metadata: interface names the skill's interface file",
-                            isinstance(interface, str)
-                            and (root / path / "interfaces" / f"{interface}.md").is_file(),
-                            f"set interface and write {path}/interfaces/<interface>.md"):
+        if skills and check("metadata: interface names the skill's interface entry",
+                            isinstance(interface, str) and interface_entry(root / path, interface) is not None,
+                            f"set interface and write {path}/interfaces/<interface>.md "
+                            "or interfaces/<interface>/README.md (one of the two)"):
             assets = root / path / "assets" / interface
             check(f"skill: runnable examples under assets/{interface}/",
                   assets.is_dir() and any(p.is_dir() for p in assets.iterdir()),

@@ -31,7 +31,8 @@ then add the other as in step 2, using its text as the draft for the new interfa
 
 ## 2. Add the new interface
 
-1. Write `interfaces/<interface>.md` and `assets/<interface>/` from the template, with your
+1. Write `interfaces/<interface>.md` (or `interfaces/<interface>/README.md` with further
+   pages, when one file is not enough) and `assets/<interface>/` from the template, with your
    research and probes for this binding.
 2. Re-read every shared claim in `SKILL.md` against the new binding and run the ones in
    doubt. A claim that does not hold for it moves out of the shared text: into a row of the
