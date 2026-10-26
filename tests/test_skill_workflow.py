@@ -193,6 +193,11 @@ class SkillWorkflowTests(unittest.TestCase):
                          ("solvers/old_python/skills/old-python", None))
         self.assertEqual(skills.integration_skill(self.root, "new_java"), ("solvers/new/skills/new", "java"))
         self.assertEqual(skills.integration_skill(self.root, "missing"), (None, None))
+        # A moved integration keeps the ID its metadata names, whatever its folder.
+        (self.root / "solvers/pulp/python").mkdir(parents=True)
+        (self.root / "solvers/pulp/python/metadata.json").write_text('{"id": "pulp_cbc"}')
+        self.assertEqual(integration_folders(self.root)["pulp_cbc"], self.root / "solvers/pulp/python")
+        self.assertEqual(skills.integration_skill(self.root, "pulp_cbc"), (None, "python"))
         (self.root / "solvers/new_java").mkdir()
         (self.root / "solvers/new_java/metadata.json").write_text('{"id": "new_java"}')
         with self.assertRaisesRegex(EvaluationError, "Two folders claim integration new_java"):
