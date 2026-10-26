@@ -1,0 +1,260 @@
+{
+ "skill_name": "yices",
+ "evals": [
+  {
+   "id": 1,
+   "prompt": "Using the Yices C API, fill a 3x3 magic square with the numbers 1 to 9 and print it.",
+   "expected_skill": "yices",
+   "expected_output": "A C program with distinct, bounded integer terms and equal line sums, printing one model",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Calls yices_init() first",
+    "Uses yices_new_uninterpreted_term, not yices_new_variable",
+    "Reads values only after YICES_STATUS_SAT and frees the model"
+   ]
+  },
+  {
+   "id": 2,
+   "prompt": "Write a C program with Yices that lists all solutions of 6 queens.",
+   "expected_skill": "yices",
+   "expected_output": "Every placement via a no-good loop ending in UNSAT",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Asserts a disjunction of output differences after each model",
+    "Does not use yices_assert_blocking_clause",
+    "Stops on YICES_STATUS_UNSAT"
+   ]
+  },
+  {
+   "id": 3,
+   "prompt": "In C with Yices, maximise the value of a 0/1 knapsack read from a JSON file.",
+   "expected_skill": "yices",
+   "expected_output": "Tightening loop proving the optimum",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Asserts objective > best after each SAT",
+    "Reports the optimum only after UNSAT",
+    "Reads JSON with a library such as cJSON, links -lyices"
+   ]
+  },
+  {
+   "id": 4,
+   "prompt": "Using Yices from C, find integers x, y with x*y = 91 and 1 < x < y.",
+   "expected_skill": "yices",
+   "expected_output": "A QF_NIA context",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Creates the context from yices_default_config_for_logic with QF_NIA",
+    "Does not use the default context for the product"
+   ]
+  },
+  {
+   "id": 5,
+   "prompt": "Write a Python program with the yices package that finds all optimal splits of a list of numbers into two equal-count groups with minimal sum difference.",
+   "expected_skill": "yices",
+   "expected_output": "Optimum by tightening, then all optima in a fresh Context",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Builds expressions with Terms.*, not Python operators",
+    "Uses a new Context with objective == best and a no-good loop",
+    "Compares status with Status.SAT / Status.UNSAT"
+   ]
+  },
+  {
+   "id": 6,
+   "prompt": "Using Yices in Python, schedule jobs on machines to minimise the makespan with a 10 second limit.",
+   "expected_skill": "yices",
+   "expected_output": "Disjunctive scheduling with a bound loop and a timeout",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Uses check_context(timeout=...)",
+    "Treats Status.INTERRUPTED as not proven optimal",
+    "Uses Terms.yor for the no-overlap disjunction"
+   ]
+  },
+  {
+   "id": 7,
+   "prompt": "Show that 5 pigeons cannot go into 4 holes with Yices in Python.",
+   "expected_skill": "yices",
+   "expected_output": "UNSAT reported as infeasible",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Uses Terms.distinct or pairwise disequalities",
+    "Does not read a model after UNSAT"
+   ]
+  },
+  {
+   "id": 8,
+   "prompt": "Use Yices to find a feasible assignment for a small integer scheduling problem.",
+   "expected_skill": "yices",
+   "expected_output": "The interface table routes to one binding and the model is written",
+   "assertions": [
+    "Reads SKILL.md and one interface file",
+    "Uses uninterpreted terms and checks the status before reading the model"
+   ]
+  },
+  {
+   "id": 9,
+   "prompt": "Write a C program with Yices that finds all optimal splits of a list of numbers into two equal-count groups with minimal sum difference.",
+   "expected_skill": "yices",
+   "expected_output": "Optimum by tightening, then all optima in a fresh context",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Builds a new context with objective == best",
+    "Enumerates with a no-good loop ending in UNSAT",
+    "Frees models and contexts"
+   ]
+  },
+  {
+   "id": 10,
+   "prompt": "Using the Yices C API, colour a graph read from an edge list with as few colours as possible.",
+   "expected_skill": "yices",
+   "expected_output": "Minimisation by a decreasing bound loop",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Asserts objective < best after each SAT",
+    "Reports optimal only after UNSAT",
+    "Checks every builder result for NULL_TERM"
+   ]
+  },
+  {
+   "id": 11,
+   "prompt": "In C with Yices, schedule jobs on machines to minimise the makespan, with a time limit.",
+   "expected_skill": "yices",
+   "expected_output": "Disjunctive scheduling with a bound loop and a timer-based stop",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Uses yices_or of two ordering atoms for no-overlap",
+    "Uses yices_stop_search from a signal timer for the limit",
+    "Treats YICES_STATUS_INTERRUPTED as not proven optimal"
+   ]
+  },
+  {
+   "id": 12,
+   "prompt": "Write a Python program with the yices package that fills a 3x3 magic square with the numbers 1 to 9.",
+   "expected_skill": "yices",
+   "expected_output": "One model with distinct bounded integers and equal line sums",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Builds expressions with Terms.*, not Python operators",
+    "Reads values only after Status.SAT",
+    "Uses Terms.distinct"
+   ]
+  },
+  {
+   "id": 13,
+   "prompt": "Using the yices Python package, list all solutions of 6 queens.",
+   "expected_skill": "yices",
+   "expected_output": "Every placement via a no-good loop ending in UNSAT",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Asserts a disjunction of output differences after each model",
+    "Does not rely on a blocking clause over integers",
+    "Stops on Status.UNSAT"
+   ]
+  },
+  {
+   "id": 14,
+   "prompt": "In Python with yices, maximise the value of a 0/1 knapsack read from a JSON file.",
+   "expected_skill": "yices",
+   "expected_output": "Tightening loop proving the optimum",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Reads JSON with the standard library",
+    "Asserts objective > best after each SAT",
+    "Reports the optimum only after UNSAT"
+   ]
+  },
+  {
+   "id": 15,
+   "prompt": "Using Yices from Python, colour a graph with the fewest colours.",
+   "expected_skill": "yices",
+   "expected_output": "Minimisation by a decreasing bound loop",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Asserts objective < best after each SAT",
+    "Reports optimal only after UNSAT",
+    "Uses Terms.neq or Terms.distinct for adjacent vertices"
+   ]
+  },
+  {
+   "prompt": "In C with the Yices API, write a solver for a cryptarithm read from a JSON file such as {\"addends\": [\"SEND\", \"MORE\"], \"sum\": \"MONEY\"}: one distinct digit per letter, no leading zero on a multi-letter word.",
+   "expected_skill": "yices",
+   "expected_output": "Constraints built from the data: letter terms bounded 0..9, distinct, weighted sums for each word",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Takes the letters and words from the JSON data, nothing hard-coded",
+    "Builds each word as a weighted sum of letter terms and asserts the addition as an equality",
+    "Asserts distinct over the letters and non-zero leading letters",
+    "Reads values only after SAT, and reports no assignment when the status is UNSAT"
+   ],
+   "id": 16
+  },
+  {
+   "prompt": "In C with the Yices API, place n queens on an n by n board for n given as input (for example 8, and also 3 which has no placement) and print one placement or say that none exists.",
+   "expected_skill": "yices",
+   "expected_output": "One placement via distinct columns and diagonal disequalities; infeasible read from UNSAT",
+   "assertions": [
+    "Reads interfaces/c.md",
+    "Uses distinct for columns and disequalities on differences for diagonals",
+    "Takes n from the input",
+    "Reports infeasible from UNSAT and reads no model then",
+    "Reads values only after SAT"
+   ],
+   "id": 17
+  },
+  {
+   "prompt": "In Python with the yices package, write a solver for a cryptarithm read from a JSON file such as {\"addends\": [\"SEND\", \"MORE\"], \"sum\": \"MONEY\"}: one distinct digit per letter, no leading zero on a multi-letter word.",
+   "expected_skill": "yices",
+   "expected_output": "Constraints built from the data: letter terms bounded 0..9, distinct, weighted sums for each word",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Takes the letters and words from the JSON data, nothing hard-coded",
+    "Builds each word as a weighted sum of letter terms and asserts the addition as an equality",
+    "Asserts distinct over the letters and non-zero leading letters",
+    "Reads values only after SAT, and reports no assignment when the status is UNSAT"
+   ],
+   "id": 18
+  },
+  {
+   "prompt": "In Python with the yices package, place n queens on an n by n board for n given as input (for example 8, and also 3 which has no placement) and print one placement or say that none exists.",
+   "expected_skill": "yices",
+   "expected_output": "One placement via distinct columns and diagonal disequalities; infeasible read from UNSAT",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Uses distinct for columns and disequalities on differences for diagonals",
+    "Takes n from the input",
+    "Reports infeasible from UNSAT and reads no model then",
+    "Reads values only after SAT"
+   ],
+   "id": 19
+  },
+  {
+   "id": 20,
+   "prompt": "Write a Z3 Python model for n-queens.",
+   "expected_skill": null,
+   "expected_output": "The skill is not used",
+   "assertions": [
+    "yices is not loaded"
+   ]
+  },
+  {
+   "id": 21,
+   "prompt": "Write a MiniZinc model that minimises the total cost of a transport problem.",
+   "expected_skill": null,
+   "expected_output": "The skill is not used",
+   "assertions": [
+    "yices is not loaded"
+   ]
+  },
+  {
+   "id": 22,
+   "prompt": "Explain how a CDCL SAT solver learns clauses, without any particular tool.",
+   "expected_skill": null,
+   "expected_output": "The skill is not used",
+   "assertions": [
+    "yices is not loaded"
+   ]
+  }
+ ]
+}
