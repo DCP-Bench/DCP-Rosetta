@@ -16,7 +16,7 @@ What a model must look like comes from three layers, read in this order every ti
 | Layer | Where | What it gives you |
 |---|---|---|
 | The submission contract | `solvers/CONTRACT.md` | What every model must do to be evaluated, for any solver: input, declared outputs, objective, what the runner does, what a model must not do |
-| The integration contract | `solvers/<id>/CONTRACT.md` | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
+| The integration contract | `CONTRACT.md` in the integration's folder: `solvers/<solver>/<interface>/` for id `<solver>_<interface>`, or `solvers/<id>/` for older integrations | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
 | The solver skill | the `skill` path `next_work` reports for the integration, and its `interface` | How to model with that solver: its API and pitfalls. A skill shared by several bindings of one solver routes from its `SKILL.md` to `interfaces/<interface>.md` or `interfaces/<interface>/README.md`: read `SKILL.md` and that interface, nothing of the others. |
 
 The contracts are Rosetta's; the solver skill is not, and knows nothing about this repository. Where a skill and a contract disagree on how a submission looks, **the contracts win**.
@@ -74,7 +74,7 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    be larger or smaller (a board, a number of items, a matrix of classes), so
    take sizes from each instance's own data unless the description fixes them.
 6. **Write the model** into the attempt directory: `solvers/CONTRACT.md` for what
-   it must do, `solvers/<id>/CONTRACT.md` for the shape it takes in that
+   it must do, the integration's `CONTRACT.md` for the shape it takes in that
    integration (start from its example), and the solver skill for the API. It
    must build the model *from* the instance argument. Fixed mathematical
    constants are fine; embedding a known answer is the one failure this whole
@@ -162,7 +162,7 @@ one model it recognises.
   | The lesson is about | It goes into |
   |---|---|
   | the solver or its API (an API needs integer coefficients, a constraint has another name) | the solver skill, via propose/check/apply in [operations](references/operations.md): its interface file when the lesson is about one binding's API, its `SKILL.md` only when it holds in every binding |
-  | how this integration's runner reads a model (an output container it rejects, a shape it mangles) | that integration's `solvers/<id>/CONTRACT.md`, edited directly with the evidence. The runner's code is the authority, so check the claim against `run.py` |
+  | how this integration's runner reads a model (an output container it rejects, a shape it mangles) | that integration's `CONTRACT.md`, edited directly with the evidence. The runner's code is the authority, so check the claim against `run.py` |
   | what every model must do | nothing: `solvers/CONTRACT.md` binds every integration, so report it to the user as a proposal |
 
   Problem-specific insight belongs in that pair's attempt history and nowhere

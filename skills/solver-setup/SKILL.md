@@ -138,8 +138,8 @@ Follow [section 2](#2-stand-alone-solver-skill):
 | add-solver asks | Answer |
 |---|---|
 | Solver and language | The caller's target |
-| Where to write the skill | `solvers/<solver>/skills/<solver>/`; the folder `solvers/<solver>/` holds only `skills/` unless an integration's id is the solver's name. An existing skill of the same solver API stays where it is, and you add an interface to it |
-| Integration id | `<solver>_<interface>` |
+| Where to write the skill | `solvers/<solver>/skills/<name>/`, `<solver>` in lowercase with underscores (`ortools_cp_sat`), `<name>` the skill's hyphenated name (`ortools-cp-sat`). An existing skill of the same solver API stays where it is, and you add an interface to it |
+| Where the integration goes | `solvers/<solver>/<interface>/`, beside the skill: called `<integration>/` below. Its id is `<solver>_<interface>` (`choco_java`; `clingo_asp` for clingo's ASP language), which names its image, its models and every command below |
 | Workspace | `generation/runs/RUN/setup/<id>/<attempt>/add-solver-workspace/` |
 
 Two Rosetta rules on top:
@@ -147,14 +147,14 @@ Two Rosetta rules on top:
 - **The solver is never installed on the host.** Write the `Dockerfile` first (step 3), build it,
   and run the probes and toy tests inside the image, e.g.
   `run_toy_tests.py --cmd 'docker run --rm --network none -v "$PWD":/w -w /w --entrypoint python IMAGE <workspace>/round-N/models/{problem}.py {instance}'`.
-- **The skill stays standalone.** No DCP-Rosetta, runner or submission instructions in it, and no facts about this integration's container (those go in `solvers/<id>/CONTRACT.md`); it must work outside this repository. Check it three ways:
+- **The skill stays standalone.** No DCP-Rosetta, runner or submission instructions in it, and no facts about this integration's container (those go in `<integration>/CONTRACT.md`); it must work outside this repository. Check it three ways:
   `python -m generation.skills validate --project <skill-folder>`, `python -m generation.skills rosetta-mentions skill-folder>` (names), and a [standalone review](references/standalone-review.md) by a fresh agent (meaning). If this setup itself runs as a subagent and cannot start one, return the skill path, and the caller runs the review. Save the clean review's JSON as `solvers/<solver>/standalone-review.json`, next to the skill it reviewed; it covers every interface, so any change to the skill needs a new review.
 
 ## 3.2 Add the Rosetta infrastructure
 
-Read the submission contract `solvers/CONTRACT.md` first: it is what every model must do, for any solver, and the runner you build is what lets a model in this solver's own terms do it. Then copy the closest existing integration under `solvers/` (same language, or same way of receiving the instance) and adapt `metadata.json`, `Dockerfile`, `run.py` and `readiness_test.py`. `metadata.json` names the skill and the binding: `"skill": "solvers/<solver>/skills/<solver>"`, `"interface": "<interface>"`.
+Read the submission contract `solvers/CONTRACT.md` first: it is what every model must do, for any solver, and the runner you build is what lets a model in this solver's own terms do it. Then copy the closest existing integration under `solvers/` (same language, or same way of receiving the instance) into `<integration>/` and adapt `metadata.json`, `Dockerfile`, `run.py` and `readiness_test.py`. Fix what assumes the copied location: the `COPY <integration>/...` paths in the `Dockerfile` (the build context is the repository root), and the repository root a `readiness_test.py` computes from its own path (`parents[3]` for `solvers/<solver>/<interface>/`). The skill and the interface follow from the location: tools read `SKILL.md` and `interfaces/<interface>` of the skill beside it.
 
-Write the integration contract `solvers/<id>/CONTRACT.md`: how this runner realises the submission contract, under the headings of its *Mapping checklist*, with the pilot fixture as its example. Every claim in it must be true of your `run.py`. It is what the model-generator skill reads to write a model for this integration, next to the standalone skill, so the standalone skill itself stays free of it.
+Write the integration contract `<integration>/CONTRACT.md`: how this runner realises the submission contract, under the headings of its *Mapping checklist*, with the pilot fixture as its example. Every claim in it must be true of your `run.py`. It is what the model-generator skill reads to write a model for this integration, next to the standalone skill, so the standalone skill itself stays free of it.
 
 The rules for each file, and the choice of who converts the JSON instance, are in [integration files](references/integration.md). Check them as you go:
 
@@ -167,10 +167,10 @@ Build with `python -m evaluation.build <id>`, bounded by the remaining budget. E
 ## 3.3 Readiness
 
 ```bash
-python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
+python -m generation.readiness check --solver ID --output <integration>/readiness.json
 ```
 
-This runs `solvers/<id>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.json`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
+This runs `<integration>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.json`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
 rebuild, delete `readiness.json`, and check and verify again (on a separately tagged image while a campaign is still evaluating on `:v1`). Then register it as a pilot (see *Once certified* in [integration files](references/integration.md)) and run `scripts/check_integration.py ID` without `--static`: it must exit 0 before you return **ready**. After changing shared runner code, rerun the affected existing integrations too.
 
 ## 3.4. Return

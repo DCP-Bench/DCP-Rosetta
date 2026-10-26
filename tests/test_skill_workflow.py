@@ -173,20 +173,30 @@ class SkillWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not \\['notes'\\]"):
             skills.validate(self.bundle)
 
-    def test_integration_skill_prefers_metadata_over_its_own_folder(self):
+    def test_integration_skill_follows_where_the_integration_lives(self):
+        """A flat integration has its own skill; one nested under its solver uses the
+        solver's shared skill, in the interface its folder is named after."""
+        from evaluation.execution import EvaluationError, integration_folders
         legacy = self.root / "solvers/old_python"
         (legacy / "skills/old-python").mkdir(parents=True)
         (legacy / "skills/old-python/SKILL.md").write_text(self.text)
         (legacy / "metadata.json").write_text('{"id": "old_python"}')
+        (legacy / "readiness").mkdir()
+        (legacy / "readiness/metadata.json").write_text("{}")  # part of old_python, not an integration
+        (self.root / "solvers/new/skills/new").mkdir(parents=True)
+        (self.root / "solvers/new/skills/new/SKILL.md").write_text(self.text)
+        (self.root / "solvers/new/java").mkdir()
+        (self.root / "solvers/new/java/metadata.json").write_text('{"id": "new_java"}')
+        self.assertEqual(integration_folders(self.root),
+                         {"new_java": self.root / "solvers/new/java", "old_python": legacy})
         self.assertEqual(skills.integration_skill(self.root, "old_python"),
                          ("solvers/old_python/skills/old-python", None))
-        shared = self.root / "solvers/new_java"
-        shared.mkdir()
-        (shared / "metadata.json").write_text(json.dumps(
-            {"id": "new_java", "skill": "solvers/new/skills/new", "interface": "java"}))
         self.assertEqual(skills.integration_skill(self.root, "new_java"), ("solvers/new/skills/new", "java"))
         self.assertEqual(skills.integration_skill(self.root, "missing"), (None, None))
-
+        (self.root / "solvers/new_java").mkdir()
+        (self.root / "solvers/new_java/metadata.json").write_text('{"id": "new_java"}')
+        with self.assertRaisesRegex(EvaluationError, "Two folders claim integration new_java"):
+            integration_folders(self.root)
 
 if __name__ == "__main__":
     unittest.main()

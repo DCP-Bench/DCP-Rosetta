@@ -5,7 +5,9 @@ Usage, from the DCP-Bench Open repository root:
     python <skill>/scripts/check_integration.py ID [--static] [--repo PATH]
 
 Prints one line per check (PASS, WARN or FAIL) and exits 1 if any check failed.
-Without --static it also verifies solvers/ID/readiness.json against the current
+An integration is `solvers/ID/`, or `solvers/<solver>/<interface>/` (ID `<solver>_<interface>`)
+beside the skill its solver's bindings share. Without --static it also verifies its
+readiness.json against the current
 files and image, which needs Docker; use --static while the work is in progress.
 It checks what can be checked without running the integration: whether run.py
 is honest is for readiness_test.py to show, not for this script.
@@ -19,7 +21,7 @@ import sys
 
 REQUIRED_KEYS = {"id", "name", "language", "framework", "solver", "paradigms", "image",
                  "extension", "enumeration", "protocol_version"}
-OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level", "skill", "interface"}
+OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level"}
 BINDINGS = {"any", "rectangular_uniform", "reshaped"}
 FILES = ("metadata.json", "Dockerfile", "run.py", "readiness_test.py")
 
@@ -51,7 +53,7 @@ def check_metadata(root, solver_id, metadata):
     check("metadata: no unknown keys", keys <= REQUIRED_KEYS | OPTIONAL_KEYS,
           f"unknown {sorted(keys - REQUIRED_KEYS - OPTIONAL_KEYS)}")
     check("metadata: id matches folder", metadata.get("id") == solver_id,
-          f"id {metadata.get('id')!r} in solvers/{solver_id}/")
+          f"id {metadata.get('id')!r} for integration {solver_id}")
     check("metadata: id format", re.fullmatch(r"[a-z0-9_]+", solver_id or "") is not None,
           "lowercase letters, digits and underscores only")
     for key in ("name", "language", "framework", "solver", "image", "extension"):
@@ -75,10 +77,11 @@ def check_metadata(root, solver_id, metadata):
               f"one of {sorted(BINDINGS)}")
 
     others = {}
-    for path in (root / "solvers").glob("*/metadata.json"):
-        if path.parent.name != solver_id:
+    from evaluation.execution import integration_folders
+    for other, folder in integration_folders(root).items():
+        if other != solver_id:
             try:
-                others[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
+                others[other] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
             except ValueError:
                 pass
     versions = {item.get("protocol_version") for item in others.values()}
@@ -107,7 +110,7 @@ def check_metadata(root, solver_id, metadata):
           f"add {metadata.get('extension')!r} to EXTENSION_LANGUAGE in generate_site.py")
 
 
-def check_dockerfile(solver_id, folder):
+def check_dockerfile(relative, folder):
     text = (folder / "Dockerfile").read_text(encoding="utf-8")
     bases = re.findall(r"^\s*FROM\s+(\S+)", text, re.M | re.I)
     check("Dockerfile: has a FROM", bool(bases))
@@ -117,8 +120,8 @@ def check_dockerfile(solver_id, folder):
     bases = [re.sub(r"\$\{(\w+)\}|\$(\w+)", lambda m: defaults.get(m[1] or m[2], m[0]), base) for base in bases]
     unpinned = [base for base in bases if "@sha256:" not in base and base.lower() not in stages]
     check("Dockerfile: base images pinned by digest", not unpinned, f"unpinned {unpinned}")
-    check("Dockerfile: copies its run.py", f"solvers/{solver_id}/run.py" in text,
-          f"COPY solvers/{solver_id}/run.py into the image")
+    check("Dockerfile: copies its run.py", f"{relative}/run.py" in text,
+          f"COPY {relative}/run.py into the image")
     check("Dockerfile: has an ENTRYPOINT", re.search(r"^\s*ENTRYPOINT\s", text, re.M | re.I) is not None)
     sources = []
     for line in re.findall(r"^\s*(?:COPY|ADD)\s+(.+)$", text, re.M | re.I):
@@ -153,30 +156,30 @@ CONTRACT_HEADINGS = ("Submission file", "Entrypoint", "Instance", "Outputs", "Ob
                      "Solving", "Compilation", "Environment", "Traps", "Example")
 
 
-def check_contract(folder):
+def check_contract(relative, folder):
     """solvers/<id>/CONTRACT.md answers the mapping checklist of solvers/CONTRACT.md."""
     path = folder / "CONTRACT.md"
     if not check("contract: CONTRACT.md exists", path.is_file(),
-                 f"write solvers/{folder.name}/CONTRACT.md (see solvers/CONTRACT.md, Mapping checklist)"):
+                 f"write {relative}/CONTRACT.md (see solvers/CONTRACT.md, Mapping checklist)"):
         return
     headings = re.findall(r"^## (.+?)\s*$", path.read_text(encoding="utf-8"), re.M)
     missing = [heading for heading in CONTRACT_HEADINGS if heading not in headings]
     check("contract: has every checklist heading", not missing, f"missing {missing}")
 
 
-def check_skill(root, folder, metadata):
+def check_skill(root, solver_id, folder):
     from generation.skills import integration_skill, interface_entry, rosetta_mentions, validate
-    path, interface = integration_skill(root, folder.name)
-    if "skill" not in metadata:
-        # An older integration keeps its own flat skill under solvers/<id>/skills/.
+    path, interface = integration_skill(root, solver_id)
+    if interface is None:
+        # A flat integration keeps its own skill under solvers/<id>/skills/.
         path = None
         skills = sorted(found.parent for found in (folder / "skills").glob("*/SKILL.md"))
     else:
-        # A skill named in metadata.json can be shared by the solver's bindings and
+        # A nested integration uses the skill its solver's bindings share, which
         # routes to one interface entry each.
         skills = [root / path] if (root / path / "SKILL.md").is_file() else []
-        if skills and check("metadata: interface names the skill's interface entry",
-                            isinstance(interface, str) and interface_entry(root / path, interface) is not None,
+        if skills and check(f"skill: has the interface {interface}",
+                            interface_entry(root / path, interface) is not None,
                             f"set interface and write {path}/interfaces/<interface>.md "
                             "or interfaces/<interface>/README.md (one of the two)"):
             assets = root / path / "assets" / interface
@@ -184,7 +187,8 @@ def check_skill(root, folder, metadata):
                   assets.is_dir() and any(p.is_dir() for p in assets.iterdir()),
                   f"add {path}/assets/{interface}/<example>/README.md")
     if not check("skill: standalone skill exists", bool(skills),
-                 f"no {path}/SKILL.md" if path else f"no {folder.name}/skills/<name>/SKILL.md"):
+                 f"no {path}/SKILL.md" if path else
+                 f"no skills/<name>/SKILL.md in {folder.parent if interface else folder}"):
         return
     for skill in skills:
         try:
@@ -209,8 +213,8 @@ def check_certified(root, solver_id, metadata):
           (root / "README.md").read_text(encoding="utf-8"), f"add {metadata.get('name')!r} to README.md")
 
 
-def check_readiness(root, solver_id):
-    record = root / "solvers" / solver_id / "readiness.json"
+def check_readiness(root, solver_id, folder):
+    record = folder / "readiness.json"
     if not check("readiness: record exists", record.is_file(),
                  f"run python -m generation.readiness check --solver {solver_id} --output {record.relative_to(root)}"):
         return
@@ -232,8 +236,10 @@ def main():
     if not (root / "generation/readiness.py").is_file():
         sys.exit(f"{root} is not a DCP-Bench Open checkout; run from its root or pass --repo")
     sys.path.insert(0, str(root))  # the skill and readiness checks import generation.*
-    folder = root / "solvers" / args.solver_id
-    present = [check(f"files: {name}", (folder / name).is_file(), f"missing solvers/{args.solver_id}/{name}")
+    from evaluation.execution import integration_folder
+    folder = integration_folder(args.solver_id, root)
+    relative = folder.relative_to(root).as_posix()
+    present = [check(f"files: {name}", (folder / name).is_file(), f"missing {relative}/{name}")
                for name in FILES]
     metadata = {}
     if present[0]:
@@ -247,13 +253,13 @@ def main():
         else:
             metadata = {}
     if present[1]:
-        check_dockerfile(args.solver_id, folder)
+        check_dockerfile(relative, folder)
     if all(present[2:]):
         check_scripts(root, folder, metadata)
-    check_contract(folder)
-    check_skill(root, folder, metadata)
+    check_contract(relative, folder)
+    check_skill(root, args.solver_id, folder)
     if not args.static:
-        check_readiness(root, args.solver_id)
+        check_readiness(root, args.solver_id, folder)
         if metadata and (folder / "readiness.json").is_file():
             check_certified(root, args.solver_id, metadata)
     failed, warned = results.count("FAIL"), results.count("WARN")

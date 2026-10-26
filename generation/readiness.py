@@ -9,7 +9,7 @@ import subprocess
 import sys
 from typing import Any
 
-from evaluation.execution import ROOT as EVALUATION_ROOT, image_identity, integration
+from evaluation.execution import ROOT as EVALUATION_ROOT, image_identity, integration, integration_folder
 from evaluation.results import EvaluationError
 
 
@@ -22,9 +22,8 @@ CHECK_SCRIPT = "readiness_test.py"
 # so it must not invalidate evidence about how it runs. Everything else is
 # behaviour: `image` names what was tested, `enumeration` and `optimization`
 # decide which tests are required, `extension` and `instance_binding` decide
-# what a submission may be. `skill` and `interface` say which skill models are
-# written from, which the runner never reads.
-DESCRIPTIVE_METADATA = ("name", "paradigms", "skill", "interface")
+# what a submission may be.
+DESCRIPTIVE_METADATA = ("name", "paradigms")
 CHECK_TIMEOUT = 1800
 # Required at readiness_level 2 whatever the integration's capabilities; the
 # optimisation and enumeration ones are added in _required.
@@ -70,7 +69,7 @@ def _write_new(path: Path, value: Any) -> None:
 
 def _files(solver_id: str) -> tuple[dict[str, Any], dict[str, str]]:
     metadata = integration(solver_id)
-    folder = ROOT / "solvers" / solver_id
+    folder = integration_folder(solver_id, ROOT)
     paths = {"metadata": folder / "metadata.json", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
              "checks": folder / CHECK_SCRIPT}
     missing = [name for name, path in paths.items() if not path.is_file()]
@@ -177,7 +176,7 @@ def run_checks(solver_id: str, output_dir: str | Path) -> Path:
     zero only when every check passed. Running it here, rather than accepting a
     report someone typed, is what ties the record to an actual execution.
     """
-    script = ROOT / "solvers" / solver_id / CHECK_SCRIPT
+    script = integration_folder(solver_id, ROOT) / CHECK_SCRIPT
     if not script.is_file():
         raise ReadinessError(f"Integration has no {CHECK_SCRIPT}: write one before claiming readiness")
     directory = Path(output_dir).resolve()

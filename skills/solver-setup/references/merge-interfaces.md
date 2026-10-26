@@ -55,5 +55,9 @@ A change to the shared text changes what every binding's reader is taught, so:
 - One standalone review of the whole skill, which also checks shared claims against every
   interface file.
 
-Then point every integration of the solver at the skill (`skill` and `interface` in its
-`metadata.json`) and remove the flat bundles that were merged.
+Then move every integration of the solver beside the skill, `solvers/<solver>/<interface>/`
+(keeping its id, so its image and models stay as they are), fix its `Dockerfile` `COPY` paths,
+the root its `readiness_test.py` computes and the relative links in its `CONTRACT.md`, remove
+the flat bundles that were merged, rebuild its image and redo its readiness record (the
+`Dockerfile` changed). Each integration stays testable on its own: `check_assets.py --interface`,
+`check_integration.py <id>` and `generation.readiness` all take one interface or id.

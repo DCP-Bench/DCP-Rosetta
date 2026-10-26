@@ -56,10 +56,38 @@ def run_process(command, timeout, input_bytes=None):
     return process.returncode, *(b.decode("utf-8", errors="replace") for b in buffers)
 
 
+def integration_folders(root=ROOT):
+    """Every integration's folder by ID, in ID order.
+
+    An integration is a folder holding metadata.json: `solvers/<id>/`, or, beside
+    the skill its solver's bindings share, `solvers/<solver>/<interface>/` with ID
+    `<solver>_<interface>`. A folder under a flat integration is part of it, not
+    an integration of its own.
+    """
+    solvers = Path(root) / "solvers"
+    folders = {path.parent.name: path.parent for path in solvers.glob("*/metadata.json")}
+    for path in solvers.glob("*/*/metadata.json"):
+        solver = path.parent.parent
+        if (solver / "metadata.json").is_file():
+            continue
+        solver_id = f"{solver.name}_{path.parent.name}"
+        if solver_id in folders:
+            raise EvaluationError("infrastructure_error",
+                                  f"Two folders claim integration {solver_id}: {folders[solver_id]} and {path.parent}")
+        folders[solver_id] = path.parent
+    return dict(sorted(folders.items()))
+
+
+def integration_folder(solver_id, root=ROOT):
+    """The folder of one integration (see integration_folders); it need not exist yet,
+    so a missing integration reads as `solvers/<id>/`."""
+    return integration_folders(root).get(solver_id, Path(root) / "solvers" / solver_id)
+
+
 def integration(solver_id):
     if not isinstance(solver_id, str) or not solver_id or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789_" for c in solver_id):
         raise EvaluationError("unsupported_solver", "Use an installed solver integration ID")
-    path = ROOT / "solvers" / solver_id / "metadata.json"
+    path = integration_folder(solver_id) / "metadata.json"
     if not path.is_file():
         raise EvaluationError("unsupported_solver", f"No integration: {solver_id}")
     metadata = strict_json(path.read_text(encoding="utf-8"))

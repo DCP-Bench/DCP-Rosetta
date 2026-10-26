@@ -2,18 +2,18 @@
 import argparse
 import subprocess
 
-from .execution import ROOT, integration
+from .execution import ROOT, integration, integration_folder, integration_folders
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("solver_ids", nargs="*")
     args = parser.parse_args()
-    ids = args.solver_ids or sorted(p.parent.name for p in (ROOT / "solvers").glob("*/metadata.json"))
+    ids = args.solver_ids or list(integration_folders())
     for solver_id in ids:
         metadata = integration(solver_id)
         subprocess.run(["docker", "build", "--platform=linux/amd64", "-t", metadata["image"],
-                        "-f", str(ROOT / "solvers" / solver_id / "Dockerfile"), str(ROOT)], check=True)
+                        "-f", str(integration_folder(solver_id) / "Dockerfile"), str(ROOT)], check=True)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ interface table is the only place where bindings may differ.
 ## Output
 
 Write one JSON object to `solvers/<solver>/standalone-review.json` (the folder holding
-`skills/<solver>/`), outside the skill folder. It covers every interface:
+`skills/<name>/`), outside the skill folder. It covers every interface:
 
 ```json
 {

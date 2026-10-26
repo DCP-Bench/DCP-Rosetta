@@ -1,6 +1,6 @@
 # choco_java: how this integration realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how Choco in Java
+Read [the submission contract](../../CONTRACT.md) first; this file only says how Choco in Java
 expresses it. Runner: [run.py](run.py), which compiles the submission with `javac` and runs
 the driver [java/dcp/Main.java](java/dcp/Main.java), which owns solving, enumeration and the
 protocol. The data and output helpers are [java/dcp/Instance.java](java/dcp/Instance.java)
@@ -113,7 +113,7 @@ dcp-eval/choco_java:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_choco_java.java](../../tests/fixtures/model_choco_java.java)
+The pilot fixture [tests/fixtures/model_choco_java.java](../../../tests/fixtures/model_choco_java.java)
 (instance fields `n`, `optimize`; outputs `x`, `y`):
 
 ```java

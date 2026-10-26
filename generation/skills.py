@@ -16,6 +16,8 @@ import uuid
 
 import yaml
 
+from evaluation.execution import integration_folder
+
 ROOT = Path(__file__).resolve().parents[1]
 # Where canonical skills live: public skills, the Rosetta skills, and solver skills.
 SKILL_ROOTS = ("skills", "rosetta-skills", "solvers")
@@ -83,21 +85,18 @@ def integration_skill(root, solver_id):
     """The solver skill an integration's models are written from, and which of its
     interfaces they use, as (path relative to root, interface).
 
-    `skill` and `interface` in solvers/<id>/metadata.json name a skill that every
-    binding of one solver shares, `solvers/<solver>/skills/<solver>/` with an
-    interface entry per binding (see interface_entry). Without them the skill is the single
-    bundle under solvers/<id>/skills/, with no interface; the path is None when
-    there is none or several.
+    An integration nested under its solver, `solvers/<solver>/<interface>/`, uses
+    the one skill its solver's bindings share under `solvers/<solver>/skills/`, in
+    the interface its folder is named after (see interface_entry). A flat
+    integration, `solvers/<id>/`, has its own bundle under `solvers/<id>/skills/`
+    and no interface. The path is None when there is no bundle, or several.
     """
     root = Path(root)
-    try:
-        metadata = read(root / "solvers" / solver_id / "metadata.json")
-    except (OSError, ValueError):
-        metadata = {}
-    if isinstance(metadata, dict) and isinstance(metadata.get("skill"), str):
-        return metadata["skill"], metadata.get("interface")
-    found = sorted((root / "solvers" / solver_id / "skills").glob("*/SKILL.md"))
-    return (found[0].parent.relative_to(root).as_posix() if len(found) == 1 else None), None
+    folder = integration_folder(solver_id, root)
+    nested = folder.parent != root / "solvers"
+    found = sorted(((folder.parent if nested else folder) / "skills").glob("*/SKILL.md"))
+    path = found[0].parent.relative_to(root).as_posix() if len(found) == 1 else None
+    return path, folder.name if nested else None
 
 
 def interface_entry(skill, interface):

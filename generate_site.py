@@ -450,7 +450,7 @@ def load_generated_models() -> dict:
     """Scan generated_models/<problem>/<solver>/<submission>/ -> {problem: {solver id: [entries]}}.
 
     Keyed on the integration id, never on its display name: the name is read
-    from `solvers/<id>/metadata.json` at render time so renaming an integration
+    from the integration's metadata.json at render time so renaming an integration
     is a one-line metadata edit, and two integrations sharing a display name
     cannot collapse into one group.
     """
@@ -773,9 +773,10 @@ def load_paradigm_vocabulary() -> list:
 def load_integrations() -> dict:
     """Solver integrations by ID. The metadata files are JSON despite the suffix."""
     out = {}
-    for path in sorted(SOLVERS_DIR.glob("*/metadata.json")):
+    from evaluation.execution import integration_folders
+    for solver_id, folder in integration_folders(SOLVERS_DIR.resolve().parent).items():
         try:
-            out[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
+            out[solver_id] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
     return out

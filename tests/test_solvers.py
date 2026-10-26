@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
-from evaluation.execution import image_identity, run_process
+from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
 
@@ -32,7 +32,7 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
 # entry, because there is no direction in their fixture to turn around.
 def satisfaction_only(solver):
-    path = ROOT / "solvers" / solver / "metadata.json"
+    path = integration_folder(solver, ROOT) / "metadata.json"
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
@@ -98,14 +98,14 @@ class MetadataTests(unittest.TestCase):
         self.vocabulary = json.loads(
             (ROOT / "solvers/paradigms.json").read_text(encoding="utf-8"))
         self.integrations = {
-            path.parent.name: json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted((ROOT / "solvers").glob("*/metadata.json"))
+            solver: json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
+            for solver, folder in integration_folders(ROOT).items()
         }
         # An integration counts as certified once it carries a readiness record,
         # which is also what next_work uses to decide it may be used at all.
         self.certified = {
             solver: metadata for solver, metadata in self.integrations.items()
-            if (ROOT / "solvers" / solver / "readiness.json").is_file()
+            if (integration_folder(solver, ROOT) / "readiness.json").is_file()
         }
 
     def test_paradigm_vocabulary_is_well_formed(self):
@@ -156,8 +156,8 @@ class MetadataTests(unittest.TestCase):
         self.assertIn("Entrypoint", headings, "the mapping checklist lists the required headings")
         for solver in self.integrations:
             with self.subTest(solver=solver):
-                path = ROOT / "solvers" / solver / "CONTRACT.md"
-                self.assertTrue(path.is_file(), f"write solvers/{solver}/CONTRACT.md")
+                path = integration_folder(solver, ROOT) / "CONTRACT.md"
+                self.assertTrue(path.is_file(), f"write {path.relative_to(ROOT)}")
                 present = re.findall(r"^## (.+?)\s*$", path.read_text(encoding="utf-8"), re.M)
                 self.assertEqual([h for h in present if h in headings], headings,
                                  "use every checklist heading, in order")

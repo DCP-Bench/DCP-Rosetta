@@ -6,9 +6,12 @@ overview; this file is the exact syntax, schemas and rules.
 `rosetta-skills/model-generator` runs the campaign loop; `rosetta-skills/solver-setup` creates or
 repairs integrations. One agent reads them and does the work. What a model must look
 like is in two repository files both skills share: the submission contract
-`solvers/CONTRACT.md`, and each integration's `solvers/<id>/CONTRACT.md` saying how that
-integration realises it. How to model with a solver is in its standalone skill under
-`solvers/<id>/skills/`; `next_work` reports it as each integration's `skill`. These Python
+`solvers/CONTRACT.md`, and each integration's `CONTRACT.md` saying how that
+integration realises it. An integration's folder is `solvers/<solver>/<interface>/` (id
+`<solver>_<interface>`), beside the standalone skill its solver's bindings share under
+`solvers/<solver>/skills/`; older integrations are `solvers/<id>/` with their own skill under
+`solvers/<id>/skills/`. `next_work` reports each integration's `skill`, and its `interface`
+when the skill is shared. These Python
 commands provide records and checks; they do not choose a solver, call an LLM
 provider, or replace the skills.
 Use the repository Python environment from the repository root. All operations
@@ -122,7 +125,7 @@ child beneath `generated_models/PROBLEM/SOLVER/`.
 
 ## Integration readiness
 
-Every integration ships `solvers/<id>/readiness_test.py`, a required artifact
+Every integration ships `readiness_test.py` in its folder, a required artifact
 alongside the runner and Dockerfile. It drives the evaluator against the built
 image, prints a JSON object mapping check name to Boolean on stdout, and exits
 nonzero if any check failed. `generation.readiness check` runs it, keeps its
@@ -145,8 +148,8 @@ test assertions in the evidence; the coordinator is responsible for that
 assessment. The helper prevents omission/stale evidence, not falsified reports.
 
 ```sh
-python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
-python -m generation.readiness verify --solver ID --record solvers/ID/readiness.json
+python -m generation.readiness check --solver ID --output <integration folder>/readiness.json
+python -m generation.readiness verify --solver ID --record <integration folder>/readiness.json
 ```
 
 **A committed record does not survive a rebuild, so a fresh checkout has to

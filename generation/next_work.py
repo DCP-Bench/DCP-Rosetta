@@ -14,7 +14,7 @@ import argparse
 import json
 import sys
 
-from evaluation.execution import ROOT, integration
+from evaluation.execution import ROOT, integration, integration_folders
 from evaluation.results import EvaluationError
 
 from .brief import RECTANGULAR_UNIFORM, RESHAPED, runner_refusals, unbindable
@@ -35,15 +35,14 @@ def solver_skill(solver_id):
 def integrations():
     """Every declared integration, with whether it is usable right now."""
     result = []
-    for path in sorted((ROOT / "solvers").glob("*/metadata.json")):
-        solver_id = path.parent.name
+    for solver_id, folder in integration_folders(ROOT).items():
         record = {"id": solver_id, "ready": False}
         # The solver skill to pass to `generation.manage attempt --skill`, and the
         # file under its interfaces/ to read when the skill serves several bindings.
         record["skill"], interface = solver_skill(solver_id)
         if interface:
             record["interface"] = interface
-        readiness = path.parent / "readiness.json"
+        readiness = folder / "readiness.json"
         try:
             metadata = integration(solver_id)
             record["enumeration"] = bool(metadata.get("enumeration"))

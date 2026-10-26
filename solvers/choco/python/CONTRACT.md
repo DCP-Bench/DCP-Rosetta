@@ -1,8 +1,8 @@
 # choco_python: how this integration realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how Choco
+Read [the submission contract](../../CONTRACT.md) first; this file only says how Choco
 (pychoco) expresses it. Runner: [run.py](run.py), which imports `emit`, `finish`,
-`flatten` and `mapped` from [runner/runtime.py](../../runner/runtime.py) but has its own
+`flatten` and `mapped` from [runner/runtime.py](../../../runner/runtime.py) but has its own
 `build`, solve and enumeration loop.
 
 ## Submission file
@@ -92,7 +92,7 @@ dcp-eval/choco_python:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_choco.py](../../tests/fixtures/model_choco.py)
+The pilot fixture [tests/fixtures/model_choco.py](../../../tests/fixtures/model_choco.py)
 (instance fields `n`, `optimize`; outputs `x`, `y`):
 
 ```python
