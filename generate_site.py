@@ -66,6 +66,7 @@ SOURCE_COLLECTIONS = {
 LANGUAGES = {
     "python": ("python", "Python"),
     "cpp": ("cpp", "C++"),
+    "c": ("c", "C"),
     "prolog": ("prolog", "Prolog"),
     "asp": ("prolog", "ASP"),
     "minizinc": ("minizinc", "MiniZinc"),
@@ -85,7 +86,7 @@ LANGUAGES = {
 }
 
 # Only for a model whose integration is no longer installed under solvers/.
-EXTENSION_LANGUAGE = {".py": "python", ".cpp": "cpp", ".pl": "prolog", ".ecl": "prolog",
+EXTENSION_LANGUAGE = {".py": "python", ".cpp": "cpp", ".c": "c", ".pl": "prolog", ".ecl": "prolog",
                       ".lp": "asp", ".mzn": "minizinc", ".rs": "rust", ".java": "java", ".pi": "picat", ".jl": "julia", ".eprime": "essence_prime",
                       ".idp": "idp"}
 
@@ -903,6 +904,7 @@ def solver_link(solver_id: str, prefix: str) -> str:
 # integration missing here shows its raw value.
 BACKEND_NAMES = {
     "choco": "Choco",
+    "yices": "Yices",
     "clasp": "clasp",
     "ortools": "OR-Tools CP-SAT",
     "cp_sat": "CP-SAT",

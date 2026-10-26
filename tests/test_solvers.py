@@ -26,7 +26,9 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
           "idp_z3": "model_idp.idp",
           "choco_java": "model_choco_java.java",
           "eclipse_clp": "model_eclipse.ecl",
-          "maxicp_java": "model_maxicp_java.java"}
+          "maxicp_java": "model_maxicp_java.java",
+          "yices_python": "model_yices.py",
+          "yices_c": "model_yices_c.c"}
 
 # Integrations whose metadata says they cannot optimize. The pilot cases that
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
@@ -37,7 +39,8 @@ def satisfaction_only(solver):
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
 # can turn it around. Kept beside PILOTS because the two are added together.
-MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_python": ("minimize", "maximize"),
+MAXIMIZATION_SWAPS = {"yices_python": ("minimize", "maximize"), "yices_c": ("minimize(", "maximize("),
+                      "cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_python": ("minimize", "maximize"),
                       "ortools_cp_sat_cpp": ("Minimize", "Maximize"), "chuffed_cpp": ("OPT_MIN", "OPT_MAX"), "minizinc_gecode": ("minimize", "maximize"),
                       "z3_python": ("minimize", "maximize"),
                       "cvc5_python": ("minimize", "maximize"),
