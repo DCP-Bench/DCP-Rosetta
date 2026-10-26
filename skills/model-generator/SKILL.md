@@ -17,7 +17,7 @@ What a model must look like comes from three layers, read in this order every ti
 |---|---|---|
 | The submission contract | `solvers/CONTRACT.md` | What every model must do to be evaluated, for any solver: input, declared outputs, objective, what the runner does, what a model must not do |
 | The integration contract | `solvers/<id>/CONTRACT.md` | How that integration realises it: file, entrypoint, how the instance arrives, how outputs and the objective go back, its traps, a minimal working example |
-| The solver skill | the `skill` path (under `solvers/<id>/skills/`) for the integration | How to model with that solver: its API and pitfalls. |
+| The solver skill | the `skill` path `next_work` reports for the integration, and its `interface` | How to model with that solver: its API and pitfalls. A skill shared by several bindings of one solver routes from its `SKILL.md` to `interfaces/<interface>.md`: read `SKILL.md` and that one file. |
 
 The contracts are Rosetta's; the solver skill is not, and knows nothing about this repository. Where a skill and a contract disagree on how a submission looks, **the contracts win**.
 
@@ -161,7 +161,7 @@ one model it recognises.
 
   | The lesson is about | It goes into |
   |---|---|
-  | the solver or its API (an API needs integer coefficients, a constraint has another name) | the solver skill `solvers/<id>/skills/<name>/`, via propose/check/apply in [operations](references/operations.md) |
+  | the solver or its API (an API needs integer coefficients, a constraint has another name) | the solver skill, via propose/check/apply in [operations](references/operations.md): its interface file when the lesson is about one binding's API, its `SKILL.md` only when it holds in every binding |
   | how this integration's runner reads a model (an output container it rejects, a shape it mangles) | that integration's `solvers/<id>/CONTRACT.md`, edited directly with the evidence. The runner's code is the authority, so check the claim against `run.py` |
   | what every model must do | nothing: `solvers/CONTRACT.md` binds every integration, so report it to the user as a proposal |
 
@@ -186,7 +186,8 @@ you keep the decisions and they do the modelling.
   model id for `--agent`, a working directory of its own, and what to report (a table per problem plus the skill gaps it hit, each with the exact
   error message and the fix).
 - **Freeze the solver skill and the integration's contract while a wave runs**
-  (an attempt refuses changes to either anyway). Collect the reported gaps in one
+  (an attempt refuses changes to either anyway). A skill shared by several
+  bindings is frozen for all of them, also for waves on another binding. Collect the reported gaps in one
   file and apply them between waves, each where the lesson table above sends it:
   the solver skill's development copy, the integration's `CONTRACT.md`, or the
   runner. Before adding a syntax claim,
