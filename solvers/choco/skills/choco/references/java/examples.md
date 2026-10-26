@@ -1,7 +1,7 @@
-# Worked models for choco-java
+# Worked models for Choco in Java
 
 Two longer models that combine globals. Each is a complete program: save it as the file named in its
-heading and run it with `java File.java` (with `CLASSPATH` set, see [Install](../SKILL.md#install)).
+heading and run it with `java File.java` (with `CLASSPATH` set, see [Install](../../interfaces/java.md#install)).
 The data is inline, so each runs as is.
 
 ## Shift roster: matrix, globalCardinality, regular, element, minimise

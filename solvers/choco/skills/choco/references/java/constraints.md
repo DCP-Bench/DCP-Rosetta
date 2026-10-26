@@ -11,7 +11,7 @@ interfaces it implements (`IIntConstraintFactory`, `ISchedulingFactory`, `IReifi
   2D `element`) posts at once.
 - `op` is one of `"="`, `"!="`, `"<"`, `">"`, `"<="`, `">="`. In `arithm`, `op1` is `"+"`, `"-"`, `"*"`
   or `"/"`.
-- **Verified:** the semantics in square brackets are checked against brute force in `catalogue.java`.
+- **Verified:** the semantics in square brackets are checked against brute force in `Catalogue.java`.
 - **LCG:** "not under LCG" means the constraint throws or counts wrong with
   `SettingsBuilder.init().setLCG(true)` in 6.0.1.
 
@@ -33,7 +33,7 @@ interfaces it implements (`IIntConstraintFactory`, `ISchedulingFactory`, `IReifi
   Alternatively `new Task(IntVar s, int d)` [s + d = e]. Optional tasks:
   `taskVar(s, d, BoolVar performed)`.
 - An IntVar's bounds must fit in a Java `int`, and the domain width must be at most `Integer.MAX_VALUE`.
-  `checkIntDomainRange` rejects anything larger. Larger numbers are written as digit variables, one per decimal digit (see SKILL.md, Variables and data).
+  `checkIntDomainRange` rejects anything larger. Larger numbers are written as digit variables, one per decimal digit (see interfaces/java.md, Variables and data).
 - `times(x, y, z)` whose bound products overflow an `int` falls back to a slower long-based propagator.
   Under LCG it throws "Multiplication constraint is not supported in LCG mode" instead.
 
@@ -241,7 +241,7 @@ if-then-else value [`v0.eq(v1.eq(1).ift(v2, 3))` is v0 = (v1 = 1 ? v2 : 3)].
 - `element(IntVar index, SetVar[] sets, SetVar s)`.
 - `sortedSetIntsChanneling(s, IntVar[] ints, nullValue, offset)`.
 - Sets do not work with LCG in 6.0.1 (ClassCastException).
-- Outputs go through Booleans (`setBoolsChanneling`) or ints.
+- Read a solved set with `s.getValue()`, or channel it to Booleans (`setBoolsChanneling`) or ints.
 
 ## Graph variables (`graphVar`, `digraphVar`)
 
@@ -253,7 +253,7 @@ if-then-else value [`v0.eq(v1.eq(1).ift(v2, 3))` is v0 = (v1 = 1 ? v2 : 3)].
 - Components: `nbConnectedComponents` and `sizeConnectedComponents`.
 - Graph measures: `nbCliques`, `diameter`, `subgraph`, `symmetric`, `antisymmetric` and `transitivity`.
 - Optimisation: `tsp(g, cost, int[][] edgeCosts, lagrMode)` and `dcmst`.
-- Channelling to Booleans: `nodesChanneling`, `edgeChanneling(g, b, i, j)`, `neighborsChanneling(g, BoolVar[][])`, `successorsChanneling(g, BoolVar[][])` and `predecessorsChanneling`. Outputs go through these Booleans.
+- Channelling to Booleans: `nodesChanneling`, `edgeChanneling(g, b, i, j)`, `neighborsChanneling(g, BoolVar[][])`, `successorsChanneling(g, BoolVar[][])` and `predecessorsChanneling`.
 
 A graph variable needs `UndirectedGraph`/`DirectedGraph` bounds from `org.chocosolver.util.objects.graphs`.
 For routing, successor variables with `circuit`/`path` are simpler and are covered above.

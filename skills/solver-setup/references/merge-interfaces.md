@@ -18,7 +18,7 @@ interface, before anything new is added:
    | what the solver is, its concepts, which global constraints exist, status meanings, search, enumeration strategy, solver-level issues | `SKILL.md` |
    | install, quick start, exact calls, reading data, status constants, parameter names, enumeration code, issues with that binding's syntax or packaging | `interfaces/<interface>.md` |
    | runnable examples | `assets/<interface>/` (fix the links) |
-   | references specific to the binding | `references/<interface>-<name>` |
+   | references specific to the binding | `references/<interface>/` (fix the links) |
 
 3. Add the interface table, set `name`, `description` and `metadata.interfaces`, rename
    `evals/evals.json`'s `skill_name` and `expected_skill`, and split `sources.md` into a

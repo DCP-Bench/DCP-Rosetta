@@ -1,31 +1,19 @@
----
-name: choco-java
-description: Choco 6.0.1, a constraint solver for Java with integer and Boolean variables, global constraints (all different, cumulative, table, circuit, regular and more), search strategies, restarts and lazy clause generation, for finding, enumerating or optimising solutions. Use when writing, debugging or explaining Choco models in Java, or when the user has chosen Choco for a constraint or scheduling problem.
-license: Apache-2.0
-compatibility: Requires a JDK (tested with Java 21, single-file launch needs JDK 11+), the choco-solver 6.0.1 jar-with-dependencies (Maven Central, BSD-3-Clause) and, for JSON input, Gson 2.11.0 (Apache-2.0). No key or size limits.
-metadata:
-  domain: constraint-programming
-  solver: choco
-  paradigm: cp
----
+# Choco in Java (choco-solver 6.0.1)
 
-# Choco 6.0.1 (Java)
+The native API: Choco is written in Java, and every feature is available here. What holds in
+every interface (concepts, outcomes, enumeration, shared pitfalls) is in [SKILL.md](../SKILL.md).
 
-Choco is a propagation-based constraint solver written in Java, with a large catalogue of global
-constraints. A model is an `org.chocosolver.solver.Model`, which is also the factory for every
-variable and constraint. A factory call returns a `Constraint` that does nothing until you call
-`.post()` (or reify it). **Model with the globals.** Choco's strength is its propagators: a
-decomposition into pairwise `arithm` or reified sums throws that away.
-
-Docs: [Choco documentation](https://choco-solver.org/docs/) (modelling, search, solving).
+A model is an `org.chocosolver.solver.Model`, which is also the factory for every variable and
+constraint. A factory call returns a `Constraint` that does nothing until you call `.post()` (or
+reify it).
 
 ## Contents
 - [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling) · [Solving](#solving)
 - [All solutions](#all-solutions) · [All optimal solutions](#all-optimal-solutions) · [Optimisation](#optimisation)
 - [Common issues](#common-issues) · [Runnable examples](#runnable-examples) · [Further reading](#further-reading)
-- References: [constraints.md](references/constraints.md) (every factory method, grouped),
-  [catalogue.java](references/catalogue.java) (each global checked against brute force, with and without LCG),
-  [examples.md](references/examples.md) (two longer models: shift roster, machines with a crew), [sources.md](sources.md)
+- References: [constraints.md](../references/java/constraints.md) (every factory method, grouped),
+  [Catalogue.java](../references/java/Catalogue.java) (each global checked against brute force, with and without LCG),
+  [examples.md](../references/java/examples.md) (two longer models: shift roster, machines with a crew)
 
 ## Install
 
@@ -37,7 +25,8 @@ export CLASSPATH="$PWD/lib/choco-solver-6.0.1-jar-with-dependencies.jar:$PWD/lib
 java -version
 ```
 
-The examples run as single files with `java File.java`, which reads `CLASSPATH`. Only the JSON
+The examples run as single files with `java File.java`, which reads `CLASSPATH`. A single-file launch runs the
+first class in the file, and the file name need not match the class name (`java n-queens.java`, run on JDK 21). Only the JSON
 examples need Gson: Choco has no JSON reader. Choco logs SLF4J warnings on stderr; they are harmless.
 Details and downloads: [Choco documentation](https://choco-solver.org/docs/), Maven artifact
 [choco-solver 6.0.1](https://repo1.maven.org/maven2/org/choco-solver/choco-solver/6.0.1/). To compile
@@ -79,7 +68,7 @@ need `"AC_REGIN"` or `"BC"` (see [Common issues](#common-issues)).
 
 Write the model clause by clause, finding the row here for each sentence of the description. `m` is the
 `Model`. Arrays are `IntVar[]`, and constants are `int[]`. Semantics in brackets are verified in
-[catalogue.java](references/catalogue.java); every method in [constraints.md](references/constraints.md).
+[Catalogue.java](../references/java/Catalogue.java); every method in [constraints.md](../references/java/constraints.md).
 
 | The description says | Post |
 |---|---|
@@ -112,7 +101,7 @@ Write the model clause by clause, finding the row here for each sentence of the 
 | interchangeable rows | `m.lexChainLessEq(rows)`, two rows: `m.lexLessEq(a, b)` |
 | increasing / nondecreasing sequence | `m.increasing(x, 1)` / `m.increasing(x, 0)` |
 | minimum / maximum / position of the maximum | `m.min(y, x)`, `m.max(y, x)`, `m.argmax(i, 0, x)` [first index on ties] |
-| a set (team, group, subset) | `SetVar s = m.setVar(new int[]{}, universe)`, `s.getCard()`, `m.disjoint`, `m.partition`; outputs through `m.setBoolsChanneling(b, s)` |
+| a set (team, group, subset) | `SetVar s = m.setVar(new int[]{}, universe)`, `s.getCard()`, `m.disjoint`, `m.partition`; read a solution's set with `s.getValue()` (an `ISet`), or channel it to Booleans with `m.setBoolsChanneling(b, s)` |
 | arithmetic | `m.times(x, y, z)`, `m.div` [truncates], `m.mod` [sign of x], `m.absolute(y, x)`, `m.square(y, x)` [y = x²], `m.pow(x, k, y)`, or expressions: `x.mul(y).add(z).eq(5).post()` |
 | x differs from y plus a constant | `m.arithm(x, "-", y, "!=", c)`, or `x.sub(y).ne(c).post()` |
 | logic between conditions | `x.gt(1).imp(y.eq(0)).post()`, `.and`, `.or`, `.xor`, `.iff`, `.not()`; `m.ifThen(c1, c2)` posts at once |
@@ -123,10 +112,7 @@ A decomposition is the right choice only when no row fits. Two globals on the sa
 `allDifferent` beside a `sum`), and redundant globals often pay: `globalCardinality` occurrences
 that sum to n, or a crew `cumulative` beside per-machine ones.
 
-**Readable models.** Open the program with a `//` comment stating the problem, and start each constraint
-block with a `//` comment in the description's words, not the Choco call.
-
-**Imports** (each checked in [catalogue.java](references/catalogue.java)):
+**Imports** (each checked in [Catalogue.java](../references/java/Catalogue.java)):
 
 ```java
 import org.chocosolver.solver.Model;
@@ -145,6 +131,8 @@ import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.SetVar;
 import org.chocosolver.solver.variables.Task;
+import org.chocosolver.solver.search.SearchState;
+import org.chocosolver.util.tools.ArrayUtils;
 import java.util.OptionalInt;
 ```
 
@@ -239,14 +227,14 @@ constraint.
   in a method for every new search (see [All solutions](#all-solutions)).
 
 Turn LCG on only for a model whose constraints are all on the checked list, and compare its answer with a run without LCG.
-The LCG example, [lcg-machine](assets/lcg-machine/README.md), does this.
+The LCG example, [lcg-machine](../assets/java/lcg-machine/README.md), does this.
 
 ## All solutions
 
 `while (solver.solve())` returns every distinct assignment of **every** variable in the model, auxiliary
 ones included: a free `aux` in 0..5 with `x` in 1..2 gives 12 solutions, and with `aux = x` it gives 2.
 Make each auxiliary a function of the outputs (fix it with a constraint such as a total), so that it cannot
-repeat a solution: [all-solutions-coins](assets/all-solutions-coins/README.md) does this with its amount.
+repeat a solution: [all-solutions-coins](../assets/java/all-solutions-coins/README.md) does this with its amount.
 
 When an auxiliary cannot be fixed that way, keep the solutions distinct on the outputs with a **no-good**
 after each solution: reset the solver, then post "some output differs from its value in this solution",
@@ -274,7 +262,7 @@ better solutions, so an equal-cost choice never appears there. Instead:
 1. Run the optimising loop and check `TERMINATED` (see [Optimisation](#optimisation)); keep the optimum.
 2. Build the model again in a method, post `cost == optimum`, and loop `solve()` over it, reading the outputs.
 
-[all-optimal-pair](assets/all-optimal-pair/README.md) does exactly this: a `build()` method returns the
+[all-optimal-pair](../assets/java/all-optimal-pair/README.md) does exactly this: a `build()` method returns the
 model and its variables, and the second model posts `arithm(total, "=", best)`.
 
 ## Optimisation
@@ -288,9 +276,9 @@ model and its variables, and the second model posts `arithm(total, "=", best)`.
   A `STOPPED` search has a feasible best, not a proof. Report "not proven optimal" then.
 - Do not bound the objective with a value the model does not imply (an expected or remembered best). The
   cut silently removes solutions, and the proof then covers the constraint rather than the model.
-- Examples: [maximise-production](assets/maximise-production/README.md) (maximise),
-  [minimise-transport](assets/minimise-transport/README.md) (minimise), [scheduling-project](assets/scheduling-project/README.md)
-  (makespan through `m.max`), [json-knapsack](assets/json-knapsack/README.md) (maximise, data from JSON).
+- Examples: [maximise-production](../assets/java/maximise-production/README.md) (maximise),
+  [minimise-transport](../assets/java/minimise-transport/README.md) (minimise), [scheduling-project](../assets/java/scheduling-project/README.md)
+  (makespan through `m.max`), [json-knapsack](../assets/java/json-knapsack/README.md) (maximise, data from JSON).
 
 ## Common issues
 
@@ -311,16 +299,14 @@ model and its variables, and the second model posts `arithm(total, "=", best)`.
 | Compile errors about `Model` or `Solver` | A class of your own named `Model` hides `org.chocosolver.solver.Model` | Rename the class |
 | `times` is slow, or LCG throws "Multiplication constraint is not supported in LCG mode" | A product of two domains can overflow an `int` | Give intermediate variables tight bounds from the data |
 | `x.eq(1).add(...)` does not compile | Relations are not numbers | Sum `boolVar()`s, or use `count`/`among` |
-| Optimisation ignores the objective | The objective is not an IntVar | Post `scalar`/`sum` onto a fresh IntVar and pass it to `setObjective` |
 | The last optimisation solution is reported as optimal after a limit | `STOPPED`, not `TERMINATED` | Check `getSearchState() == TERMINATED` before calling it optimal |
 | `getValue()` throws `is not instantiated` after the loop | The search backtracked when `solve()` returned `false` | Keep the values in locals inside the loop |
-| Duplicate solutions in an enumeration | An auxiliary variable is free | Make it a function of the outputs, or no-good on the outputs ([All solutions](#all-solutions)) |
 | Constraints posted after a reset fail or are ignored under LCG | Posting after a reset is not allowed under LCG | Build the model again in a method |
 | LCG gives a wrong count (`not(allDifferent)` counted 0 instead of 21) | The constraint is not safe under LCG | Turn LCG off, or use only checked constraints ([LCG](#lazy-clause-generation-lcg)) |
 | LCG throws on `distance`, `sort`, `tree`, `regular`, a set constraint, or `addClauses*` | Not supported under LCG | Use a different encoding, or turn LCG off |
 | `java.lang.OutOfMemoryError` at posting or during search | A very wide enumerated domain, a table with too many tuples, or an `allDifferent` / `element` over large domains | Use bounds (`true`) for wide ranges, tighter bounds from the data, smaller tables, and decompose less; a bigger heap only hides the cause |
 | Slow, or no first solution / optimum not proven | Weak propagation or branching | Global instead of decomposition, `"AC"` where a stronger one fits, implied constraints, a better search, restarts ([Solving](#solving)) |
-| JSON boolean read as 0 or 1 fails | Gson's `getAsInt()` throws on a JSON boolean | `getAsBoolean() ? 1 : 0` ([json-knapsack](assets/json-knapsack/Knapsack.java)) |
+| JSON boolean read as 0 or 1 fails | Gson's `getAsInt()` throws on a JSON boolean | `getAsBoolean() ? 1 : 0` ([json-knapsack](../assets/java/json-knapsack/Knapsack.java)) |
 | JSON rows have different lengths and the model reads past the end | Ragged lists | Take each row's length with `size()` on that row |
 | A Java class does not run, or stdout is noisy | SLF4J warnings on stderr | Harmless; read stdout only |
 
@@ -331,16 +317,16 @@ Each folder is a standalone program: `java File.java` from inside it, with `CLAS
 
 | Pattern | Folder |
 |---|---|
-| satisfy, `allDifferent` on rows, columns and boxes | [satisfy-sudoku](assets/satisfy-sudoku/README.md) |
-| all solutions, functional auxiliary | [all-solutions-coins](assets/all-solutions-coins/README.md) |
-| all optimal solutions | [all-optimal-pair](assets/all-optimal-pair/README.md) |
-| maximise | [maximise-production](assets/maximise-production/README.md), [json-knapsack](assets/json-knapsack/README.md) (data from JSON with Gson) |
-| minimise, grid of flows | [minimise-transport](assets/minimise-transport/README.md) |
-| infeasible | [infeasible-pigeonhole](assets/infeasible-pigeonhole/README.md) |
-| scheduling, `cumulative`, makespan | [scheduling-project](assets/scheduling-project/README.md) |
-| lazy clause generation on a checked model | [lcg-machine](assets/lcg-machine/README.md) |
+| satisfy, `allDifferent` on rows, columns and boxes | [satisfy-sudoku](../assets/java/satisfy-sudoku/README.md) |
+| all solutions, functional auxiliary | [all-solutions-coins](../assets/java/all-solutions-coins/README.md) |
+| all optimal solutions | [all-optimal-pair](../assets/java/all-optimal-pair/README.md) |
+| maximise | [maximise-production](../assets/java/maximise-production/README.md), [json-knapsack](../assets/java/json-knapsack/README.md) (data from JSON with Gson) |
+| minimise, grid of flows | [minimise-transport](../assets/java/minimise-transport/README.md) |
+| infeasible | [infeasible-pigeonhole](../assets/java/infeasible-pigeonhole/README.md) |
+| scheduling, `cumulative`, makespan | [scheduling-project](../assets/java/scheduling-project/README.md) |
+| lazy clause generation on a checked model | [lcg-machine](../assets/java/lcg-machine/README.md) |
 
-Two longer models, with their data inline, are in [examples.md](references/examples.md).
+Two longer models, with their data inline, are in [examples.md](../references/java/examples.md).
 
 ## Further reading
 

@@ -13,7 +13,7 @@ shape, so another binding is added later without renaming or moving anything.
   SKILL.md                         shared: concepts, statuses, search, enumeration, interface table
   interfaces/<interface>.md        per binding: install, quick start, API, solving, all solutions, issues
   assets/<interface>/<example>/    one runnable example per folder: the program and its README.md
-  references/                      only when needed; prefix per-interface files (java-catalogue.java)
+  references/                      only when needed; per-interface ones in references/<interface>/
   sources.md
   evals/evals.json
 ```

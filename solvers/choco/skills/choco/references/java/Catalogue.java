@@ -3,7 +3,7 @@
 // and compares with a brute-force count of a predicate over the same vectors.
 // Every check runs twice: with the default settings and with LCG on.
 // Build and run (Java 17+):
-//   javac -cp choco-solver-6.0.1-jar-with-dependencies.jar -d out catalogue.java
+//   javac -cp choco-solver-6.0.1-jar-with-dependencies.jar -d out Catalogue.java
 //   java -cp out:choco-solver-6.0.1-jar-with-dependencies.jar Catalogue
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,7 +117,7 @@ public class Catalogue {
     }
 
 
-    // Compiled, never run: every call named in constraints.md and SKILL.md
+    // Compiled, never run: every call named in constraints.md and interfaces/java.md
     // that the checks above do not use, so a wrong name or argument order
     // fails the build.
     @SuppressWarnings("unused")

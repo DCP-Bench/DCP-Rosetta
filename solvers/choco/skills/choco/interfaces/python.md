@@ -1,19 +1,12 @@
----
-name: choco-python
-description: Choco constraint solver in Python through pychoco, which bundles the Choco native library (no JVM). Covers integer and Boolean variables, global constraints, reification, and finding, enumerating or optimising solutions. Use when writing, debugging or explaining Choco models in Python, or when the user has chosen Choco or pychoco for a constraint or scheduling problem.
-license: Apache-2.0
-compatibility: Requires Python 3.12 (tested) and pychoco (tested 0.2.1 and 0.4.0). No other packages; no JVM.
-metadata:
-  domain: constraint-programming
-  solver: choco
-  paradigm: cp
----
+# Choco in Python (pychoco)
 
-# Choco (Python, pychoco)
+pychoco is Choco's Python binding. The wheel ships Choco compiled to a native library, so no Java
+install is needed (its crash messages still read like the JVM's). What holds in every interface (concepts, outcomes, enumeration, shared pitfalls) is in
+[SKILL.md](../SKILL.md); what pychoco lacks next to Java is in its interface table.
 
-Choco is a Java constraint solver; pychoco is its Python binding and ships the native library
-in the wheel. A `Model` holds variables and constraints; `model.get_solver()` finds, enumerates or
-optimises. **A constraint has no effect until it is posted with `.post()`** (or reified on purpose).
+A `Model` holds variables and constraints; `model.get_solver()` finds, enumerates or optimises.
+**A constraint has no effect until it is posted with `.post()`** (or reified on purpose). `if_then` and
+`if_then_else` are the exception: they post at once and return `None`, so do not call `.post()` on them.
 
 ## Install
 
@@ -48,7 +41,11 @@ Prints `x = 7 y = 0`.
 
 ## Modelling
 
-Full constraint catalogue: [Choco documentation](https://choco-solver.org/docs/); pychoco names follow Choco's.
+Full constraint catalogue: [Choco documentation](https://choco-solver.org/docs/). Every global in
+SKILL.md's Modelling table is a method of `model` in snake_case (`n_values`, `global_cardinality`,
+`int_value_precede_chain`, `knapsack`, `sort`; `keySort` is `keysort`); `dir(model)` lists them and
+`help(model.n_values)` shows the arguments. Views cost no propagator: `model.int_offset_view(x, c)`
+is `x + c` (queens diagonals).
 
 | Need | API |
 |---|---|
@@ -67,6 +64,9 @@ Full constraint catalogue: [Choco documentation](https://choco-solver.org/docs/)
 | tasks with a resource | `task = model.task(start, duration, end)` per task, then `model.cumulative(tasks, heights, capacity)`; heights and capacity are IntVars |
 | no overlap on one machine | `cumulative` with every height `model.intvar(1, 1)` and capacity `model.intvar(1, 1)` |
 | non-overlapping rectangles | `model.diff_n(x, y, width, height)` |
+| number of distinct values | `model.n_values(vars, count)`: count is an IntVar |
+| interchangeable values (colours) | `model.int_value_precede_chain(vars, [0, 1, ..., k])` |
+| knapsack | `model.knapsack(occurrences, weight_sum, value_sum, weights, values)`: IntVars first, int lists last; the capacity is `weight_sum`'s upper bound |
 | logic over constraints | `model.and_([...])`, `model.or_([...])`, `model.not_(c)` |
 | conditional | `model.if_then(cond, then)`, `model.if_then_else(cond, then, else)` |
 
@@ -88,10 +88,11 @@ constraint but a BoolVar, enforced only once constrained (`model.arithm(b, "=", 
 Prefer the explicit `arithm` / `scalar` forms.
 
 **Counting distinct values.** To minimise the number of distinct values used (colours, shifts,
-bins), do not count the value variables. Make one Boolean per possible value, tie it to the
-variables with `if_then(model.arithm(v[i], "=", k).reify(), model.arithm(used[k], "=", 1))`
-for every variable `i` and value `k`, then `model.sum(used, "=", count)` is the objective.
-Worked example: [distinct-count](assets/distinct-count/model.py).
+bins), post `model.n_values(v, count)` and minimise `count` (checked against brute force on every
+assignment of three variables in 0..2). An alternative that shows the pattern: one Boolean per
+possible value, tied with `if_then(model.arithm(v[i], "=", k).reify(), model.arithm(used[k], "=", 1))`
+for every variable `i` and value `k`, then `model.sum(used, "=", count)`, as in
+[distinct-count](../assets/python/distinct-count/model.py).
 
 ## Solving
 
@@ -124,6 +125,15 @@ enumeration ran 2.9 s, against 0.8 s with `"0.5s"`, which can overrun slightly).
 
 Choco reports a free constraint on **stdout** (`ARITHM ([x = 2]) is free`); search the output for it.
 
+**Search.** pychoco offers Choco's preset strategies on the solver, each over the variables to
+branch on, passed as separate arguments (`*vars`): `solver.set_min_dom_lb_search(*vars)` (first-fail), `set_dom_over_w_deg_search`,
+`set_input_order_lb_search`, `set_input_order_ub_search`, `set_activity_based_search`,
+`set_conflict_history_search` and more (`dir(solver)`). Custom variable or value selectors,
+restart policies and lazy clause generation are not exposed. `solver.add_hint(var, value)`
+suggests a value for the first branch. Every `find_*` call also takes `node_limit`,
+`fail_limit`, `restart_limit` and `backtrack_limit`; a limit hit returns the same `None` / `[]`
+as infeasibility (8 queens with `fail_limit=5` gave `[]`, against 92 solutions without).
+
 **One solve per model after infeasibility.** After a result says infeasible, a second solve on
 the same model (another `find_*` or `solve()`, even through a new `get_solver()`) crashes the
 Python process with a JVM "Fatal error" and exit code 99. Build a new `Model` for each solve.
@@ -133,14 +143,14 @@ Python process with a JVM "Fatal error" and exit code 99. Build a new `Model` fo
 `find_all_solutions()` enumerates distinct assignments of **every** variable, auxiliary ones
 included: a free `aux` in 0..5 with `x` in 1..2 gave 12 solutions, and with `aux = x` it gave 2.
 Tie auxiliary variables to the outputs with functional constraints (see
-[make-change](assets/make-change/model.py)), or keep the distinct output tuples:
+[make-change](../assets/python/make-change/model.py)), or keep the distinct output tuples:
 `{tuple(s.get_int_val(v) for v in outputs) for s in solutions}`. `solution_limit=n` stops early.
 
 ## All optimal solutions
 
 `find_all_optimal_solutions(cost, maximize)` returns every assignment with the optimum value.
 The same duplicate rule applies. Example: costs `[2, 1, 2, 5]`, choose 2 items at minimum cost:
-two optima, `{0, 1}` and `{1, 2}`. See [choose-two](assets/choose-two/model.py).
+two optima, `{0, 1}` and `{1, 2}`. See [choose-two](../assets/python/choose-two/model.py).
 
 ## Optimisation
 
@@ -154,8 +164,8 @@ solution = model.get_solver().find_optimal_solution(total, False)   # False = mi
 ```
 
 `maximize=True` maximises. A bound that is too tight silently removes solutions, so take it from
-the data, not from an answer. Examples: [production-plan](assets/production-plan/model.py) (maximise),
-[transport-cost](assets/transport-cost/model.py) (minimise), [project-schedule](assets/project-schedule/model.py)
+the data, not from an answer. Examples: [production-plan](../assets/python/production-plan/model.py) (maximise),
+[transport-cost](../assets/python/transport-cost/model.py) (minimise), [project-schedule](../assets/python/project-schedule/model.py)
 (makespan through `model.max`).
 
 ## Common issues
@@ -172,9 +182,9 @@ the data, not from an answer. Examples: [production-plan](assets/production-plan
 | `AssertionError: ... is not instantiated` | `var.get_value()` after an enumeration | read values from each `Solution` |
 | wrong `element` or `min`/`max` result | arguments in the wrong order | `element(value, table, index)`; `min(result, vars)`, `max(result, vars)` |
 | optimisation ignores the objective | objective is not an IntVar | post `scalar`/`sum` onto a fresh IntVar and pass it |
-| objective counts values, not distinct values | counting value variables | one usage Boolean per value, as in Modelling |
+| objective counts values, not distinct values | counting value variables | `n_values`, as in Modelling |
 | `AttributeError: 'Task' ... ensure_bound_consistency` | the method exists in 0.2.1 only | do not call it; the examples give the same results on 0.2.1 and 0.4.0 |
-| program ignores its input file | data hardcoded in the model | read `sys.argv[1]`, print JSON, as in [json-io](assets/json-io/model.py) |
+| program ignores its input file | data hardcoded in the model | read the file named in `sys.argv[1]`, as in [json-io](../assets/python/json-io/model.py) |
 
 ## Runnable examples
 
@@ -183,15 +193,15 @@ Each folder is a standalone program: `python3 model.py` from inside it (`json-io
 
 | Pattern | Folder |
 |---|---|
-| satisfy, `all_different` | [latin-square](assets/latin-square/model.py) |
-| all solutions, functional auxiliary | [make-change](assets/make-change/model.py) |
-| all optimal solutions | [choose-two](assets/choose-two/model.py) |
-| maximise; instance in, JSON out | [production-plan](assets/production-plan/model.py), [json-io](assets/json-io/model.py) |
-| minimise, grid of flows | [transport-cost](assets/transport-cost/model.py) |
-| count distinct values | [distinct-count](assets/distinct-count/model.py) |
-| no overlap on one machine | [no-overlap](assets/no-overlap/model.py) |
-| infeasible | [pigeonhole-infeasible](assets/pigeonhole-infeasible/model.py) |
-| scheduling, `cumulative`, makespan | [project-schedule](assets/project-schedule/model.py) |
+| satisfy, `all_different` | [latin-square](../assets/python/latin-square/model.py) |
+| all solutions, functional auxiliary | [make-change](../assets/python/make-change/model.py) |
+| all optimal solutions | [choose-two](../assets/python/choose-two/model.py) |
+| maximise; data from a JSON file | [production-plan](../assets/python/production-plan/model.py), [json-io](../assets/python/json-io/model.py) |
+| minimise, grid of flows | [transport-cost](../assets/python/transport-cost/model.py) |
+| count distinct values | [distinct-count](../assets/python/distinct-count/model.py) |
+| no overlap on one machine | [no-overlap](../assets/python/no-overlap/model.py) |
+| infeasible | [pigeonhole-infeasible](../assets/python/pigeonhole-infeasible/model.py) |
+| scheduling, `cumulative`, makespan | [project-schedule](../assets/python/project-schedule/model.py) |
 
 ## Further reading
 

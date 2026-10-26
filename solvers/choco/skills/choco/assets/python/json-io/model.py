@@ -4,7 +4,7 @@ import sys
 from pychoco.model import Model
 
 # Usage: python3 model.py instance.json
-# Reads one instance file, prints one JSON object on stdout.
+# Reads the items and the capacity from a JSON file; every size comes from the data.
 with open(sys.argv[1]) as f:
     data = json.load(f)
 weights, values, capacity = data["weights"], data["values"], data["capacity"]
@@ -17,8 +17,8 @@ model.scalar(take, values, "=", profit).post()
 
 solution = model.get_solver().find_optimal_solution(profit, True)
 if solution is None:
-    print(json.dumps({"status": "unsatisfiable"}))
+    print("no solution")
 else:
-    chosen = [solution.get_int_val(t) for t in take]
-    print(json.dumps({"status": "optimal", "take": chosen,
-                      "profit": solution.get_int_val(profit)}))
+    chosen = [i for i, t in enumerate(take) if solution.get_int_val(t) == 1]
+    print("Items:", chosen)
+    print("Profit:", solution.get_int_val(profit))
