@@ -5,7 +5,8 @@ expresses it. Runner: [run.py](run.py), which compiles the submission with `java
 the driver [java/dcp/Main.java](java/dcp/Main.java), which owns solving, enumeration and the
 protocol. The data and output helpers are [java/dcp/Instance.java](java/dcp/Instance.java)
 and [java/dcp/Outputs.java](java/dcp/Outputs.java). The solver skill
-([skills/choco-java/SKILL.md](skills/choco-java/SKILL.md)) covers the Choco API with
+([../skills/choco/SKILL.md](../skills/choco/SKILL.md), Java interface
+[../skills/choco/interfaces/java.md](../skills/choco/interfaces/java.md)) covers the Choco API with
 standalone programs (own `main`, own `solve()` loop, printing); [Example](#example) below
 shows the submission form.
 
