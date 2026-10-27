@@ -135,10 +135,10 @@ The repository's own tools run on the host, in its Python environment: `.venv/bi
 
 Follow [section 2](#2-stand-alone-solver-skill):
 
-| add-solver asks | Answer |
+| Section 2 asks | Answer |
 |---|---|
 | Solver and language | The caller's target |
-| Where to write the skill | `solvers/<solver>/skills/<name>/`, `<solver>` in lowercase with underscores (`ortools_cp_sat`), `<name>` the skill's hyphenated name (`ortools-cp-sat`). An existing skill of the same solver API stays where it is, and you add an interface to it |
+| Where to write the skill | `solvers/<solver>/skills/dcp-<name>/`, `<solver>` in lowercase with underscores (`ortools_cp_sat`), `<name>` the solver's hyphenated name (`ortools-cp-sat`, so the folder and the skill's `name` are `dcp-ortools-cp-sat`; `generation.skills validate` rejects a solver skill without the prefix). An existing skill of the same solver API stays where it is, and you add an interface to it |
 | Where the integration goes | `solvers/<solver>/<interface>/`, beside the skill: called `<integration>/` below. Its id is `<solver>_<interface>` (`choco_java`; `clingo_asp` for clingo's ASP language), which names its image, its models and every command below |
 | Workspace | `generation/runs/RUN/setup/<id>/<attempt>/add-solver-workspace/` |
 

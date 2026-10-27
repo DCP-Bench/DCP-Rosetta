@@ -31,7 +31,7 @@ python -m generation.manage init --run <run-id> --config config.json
 python -m generation.next_work                      # what is uncovered, and what is not usable
 python -m generation.brief PROBLEM                  # the contract: outputs, objective, fields
 python -m generation.manage attempt --run <run-id> --problem P --solver S \
-    --skill rosetta-skills/model-generator --skill <the integration's skill path from next_work> \
+    --skill skills/model-generator --skill <the integration's skill path from next_work> \
     --agent "TOOL (MODEL-ID)"                        # the model that writes this attempt
 #   write the model into the attempt directory, following the contracts and the solver skill
 python -m generation.manage evaluate --attempt ATTEMPT --model ATTEMPT/model.EXT
@@ -152,7 +152,7 @@ one model it recognises.
 
 - **The integration does not exist, or is not usable.** Both cases are in
   [integrations](references/integrations.md): building one means following
-  `rosetta-skills/solver-setup` yourself and recording the setup skill *before* writing
+  `skills/solver-setup` yourself and recording the setup skill *before* writing
   any integration file; certifying an existing one whose `readiness.json` is
   missing or stale is a separate, smaller job. Neither is a reason to rebuild a
   working integration.

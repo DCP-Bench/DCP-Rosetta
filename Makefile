@@ -62,8 +62,9 @@ dataset-audit: ## Audit the problems in bench/
 lint: ## Lint with ruff
 	$(RUFF) check .
 
-validate-skills: ## Validate the project skills under skills/
-	for skill in skills/*/; do $(PYTHON) -m generation.skills validate $${skill%/} --project >/dev/null || exit 1; done
+validate-skills: ## Validate the project skills and the solver skills, and check the solver skills name no Rosetta detail
+	for skill in skills/*/ solvers/*/skills/*/; do $(PYTHON) -m generation.skills validate $${skill%/} --project >/dev/null || exit 1; done
+	for skill in solvers/*/skills/*/; do $(PYTHON) -m generation.skills rosetta-mentions $${skill%/} || exit 1; done
 
 # ---- Evaluation ------------------------------------------------------------
 

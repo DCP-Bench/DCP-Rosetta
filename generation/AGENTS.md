@@ -3,7 +3,7 @@
 The contract an agent works to. `generation/README.md` is the short human
 overview; this file is the exact syntax, schemas and rules.
 
-`rosetta-skills/model-generator` runs the campaign loop; `rosetta-skills/solver-setup` creates or
+`skills/model-generator` runs the campaign loop; `skills/solver-setup` creates or
 repairs integrations. One agent reads them and does the work. What a model must look
 like is in two repository files both skills share: the submission contract
 `solvers/CONTRACT.md`, and each integration's `CONTRACT.md` saying how that
@@ -44,7 +44,7 @@ python -m generation.instances check PROBLEM candidates.json [--append]
 python -m generation.instances recheck PROBLEM --instances json:K ... [--flag] [--jobs N]
 ```
 
-`rosetta-skills/instance-curator` is the procedure. `status` lists problems with data
+`skills/instance-curator` is the procedure. `status` lists problems with data
 fields and fewer than 5 distinct instances, leaving out those listed under
 "Instances not added" in `bench/SOURCES.md`. `check` takes a JSON list of candidate
 records and refuses one with missing or extra fields, a changed value type or
@@ -71,8 +71,8 @@ relative to the repository), `instance`, `instance_hash`, `reason`, `detail`,
 
 ```sh
 python -m generation.manage init --run RUN --config config.json
-python -m generation.manage setup-attempt --run RUN --solver SOLVER --skill rosetta-skills/solver-setup --skill skills/add-solver
-python -m generation.manage attempt --run RUN --problem abbots_puzzle --solver SOLVER --skill rosetta-skills/model-generator --skill SOLVER_SKILL --agent "TOOL (MODEL-ID)"
+python -m generation.manage setup-attempt --run RUN --solver SOLVER --skill skills/solver-setup
+python -m generation.manage attempt --run RUN --problem abbots_puzzle --solver SOLVER --skill skills/model-generator --skill SOLVER_SKILL --agent "TOOL (MODEL-ID)"
 python -m generation.manage evaluate --attempt ATTEMPT_PATH --model MODEL_PATH
 python -m generation.manage retain --attempt ATTEMPT_PATH
 python -m generation.manage status --run RUN
@@ -176,8 +176,8 @@ path.
 ## Skill provenance and improvement (all skill levels)
 
 ```sh
-python -m generation.skills validate rosetta-skills/model-generator --project
-python -m generation.skills propose --run RUN --skill rosetta-skills/model-generator --candidate working/model-generator --evidence "Failure cause and run evidence path"
+python -m generation.skills validate skills/model-generator --project
+python -m generation.skills propose --run RUN --skill skills/model-generator --candidate working/model-generator --evidence "Failure cause and run evidence path"
 python -m generation.skills check PROPOSAL_PATH --checks trusted-checks.json
 python -m generation.skills apply PROPOSAL_PATH
 ```
@@ -188,7 +188,7 @@ behavioural eval manifest. An attempt records each skill by reference, not by co
 ran against, whether that path had uncommitted changes, and a hash of its bytes.
 Evaluation and retention re-hash the live bundles and both contracts, so editing a
 skill or a contract mid-attempt is refused. `propose`/`apply` accept skills under
-`skills/`, `rosetta-skills/` and `solvers/`. That record is what ties a model to the skill version behind it.
+`skills/` and `solvers/`. That record is what ties a model to the skill version behind it.
 
 `trusted-checks.json` is a nonempty list such as:
 
@@ -217,7 +217,7 @@ The skill bundles contain `evals/evals.json` with prompts and observable
 assertions. They are specifications, not stored pass claims.
 
 ```sh
-python -m generation.behaviour prepare --skill rosetta-skills/model-generator --case empty-solvers --output TRIAL_DIRECTORY
+python -m generation.behaviour prepare --skill skills/model-generator --case empty-solvers --output TRIAL_DIRECTORY
 python -m generation.behaviour assess TRIAL_DIRECTORY --assessment assessment.json
 ```
 

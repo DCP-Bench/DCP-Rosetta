@@ -563,7 +563,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_p = commands.add_parser("setup-attempt", help="cite the skills for one setup attempt")
     setup_p.add_argument("--run", required=True); setup_p.add_argument("--solver", required=True)
     setup_p.add_argument("--skill", required=True, action="append",
-                         help="a skill the setup follows; repeat for each (solver-setup, add-solver)")
+                         help="a skill the setup follows; repeat for each (skills/solver-setup)")
     eval_p = commands.add_parser("evaluate", help="evaluate a preserved candidate")
     eval_p.add_argument("--attempt", required=True); eval_p.add_argument("--model", required=True)
     retain_p = commands.add_parser("retain", help="persist an accepted immutable attempt")

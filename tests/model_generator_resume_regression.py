@@ -25,7 +25,7 @@ VENV = ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/pytho
 PYTHON = str(VENV) if VENV.exists() else sys.executable
 PROBLEM = "csplib_054_n_queens"
 SOLVER = "cpmpy_python"
-SKILL = "solvers/cpmpy/skills/cpmpy"
+SKILL = "solvers/cpmpy/skills/dcp-cpmpy"
 
 
 def helper(*arguments):

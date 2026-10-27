@@ -6,7 +6,7 @@ C++ expresses it. Runner: [run.py](run.py), which calls `main("cpp")` in
 together with the driver [cpp/driver.cpp](cpp/driver.cpp) and the header
 [cpp/dcp.h](cpp/dcp.h) using [cpp/CMakeLists.txt](cpp/CMakeLists.txt), then runs the
 binary, which owns `main`, solving, enumeration and printing. The solver skill
-([skills/chuffed/SKILL.md](../skills/chuffed/SKILL.md)) covers the Chuffed API with
+([skills/dcp-chuffed/SKILL.md](../skills/dcp-chuffed/SKILL.md)) covers the Chuffed API with
 standalone programs (`assets/cpp/*/model.cpp`). To turn one into a submission, keep the body of
 its `Problem` constructor (variables, constraints, `branch`, `optimize`) as the body of
 `Build`, read the data from `instance` instead of `argv`/a file, drop `main`, `print`,

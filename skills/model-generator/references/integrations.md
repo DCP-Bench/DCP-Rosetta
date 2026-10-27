@@ -4,9 +4,8 @@ Read this only when the integration you need is missing or unusable.
 
 ## When the integration you need does not exist
 
-Read `rosetta-skills/solver-setup/SKILL.md` and follow it yourself. It needs the
-`skills/add-solver` skill, which generates the standalone skill under
-`solvers/<solver>/skills/<name>/`; it then adds the integration folder
+Read `skills/solver-setup/SKILL.md` and follow it yourself. It writes the standalone
+skill under `solvers/<solver>/skills/dcp-<name>/`; it then adds the integration folder
 `solvers/<solver>/<interface>/` (id `<solver>_<interface>`) with `metadata.json`, `Dockerfile`,
 `run.py`, `readiness_test.py` and the integration contract `CONTRACT.md`, and runs the
 readiness checklist before the integration may be used. An integration without a
@@ -17,7 +16,7 @@ file**, so the record freezes the instructions that guided the work rather than
 whatever they became afterwards:
 
 ```sh
-python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill rosetta-skills/solver-setup --skill skills/add-solver
+python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill skills/solver-setup
 ```
 
 Doing it the other way round records the skill after the fact, which

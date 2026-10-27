@@ -61,6 +61,18 @@ class SkillWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "link a file in it"):
             skills.validate(self.bundle)
 
+    def test_solver_skills_are_prefixed(self):
+        """A skill under solvers/<solver>/skills/ is published, so its name carries the prefix."""
+        import shutil
+        bare = self.root / "solvers/test/skills/test-skill"
+        shutil.copytree(self.bundle, bare)
+        with self.assertRaisesRegex(ValueError, "dcp-test-skill"):
+            skills.validate(bare, project=True)
+        prefixed = bare.with_name("dcp-test-skill")
+        bare.rename(prefixed)
+        (prefixed / "SKILL.md").write_text(self.text.replace("name: test-skill", "name: dcp-test-skill"))
+        self.assertEqual(skills.validate(prefixed)["name"], "dcp-test-skill")
+
     def test_bundle_hashes_cover_every_file(self):
         """Attempt snapshots rely on these hashes, so nothing may be skipped."""
         expected = {"SKILL.md", "evals/evals.json", "sources.md"}

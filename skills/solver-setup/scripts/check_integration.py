@@ -189,8 +189,8 @@ def check_skill(root, solver_id, folder):
                   f"add {path}/assets/{interface}/<example>/README.md")
     if not check("skill: standalone skill exists", bool(skills),
                  f"no {path}/SKILL.md" if path else
-                 f"one skills/<name>/SKILL.md expected in {folder.parent.relative_to(root).as_posix()}" if interface else
-                 f"no skills/<name>/SKILL.md in {folder.relative_to(root).as_posix()}"):
+                 f"one skills/dcp-<name>/SKILL.md expected in {folder.parent.relative_to(root).as_posix()}" if interface else
+                 f"no skills/dcp-<name>/SKILL.md in {folder.relative_to(root).as_posix()}"):
         return
     for skill in skills:
         try:

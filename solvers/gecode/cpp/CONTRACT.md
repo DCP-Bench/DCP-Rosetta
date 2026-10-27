@@ -7,7 +7,7 @@ together with the driver [cpp/driver.cpp](cpp/driver.cpp) and the header
 [cpp/dcp.h](cpp/dcp.h) (the `dcp::Space` base class) using
 [cpp/CMakeLists.txt](cpp/CMakeLists.txt), then runs the binary, which owns `main`,
 solving, enumeration and printing. The solver skill
-([../skills/gecode/SKILL.md](../skills/gecode/SKILL.md)) covers the Gecode API with
+([../skills/dcp-gecode/SKILL.md](../skills/dcp-gecode/SKILL.md)) covers the Gecode API with
 standalone programs (own `main`, `DFS`/`BAB`, printing); [Example](#example) below shows
 how one becomes a submission, with a complete optimisation submission (row seating).
 
@@ -317,10 +317,10 @@ DCP_MODEL(Seating)
 ```
 
 Two larger submissions of the same shape are the skill's
-[json-roster](../skills/gecode/assets/cpp/json-roster/model.cpp) (registers
+[json-roster](../skills/dcp-gecode/assets/cpp/json-roster/model.cpp) (registers
 `output("roster", m)` on the `Matrix` and `output("total", total)`; proven optimum 36 in
 0.1 s through the driver) and
-[scheduling-machines-crew](../skills/gecode/assets/cpp/scheduling-machines-crew/model.cpp)
+[scheduling-machines-crew](../skills/dcp-gecode/assets/cpp/scheduling-machines-crew/model.cpp)
 (`restarts(100)`, outputs `start`, `machine`, `makespan`; optimum 8 in under 0.01 s),
 converted with the table above.
 
