@@ -16,6 +16,9 @@ skill-name/
 - `SKILL.md` begins with YAML frontmatter containing `name` and `description`.
   Choose a lowercase ASCII letter/digit/hyphen name of 1–64 characters, no leading,
   trailing, or consecutive hyphens. It must equal the containing directory name.
+  A solver skill in this repository, `solvers/<solver>/skills/`, is named `dcp-<solver>`
+  (`dcp-choco`): skills have no namespace, and a bare solver name clashes with the
+  solver's own skills once published.
   Description is nonempty, at most 1024 characters, and explains when to use it.
 - Optional standard fields include `license`, `compatibility` (at most 500
   characters), and `metadata` (string-to-string mapping). Do not invent a license

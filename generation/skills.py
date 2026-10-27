@@ -108,6 +108,12 @@ def interface_entry(skill, interface):
     return found[0] if len(found) == 1 else None
 
 
+# Every solver skill, solvers/<solver>/skills/<name>/, is named with this prefix: skills
+# have no namespace, and once published a bare solver name (cpmpy, z3) would clash with
+# that solver's own skills.
+SOLVER_SKILL_PREFIX = "dcp-"
+
+
 def validate(folder, project=False):
     folder = Path(folder).resolve()
     text = (folder / "SKILL.md").read_text(encoding="utf-8")
@@ -120,6 +126,8 @@ def validate(folder, project=False):
     name, description = metadata.get("name"), metadata.get("description")
     if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name) or len(name) > 64 or name != folder.name:
         raise ValueError("Skill name must match its directory and use lowercase letters/digits/hyphens")
+    if folder.parent.name == "skills" and folder.parents[2].name == "solvers" and not name.startswith(SOLVER_SKILL_PREFIX):
+        raise ValueError(f"A solver skill's name starts with {SOLVER_SKILL_PREFIX!r}: {SOLVER_SKILL_PREFIX}{name}")
     if not isinstance(description, str) or not description.strip() or len(description) > 1024:
         raise ValueError("Invalid description")
     allowed = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
