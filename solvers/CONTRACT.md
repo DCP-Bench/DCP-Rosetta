@@ -2,7 +2,7 @@
 
 What every model submitted to DCP-Bench Open must do, whatever the solver, language or
 framework. Each integration realises it in its own terms, documented in the
-`CONTRACT.md` of its folder (`solvers/<solver>/<interface>/`, or `solvers/<id>/`). Read this file first, then the integration's contract, then
+`CONTRACT.md` of its folder (`solvers/<solver>/<interface>/`). Read this file first, then the integration's contract, then
 the solver skill for the API.
 
 The solver skill says what the solver does; the contracts say what the runner does,

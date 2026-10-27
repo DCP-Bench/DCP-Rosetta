@@ -1,8 +1,13 @@
 # Sources for `pysat`
 
+## Shared
+
 Tested with python-sat 1.9.dev15, Python 3.12.11, a Linux container.
 
 Existing skills: not searched in this refactor (the refactor brief did not ask for it). The text was rewritten from an earlier pysat skill, and its claims were re-run.
+
+
+## Python (python-sat)
 
 - <https://pysathq.github.io/> — PySAT home page and documentation entry point
 - <https://pysathq.github.io/installation/> — installation, `pblib` extra
@@ -17,7 +22,7 @@ Existing skills: not searched in this refactor (the refactor brief did not ask f
 
 Verified by running inside that container:
 
-- **Every example in `assets/` runs and prints its expected output**; the Quick start and the all-solutions snippet in `SKILL.md` were run as written.
+- **Every example in `assets/python/` runs and prints its expected output**; the Quick start and the all-solutions snippet in `interfaces/python/README.md` were run as written.
 - **Brute-force cross-checks** in the examples agree: all-solutions (9 solutions), all-optimal (2 optimal covers), minimise (cost 7), maximise (profit 24), scheduling (makespan 11).
 - **`pysat.integer` is the framework's own integer layer.** `Integer(name, lb, ub, encoding=...)` and `IntegerEngine(vars=..., vpool=...)` clausify direct, order or coupled encodings; `add_linear(..., reified=True)` returns a selector literal.
 - **Encoding restrictions**: `equals()` raises `Direct encoding is disabled` on `order`; `ge()` raises `Order encoding is disabled` on `direct`; `add_not_equal` on the left side requires `direct` or `coupled`.
@@ -31,7 +36,7 @@ Verified by running inside that container:
 - **`Integer.ge(v)` and `le(v)`**: `ge` gives the literal for `x >= v` and `le` gives `-ge(v+1)`, both only for order or coupled; out-of-range values raise. `add_linear(x >= 3)` is a constraint on any encoding (measured on direct, order and coupled).
 - **Reified `add_linear` returns `None`** when the bounds entail the constraint (measured: an entailed `x + 2 <= y` gave `None`, an impossible one gave a literal). In an early draft of the jobshop asset, keeping the other literal of such a clause made the model unsatisfiable, so the clause is skipped instead.
 - **`Solver.get_model()` length**: 36 entries with `pool.top` 37 when the last pool id is in no clause, so pad before `decode`.
-- **Unit-weight makespan softs** `[-makespan.ge(t)]`, `t` from `lb+1` to `ub`, give `makespan - lb` as the cost. Measured: ft06 optimum 55 in about 3 s with the greedy horizon 68 (assets/jobshop, schedule checked independently).
+- **Unit-weight makespan softs** `[-makespan.ge(t)]`, `t` from `lb+1` to `ub`, give `makespan - lb` as the cost. Measured: ft06 optimum 55 in about 3 s with the greedy horizon 68 (assets/python/jobshop, schedule checked independently).
 - **Horizon and clause counts** for reified no-overlap on ft06 at horizons 197, 80, 68 and 55 (table in pysat-api.md), measured with `clausify()` in the image.
 - **Colour-count objective** (one-hot colours, `x -> y_k`, soft `[-y_k]` weight 1) returned 3 on a triangle with a 4-cycle tail.
 - **Blocking on Integer solutions**: `equals` literals created before `clausify()` enumerate 92 eight-queens placements (the tester's n-queens-all model, re-run in the image: 92 lines of output).

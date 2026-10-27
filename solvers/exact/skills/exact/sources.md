@@ -1,5 +1,13 @@
 # Sources for `exact`
 
+Existing skills: none found.
+
+## Shared
+
+- <https://gitlab.com/nonfiction-software/exact> and the pybind11 doc strings: the solver's states, linear-only constraints, no global constraints, no default time limit, negated maximisation, enumeration by blocking projections.
+
+## Python
+
 Tested with Exact 2.2.1 (PyPI `exact`), Python 3.12.11, Linux x86_64 (python:3.12.11-slim-bookworm).
 
 - <https://gitlab.com/nonfiction-software/exact> — README: Python interface, `pip install exact`, precompiled wheels for x86_64 Linux and Windows, feature list
@@ -8,7 +16,7 @@ Tested with Exact 2.2.1 (PyPI `exact`), Python 3.12.11, Linux x86_64 (python:3.1
 - <https://pypi.org/project/exact/> — the distribution; `pip show exact` reports AGPL-3.0-only
 - The pybind11 doc strings on `exact.Exact`, which are the authoritative signatures: `inspect.signature` raises `ValueError` on these bindings, so read `__doc__`.
 
-Verified by running: every API behaviour in [references/exact-api.md](references/exact-api.md) and every example in `assets/` was run inside a Linux container (Exact 2.2.1, Python 3.12.11). Examples are general patterns written for this skill.
+Verified by running: every API behaviour in [references/python/exact-api.md](references/python/exact-api.md) and every example in `assets/` was run inside a Linux container (Exact 2.2.1, Python 3.12.11). Examples are general patterns written for this skill.
 
 - Verified by running: `toOptimum` returns `SAT` only for a proven optimum; maximisation values are negated; `hasSolution()` stays true after `TIMEOUT` and after exhaustion; `invalidateLastSol(names)` blocks projections; `encoding` accepts `log`, `order`, `onehot`.
 - Verified by running: knapsack optimum proof times (60 items of 6 digits 0.07 s; 120 items of 7 digits 2.6 s; 200 items of 8 digits 25 s).

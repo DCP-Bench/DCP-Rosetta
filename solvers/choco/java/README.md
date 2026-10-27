@@ -1,4 +1,4 @@
 # Choco (Java)
 
-The modelling skill for this integration is [`skills/choco-java/SKILL.md`](skills/choco-java/SKILL.md).
+The modelling skill for this integration is [`skills/choco/SKILL.md`](../skills/choco/SKILL.md).
 The integration contract that `java/dcp/` implements is [`CONTRACT.md`](CONTRACT.md).
