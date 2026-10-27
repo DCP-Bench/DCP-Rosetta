@@ -28,7 +28,7 @@ Tested with OR-Tools 9.15.6755 (C++ binary archive for Debian 12, x86_64), g++ 1
 
 Dropped: the `CpModelBuilder` page at `developers.google.com/optimization/reference/sat/cp_model/CpModelBuilder`, used by earlier versions of this skill. It returned 404 on 2026-10-15 and is replaced by the header above, which returns 200 on the same date.
 
-Dropped: the nlohmann/json 3.11.2 API page. The skill now uses nlohmann/json to read the instance file (see [Reading instance data](#reading-instance-data)); the package is `nlohmann-json3-dev` on Debian and it is present in the image.
+Dropped: the nlohmann/json 3.11.2 API page. The skill now uses nlohmann/json to read the instance file (see [Reading instance data](interfaces/cpp.md#reading-instance-data)); the package is `nlohmann-json3-dev` on Debian and it is present in the image.
 
 ## Verification
 
@@ -39,7 +39,7 @@ Checked in the image, with the evidence a reader can rerun:
 - `assets/no-overlap-jobshop` prints `Makespan: 11`, which matches a brute-force search over every operation order on each machine (done in Python during the refactor). Putting all intervals into one `AddNoOverlap` call instead gives `Makespan: 23`; the Common issues row cites this.
 - `AddElement` overloads are `(LinearExpr, absl::Span<const LinearExpr>, LinearExpr)` and `(LinearExpr, absl::Span<const int64_t>, LinearExpr)`. A `std::vector<IntVar>` converts to neither. A regression test reproduces the compile failure and checks that this skill documents the fix.
 - `AddNoOverlap(std::vector<IntervalVar>)` and `AddCumulative` with `AddDemand` build and give the expected values in `no-overlap-jobshop` and `scheduling-cumulative`.
-- Reading instance data: `nlohmann::json::parse` on a file given as `argv[1]`, linked with `find_package(nlohmann_json CONFIG REQUIRED)` and `nlohmann_json::nlohmann_json`, prints `Value: 10` for the instance in [Reading instance data](#reading-instance-data).
+- Reading instance data: `nlohmann::json::parse` on a file given as `argv[1]`, linked with `find_package(nlohmann_json CONFIG REQUIRED)` and `nlohmann_json::nlohmann_json`, prints `Value: 10` for the instance in [Reading instance data](interfaces/cpp.md#reading-instance-data).
 - Several programs from one CMake project with `foreach` and `RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin` build and run.
 - `OnlyEnforceIf` reifies only in the direction it is posted: both the constraint and its negation have to be posted against the literal and its `Not()` for the indicator to be pinned. A probe in the image showed the indicator may stay false while the enforced constraint holds.
 - Enumeration with auxiliary variables: a probe with an auxiliary variable not fixed by the decision variables reported 18 solutions where 6 distinct decision tuples exist. With `set_num_workers(8)` a 6-solution model reported 5. Both checked in the image.

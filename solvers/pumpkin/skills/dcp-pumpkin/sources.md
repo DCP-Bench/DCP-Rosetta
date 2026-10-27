@@ -130,4 +130,4 @@ as tested with those harness steps. Result: **18/18 instances passed**, zero mod
 | n-queens-all | n8 | PASS, all 92 solutions |
 
 Totals: 18/18 passed.
-The tester's findings (install without network, no git in the image, no JSON reading, one model file outside `src/`, graph colouring count, time budget) are each addressed in SKILL.md: [Install](SKILL.md#install), [Offline builds](SKILL.md#offline-builds), [Modelling](SKILL.md#modelling), [Solving](SKILL.md#solving) and [Common issues](SKILL.md#common-issues).
+The tester's findings (install without network, no git in the image, no JSON reading, one model file outside `src/`, graph colouring count, time budget) are each addressed in the skill: [Install](interfaces/rust.md#install), [Offline builds](interfaces/rust.md#offline-builds), [Modelling](SKILL.md#modelling), [Solving](SKILL.md#solving) and [Common issues](interfaces/rust.md#common-issues).

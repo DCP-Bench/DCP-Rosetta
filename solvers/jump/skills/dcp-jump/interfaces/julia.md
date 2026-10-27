@@ -48,7 +48,7 @@ jobs = inst["jobs"]                      # a list of lists stays a Vector of Vec
 
 - A JSON list of lists is a `Vector{Any}` of vectors, so `jobs[j][k]` indexes it directly. A JSON pair `[machine, duration]` is a two-element vector: `jobs[j][k][1]`.
 - Use `Int.(...)` or `Float64.(...)` on the parsed lists before doing arithmetic, so the model gets concrete types.
-- Lists may be **ragged** (jobs of different lengths). Take each length from its own list, never from the first one: see [Modelling](#modelling).
+- Lists may be **ragged** (jobs of different lengths). Take each length from its own list, never from the first one: see [Modelling calls](#modelling-calls).
 - Strings in the instance (names, letters) are `String`: convert with `String(...)` and index a `Dict` built from them; keep them out of constraints.
 
 Working example: [json-input](../assets/julia/json-input/README.md).
