@@ -134,6 +134,18 @@ class SolverGroupingTests(unittest.TestCase):
         self.assertNotIn("binding-bar", generate_site.solver_models_html(["choco_python"], best, True))
 
 
+    def test_one_interface_browses_its_solver_in_its_language(self):
+        saved = generate_site.INTEGRATIONS, generate_site.SOLVER_OF
+        generate_site.INTEGRATIONS = {"choco_java": {"language": "java"}}
+        generate_site.SOLVER_OF = {"choco_java": "choco"}
+        try:
+            link = generate_site.binding_browse_button("choco_java", 162)
+            self.assertIn('href="index.html?framework=choco&amp;language=java"', link)
+            self.assertEqual(generate_site.binding_browse_button("choco_java", 0), "")
+        finally:
+            generate_site.INTEGRATIONS, generate_site.SOLVER_OF = saved
+
+
 class ModelLinkTests(unittest.TestCase):
     """The "Model file (GitHub)" link, which has to name a directory that exists.
 

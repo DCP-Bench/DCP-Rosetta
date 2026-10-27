@@ -58,6 +58,8 @@ modelled in more than one of them. Those are the problems worth reading side by
 side. A solver with several interfaces, such as Choco from Java and from Python,
 is listed once: its native interface, the first its skill's `interfaces:` names,
 shows by default and the others are a tab away.
+The catalogue filters models by
+solver and by language, together: Choco and Java lists Choco's Java models.
 
 ## Repository Structure
 

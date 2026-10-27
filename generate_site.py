@@ -34,7 +34,7 @@ BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
-ASSET_VERSION = "catalogue-v56"
+ASSET_VERSION = "catalogue-v57"
 # Set by main() from the content of data.js.
 DATA_VERSION = ""
 SUBTITLE = (
@@ -503,8 +503,8 @@ def load_generated_models() -> dict:
     return out
 
 
-def model_language(metrics: dict, model_file: str) -> tuple:
-    """(highlight.js grammar, label) for a generated model's code block.
+def model_language_key(metrics: dict, model_file: str) -> str:
+    """The `language` a generated model is written in, as LANGUAGES keys it.
 
     Read from the integration's declared `language`, so a new integration is
     labelled correctly the moment it declares one. The file extension is only
@@ -513,6 +513,12 @@ def model_language(metrics: dict, model_file: str) -> tuple:
     language = (INTEGRATIONS.get(metrics.get("solver")) or {}).get("language")
     if language not in LANGUAGES and model_file:
         language = EXTENSION_LANGUAGE.get(Path(model_file).suffix)
+    return language or ""
+
+
+def model_language(metrics: dict, model_file: str) -> tuple:
+    """(highlight.js grammar, label) for a generated model's code block."""
+    language = model_language_key(metrics, model_file)
     return LANGUAGES.get(language, ("plaintext", language or "Model"))
 
 
@@ -1021,6 +1027,17 @@ def browse_button(solver: str, count: int) -> str:
     return f'<a class="browse" href="index.html?framework={esc(solver)}">Browse<span class="browse-long"> models</span> &rarr;</a>'
 
 
+def binding_browse_button(binding: str, count: int) -> str:
+    """The same for one interface of a solver: the catalogue filtered on the
+    solver and the language, whose problems open on that language's tab."""
+    if not count:
+        return ""
+    href = f"index.html?framework={SOLVER_OF[binding]}&language={INTEGRATIONS[binding].get('language', '')}"
+    label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
+    return (f'<a class="browse browse-small" href="{esc(href)}" '
+            f'title="The problems with a {esc(label)} model of this solver">models &rarr;</a>')
+
+
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
     one integration: the interface entry it reads when the skill serves several
@@ -1051,11 +1068,11 @@ def solver_skill_button(solver: str) -> str:
             f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
 
 
-def binding_list(bindings: list, found: dict, anchored: set, total: int) -> str:
+def binding_list(bindings: list, found: dict, anchored: set, total: int, modelled: dict) -> str:
     """A solver's bindings under its name, native first: each language with
-    the problems it models and, as a skill pill like the solver's own, the
-    interface file of the shared skill. The language is plain text, so the
-    only links are pills to skills and the row's Browse to models."""
+    the problems it models, then the interface file of the shared skill as a
+    grey skill pill like the solver's own, and its models as a Browse pill
+    like the row's. The language itself is plain text."""
     from generation.skills import integration_skill, interface_entry
     root = SOLVERS_DIR.resolve().parent
     items = []
@@ -1069,7 +1086,8 @@ def binding_list(bindings: list, found: dict, anchored: set, total: int) -> str:
                 f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
                 if entry else "")
         items.append(f'<span class="binding"{anchor}><span class="binding-name">{esc(label)}</span>'
-                     f'{coverage_count(found.get(binding, 0), total)}{pill}</span>')
+                     f'{coverage_count(found.get(binding, 0), total)}{pill}'
+                     f'{binding_browse_button(binding, modelled.get(binding, 0))}</span>')
     return f'<span class="bindings">{"".join(items)}</span>'
 
 
@@ -1125,7 +1143,8 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             listed.add(solver)
             bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
             if len(SOLVERS[solver]["bindings"]) > 1:
-                extra = binding_list(bindings, per_binding, anchored, denominator)
+                extra = binding_list(bindings, per_binding, anchored, denominator,
+                                     breakdown["integration_problems"])
             else:
                 # The integration's own ID stays a target: older links use it.
                 extra = "" if bindings[0] in anchored else f'<span id="solver-{esc(bindings[0])}"></span>'
@@ -1199,16 +1218,23 @@ def build_index(problems: list, generated: dict, breakdown: dict) -> None:
         f'{esc(item["name"])}</label>'
         for item in breakdown["paradigms"] if item["problems"]
     )
-    generated_solvers = {}
+    generated_solvers, generated_languages = {}, set()
     for models in generated.values():
-        for framework in select_best_generated(models):
+        for framework, entry in select_best_generated(models).items():
             generated_solvers.setdefault(SOLVER_OF.get(framework, framework), set()).add(framework)
+            generated_languages.add(model_language_key(entry["metrics"], entry["model_file"]))
     # A link naming one binding, index.html?framework=choco_python, ticks its solver.
     framework_options = "".join(
         f'<label><input type="checkbox" data-filter-group="framework" value="{esc(solver)}" '
         f'data-aliases="{esc(" ".join(sorted(generated_solvers[solver])))}">'
         f'{esc(solver_name(solver))}</label>'
         for solver in sorted(generated_solvers, key=lambda s: solver_name(s).casefold())
+    )
+    language_options = "".join(
+        f'<label><input type="checkbox" data-filter-group="language" value="{esc(language)}">'
+        f'{esc(LANGUAGES.get(language, ("", language))[1])}</label>'
+        for language in sorted(generated_languages - {""},
+                               key=lambda language: LANGUAGES.get(language, ("", language))[1].casefold())
     )
     body = f"""
     <div class="controls" aria-label="Problem filters">
@@ -1233,6 +1259,12 @@ def build_index(problems: list, generated: dict, breakdown: dict) -> None:
         <button type="button" class="filter-trigger" id="filter-framework" aria-expanded="false">Solver: All</button>
         <div class="filter-options" role="group" aria-label="Filter by the solver of a generated model">
           {framework_options}
+        </div>
+      </div>
+      <div class="filter-menu" data-filter-menu="language">
+        <button type="button" class="filter-trigger" id="filter-language" aria-expanded="false">Language: All</button>
+        <div class="filter-options" role="group" aria-label="Filter by the language of a generated model">
+          {language_options}
         </div>
       </div>
       <button type="button" id="reset-filters" class="reset-btn" disabled>Reset</button>
@@ -1587,10 +1619,19 @@ def main() -> None:
                 # Solvers, not bindings: Choco's Java and Python models make one.
                 "generatedFrameworks": sorted({SOLVER_OF.get(framework, framework) for framework
                                                in select_best_generated(generated.get(p["id"], {}))}),
+                # Each model by its integration, which `models` below tells the
+                # solver and language of: Solver and Language filter models together.
+                "generatedModels": sorted(select_best_generated(generated.get(p["id"], {}))),
                 "paradigms": breakdown["per_problem"].get(p["id"], []),
             }
             for p in problems
-        ]
+        ],
+        "models": {
+            framework: {"solver": SOLVER_OF.get(framework, framework),
+                        "language": model_language_key(entry["metrics"], entry["model_file"])}
+            for models in generated.values()
+            for framework, entry in select_best_generated(models).items()
+        },
     }
     js = "window.DCP_DATA = " + json.dumps(index_data, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
     (OUTPUT_DIR / "data.js").write_text(js, encoding="utf-8")

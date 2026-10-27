@@ -3,12 +3,12 @@
 
   var sortKey = "name";
   var sortDirection = 1;
-  var FILTER_GROUPS = ["instances", "paradigm", "framework"];
+  var FILTER_GROUPS = ["instances", "paradigm", "framework", "language"];
   /* The catalogue shows one problem type at a time, as a tab. */
   var TYPES = ["optimization", "satisfaction"];
   var activeType = TYPES[0];
-  /* With solvers picked, the catalogue shows the problems they have a model
-     for ("yes") or the ones none of them has ("no"). */
+  /* With solvers or languages picked, the catalogue shows the problems that
+     have a model matching them ("yes") or the ones that have none ("no"). */
   var modelledMode = "yes";
 
   /* Names compare by code point, the order generate_site.py gives the
@@ -45,7 +45,26 @@
     });
   }
 
-  var FILTER_NAMES = { instances: "Instances", paradigm: "Paradigm", framework: "Solver" };
+  var FILTER_NAMES = { instances: "Instances", paradigm: "Paradigm", framework: "Solver", language: "Language" };
+
+  /* The models a problem has that the Solver and Language filters both
+     accept, each by its integration ID. The two filters are read together,
+     per model: Choco and Java is Choco's Java models, not Choco's models of
+     problems some solver has in Java. */
+  function matchingModels(problem) {
+    var models = (window.DCP_DATA && window.DCP_DATA.models) || {};
+    var solvers = selectedFilterValues("framework");
+    var languages = selectedFilterValues("language");
+    return (problem.generatedModels || []).filter(function (id) {
+      var model = models[id] || {};
+      return (!solvers.length || solvers.indexOf(model.solver) !== -1) &&
+        (!languages.length || languages.indexOf(model.language) !== -1);
+    });
+  }
+
+  function modelFiltersInUse() {
+    return selectedFilterValues("framework").length + selectedFilterValues("language").length > 0;
+  }
 
   /* A filter in use reads its choice and is marked, so a narrowed list
      never looks like the whole catalogue. */
@@ -112,7 +131,7 @@
       var values = selectedFilterValues(group);
       if (values.length) params.push(group + "=" + values.map(encodeURIComponent).join(","));
     });
-    if (modelledMode === "no" && selectedFilterValues("framework").length) params.push("modelled=no");
+    if (modelledMode === "no" && modelFiltersInUse()) params.push("modelled=no");
     if (sortKey !== "name" || sortDirection !== 1) {
       params.push("sort=" + (sortDirection === 1 ? "" : "-") + sortKey);
     }
@@ -131,17 +150,22 @@
     try { sessionStorage.setItem(CATALOGUE_KEY, window.location.href); } catch (e) { /* private mode */ }
   }
 
-  /* With solvers picked (index.html?framework=choco from the Solvers page),
-     a problem link opens the first picked solver's model the problem has,
-     rather than the reference model. */
+  /* With solvers or languages picked (index.html?framework=choco from the
+     Solvers page), a problem link opens a model that matches them rather
+     than the reference model: the first picked solver's, and with a language
+     picked, on that language's tab. */
   function problemHref(problem) {
     var href = "problems/" + problem.id + ".html";
-    var has = problem.generatedFrameworks || [];
-    var framework = selectedFilterValues("framework").filter(function (solver) {
-      return has.indexOf(solver) !== -1;
-    })[0];
-    if (framework) href += "?model=" + encodeURIComponent(framework);
-    return href;
+    if (!modelFiltersInUse()) return href;
+    var models = window.DCP_DATA.models || {};
+    var matching = matchingModels(problem);
+    var solvers = selectedFilterValues("framework");
+    var first = solvers.map(function (solver) {
+      return matching.filter(function (id) { return models[id].solver === solver; })[0];
+    }).filter(Boolean)[0] || matching[0];
+    if (!first) return href;
+    var target = selectedFilterValues("language").length ? first : models[first].solver;
+    return href + "?model=" + encodeURIComponent(target);
   }
 
   /* Long ids may break after an underscore, never inside a word. */
@@ -215,7 +239,7 @@
     var q = (document.getElementById("filter-q") || { value: "" }).value.trim().toLowerCase();
     var instances = selectedFilterValues("instances");
     var paradigms = selectedFilterValues("paradigm");
-    var frameworks = selectedFilterValues("framework");
+    var modelFilters = modelFiltersInUse();
 
     var filtered = data.filter(function (problem) {
       if (instances.length) {
@@ -240,11 +264,8 @@
     });
 
     var switcher = document.querySelector(".mode-switch");
-    if (frameworks.length) {
-      var modelled = function (problem) {
-        var has = problem.generatedFrameworks || [];
-        return frameworks.some(function (framework) { return has.indexOf(framework) !== -1; });
-      };
+    if (modelFilters) {
+      var modelled = function (problem) { return matchingModels(problem).length > 0; };
       var split = { yes: filtered.filter(modelled), no: filtered.filter(function (problem) { return !modelled(problem); }) };
       filtered = split[modelledMode];
       if (switcher) {
@@ -256,7 +277,7 @@
         });
       }
     }
-    if (switcher) switcher.hidden = !frameworks.length;
+    if (switcher) switcher.hidden = !modelFilters;
 
     filtered.sort(compareProblems);
     if (countEl) {
@@ -308,9 +329,10 @@
   }
 
   /* Restore the catalogue from its URL, which is also how another page hands
-     it a filter: paradigms.html links index.html?framework=swipl. A solver's
-     checkbox also answers to its bindings' IDs (framework=choco_python), which
-     older links use. Unknown values simply match no checkbox. */
+     it a filter: paradigms.html links index.html?framework=swipl, and
+     ?framework=choco&language=java for one interface. A solver's checkbox also
+     answers to its bindings' IDs, which older links use: framework=choco_python
+     ticks Choco and Python. Unknown values simply match no checkbox. */
   function applyQueryFilters() {
     if (!window.URLSearchParams) return;
     var params = new URLSearchParams(window.location.search);
@@ -329,9 +351,12 @@
       values.forEach(function (value) {
         if (!value) return;
         value = value.replace(/"/g, "");
-        var input = document.querySelector('input[data-filter-group="' + group + '"][value="' + value + '"]') ||
-          document.querySelector('input[data-filter-group="' + group + '"][data-aliases~="' + value + '"]');
-        if (input) input.checked = true;
+        var input = document.querySelector('input[data-filter-group="' + group + '"][value="' + value + '"]');
+        var alias = !input && document.querySelector('input[data-filter-group="' + group + '"][data-aliases~="' + value + '"]');
+        var model = alias && (window.DCP_DATA.models || {})[value];
+        var language = model && document.querySelector('input[data-filter-group="language"][value="' + model.language + '"]');
+        if (language) language.checked = true;
+        if (input || alias) (input || alias).checked = true;
       });
       updateFilterButton(group);
     });
