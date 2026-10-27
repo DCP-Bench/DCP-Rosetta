@@ -1,0 +1,55 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 729B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context:
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [builder  1/10] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 11.33kB done
+#5 DONE 0.2s
+
+#6 [2/4] RUN pip install --no-cache-dir mip==2.0.0 cbcbox==2.935 cffi==2.1.1 pycparser==3.11
+#6 1.880 Collecting mip==2.0.0
+#6 2.006   Downloading mip-2.0.0-py3-none-any.whl.metadata (22 kB)
+#6 2.030 Collecting cbcbox==2.935
+#6 2.039   Downloading cbcbox-2.935-py3-none-manylinux2014_x86_64.whl.metadata (35 kB)
+#6 2.131 Collecting cffi==2.1.1
+#6 2.140   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+#6 2.152 Collecting pycparser==3.11
+#6 2.160   Downloading pycparser-3.11-py3-none-any.whl.metadata (8.2 kB)
+#6 2.175 Downloading mip-2.0.0-py3-none-any.whl (92 kB)
+#6 2.545 Downloading cbcbox-2.935-py3-none-manylinux2014_x86_64.whl (191.3 MB)
+#6 12.37    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 191.3/191.3 MB 19.5 MB/s eta 0:00:00
+#6 12.38 Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+#6 12.40 Downloading pycparser-3.11-py3-none-any.whl (51 kB)
+#6 12.54 Installing collected packages: pycparser, cbcbox, cffi, mip
+#6 15.03 Successfully installed cbcbox-2.935 cffi-2.1.1 mip-2.0.0 pycparser-3.11
+#6 15.03 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 15.12 
+#6 15.12 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#6 15.12 [notice] To update, run: pip install --upgrade pip
+#6 DONE 15.4s
+
+#7 [3/4] COPY runner/runtime.py /opt/runner/runtime.py
+#7 DONE 0.3s
+
+#8 [4/4] COPY solvers/python_mip/python/run.py /opt/runner/run.py
+#8 DONE 0.2s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 1.4s done
+#9 writing image sha256:208d341090b113eb7fa28b04f765786e9514a69db59896f98b5102f39abe3394 done
+#9 naming to docker.io/dcp-eval/mip_cbc:v1 0.0s done
+#9 DONE 1.4s

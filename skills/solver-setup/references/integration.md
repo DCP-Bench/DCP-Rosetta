@@ -1,6 +1,6 @@
 # Integration files
 
-What an integration folder `<integration>/` holds besides the standalone skill (`solvers/<solver>/<interface>/` beside the solver's skill; `solvers/<id>/` for older integrations), in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
+What an integration folder `<integration>/` holds besides the standalone skill (`solvers/<solver>/<interface>/` beside the solver's skill), in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
 
 ## Contents
 
@@ -161,7 +161,7 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
 - Use exactly the headings of the *Mapping checklist* in `solvers/CONTRACT.md`:
   `## Submission file`, `## Entrypoint`, `## Instance`, `## Outputs`, `## Objective`,
   `## Solving`, `## Compilation`, `## Environment`, `## Traps`, `## Example`. Follow
-  `solvers/cpmpy_python/CONTRACT.md` as a model.
+  `solvers/cpmpy/python/CONTRACT.md` as a model.
 - State what `run.py` does, not what you meant it to do: signatures, how the instance is
   represented, the output container, the objective form, the settings the runner forces.
 - Every fact about the container (binary paths, environment variables, network,
@@ -172,7 +172,7 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
 
 ## 6. `readiness_test.py`
 
-Adapt `solvers/cpmpy_python/readiness_test.py`, which implements every check below with
+Adapt `solvers/cpmpy/python/readiness_test.py`, which implements every check below with
 a trusted reference. It drives the real evaluator against the built image, prints a JSON
 object of check name to Boolean, and exits nonzero on any failure. Each check must be
 able to fail, with its submission in this integration's own form.

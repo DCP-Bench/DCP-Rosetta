@@ -1,5 +1,11 @@
 # Sources for `hermax`
 
+## Shared
+
+Documentation and package: see the links below; tested versions are under Python.
+
+## Python
+
 Tested with hermax 1.2.9 (with python-sat 1.9.dev17), Python 3.12.11, Linux, inside the
 `python:3.12.11-slim-bookworm` image with `pip install hermax==1.2.9`.
 

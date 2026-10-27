@@ -60,9 +60,11 @@ def integration_folders(root=ROOT):
     """Every integration's folder by ID, in ID order.
 
     An integration is a folder holding metadata.json: `solvers/<id>/`, or, beside
-    the skill its solver's bindings share, `solvers/<solver>/<interface>/` with ID
-    `<solver>_<interface>`. A folder under a flat integration is part of it, not
-    an integration of its own.
+    the skill its solver's bindings share, `solvers/<solver>/<interface>/`. A nested
+    integration's ID is the `id` in its metadata.json, so an integration keeps its ID
+    (and with it its image and models) when it moves; `<solver>_<interface>` is the
+    convention for new ones and the fallback when metadata.json has no readable ID.
+    A folder under a flat integration is part of it, not an integration of its own.
     """
     solvers = Path(root) / "solvers"
     folders = {path.parent.name: path.parent for path in solvers.glob("*/metadata.json")}
@@ -70,7 +72,12 @@ def integration_folders(root=ROOT):
         solver = path.parent.parent
         if (solver / "metadata.json").is_file():
             continue
-        solver_id = f"{solver.name}_{path.parent.name}"
+        try:
+            solver_id = strict_json(path.read_text(encoding="utf-8"))["id"]
+        except (OSError, ValueError, KeyError, TypeError, EvaluationError):
+            solver_id = None
+        if not isinstance(solver_id, str) or not solver_id:
+            solver_id = f"{solver.name}_{path.parent.name}"
         if solver_id in folders:
             raise EvaluationError("infrastructure_error",
                                   f"Two folders claim integration {solver_id}: {folders[solver_id]} and {path.parent}")

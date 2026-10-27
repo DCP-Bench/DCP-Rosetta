@@ -9,8 +9,7 @@ like is in two repository files both skills share: the submission contract
 `solvers/CONTRACT.md`, and each integration's `CONTRACT.md` saying how that
 integration realises it. An integration's folder is `solvers/<solver>/<interface>/` (id
 `<solver>_<interface>`), beside the standalone skill its solver's bindings share under
-`solvers/<solver>/skills/`; older integrations are `solvers/<id>/` with their own skill under
-`solvers/<id>/skills/`. `next_work` reports each integration's `skill`, and its `interface`
+`solvers/<solver>/skills/`. `next_work` reports each integration's `skill`, and its `interface`
 when the skill is shared. These Python
 commands provide records and checks; they do not choose a solver, call an LLM
 provider, or replace the skills.
@@ -143,7 +142,7 @@ covers one check per runner bug class the campaigns exposed: `output_shapes`,
 `instance_shapes`, `error_detail`, `stray_stdout`, `large_model`; when it optimises,
 `optimization_timeout` and `minimization_step_one`; when it enumerates,
 `auxiliary_free_distinct`; and when it does both, `optimum_enumeration`.
-`solvers/cpmpy_python/readiness_test.py` implements all of them. Named checks must match actual
+`solvers/cpmpy/python/readiness_test.py` implements all of them. Named checks must match actual
 test assertions in the evidence; the coordinator is responsible for that
 assessment. The helper prevents omission/stale evidence, not falsified reports.
 

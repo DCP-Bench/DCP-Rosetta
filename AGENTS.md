@@ -24,8 +24,8 @@ standalone skill under `skills/<name>/`, shared by its language bindings, with a
 `interfaces/<interface>.md` (or an `interfaces/<interface>/` folder entered through its
 `README.md`) per binding; and one integration folder per binding, `<interface>/`, with id
 `<solver>_<interface>` and its own `Dockerfile`, runner, `CONTRACT.md` and readiness record.
-Each integration is built, certified and modelled for on its own. Older integrations are
-flat, `solvers/<id>/`, with their own skill in `solvers/<id>/skills/`.
+Each integration is built, certified and modelled for on its own. Every integration is nested
+this way; the evaluator still falls back to a flat `solvers/<id>/` for an id it cannot find.
 
 Follow `rosetta-skills/model-generator`, which runs a
 campaign end to end, and `rosetta-skills/solver-setup` for adding a framework/solver.

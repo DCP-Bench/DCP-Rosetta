@@ -68,7 +68,7 @@ def outcome(directory, name, source):
 
 def main():
     bundle = Path(sys.argv[1])
-    text = (bundle / "SKILL.md").read_text(encoding="utf-8")
+    text = "\n".join(p.read_text(encoding="utf-8") for p in [bundle / "SKILL.md", *sorted(bundle.glob("interfaces/**/*.md"))])
     with tempfile.TemporaryDirectory() as directory:
         broken = outcome(directory, "global", GLOBAL)
         repaired = outcome(directory, "pairwise", PAIRWISE)

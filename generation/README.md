@@ -32,7 +32,7 @@ instance rather than by review.
 Whether an integration can still be trusted:
 
 ```sh
-python -m generation.readiness verify --solver z3_python --record solvers/z3_python/readiness.json
+python -m generation.readiness verify --solver z3_python --record solvers/z3/python/readiness.json
 ```
 
 A record ties an integration's image to the checks that were actually run

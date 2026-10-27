@@ -1,5 +1,9 @@
 # Sources for `picat`
 
+One interface (`picat`, the language itself). The shared section holds what `SKILL.md` states; the Picat section what `interfaces/picat.md` and `assets/picat/` state.
+
+## Shared (SKILL.md) and Picat (interfaces/picat.md)
+
 Tested with Picat 3.9#12 (`picat --version`), Linux x86-64, inside a container image (Python 3.12.11 on Debian bookworm).
 
 Refactored from an earlier integration skill; examples verified inside the same image.
@@ -16,7 +20,7 @@ Existing skills: none found for Picat when this skill was first written.
 - `Picat/LICENSE` in the same archive — Picat is free for any purpose; its C sources are under the Mozilla Public License 2.0
 - `/opt/picat/lib/cp.pi`, `sat.pi`, `sys.pi` in the image — the signatures of `solve/1`, `solve/2`, `solve_all/1`, `time_out/3` and the `$report`/`$label` options
 
-Verified by running: every example under `assets/` and the Quick start, in the image, with `picat model.pi`. Also verified by running inside the image:
+Verified by running: every example under `assets/picat/` and the Quick start, in the image, with `picat model.pi`. Also verified by running inside the image:
 
 - `solve(Options, Vars)` order: `solve([$max(X)], [X])` optimises; `solve([X], [$max(X)])` labels the options list and silently returns a non-optimal value.
 - `findall(Vars, solve(Vars))` enumerates all solutions of `Vars` (cp and sat).
@@ -28,7 +32,7 @@ Verified by running: every example under `assets/` and the Quick start, in the i
 - Characters: `$a` is `a`; `$0` is the integer 0; `C >= '0'` and `$'5' >= $'0'` fail with `Wrong function in expression`, so comparisons use `ord/1`.
 - Heads: `sk(Cs, Cs) => true.` called with an unbound second argument fails; `:-` unifies its head.
 - Comprehension comparisons such as `[K == 4 : K in 1..2]` print as terms (`[1 == 4,2 == 4]`), not booleans; `if IsLast[2] == 1` works on a 0/1 list.
-- Picat 3.9#12 has no JSON library (`json_decode`, `parse_json` undefined); `assets/read-json-instance/` reads a JSON file with a plain-Picat reader.
+- Picat 3.9#12 has no JSON library (`json_decode`, `parse_json` undefined); `assets/picat/read-json-instance/` reads a JSON file with a plain-Picat reader.
 - Syntax errors print `*** SYNTAX ERROR *** (line-range)` on stderr with exit code 1.
 - The `sat` defect: two variables over 0..3 under `all_different/1`, each equal to `2 * A + B` over its own two 0/1 variables, give 192 solutions under `sat` against the correct 12 under `cp` or with pairwise `#!=` under `sat`.
 - The assignment example optimum 13 agrees with a brute-force enumeration of all 24 permutations.

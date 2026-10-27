@@ -38,14 +38,13 @@ An integration without a current `readiness.json` is reported as unusable by
 Certify it instead — a one-time job per integration, and the same steps after
 any change that invalidates an existing record:
 
-1. Write `readiness_test.py` in the integration's folder (`solvers/<solver>/<interface>/`,
-   or `solvers/<id>/` for an older integration) that drives the repository evaluator
+1. Write `readiness_test.py` in the integration's folder (`solvers/<solver>/<interface>/`) that drives the repository evaluator
    through the whole checklist — satisfaction, changed instances, malformed
    output, empty output, timeout cleanup, isolation, missing image, minimization,
    maximization, enumeration, plus `compilation_error` for a compiled
    integration — printing a JSON object of check name to Boolean and exiting
    nonzero if any failed.
-   `solvers/cpmpy_python/readiness_test.py` is a working example to adapt; the required names are in `generation/AGENTS.md`.
+   `solvers/cpmpy/python/readiness_test.py` is a working example to adapt; the required names are in `generation/AGENTS.md`.
 2. Build the image if it is not present: `python -m evaluation.build <id>`.
 3. Record readiness, which runs your script and keeps its output as evidence:
 

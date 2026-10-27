@@ -1,5 +1,7 @@
 # Sources for `idp-z3`
 
+One interface, `idp` (the `idp_engine` Python API and the `idp-engine` command): everything below applies to it, and the shared claims in SKILL.md (FO(.) syntax, knowledge base) are the ones tested here.
+
 Tested with idp-engine 0.12.1 (z3-solver 4.11.2.0, sli-lib 0.4.6, textX 2.3.0), Python
 3.12.11, Linux, no network.
 

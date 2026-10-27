@@ -86,7 +86,7 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: swipl_clpfd_skill_regression.py SKILL_BUNDLE")
     bundle = Path(sys.argv[1])
-    skill = (bundle / "SKILL.md").read_text(encoding="utf-8")
+    skill = "\n".join(p.read_text(encoding="utf-8") for p in [bundle / "SKILL.md", *sorted(bundle.glob("interfaces/**/*.md"))])
 
     import tempfile
     failures = []

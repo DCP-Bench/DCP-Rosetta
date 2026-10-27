@@ -1,0 +1,174 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.87kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/rust:1.98.1-slim-bookworm@sha256:ebd900bae66fd508b466cef82d64a83a5fb34682e4c8b2797a42908bddc95a57
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [1/8] FROM docker.io/library/rust:1.98.1-slim-bookworm@sha256:ebd900bae66fd508b466cef82d64a83a5fb34682e4c8b2797a42908bddc95a57
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 32.29kB done
+#5 DONE 0.0s
+
+#6 [2/8] RUN apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [3/8] COPY solvers/huub/rust/rust/driver /opt/crate
+#7 DONE 0.2s
+
+#8 [4/8] WORKDIR /opt/crate
+#8 DONE 0.2s
+
+#9 [5/8] RUN apt-get update && apt-get install -y --no-install-recommends g++=4:12.2.0-3 libstdc++-12-dev=12.2.0-14+deb12u1  && cargo build --locked --release  && mkdir -p /opt/rust/deps  && cp /opt/crate/target/release/libdcp_huub.rlib /opt/rust/libdcp_huub.rlib  && cp /opt/crate/target/release/deps/*.rlib /opt/rust/deps/  && cp /opt/crate/target/release/deps/*.so /opt/rust/deps/  && rm -rf /opt/crate/target /usr/local/cargo/registry /usr/local/rustup/toolchains/*/share/doc  && apt-get purge -y g++ g++-12 && rm -rf /var/lib/apt/lists/*
+#9 0.338 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#9 0.372 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#9 0.383 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#9 0.425 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#9 1.053 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#9 1.054 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [358 kB]
+#9 1.683 Fetched 9397 kB in 1s (6905 kB/s)
+#9 1.683 Reading package lists...
+#9 2.007 Reading package lists...
+#9 2.319 Building dependency tree...
+#9 2.389 Reading state information...
+#9 2.468 The following additional packages will be installed:
+#9 2.468   g++-12
+#9 2.469 Suggested packages:
+#9 2.469   g++-multilib g++-12-multilib gcc-12-doc libstdc++-12-doc
+#9 2.488 The following NEW packages will be installed:
+#9 2.488   g++ g++-12 libstdc++-12-dev
+#9 2.512 0 upgraded, 3 newly installed, 0 to remove and 9 not upgraded.
+#9 2.512 Need to get 12.7 MB of archives.
+#9 2.512 After this operation, 57.0 MB of additional disk space will be used.
+#9 2.512 Get:1 http://deb.debian.org/debian bookworm/main amd64 libstdc++-12-dev amd64 12.2.0-14+deb12u1 [2047 kB]
+#9 2.674 Get:2 http://deb.debian.org/debian bookworm/main amd64 g++-12 amd64 12.2.0-14+deb12u1 [10.7 MB]
+#9 3.338 Get:3 http://deb.debian.org/debian bookworm/main amd64 g++ amd64 4:12.2.0-3 [1356 B]
+#9 3.420 debconf: delaying package configuration, since apt-utils is not installed
+#9 3.433 Fetched 12.7 MB in 1s (15.1 MB/s)
+#9 3.457 Selecting previously unselected package libstdc++-12-dev:amd64.
+#9 3.457 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 9833 files and directories currently installed.)
+#9 3.482 Preparing to unpack .../libstdc++-12-dev_12.2.0-14+deb12u1_amd64.deb ...
+#9 3.535 Unpacking libstdc++-12-dev:amd64 (12.2.0-14+deb12u1) ...
+#9 3.706 Selecting previously unselected package g++-12.
+#9 3.708 Preparing to unpack .../g++-12_12.2.0-14+deb12u1_amd64.deb ...
+#9 3.718 Unpacking g++-12 (12.2.0-14+deb12u1) ...
+#9 4.241 Selecting previously unselected package g++.
+#9 4.243 Preparing to unpack .../g++_4%3a12.2.0-3_amd64.deb ...
+#9 4.251 Unpacking g++ (4:12.2.0-3) ...
+#9 4.308 Setting up libstdc++-12-dev:amd64 (12.2.0-14+deb12u1) ...
+#9 4.333 Setting up g++-12 (12.2.0-14+deb12u1) ...
+#9 4.360 Setting up g++ (4:12.2.0-3) ...
+#9 4.380 update-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode
+#9 4.448     Updating crates.io index
+#9 6.618  Downloading crates ...
+#9 6.696   Downloaded darling v0.24.1
+#9 6.707   Downloaded darling_macro v0.24.1
+#9 6.707   Downloaded ident_case v1.0.1
+#9 6.708   Downloaded itoa v1.0.18
+#9 6.714   Downloaded bon v3.10.2
+#9 6.720   Downloaded rustc-hash v2.1.3
+#9 6.721   Downloaded rangelist v0.3.2
+#9 6.721   Downloaded strsim v0.11.1
+#9 6.727   Downloaded dyn-clone v1.0.20
+#9 6.739   Downloaded jobserver v0.1.35
+#9 6.745   Downloaded pin-project-lite v0.2.17
+#9 6.748   Downloaded quote v1.0.47
+#9 6.749   Downloaded zmij v1.0.23
+#9 6.750   Downloaded either v1.19.0
+#9 6.751   Downloaded find-msvc-tools v0.1.14
+#9 6.752   Downloaded shlex v2.0.1
+#9 6.756   Downloaded once_cell v1.21.4
+#9 6.757   Downloaded unicode-ident v1.0.27
+#9 6.762   Downloaded tracing-attributes v0.1.31
+#9 6.774   Downloaded serde_core v1.0.229
+#9 6.779   Downloaded tracing-core v0.1.36
+#9 6.785   Downloaded prettyplease v0.3.0
+#9 6.787   Downloaded proc-macro2 v1.0.107
+#9 6.788   Downloaded darling_core v0.24.1
+#9 6.791   Downloaded bon-macros v3.10.2
+#9 6.795   Downloaded pindakaas v0.2.3
+#9 6.811   Downloaded memchr v2.8.3
+#9 6.821   Downloaded cc v1.8.0
+#9 6.834   Downloaded itertools v0.14.0
+#9 6.839   Downloaded serde_json v1.0.151
+#9 6.863   Downloaded huub v100.1.0
+#9 6.880   Downloaded syn v2.0.119
+#9 6.886   Downloaded syn v3.0.9
+#9 6.906   Downloaded tracing v0.1.44
+#9 6.925   Downloaded libc v0.2.191
+#9 7.126   Downloaded rangelist v0.4.0
+#9 7.177   Downloaded pindakaas-cadical v0.2.1
+#9 7.217    Compiling proc-macro2 v1.0.107
+#9 7.217    Compiling quote v1.0.47
+#9 7.217    Compiling unicode-ident v1.0.27
+#9 7.218    Compiling libc v0.2.191
+#9 7.218    Compiling find-msvc-tools v0.1.14
+#9 7.218    Compiling strsim v0.11.1
+#9 7.218    Compiling shlex v2.0.1
+#9 7.220    Compiling ident_case v1.0.1
+#9 7.220    Compiling prettyplease v0.3.0
+#9 7.221    Compiling serde_core v1.0.229
+#9 7.221    Compiling zmij v1.0.23
+#9 7.221    Compiling once_cell v1.21.4
+#9 7.222    Compiling either v1.19.0
+#9 7.223    Compiling serde_json v1.0.151
+#9 7.224    Compiling pin-project-lite v0.2.17
+#9 7.224    Compiling rangelist v0.3.2
+#9 7.224    Compiling rustc-hash v2.1.3
+#9 7.226    Compiling itoa v1.0.18
+#9 7.227    Compiling rangelist v0.4.0
+#9 7.227    Compiling dyn-clone v1.0.20
+#9 7.342    Compiling memchr v2.8.3
+#9 7.451    Compiling tracing-core v0.1.36
+#9 7.465    Compiling itertools v0.14.0
+#9 7.910    Compiling syn v3.0.9
+#9 7.910    Compiling syn v2.0.119
+#9 8.117    Compiling jobserver v0.1.35
+#9 8.245    Compiling cc v1.8.0
+#9 9.008    Compiling pindakaas-cadical v0.2.1
+#9 11.83    Compiling darling_core v0.24.1
+#9 12.40    Compiling tracing-attributes v0.1.31
+#9 13.72    Compiling tracing v0.1.44
+#9 14.80    Compiling darling_macro v0.24.1
+#9 14.92    Compiling darling v0.24.1
+#9 14.95    Compiling bon-macros v3.10.2
+#9 15.97    Compiling pindakaas v0.2.3
+#9 16.24    Compiling bon v3.10.2
+#9 16.84    Compiling huub v100.1.0
+#9 19.50    Compiling dcp_huub v0.1.0 (/opt/crate)
+#9 26.84     Finished `release` profile [optimized] target(s) in 22.42s
+#9 26.94 Reading package lists...
+#9 27.27 Building dependency tree...
+#9 27.34 Reading state information...
+#9 27.42 The following packages will be REMOVED:
+#9 27.42   g++* g++-12*
+#9 27.53 0 upgraded, 0 newly installed, 2 to remove and 9 not upgraded.
+#9 27.53 After this operation, 37.0 MB disk space will be freed.
+#9 27.54 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 10702 files and directories currently installed.)
+#9 27.54 Removing g++ (4:12.2.0-3) ...
+#9 27.64 Removing g++-12 (12.2.0-14+deb12u1) ...
+#9 DONE 28.0s
+
+#10 [6/8] COPY solvers/huub/rust/rust/main.rs /opt/rust/main.rs
+#10 DONE 0.3s
+
+#11 [7/8] COPY runner/runtime.py /opt/runner/runtime.py
+#11 DONE 0.3s
+
+#12 [8/8] COPY solvers/huub/rust/run.py /opt/runner/run.py
+#12 DONE 0.4s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 1.2s done
+#13 writing image sha256:375ad363006ea00dfff96d993e1bbb9cda9f747c54bd8559a2205d288d3ad5a1 done
+#13 naming to docker.io/dcp-eval/huub_rust:v1 0.0s done
+#13 DONE 1.2s
