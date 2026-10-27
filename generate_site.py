@@ -34,7 +34,7 @@ BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
-ASSET_VERSION = "catalogue-v55"
+ASSET_VERSION = "catalogue-v56"
 # Set by main() from the content of data.js.
 DATA_VERSION = ""
 SUBTITLE = (
@@ -1051,9 +1051,11 @@ def solver_skill_button(solver: str) -> str:
             f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
 
 
-def binding_list(bindings: list, found: dict, anchored: set) -> str:
-    """A solver's bindings under its name, native first, each linked to its
-    interface file in the shared skill and with the problems it models."""
+def binding_list(bindings: list, found: dict, anchored: set, total: int) -> str:
+    """A solver's bindings under its name, native first: each language with
+    the problems it models and, as a skill pill like the solver's own, the
+    interface file of the shared skill. The language is plain text, so the
+    only links are pills to skills and the row's Browse to models."""
     from generation.skills import integration_skill, interface_entry
     root = SOLVERS_DIR.resolve().parent
     items = []
@@ -1063,10 +1065,11 @@ def binding_list(bindings: list, found: dict, anchored: set) -> str:
         label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
         skill, interface = integration_skill(root, binding)
         entry = interface_entry(root / skill, interface) if skill and interface else None
-        name = (f'<a href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
-                f'target="_blank" rel="noopener" title="The {esc(label)} interface of the skill">{esc(label)}</a>'
-                if entry else esc(label))
-        items.append(f'<span class="binding"{anchor}>{name} <span class="count">{found.get(binding, 0)}</span></span>')
+        pill = (f'<a class="skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
+                f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
+                if entry else "")
+        items.append(f'<span class="binding"{anchor}><span class="binding-name">{esc(label)}</span>'
+                     f'{coverage_count(found.get(binding, 0), total)}{pill}</span>')
     return f'<span class="bindings">{"".join(items)}</span>'
 
 
@@ -1122,7 +1125,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             listed.add(solver)
             bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
             if len(SOLVERS[solver]["bindings"]) > 1:
-                extra = binding_list(bindings, per_binding, anchored)
+                extra = binding_list(bindings, per_binding, anchored, denominator)
             else:
                 # The integration's own ID stays a target: older links use it.
                 extra = "" if bindings[0] in anchored else f'<span id="solver-{esc(bindings[0])}"></span>'
