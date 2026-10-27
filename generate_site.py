@@ -34,7 +34,7 @@ BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
-ASSET_VERSION = "catalogue-v57"
+ASSET_VERSION = "catalogue-v58"
 # Set by main() from the content of data.js.
 DATA_VERSION = ""
 SUBTITLE = (
@@ -1034,8 +1034,8 @@ def binding_browse_button(binding: str, count: int) -> str:
         return ""
     href = f"index.html?framework={SOLVER_OF[binding]}&language={INTEGRATIONS[binding].get('language', '')}"
     label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
-    return (f'<a class="browse browse-small" href="{esc(href)}" '
-            f'title="The problems with a {esc(label)} model of this solver">models &rarr;</a>')
+    return (f'<a class="binding-browse" href="{esc(href)}" '
+            f'title="The problems with a {esc(label)} model of this solver">{esc(label)} models &rarr;</a>')
 
 
 def skill_button(solver: str) -> str:
@@ -1068,27 +1068,29 @@ def solver_skill_button(solver: str) -> str:
             f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
 
 
-def binding_list(bindings: list, found: dict, anchored: set, total: int, modelled: dict) -> str:
-    """A solver's bindings under its name, native first: each language with
-    the problems it models, then the interface file of the shared skill as a
-    grey skill pill like the solver's own, and its models as a Browse pill
-    like the row's. The language itself is plain text."""
+def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, total: int) -> str:
+    """A solver's bindings as quiet sub-rows under its own, native first, in
+    the row's three columns: the language with a link to its part of the
+    shared skill, the problems it models, and a link to those models. Plain
+    text links, so the solver's pills and count stay what the eye lands on."""
     from generation.skills import integration_skill, interface_entry
     root = SOLVERS_DIR.resolve().parent
-    items = []
+    cells = []
     for binding in bindings:
         anchor = "" if binding in anchored else f' id="solver-{esc(binding)}"'
         anchored.add(binding)
         label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
         skill, interface = integration_skill(root, binding)
         entry = interface_entry(root / skill, interface) if skill and interface else None
-        pill = (f'<a class="skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
-                f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
-                if entry else "")
-        items.append(f'<span class="binding"{anchor}><span class="binding-name">{esc(label)}</span>'
-                     f'{coverage_count(found.get(binding, 0), total)}{pill}'
-                     f'{binding_browse_button(binding, modelled.get(binding, 0))}</span>')
-    return f'<span class="bindings">{"".join(items)}</span>'
+        skill_link = (f'<a class="binding-skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
+                      f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
+                      if entry else "")
+        cells.append(f'<span class="binding"{anchor}>{esc(label)}{skill_link}</span>'
+                     # The hidden " / 164" lines the count up under the solver's.
+                     f'<span class="binding-count">{found.get(binding, 0)}'
+                     f'<span class="of" aria-hidden="true" style="visibility:hidden"> / {total}</span></span>'
+                     f'<span class="binding-action">{binding_browse_button(binding, modelled.get(binding, 0))}</span>')
+    return "".join(cells)
 
 
 def coverage_count(count, total: int) -> str:
@@ -1142,18 +1144,19 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             anchored.add(solver)
             listed.add(solver)
             bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
+            target, rows, kind = "", "", ""
             if len(SOLVERS[solver]["bindings"]) > 1:
-                extra = binding_list(bindings, per_binding, anchored, denominator,
-                                     breakdown["integration_problems"])
-            else:
+                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], denominator)
+                kind = ' class="has-bindings"'
+            elif bindings[0] not in anchored:
                 # The integration's own ID stays a target: older links use it.
-                extra = "" if bindings[0] in anchored else f'<span id="solver-{esc(bindings[0])}"></span>'
-                anchored.add(bindings[0])
+                target = f'<span id="solver-{esc(bindings[0])}"></span>'
+            anchored.add(bindings[0])
             entries.append(
-                f'<li{anchor}><span class="solver-name">{esc(solver_name(solver))}'
-                f'{backend_label(bindings[0], tag)}{solver_skill_button(solver)}{extra}</span>'
+                f'<li{anchor}{kind}><span class="solver-name">{esc(solver_name(solver))}'
+                f'{backend_label(bindings[0], tag)}{solver_skill_button(solver)}{target}</span>'
                 f'<span class="solver-count">{coverage_count(found.get(solver, 0), denominator)}</span>'
-                f'{browse_button(solver, solver_problems.get(solver, 0))}</li>'
+                f'{browse_button(solver, solver_problems.get(solver, 0)) or "<span></span>"}{rows}</li>'
             )
 
         average = sum(counts) / len(counts) if counts else 0

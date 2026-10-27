@@ -896,13 +896,22 @@ html:not(.js) .row-toggle { display: none; }
 .solver-count { white-space: nowrap; text-align: right; min-width: 80px; }
 /* A solver with several interfaces lists them under its name, native first,
    each with the problems it models; the solver's count is any of them. */
-.bindings { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 4px; color: var(--muted); font-size: 0.8rem; }
-.binding { white-space: nowrap; }
-.binding-name { color: var(--text); margin-right: 6px; }
-.binding .count { color: var(--text); font-variant-numeric: tabular-nums; }
-.binding .skill { margin-left: 6px; }
-/* One interface's models: the row's Browse pill, at the size of a skill pill. */
-.binding .browse-small { margin-left: 4px; padding: 0 7px; font-size: 0.74rem; }
+/* A solver with several interfaces: one quiet sub-row each, native first,
+   in the solver's columns. Smaller, muted, plain links: the solver's own row
+   keeps the pills and the weight. */
+.solver-list li.has-bindings { row-gap: 0; }
+.has-bindings > .binding, .has-bindings > .binding-count, .has-bindings > .binding-action {
+  padding-block: 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.binding { margin-left: 2px; padding-left: 12px; border-left: 2px solid var(--border); }
+.has-bindings > .solver-name { padding-bottom: 4px; }
+.binding-count { text-align: right; font-variant-numeric: tabular-nums; }
+.binding-action { text-align: right; }
+.binding-skill { margin-left: 8px; color: var(--muted); font-size: 0.72rem; }
+.binding-browse { color: var(--accent); white-space: nowrap; }
+.binding-skill:hover, .binding-browse:hover { text-decoration: underline; }
 .binding:target, .solver-list li:has(> .solver-name > [id]:target) { background: var(--accent-soft); scroll-margin-top: 90px; }
 /* What the framework hands the model to, e.g. Gecode under MiniZinc. */
 .backend { color: var(--muted); margin-left: 8px; font-size: 0.82rem; }
