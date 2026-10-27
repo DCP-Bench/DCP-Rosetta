@@ -398,6 +398,43 @@ table.matrix td.fail { background: var(--fail-bg); color: var(--fail-fg); font-w
 .picker-label[title] { cursor: help; }
 .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .model-group > .tab-pane { border-top: 1px solid var(--border); border-radius: var(--radius); }
+/* Models the catalogue's filters hide, and the paradigm rows left empty. */
+.model-picker [hidden] { display: none; }
+.binding-bar [hidden] { display: none; }
+
+/* The catalogue's model filters, carried to a problem page: one chip each,
+   its × removing it. Quiet beside the model pills, which stay the choice. */
+.model-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 14px; font-size: 0.82rem; }
+.model-filters[hidden] { display: none; }
+.filter-label { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.filter-chip-group { color: var(--muted); }
+.filter-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.filter-chip:hover .filter-chip-x, .filter-chip:focus-visible .filter-chip-x { background: var(--accent); color: var(--bg); }
+.filter-clear { font-size: inherit; }
+.filter-count { margin-left: auto; color: var(--muted); }
+.filter-empty { flex-basis: 100%; margin: 4px 0 0; color: var(--muted); }
 /* A solver's models in several languages: tabs inside its pane, not a second card. */
 .binding-group { margin-top: 0; }
 .binding-bar { margin-bottom: 16px; }

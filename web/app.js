@@ -7,15 +7,66 @@
   /* The catalogue shows one problem type at a time, as a tab. */
   var TYPES = ["optimization", "satisfaction"];
   var activeType = TYPES[0];
-  /* With solvers or languages picked, the catalogue shows the problems that
-     have a model matching them ("yes") or the ones that have none ("no"). */
+  /* With a model filter in use, the catalogue shows the problems that have
+     a model matching it ("yes") or the ones that have none ("no"). */
   var modelledMode = "yes";
+
+  /* The filters that pick models rather than problems. Each model is tested
+     against all of them at once: Choco and Java is Choco's Java models, and
+     MIP and Choco is none, as Choco has no MIP model. The catalogue hands
+     them to a problem page in its address, and the page shows them as chips. */
+  var MODEL_FILTERS = ["paradigm", "framework", "language"];
+
+  function modelMatches(filters, solver, languages, paradigms) {
+    function any(picked, values) {
+      return !picked.length || values.some(function (value) { return picked.indexOf(value) !== -1; });
+    }
+    return any(filters.framework, [solver]) && any(filters.language, languages) &&
+      any(filters.paradigm, paradigms);
+  }
+
+  function anyModelFilter(filters) {
+    return MODEL_FILTERS.some(function (group) { return filters[group].length > 0; });
+  }
+
+  /* The model filters a query string names. A binding's ID as a solver
+     (framework=choco_java, from older links) is its solver and its language. */
+  function readModelFilters(search) {
+    var params = new URLSearchParams(search);
+    var filters = {};
+    MODEL_FILTERS.forEach(function (group) {
+      filters[group] = params.getAll(group).join(",").split(",").filter(Boolean);
+    });
+    var bindings = (window.DCP_LABELS && window.DCP_LABELS.binding) || {};
+    filters.framework = filters.framework.map(function (value) {
+      var binding = bindings[value];
+      if (binding && filters.language.indexOf(binding.language) === -1) filters.language.push(binding.language);
+      return binding ? binding.solver : value;
+    }).filter(function (value, i, all) { return all.indexOf(value) === i; });
+    return filters;
+  }
+
+  /* `search` with some parameters replaced, or dropped when given null or an
+     empty list; the others are kept as written. Lists are joined with commas,
+     as the catalogue writes them. */
+  function withParams(search, changes) {
+    var kept = (search || "").replace(/^\?/, "").split("&").filter(function (pair) {
+      return pair && !Object.prototype.hasOwnProperty.call(changes, decodeURIComponent(pair.split("=")[0]));
+    });
+    Object.keys(changes).forEach(function (key) {
+      var value = changes[key];
+      if (value === null || value === undefined || (Array.isArray(value) && !value.length)) return;
+      var text = Array.isArray(value) ? value.map(encodeURIComponent).join(",") : encodeURIComponent(value);
+      kept.push(encodeURIComponent(key) + "=" + text);
+    });
+    return kept.length ? "?" + kept.join("&") : "";
+  }
 
   /* Names compare by code point, the order generate_site.py gives the
      problem pages' prev/next links. */
   function valueForSort(problem, key) {
     if (key === "instances") return problem.instances || 0;
-    if (key === "models") return (problem.generatedFrameworks || []).length;
+    if (key === "models") return modelCount(problem);
     return problem.id || "";
   }
 
@@ -47,23 +98,36 @@
 
   var FILTER_NAMES = { instances: "Instances", paradigm: "Paradigm", framework: "Solver", language: "Language" };
 
-  /* The models a problem has that the Solver and Language filters both
-     accept, each by its integration ID. The two filters are read together,
-     per model: Choco and Java is Choco's Java models, not Choco's models of
-     problems some solver has in Java. */
-  function matchingModels(problem) {
-    var models = (window.DCP_DATA && window.DCP_DATA.models) || {};
-    var solvers = selectedFilterValues("framework");
-    var languages = selectedFilterValues("language");
-    return (problem.generatedModels || []).filter(function (id) {
-      var model = models[id] || {};
-      return (!solvers.length || solvers.indexOf(model.solver) !== -1) &&
-        (!languages.length || languages.indexOf(model.language) !== -1);
-    });
+  function catalogueModelFilters() {
+    var filters = {};
+    MODEL_FILTERS.forEach(function (group) { filters[group] = selectedFilterValues(group); });
+    return filters;
   }
 
   function modelFiltersInUse() {
-    return selectedFilterValues("framework").length + selectedFilterValues("language").length > 0;
+    return anyModelFilter(catalogueModelFilters());
+  }
+
+  /* The models a problem has that the model filters accept, each by its
+     integration ID. */
+  function matchingModels(problem) {
+    var info = (window.DCP_DATA && window.DCP_DATA.modelInfo) || {};
+    var filters = catalogueModelFilters();
+    return Object.keys(problem.models || {}).filter(function (id) {
+      var model = info[id] || {};
+      return modelMatches(filters, model.solver, [model.language], problem.models[id]);
+    });
+  }
+
+  /* The Models column: the solvers with a model of the problem, or with the
+     model filters in use, the solvers with a model they accept. Choco's Java
+     and Python models count once. */
+  function modelCount(problem) {
+    var info = (window.DCP_DATA && window.DCP_DATA.modelInfo) || {};
+    var ids = modelFiltersInUse() ? matchingModels(problem) : Object.keys(problem.models || {});
+    var solvers = {};
+    ids.forEach(function (id) { solvers[(info[id] || {}).solver || id] = true; });
+    return Object.keys(solvers).length;
   }
 
   /* A filter in use reads its choice and is marked, so a narrowed list
@@ -150,22 +214,23 @@
     try { sessionStorage.setItem(CATALOGUE_KEY, window.location.href); } catch (e) { /* private mode */ }
   }
 
-  /* With solvers or languages picked (index.html?framework=choco from the
-     Solvers page), a problem link opens a model that matches them rather
-     than the reference model: the first picked solver's, and with a language
+  /* With a model filter in use (index.html?framework=choco from the Solvers
+     page), a problem link carries the filters to the problem page, which
+     shows only the models they accept, and opens one of those rather than
+     the reference model: the first picked solver's, and with a language
      picked, on that language's tab. */
   function problemHref(problem) {
     var href = "problems/" + problem.id + ".html";
-    if (!modelFiltersInUse()) return href;
-    var models = window.DCP_DATA.models || {};
+    var filters = catalogueModelFilters();
+    if (!anyModelFilter(filters)) return href;
+    var info = window.DCP_DATA.modelInfo || {};
     var matching = matchingModels(problem);
-    var solvers = selectedFilterValues("framework");
-    var first = solvers.map(function (solver) {
-      return matching.filter(function (id) { return models[id].solver === solver; })[0];
+    var first = filters.framework.map(function (solver) {
+      return matching.filter(function (id) { return info[id].solver === solver; })[0];
     }).filter(Boolean)[0] || matching[0];
-    if (!first) return href;
-    var target = selectedFilterValues("language").length ? first : models[first].solver;
-    return href + "?model=" + encodeURIComponent(target);
+    var changes = { paradigm: filters.paradigm, framework: filters.framework, language: filters.language };
+    if (first) changes.model = filters.language.length ? first : info[first].solver;
+    return href + withParams("", changes);
   }
 
   /* Long ids may break after an underscore, never inside a word. */
@@ -182,7 +247,7 @@
     { label: "Description" },
     { label: "Instances", key: "instances", num: true },
     { label: "Models", key: "models", num: true,
-      title: "Solvers with an accepted generated model" }
+      title: "Solvers with an accepted generated model, or with one the paradigm, solver and language filters accept" }
   ];
 
   function el(tag, className) {
@@ -225,7 +290,7 @@
       var instances = row.appendChild(el("td", "num"));
       instances.textContent = problem.instances ? String(problem.instances) : "\u2013";
       if (!problem.instances) instances.title = "No separate instances: the description fixes the data";
-      row.appendChild(el("td", "num")).textContent = String((problem.generatedFrameworks || []).length);
+      row.appendChild(el("td", "num")).textContent = String(modelCount(problem));
     });
     container.appendChild(table);
   }
@@ -238,20 +303,12 @@
     var data = window.DCP_DATA.problems || [];
     var q = (document.getElementById("filter-q") || { value: "" }).value.trim().toLowerCase();
     var instances = selectedFilterValues("instances");
-    var paradigms = selectedFilterValues("paradigm");
     var modelFilters = modelFiltersInUse();
 
     var filtered = data.filter(function (problem) {
       if (instances.length) {
         var instanceType = problem.instances === 0 ? "none" : (problem.instances === 1 ? "single" : "multiple");
         if (instances.indexOf(instanceType) === -1) return false;
-      }
-      if (paradigms.length) {
-        var problemParadigms = problem.paradigms || [];
-        var matchesParadigm = paradigms.some(function (paradigm) {
-          return problemParadigms.indexOf(paradigm) !== -1;
-        });
-        if (!matchesParadigm) return false;
       }
       if (q) {
         /* The whole description is searched, not just the shown snippet. */
@@ -353,7 +410,7 @@
         value = value.replace(/"/g, "");
         var input = document.querySelector('input[data-filter-group="' + group + '"][value="' + value + '"]');
         var alias = !input && document.querySelector('input[data-filter-group="' + group + '"][data-aliases~="' + value + '"]');
-        var model = alias && (window.DCP_DATA.models || {})[value];
+        var model = alias && (window.DCP_DATA.modelInfo || {})[value];
         var language = model && document.querySelector('input[data-filter-group="language"][value="' + model.language + '"]');
         if (language) language.checked = true;
         if (input || alias) (input || alias).checked = true;
@@ -569,15 +626,175 @@
     });
   }
 
-  function initBackLink() {
-    var crumb = document.querySelector(".crumb");
-    if (!crumb) return;
+  /* Point a link to the catalogue at the catalogue as it was left: its
+     search, sort, tab and filters, kept in this tab's session. With `filters`,
+     the model filters a problem page now has replace the ones it was left with. */
+  function catalogueLink(link, filters) {
+    var base = link.getAttribute("href").split("?")[0];
+    var search = "";
     var left;
-    try { left = sessionStorage.getItem(CATALOGUE_KEY); } catch (e) { return; }
-    if (left && left.split("?")[0].replace(/index\.html$/, "") ===
-        crumb.href.split("?")[0].replace(/index\.html$/, "")) {
-      crumb.href = left;
+    try { left = sessionStorage.getItem(CATALOGUE_KEY); } catch (e) { left = null; }
+    if (left) {
+      var at = new URL(left, window.location.href);
+      var here = new URL(base, window.location.href);
+      if (at.pathname.replace(/index\.html$/, "") === here.pathname.replace(/index\.html$/, "")) search = at.search;
     }
+    if (filters) {
+      var changes = { paradigm: filters.paradigm, framework: filters.framework, language: filters.language };
+      /* "Not modelled" means nothing once no model filter is left. */
+      if (!anyModelFilter(filters)) changes.modelled = null;
+      search = withParams(search, changes);
+    }
+    link.href = base + search;
+  }
+
+  function catalogueNavLink() {
+    return document.querySelector('header nav a[href$="index.html"]');
+  }
+
+  /* Pages other than the catalogue and a problem page (which keeps its own
+     links in step with its filters): the nav returns to the catalogue as left. */
+  function initBackLink() {
+    if (document.getElementById("filter-q") || document.querySelector(".model-group")) return;
+    var nav = catalogueNavLink();
+    if (nav) catalogueLink(nav, null);
+  }
+
+  /* Programmatic tab switches that should not rewrite the address. */
+  var quietClicks = 0;
+
+  function quietClick(button) {
+    quietClicks += 1;
+    try { button.click(); } finally { quietClicks -= 1; }
+  }
+
+  /* Problem pages: the model filters the catalogue handed over in the
+     address (?paradigm=mip&framework=scip&language=python), shown as chips
+     above the models. Only the models they accept are offered, and a chip's
+     × removes its filter. The address, the way back to the catalogue and the
+     previous/next links all follow, so the filters hold from page to page
+     until removed, here or in the catalogue. */
+  function initModelFilters() {
+    var group = document.querySelector(".model-group");
+    var bar = document.querySelector(".model-filters");
+    if (!group || !bar || !window.URLSearchParams) return;
+    var labels = window.DCP_LABELS || {};
+    var filters = readModelFilters(window.location.search);
+    /* Whether this page has a say in the catalogue's model filters: it was
+       opened with some, or one was removed here. Opened without any, it
+       leaves the catalogue's as they were. */
+    var own = anyModelFilter(filters);
+    var chips = Array.prototype.slice.call(group.querySelectorAll(".model-picker .tab-btn[data-paradigms]"));
+    var reference = group.querySelector('.model-picker .tab-btn[data-tab="ground_truth"]');
+    var crumb = document.querySelector(".crumb");
+    var nav = catalogueNavLink();
+    var pager = Array.prototype.slice.call(document.querySelectorAll(".pager a"));
+    pager.forEach(function (link) { link.setAttribute("data-base", link.getAttribute("href").split("?")[0]); });
+
+    function words(text) { return (text || "").split(" ").filter(Boolean); }
+
+    function accepted(chip) {
+      return modelMatches(filters, chip.getAttribute("data-tab"), words(chip.getAttribute("data-languages")),
+        words(chip.getAttribute("data-paradigms")));
+    }
+
+    function apply() {
+      var shown = chips.filter(function (chip) {
+        chip.hidden = !accepted(chip);
+        return !chip.hidden;
+      });
+      group.querySelectorAll(".model-picker .picker-row:not(.reference-row)").forEach(function (row) {
+        row.hidden = !row.querySelector(".tab-btn:not([hidden])");
+      });
+      group.querySelectorAll(".binding-bar").forEach(function (tabs) {
+        tabs.querySelectorAll(".tab-btn").forEach(function (tab) {
+          tab.hidden = filters.language.length > 0 && filters.language.indexOf(tab.getAttribute("data-language")) === -1;
+        });
+        /* A language tab the filters hide gives way to the first they keep. */
+        var active = tabs.querySelector(".tab-btn.active");
+        var first = tabs.querySelector(".tab-btn:not([hidden])");
+        if (active && active.hidden && first) quietClick(first);
+      });
+      render(shown.length);
+    }
+
+    function label(key, value) {
+      return ((labels[key] || {})[value]) || value;
+    }
+
+    function render(shown) {
+      bar.innerHTML = "";
+      bar.hidden = !anyModelFilter(filters);
+      if (bar.hidden) return;
+      bar.appendChild(el("span", "filter-label")).textContent = "Filtered by";
+      var count = 0;
+      MODEL_FILTERS.forEach(function (key) {
+        filters[key].forEach(function (value) {
+          count += 1;
+          var chip = bar.appendChild(el("button", "filter-chip"));
+          chip.type = "button";
+          chip.title = "Remove this filter";
+          chip.setAttribute("aria-label", "Remove the filter " + FILTER_NAMES[key] + ": " + label(key, value));
+          chip.appendChild(el("span", "filter-chip-group")).textContent = FILTER_NAMES[key];
+          chip.appendChild(el("span", "filter-chip-value")).textContent = label(key, value);
+          var x = chip.appendChild(el("span", "filter-chip-x"));
+          x.setAttribute("aria-hidden", "true");
+          x.textContent = "\u00d7";
+          chip.addEventListener("click", function () { remove(key, value); });
+        });
+      });
+      if (count > 1) {
+        var clear = bar.appendChild(el("button", "link-btn filter-clear"));
+        clear.type = "button";
+        clear.textContent = "Clear all";
+        clear.addEventListener("click", function () { remove(null, null); });
+      }
+      bar.appendChild(el("span", "filter-count")).textContent =
+        shown + " of " + chips.length + " model" + (chips.length === 1 ? "" : "s");
+      if (!shown) {
+        bar.appendChild(el("p", "filter-empty")).textContent =
+          "No model of this problem matches these filters; the reference model is shown.";
+      }
+    }
+
+    /* Keep the address and every way off the page in step with the filters,
+       and once this page has a say, hand them to the catalogue as well. */
+    function sync() {
+      var changes = { paradigm: filters.paradigm, framework: filters.framework, language: filters.language };
+      if (window.history && history.replaceState) {
+        history.replaceState(null, "", window.location.pathname + withParams(window.location.search, changes) +
+          window.location.hash);
+      }
+      pager.forEach(function (link) { link.href = link.getAttribute("data-base") + withParams("", changes); });
+      [crumb, nav].forEach(function (link) { if (link) catalogueLink(link, own ? filters : null); });
+      if (own && crumb) {
+        try { sessionStorage.setItem(CATALOGUE_KEY, crumb.href); } catch (e) { /* private mode */ }
+      }
+    }
+
+    function remove(key, value) {
+      MODEL_FILTERS.forEach(function (group) {
+        if (key === null || group === key) {
+          filters[group] = filters[group].filter(function (item) { return key !== null && item !== value; });
+        }
+      });
+      own = true;
+      apply();
+      sync();
+      var next = bar.querySelector(".filter-chip") || group.querySelector(".model-picker .tab-btn.active");
+      if (next) next.focus();
+    }
+
+    apply();
+    /* Open a model the filters accept: the one the address names when they
+       accept it, else the first offered. With none, the reference. */
+    var active = group.querySelector(".model-picker .tab-btn.active");
+    var named = new URLSearchParams(window.location.search).get("model");
+    if (anyModelFilter(filters) && active && (active.hidden || (!named && active === reference))) {
+      var offered = chips.filter(function (chip) { return !chip.hidden; })[0];
+      quietClick(offered || reference);
+    }
+    sync();
   }
 
   /* Problem pages: the left and right arrow keys step through the models in
@@ -637,9 +854,9 @@
     var tabs = buttons.concat(Array.prototype.slice.call(group.querySelectorAll(".binding-bar .tab-btn")));
     tabs.forEach(function (btn) {
       btn.addEventListener("click", function () {
-        if (!window.history || !history.replaceState) return;
+        if (quietClicks || !window.history || !history.replaceState) return;
         var name = btn.getAttribute("data-tab");
-        var query = name === "ground_truth" ? "" : "?model=" + encodeURIComponent(name);
+        var query = withParams(window.location.search, { model: name === "ground_truth" ? null : name });
         history.replaceState(null, "", window.location.pathname + query + window.location.hash);
       });
     });
@@ -650,12 +867,14 @@
       if (event.target.closest && event.target.closest("input, textarea, select, [contenteditable]")) return;
       var box = group.getBoundingClientRect();
       if (box.top >= window.innerHeight || box.bottom <= 0) return;
+      /* Only the models the filters offer. */
+      var offered = buttons.filter(function (btn) { return !btn.hidden; });
       var current = 0;
-      buttons.forEach(function (btn, i) {
+      offered.forEach(function (btn, i) {
         if (btn.classList.contains("active")) current = i;
       });
       var step = event.key === "ArrowRight" ? 1 : -1;
-      buttons[(current + step + buttons.length) % buttons.length].click();
+      offered[(current + step + offered.length) % offered.length].click();
       /* A shorter model could leave the reader below it: bring the pills back. */
       if (section.getBoundingClientRect().top < 0) section.scrollIntoView();
       event.preventDefault();
@@ -689,6 +908,7 @@
     initMarkdown();
     initTabs();
     initModelKeys();
+    initModelFilters();
     initCopy();
     initParadigms();
     if (window.hljs) hljs.highlightAll();

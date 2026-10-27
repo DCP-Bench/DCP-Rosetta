@@ -34,9 +34,10 @@ BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
-ASSET_VERSION = "catalogue-v58"
-# Set by main() from the content of data.js.
+ASSET_VERSION = "catalogue-v60"
+# Set by main() from the content of data.js and labels.js.
 DATA_VERSION = ""
+LABELS_VERSION = ""
 SUBTITLE = (
     "A growing collection of natural language <strong>D</strong>iscrete <strong>C</strong>ombinatorial "
     "<strong>P</strong>roblems, <br>with executable models for a wide range of solvers and paradigms."
@@ -382,6 +383,8 @@ def page(title: str, prefix: str, active: str, body: str, description: str = "",
         if math:
             head.append(f'<link rel="stylesheet" href="{KATEX}/katex.min.css">')
             scripts.append(f"{KATEX}/katex.min.js")
+        # What the model filters carried over from the catalogue are called.
+        scripts.append(f"{prefix}labels.js?v={LABELS_VERSION}")
     if active == "index":
         scripts.append(f"{prefix}data.js?v={DATA_VERSION}")
     scripts.append(f"{prefix}app.js?v={ASSET_VERSION}")
@@ -938,6 +941,15 @@ def model_paradigm(solver_id: str, problem_type: str) -> str:
     return tags[0] if tags else ""
 
 
+def model_paradigms(solver_id: str, problem_type: str) -> list:
+    """Every paradigm a model of a problem counts towards: its integration's,
+    less any whose scope excludes the problem's type, as paradigm_breakdown
+    counts them. The catalogue's Paradigm filter and the problem page's
+    filter chips read these, so both agree with the Solvers page."""
+    tags = (INTEGRATIONS.get(solver_id) or {}).get("paradigms") or []
+    return [tag for tag in tags if PARADIGM_SCOPE.get(tag, problem_type) == problem_type]
+
+
 def paradigm_chips(solver_id: str, prefix: str) -> str:
     """The paradigms an integration declares, linked to their description."""
     metadata = INTEGRATIONS.get(solver_id) or {}
@@ -1402,8 +1414,14 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
         for solver in by_paradigm[tag]:
             # ?model= may also name one binding, as links did before solvers
             # were grouped: the chip answers to each of its bindings' IDs.
+            # What the model filters read: a solver's bindings agree on their
+            # paradigms (tests/test_site.py), so the first one's stand for all.
+            languages = " ".join(dict.fromkeys(
+                model_language_key(best[fw]["metrics"], best[fw]["model_file"]) for fw in by_solver[solver]))
             buttons.append(f'<button class="tab-btn pick" type="button" data-tab="{esc(solver)}" '
-                           f'data-aliases="{esc(" ".join(by_solver[solver]))}">{esc(solver_name(solver))}</button>')
+                           f'data-aliases="{esc(" ".join(by_solver[solver]))}" '
+                           f'data-paradigms="{esc(" ".join(model_paradigms(by_solver[solver][0], p["type"])))}" '
+                           f'data-languages="{esc(languages)}">{esc(solver_name(solver))}</button>')
             panes.append(f'<div class="tab-pane" data-pane="{esc(solver)}">'
                          f'{solver_models_html(by_solver[solver], best, bool(problem_instances(p)))}</div>')
         label = PARADIGM_ABBREVS.get(tag, tag) or "Other"
@@ -1411,8 +1429,11 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
             f'<div class="picker-row"><span class="picker-label" title="{esc(PARADIGM_NAMES.get(tag, label))}">'
             f'{esc(label)}</span><div class="picker-chips">{"".join(buttons)}</div></div>'
         )
+    # app.js fills the filter bar from the address: the catalogue's paradigm,
+    # solver and language filters, each a chip that can be removed.
     return (
         f'<div class="page-section"><h2>Models</h2>'
+        f'<div class="model-filters" hidden></div>'
         f'<div class="tab-group model-group"><div class="tab-bar picker model-picker">{"".join(rows)}</div>'
         + "".join(panes)
         + "</div></div>"
@@ -1434,7 +1455,9 @@ def solver_models_html(bindings: list, best: dict, has_instances: bool) -> str:
     for i, binding in enumerate(bindings):
         state = " active" if i == 0 else ""
         label = model_language(best[binding]["metrics"], best[binding]["model_file"])[1]
-        tabs.append(f'<button class="tab-btn{state}" type="button" data-tab="{esc(binding)}">{esc(label)}</button>')
+        language = model_language_key(best[binding]["metrics"], best[binding]["model_file"])
+        tabs.append(f'<button class="tab-btn{state}" type="button" data-tab="{esc(binding)}" '
+                    f'data-language="{esc(language)}">{esc(label)}</button>')
         panes.append(f'<div class="tab-pane{state}" data-pane="{esc(binding)}">'
                      f'{generated_model_html(best[binding], has_instances)}</div>')
     return (f'<div class="tab-group binding-group"><div class="tab-bar binding-bar" aria-label="Interface">'
@@ -1619,17 +1642,15 @@ def main() -> None:
                 "snippet": p["snippet"],
                 "text": plain_text(p["description"]),
                 "instances": len(problem_instances(p)),
-                # Solvers, not bindings: Choco's Java and Python models make one.
-                "generatedFrameworks": sorted({SOLVER_OF.get(framework, framework) for framework
-                                               in select_best_generated(generated.get(p["id"], {}))}),
-                # Each model by its integration, which `models` below tells the
-                # solver and language of: Solver and Language filter models together.
-                "generatedModels": sorted(select_best_generated(generated.get(p["id"], {}))),
-                "paradigms": breakdown["per_problem"].get(p["id"], []),
+                # Each model by its integration, with the paradigms it counts
+                # towards here; `modelInfo` below has its solver and language.
+                # The model filters (paradigm, solver, language) all test one model.
+                "models": {framework: model_paradigms(framework, p["type"]) for framework
+                           in sorted(select_best_generated(generated.get(p["id"], {})))},
             }
             for p in problems
         ],
-        "models": {
+        "modelInfo": {
             framework: {"solver": SOLVER_OF.get(framework, framework),
                         "language": model_language_key(entry["metrics"], entry["model_file"])}
             for models in generated.values()
@@ -1642,6 +1663,19 @@ def main() -> None:
     # fetched again rather than served from a browser's cache.
     global DATA_VERSION
     DATA_VERSION = digest(js.encode())[:12]
+
+    labels = {
+        "paradigm": {item["id"]: item["name"] for item in breakdown["paradigms"]},
+        "framework": {solver: solver_name(solver) for solver in SOLVERS},
+        "language": {key: label for key, (_grammar, label) in LANGUAGES.items()},
+        # A link may name a binding (framework=choco_java): its solver and language.
+        "binding": {binding: {"solver": solver, "language": INTEGRATIONS[binding].get("language", "")}
+                    for binding, solver in SOLVER_OF.items()},
+    }
+    labels_js = "window.DCP_LABELS = " + json.dumps(labels, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
+    (OUTPUT_DIR / "labels.js").write_text(labels_js, encoding="utf-8")
+    global LABELS_VERSION
+    LABELS_VERSION = digest(labels_js.encode())[:12]
 
     build_index(problems, generated, breakdown)
     build_not_found()

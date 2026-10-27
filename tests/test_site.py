@@ -127,7 +127,8 @@ class SolverGroupingTests(unittest.TestCase):
                     "metrics": {"problem": "queens", "solver": solver, "verdict": {}}}
         best = {"choco_java": entry("choco_java", ".java"), "choco_python": entry("choco_python", ".py")}
         rendered = generate_site.solver_models_html(["choco_java", "choco_python"], best, True)
-        self.assertLess(rendered.index('data-tab="choco_java">Java'), rendered.index('data-tab="choco_python">Python'))
+        self.assertLess(rendered.index('data-tab="choco_java" data-language="java">Java'),
+                        rendered.index('data-tab="choco_python" data-language="python">Python'))
         self.assertIn('<div class="tab-pane active" data-pane="choco_java">', rendered)
         self.assertIn('<div class="tab-pane" data-pane="choco_python">', rendered)
         # One language needs no tabs.
@@ -259,6 +260,17 @@ class RenderingHelperTests(unittest.TestCase):
             self.assertEqual(generate_site.model_paradigm("pysat", "optimization"), "maxsat")
             self.assertEqual(generate_site.model_paradigm("pure_cp", "optimization"), "cp")
             self.assertEqual(generate_site.model_paradigm("gone", "optimization"), "")
+        finally:
+            generate_site.INTEGRATIONS = saved
+
+    def test_a_model_counts_towards_the_paradigms_its_problem_allows(self):
+        """What the Paradigm filter matches a model on, here and on the Solvers page."""
+        saved = generate_site.INTEGRATIONS
+        generate_site.INTEGRATIONS = {"pysat": {"paradigms": ["sat", "maxsat"]}}
+        try:
+            self.assertEqual(generate_site.model_paradigms("pysat", "satisfaction"), ["sat", "maxsat"])
+            self.assertEqual(generate_site.model_paradigms("pysat", "optimization"), ["maxsat"])
+            self.assertEqual(generate_site.model_paradigms("gone", "optimization"), [])
         finally:
             generate_site.INTEGRATIONS = saved
 
