@@ -103,6 +103,37 @@ class ParadigmBreakdownTests(unittest.TestCase):
         self.assertIn("paradigms.json", rows["nonesuch"]["summary"])
 
 
+class SolverGroupingTests(unittest.TestCase):
+    """Bindings of one solver make one entry: Choco (Java) and Choco (Python) are Choco."""
+
+    def test_a_solver_models_a_problem_when_any_of_its_bindings_does(self):
+        breakdown = generate_site.paradigm_breakdown(GENERATED, INTEGRATIONS, VOCABULARY,
+                                                     solver_of={"pure_cp": "family", "hybrid": "family"})
+        rows = {item["id"]: item for item in breakdown["paradigms"]}
+        self.assertEqual(rows["cp"]["solvers"], ["family"])
+        # queens is modelled by both bindings and counts once.
+        self.assertEqual(breakdown["by_paradigm_solver"]["cp"], {"family": 2})
+        self.assertEqual(breakdown["solver_problems"], {"family": 2})
+        # The per-binding counts the Solvers page lists under the solver stay.
+        self.assertEqual(breakdown["by_paradigm"]["cp"], {"pure_cp": 1, "hybrid": 2})
+
+    def test_without_grouping_every_integration_is_its_own_solver(self):
+        breakdown = generate_site.paradigm_breakdown(GENERATED, INTEGRATIONS, VOCABULARY)
+        self.assertEqual(breakdown["by_paradigm_solver"], breakdown["by_paradigm"])
+
+    def test_a_solver_with_models_in_two_languages_opens_on_the_first(self):
+        def entry(solver, suffix):
+            return {"submission": "attempt-001", "directory": solver, "model_file": f"model{suffix}", "code": "",
+                    "metrics": {"problem": "queens", "solver": solver, "verdict": {}}}
+        best = {"choco_java": entry("choco_java", ".java"), "choco_python": entry("choco_python", ".py")}
+        rendered = generate_site.solver_models_html(["choco_java", "choco_python"], best, True)
+        self.assertLess(rendered.index('data-tab="choco_java">Java'), rendered.index('data-tab="choco_python">Python'))
+        self.assertIn('<div class="tab-pane active" data-pane="choco_java">', rendered)
+        self.assertIn('<div class="tab-pane" data-pane="choco_python">', rendered)
+        # One language needs no tabs.
+        self.assertNotIn("binding-bar", generate_site.solver_models_html(["choco_python"], best, True))
+
+
 class ModelLinkTests(unittest.TestCase):
     """The "Model file (GitHub)" link, which has to name a directory that exists.
 
@@ -252,6 +283,24 @@ class RealRepositoryTests(unittest.TestCase):
         for solver, metadata in integrations.items():
             with self.subTest(solver=solver):
                 self.assertTrue(set(metadata.get("paradigms") or []) <= documented)
+
+    def test_each_solver_lists_its_bindings_native_first(self):
+        integrations = generate_site.load_integrations()
+        solvers = generate_site.load_solvers(integrations)
+        self.assertEqual(solvers["choco"]["bindings"], ["choco_java", "choco_python"])
+        self.assertEqual(solvers["choco"]["name"], "Choco")
+        self.assertEqual(solvers["ortools_cp_sat"]["bindings"], ["ortools_cp_sat_cpp", "ortools_cp_sat_python"])
+        self.assertEqual(solvers["cpmpy"]["name"], integrations["cpmpy_python"]["name"])
+        bound = [binding for info in solvers.values() for binding in info["bindings"]]
+        self.assertEqual(sorted(bound), sorted(integrations))
+
+    def test_the_bindings_of_one_solver_agree_on_its_paradigms(self):
+        """The Solvers page files a solver under each paradigm a binding declares;
+        bindings that disagreed would split one solver across rows unevenly."""
+        integrations = generate_site.load_integrations()
+        for solver, info in generate_site.load_solvers(integrations).items():
+            with self.subTest(solver=solver):
+                self.assertEqual(len({tuple(integrations[b].get("paradigms") or []) for b in info["bindings"]}), 1)
 
     def test_names_and_backend_labels_follow_the_naming_rule(self):
         """Brackets in a name hold only the host language, never a solver or

@@ -50,7 +50,9 @@ groups the verified models by the kind of model they are — constraint
 programming, CLP, MIP, SMT, ASP and so on — with the solvers behind each kind,
 how much of the catalogue each one reaches, and which problems have been
 modelled in more than one of them. Those are the problems worth reading side by
-side.
+side. A solver with several interfaces, such as Choco from Java and from Python,
+is listed once: its native interface, the first its skill's `interfaces:` names,
+shows by default and the others are a tab away.
 
 ## Repository Structure
 

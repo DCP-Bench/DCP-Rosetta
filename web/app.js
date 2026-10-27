@@ -131,9 +131,9 @@
     try { sessionStorage.setItem(CATALOGUE_KEY, window.location.href); } catch (e) { /* private mode */ }
   }
 
-  /* With solvers picked (index.html?framework=choco_python from the Solvers
-     page), a problem link opens the first picked solver's model the problem
-     has, rather than the reference model. */
+  /* With solvers picked (index.html?framework=choco from the Solvers page),
+     a problem link opens the first picked solver's model the problem has,
+     rather than the reference model. */
   function problemHref(problem) {
     var href = "problems/" + problem.id + ".html";
     var has = problem.generatedFrameworks || [];
@@ -308,8 +308,9 @@
   }
 
   /* Restore the catalogue from its URL, which is also how another page hands
-     it a filter: paradigms.html links index.html?framework=swipl_clpfd.
-     Unknown values simply match no checkbox. */
+     it a filter: paradigms.html links index.html?framework=swipl. A solver's
+     checkbox also answers to its bindings' IDs (framework=choco_python), which
+     older links use. Unknown values simply match no checkbox. */
   function applyQueryFilters() {
     if (!window.URLSearchParams) return;
     var params = new URLSearchParams(window.location.search);
@@ -327,8 +328,9 @@
       var values = params.getAll(group).join(",").split(",");
       values.forEach(function (value) {
         if (!value) return;
-        var input = document.querySelector('input[data-filter-group="' + group +
-          '"][value="' + value.replace(/"/g, "") + '"]');
+        value = value.replace(/"/g, "");
+        var input = document.querySelector('input[data-filter-group="' + group + '"][value="' + value + '"]') ||
+          document.querySelector('input[data-filter-group="' + group + '"][data-aliases~="' + value + '"]');
         if (input) input.checked = true;
       });
       updateFilterButton(group);
@@ -453,8 +455,11 @@
           });
         });
       });
-      /* problems/x.html?model=pychoco opens that model's tab and scrolls to it. */
-      var wanted = model && bar.querySelector('.tab-btn[data-tab="' + model.replace(/"/g, "") + '"]');
+      /* problems/x.html?model=choco opens that solver's tab and scrolls to it;
+         ?model=choco_python opens the solver, then its Python tab. */
+      var name = model && model.replace(/"/g, "");
+      var wanted = name && (bar.querySelector('.tab-btn[data-tab="' + name + '"]') ||
+        bar.querySelector('.tab-btn[data-aliases~="' + name + '"]'));
       if (wanted) {
         wanted.click();
         (group.closest(".page-section") || group).scrollIntoView();
@@ -602,8 +607,10 @@
     var buttons = Array.prototype.slice.call(group.querySelectorAll(".model-picker .tab-btn"));
     if (buttons.length < 2) return;
 
-    /* The address names the model on show, so a copied link opens it. */
-    buttons.forEach(function (btn) {
+    /* The address names the model on show, so a copied link opens it: the
+       solver, or the binding once a language tab is picked. */
+    var tabs = buttons.concat(Array.prototype.slice.call(group.querySelectorAll(".binding-bar .tab-btn")));
+    tabs.forEach(function (btn) {
       btn.addEventListener("click", function () {
         if (!window.history || !history.replaceState) return;
         var name = btn.getAttribute("data-tab");
