@@ -1,6 +1,6 @@
 # mip_cbc: how this integration realises the submission contract
 
-Read [the submission contract](../../CONTRACT.md) first; this file only says how Python-MIP with its default solver CBC expresses it. Runner: [run.py](run.py), which imports `emit` and `finish` from [runner/runtime.py](../../../runner/runtime.py) and has its own build, solve and enumeration loop. The modelling reference is the standalone skill [python-mip](../skills/python-mip/SKILL.md).
+Read [the submission contract](../../CONTRACT.md) first; this file only says how Python-MIP with its default solver CBC expresses it. Runner: [run.py](run.py), which imports `emit` and `finish` from [runner/runtime.py](../../../runner/runtime.py) and has its own build, solve and enumeration loop. The modelling reference is the standalone skill [python-mip](../skills/dcp-python-mip/SKILL.md).
 
 ## Submission file
 

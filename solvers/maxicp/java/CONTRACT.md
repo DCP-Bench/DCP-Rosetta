@@ -5,7 +5,7 @@ Runner: [run.py](run.py), which compiles the submission with `javac` and runs th
 [java/dcp/Main.java](java/dcp/Main.java), which owns the search, the optimum proof, the enumeration and the
 protocol. The helpers are [java/dcp/Model.java](java/dcp/Model.java) (the solver a submission builds into),
 [java/dcp/Outputs.java](java/dcp/Outputs.java) and [java/dcp/Instance.java](java/dcp/Instance.java). The solver
-skill ([skills/maxicp/SKILL.md](../skills/maxicp/SKILL.md)) covers the MaxiCP API with standalone
+skill ([skills/dcp-maxicp/SKILL.md](../skills/dcp-maxicp/SKILL.md)) covers the MaxiCP API with standalone
 programs that have their own `main` and search; this file describes the submission form only.
 
 ## Submission file

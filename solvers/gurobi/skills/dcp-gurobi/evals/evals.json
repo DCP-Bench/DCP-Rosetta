@@ -1,0 +1,79 @@
+{
+ "skill_name": "dcp-gurobi",
+ "evals": [
+  {
+   "id": 1,
+   "prompt": "Write a Gurobi model in Python that picks whole batches of two products to maximise profit under a machine-hours limit and a labour limit, then print the optimal profit.",
+   "expected_skill": "dcp-gurobi",
+   "expected_output": "A gurobipy maximise model with GRB.INTEGER variables that checks Status == GRB.OPTIMAL before printing ObjVal.",
+   "assertions": [
+    "Uses setObjective with GRB.MAXIMIZE",
+    "Checks model.Status against GRB.OPTIMAL before reading values",
+    "Rounds integer variable values before printing"
+   ]
+  },
+  {
+   "id": 2,
+   "prompt": "Write a Python Gurobi program that lists every set of 3 distinct numbers from 1 to 6 whose sum is 10.",
+   "expected_skill": "dcp-gurobi",
+   "expected_output": "A program that enumerates all feasible solutions with the solution pool and removes duplicates.",
+   "assertions": [
+    "Sets PoolSearchMode to 2 and a large PoolSolutions",
+    "Reads each pool solution with SolutionNumber and Xn",
+    "Does not loop over model.optimize() with manual no-good cuts unless the pool cannot be used",
+    "Checks SolCount is strictly below PoolSolutions before treating the list as complete"
+   ]
+  },
+  {
+   "id": 3,
+   "prompt": "Write a Gurobi model in Python that finds the minimum-cost assignment of 3 workers to 3 jobs and then every assignment with that same cost.",
+   "expected_skill": "dcp-gurobi",
+   "expected_output": "A minimise model that sets MIPGap to 0 and enumerates all optimal solutions with PoolGap 0.",
+   "assertions": [
+    "Sets MIPGap to 0 before enumerating optimal solutions",
+    "Keeps the objective and sets PoolGap to 0 for the enumeration",
+    "Uses binary variables for the assignment"
+   ]
+  },
+  {
+   "id": 4,
+   "prompt": "My gurobipy model says it is infeasible. How do I find which constraints conflict?",
+   "expected_skill": "dcp-gurobi",
+   "expected_output": "Advice to call computeIIS after checking Status == GRB.INFEASIBLE, and to read IISConstr flags.",
+   "assertions": [
+    "Checks Status against GRB.INFEASIBLE first",
+    "Calls computeIIS before reading constraint names"
+   ]
+  },
+  {
+   "id": 5,
+   "prompt": "Write a constraint that says two integer variables must differ, using Gurobi's Python API.",
+   "expected_skill": "dcp-gurobi",
+   "expected_output": "An indicator-based encoding of a != b, since addConstr does not accept !=.",
+   "assertions": [
+    "Does not pass != to addConstr",
+    "Uses two indicator constraints on a binary variable"
+   ]
+  },
+  {
+   "id": 6,
+   "prompt": "Write a CP-SAT model in Python with OR-Tools for the same assignment problem.",
+   "expected_skill": null,
+   "expected_output": "The gurobipy skill is not used; the answer uses OR-Tools CP-SAT.",
+   "assertions": [
+    "The gurobipy skill is not loaded",
+    "The model uses ortools, not gurobi"
+   ]
+  },
+  {
+   "id": 7,
+   "prompt": "Write a MiniZinc model for the 8-queens problem.",
+   "expected_skill": null,
+   "expected_output": "The gurobipy skill is not used.",
+   "assertions": [
+    "The gurobipy skill is not loaded",
+    "No gurobipy import appears in the answer"
+   ]
+  }
+ ]
+}

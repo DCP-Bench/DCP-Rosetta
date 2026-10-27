@@ -1,7 +1,7 @@
 #pragma once
 // Header for Gecode submissions. A submission starts with #include "dcp.h",
 // defines a class derived from dcp::Space, and ends with DCP_MODEL(Class).
-// See skills/gecode/SKILL.md for the contract.
+// See skills/dcp-gecode/SKILL.md for the contract.
 #include <gecode/int.hh>
 #include <gecode/minimodel.hh>
 #include <gecode/search.hh>

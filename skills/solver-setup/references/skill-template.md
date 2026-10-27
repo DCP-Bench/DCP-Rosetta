@@ -9,7 +9,7 @@ routes to one file per language binding (interface). A skill with one binding ha
 shape, so another binding is added later without renaming or moving anything.
 
 ```
-<solver>/
+dcp-<solver>/
   SKILL.md                         shared: concepts, statuses, search, enumeration, interface table
   interfaces/<interface>.md        per binding: install, quick start, API, solving, all solutions, issues
   interfaces/<interface>/          instead of the file, when one binding needs several pages:
@@ -22,7 +22,9 @@ shape, so another binding is added later without renaming or moving anything.
 ```
 
 `<solver>` is the solver's name (`choco`, `ortools-cp-sat`, `pumpkin`), never solver plus
-language. `<interface>` is the language (`java`, `python`, `cpp`, `rust`, `julia`); use the
+language. The skill's folder and `name` add the `dcp-` prefix (`dcp-choco`): skills have no
+namespace, and an upstream skill named after the solver would otherwise shadow this one, or
+this one it. `<interface>` is the language (`java`, `python`, `cpp`, `rust`, `julia`); use the
 binding's own name (`pychoco`) only when one language has two bindings. No empty folders or
 placeholder files.
 
@@ -58,7 +60,7 @@ Adapt the sections to the solver; drop those that do not apply.
 
 ````markdown
 ---
-name: <solver>
+name: dcp-<solver>
 description: <What the solver is: paradigm, and each binding with its package/import name (Java: choco-solver; Python: pychoco).> Use when <writing, debugging or explaining models with it in any of these languages; typical problem words; the user has chosen this solver>.
 license: Apache-2.0
 compatibility: <Per binding: language/runtime version and package>; <licence or size limits, if any>
@@ -264,9 +266,9 @@ solver, a non-modelling task about the solver). `expected_skill` scores whether 
 skill was picked (`null` for a negative).
 
 ```json
-{"skill_name": "<solver>", "evals": [
-  {"id": 1, "prompt": "Solve this 0/1 knapsack with <solver> from <language> …", "expected_skill": "<solver>",
+{"skill_name": "dcp-<solver>", "evals": [
+  {"id": 1, "prompt": "Solve this 0/1 knapsack with <solver> from <language> …", "expected_skill": "dcp-<solver>",
    "expected_output": "Proven-optimal selection", "assertions": ["Reads interfaces/<interface>.md", "Uses <solver>'s maximise API", "Checks the status is proven optimal"]},
   {"id": 9, "prompt": "Write a MiniZinc model for n-queens.", "expected_skill": null,
-   "expected_output": "The skill is not used", "assertions": ["<solver> is not loaded"]}]}
+   "expected_output": "The skill is not used", "assertions": ["dcp-<solver> is not loaded"]}]}
 ```

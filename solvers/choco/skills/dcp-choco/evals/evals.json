@@ -1,0 +1,215 @@
+{
+  "skill_name": "dcp-choco",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a Java program with Choco 6.0.1 that places 8 queens on a chessboard so that none attack each other, and prints one placement.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A Choco model with allDifferent on the columns and on the shifted diagonal views, which prints one solution",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "Uses Model, intVarArray and allDifferent, with every constraint posted with .post()",
+        "Diagonal allDifferent over m.offset views uses \"AC_REGIN\" or \"BC\", not the default or \"AC\"",
+        "Prints one solution read with getValue() inside the solve branch"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Using Choco in Java, list every way to pay 12 with coins of 1, 3 and 4 and count them.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "Every solution enumerated with a solve() loop, with no duplicate solutions from auxiliary variables",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "Loops over solve() until it returns false",
+        "Auxiliary variables are functions of the coin counts, or duplicates are removed with a no-good on the outputs after reset()",
+        "Reads values inside the loop, not after it"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Choose 3 of 6 tasks with given costs using Choco in Java so the total cost is smallest, and list every selection that achieves that minimum.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "The optimum proven with TERMINATED, then every optimal selection enumerated on a fresh model with the cost fixed",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "The objective is an IntVar passed to setObjective(Model.MINIMIZE, ...)",
+        "Checks getSearchState() == TERMINATED before calling the last solution optimal",
+        "Enumerates the optimal selections on a second model built in a method, with the total fixed to the optimum"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Read a JSON file of items with weights, values and a required flag, and pick the most valuable set that fits a capacity, using Choco in Java with Gson.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A program that reads the file given as argument with Gson, takes every size from the data and maximises the value",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "Reads the item count and the lists from the JSON, not from a literal in the model",
+        "Converts JSON booleans to 0 and 1 with getAsBoolean() ? 1 : 0, not getAsInt()",
+        "Maximises with setObjective(Model.MAXIMIZE, v) on an IntVar"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Schedule 3 tasks on one machine with Choco in Java to minimise the makespan, and turn on lazy clause generation to speed it up.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A model with cumulative and an LCG setting, with only constraints that are on the LCG-checked list",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "Turns LCG on with new Model(name, SettingsBuilder.init().setLCG(true))",
+        "Uses only cumulative, arithm and max (or other checked constraints), and does not post set or regular constraints",
+        "Does not post constraints after a reset, or rebuilds the model instead"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Write a Choco model in Java for a tour through 5 cities with a cost matrix, and print the cheapest tour.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A program using circuit over successor variables, element for per-node costs and a sum for the total, with the optimum read after TERMINATED",
+      "assertions": [
+        "Reads interfaces/java.md",
+        "The tour uses circuit over successor variables, with per-node costs through element and a sum for the total",
+        "The program checks getSearchState() for TERMINATED before calling the last solution optimal"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Write a MiniZinc model for n-queens.",
+      "expected_skill": null,
+      "expected_output": "The skill is not used",
+      "assertions": [
+        "The choco-java skill is not loaded"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Write a Python program using pychoco that places 8 queens on a chessboard so that none attack each other, and print one placement.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A pychoco model with all_different constraints on rows and diagonals that prints one solution",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses pychoco's Model, intvar and all_different",
+        "Constraints are posted with .post()",
+        "Prints one solution from find_solution"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Using Choco in Python, list every way to pay 12 with coins of 1, 3 and 4 and count them.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "Every solution enumerated with find_all_solutions, with no duplicate solutions from auxiliary variables",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses find_all_solutions",
+        "Auxiliary variables are tied to the counts or the answers are deduplicated on the declared outputs"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Choose 3 of 6 tasks with given costs using Choco in Python so the total cost is smallest, and list every selection that achieves that minimum.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "All optimal selections via find_all_optimal_solutions",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses find_all_optimal_solutions, not only find_optimal_solution",
+        "The cost is an IntVar posted with scalar or sum"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "With Choco for Python, maximise the profit of making integer quantities of three products under two resource limits.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "Maximum profit with find_optimal_solution and maximize set to True",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "The objective is an IntVar, not an expression",
+        "The model passes the maximize flag as True"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Use Choco from Python to route shipments from 2 depots to 3 customers at minimum total cost, given supplies, demands and a cost table.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "Minimum cost with find_optimal_solution and maximize set to False",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Supply and demand limits use sum constraints",
+        "The objective is an IntVar tied by scalar"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Show, with Choco in Python, that assigning 5 jobs to 4 distinct machines is impossible.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A program that reports infeasibility because find_solution returns None",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses all_different",
+        "Treats a None result as infeasible without claiming a solution"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Schedule 5 tasks with durations, resource demands, a resource capacity and precedence rules using Choco in Python, minimising the makespan.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A minimum-makespan schedule using model.task, cumulative and max",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses model.task for each task and model.cumulative with IntVar heights and capacity",
+        "Minimises the makespan with a max over the end times and find_optimal_solution"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Explain in general terms what a Boolean satisfiability solver does.",
+      "expected_skill": null,
+      "expected_output": "The choco-python skill is not used",
+      "assertions": [
+        "The choco-python skill is not loaded"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Write a Gurobi model in Python for a knapsack problem.",
+      "expected_skill": null,
+      "expected_output": "The choco-python skill is not used",
+      "assertions": [
+        "The choco-python skill is not loaded",
+        "The answer uses gurobipy, not pychoco"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Using Choco in Python, colour the nodes of a small graph with as few colours as possible, and report how many colours it uses.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A minimum colouring that counts distinct colours with one Boolean per colour, not by counting colour variables",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Uses reify with if_then to link node colours to a Boolean per colour",
+        "The objective is the sum of the colour Booleans, passed as an IntVar to find_optimal_solution"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Write a Python program that reads a scheduling instance from a JSON file given on the command line and prints the solution as JSON, using Choco.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A program that reads sys.argv[1] with json and prints one JSON object, with a status for infeasible instances",
+      "assertions": [
+        "Reads interfaces/python.md",
+        "Reads the instance path from sys.argv and does not hardcode the data",
+        "Prints JSON, including a status for an infeasible result"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Use Choco to find a minimum-cost assignment of 4 workers to 4 jobs, each worker on a different job, given a cost table.",
+      "expected_skill": "dcp-choco",
+      "expected_output": "A Choco model in the language the agent picks from the interface table, proven optimal",
+      "assertions": [
+        "Reads SKILL.md's interface table and one interface file",
+        "Uses allDifferent / all_different on the job assignment",
+        "Reports the minimum cost and checks it was proven"
+      ]
+    }
+  ]
+}

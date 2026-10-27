@@ -1,7 +1,7 @@
 # highs_cpp: how this integration realises the submission contract
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how HiGHS (C++ API)
-expresses it. The standalone solver skill is [highs](../skills/highs/SKILL.md): it teaches
+expresses it. The standalone solver skill is [highs](../skills/dcp-highs/SKILL.md): it teaches
 the `Highs` API. Runner: [run.py](run.py) hands the submission to the C++ driver
 [driver.cpp](cpp/driver.cpp), which the image builds with [CMakeLists.txt](cpp/CMakeLists.txt).
 The helpers the submission uses are in [dcp.h](cpp/dcp.h).
