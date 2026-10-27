@@ -1,6 +1,6 @@
 # Integration files
 
-What `solvers/<id>/` holds besides the standalone skill, in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
+What an integration folder `<integration>/` holds besides the standalone skill (`solvers/<solver>/<interface>/` beside the solver's skill; `solvers/<id>/` for older integrations), in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
 
 ## Contents
 

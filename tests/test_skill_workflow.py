@@ -137,6 +137,66 @@ class SkillWorkflowTests(unittest.TestCase):
         skills.validate(self.bundle, project=True)
         manifest.write_text(kept)
 
+    def test_every_interface_is_linked_from_the_entrypoint(self):
+        """A skill shared by a solver's bindings routes to one file per interface."""
+        (self.bundle / "interfaces").mkdir()
+        (self.bundle / "interfaces/python.md").write_text("# Python\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/python.md is not linked"):
+            skills.validate(self.bundle)
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Python](interfaces/python.md) |\n")
+        skills.validate(self.bundle)
+        self.assertEqual(skills.interface_entry(self.bundle, "python"), self.bundle / "interfaces/python.md")
+
+    def test_an_interface_may_be_a_folder_entered_through_its_readme(self):
+        """An interface that needs several files gets interfaces/<interface>/README.md."""
+        folder = self.bundle / "interfaces/java"
+        folder.mkdir(parents=True)
+        (folder / "README.md").write_text("# Java\n")
+        (folder / "search.md").write_text("# Search\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/java/README.md is not linked from SKILL.md"):
+            skills.validate(self.bundle)
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Java](interfaces/java/README.md) |\n")
+        with self.assertRaisesRegex(ValueError, "interfaces/java/search.md is not linked from interfaces/java/README.md"):
+            skills.validate(self.bundle)
+        (folder / "README.md").write_text("# Java\n\n[Search](search.md)\n")
+        skills.validate(self.bundle)
+        self.assertEqual(skills.interface_entry(self.bundle, "java"), folder / "README.md")
+        # The same interface as a file and as a folder is ambiguous.
+        (self.bundle / "interfaces/java.md").write_text("# Java\n")
+        (self.bundle / "SKILL.md").write_text(self.text + "[a](interfaces/java/README.md) [b](interfaces/java.md)\n")
+        with self.assertRaisesRegex(ValueError, "both a file and a folder"):
+            skills.validate(self.bundle)
+        self.assertIsNone(skills.interface_entry(self.bundle, "java"))
+        (self.bundle / "interfaces/java.md").unlink()
+        (self.bundle / "SKILL.md").write_text(self.text + "| [Java](interfaces/java/README.md) |\n")
+        (self.bundle / "interfaces/notes").mkdir()
+        with self.assertRaisesRegex(ValueError, "not \\['notes'\\]"):
+            skills.validate(self.bundle)
+
+    def test_integration_skill_follows_where_the_integration_lives(self):
+        """A flat integration has its own skill; one nested under its solver uses the
+        solver's shared skill, in the interface its folder is named after."""
+        from evaluation.execution import EvaluationError, integration_folders
+        legacy = self.root / "solvers/old_python"
+        (legacy / "skills/old-python").mkdir(parents=True)
+        (legacy / "skills/old-python/SKILL.md").write_text(self.text)
+        (legacy / "metadata.json").write_text('{"id": "old_python"}')
+        (legacy / "readiness").mkdir()
+        (legacy / "readiness/metadata.json").write_text("{}")  # part of old_python, not an integration
+        (self.root / "solvers/new/skills/new").mkdir(parents=True)
+        (self.root / "solvers/new/skills/new/SKILL.md").write_text(self.text)
+        (self.root / "solvers/new/java").mkdir()
+        (self.root / "solvers/new/java/metadata.json").write_text('{"id": "new_java"}')
+        self.assertEqual(integration_folders(self.root),
+                         {"new_java": self.root / "solvers/new/java", "old_python": legacy})
+        self.assertEqual(skills.integration_skill(self.root, "old_python"),
+                         ("solvers/old_python/skills/old-python", None))
+        self.assertEqual(skills.integration_skill(self.root, "new_java"), ("solvers/new/skills/new", "java"))
+        self.assertEqual(skills.integration_skill(self.root, "missing"), (None, None))
+        (self.root / "solvers/new_java").mkdir()
+        (self.root / "solvers/new_java/metadata.json").write_text('{"id": "new_java"}')
+        with self.assertRaisesRegex(EvaluationError, "Two folders claim integration new_java"):
+            integration_folders(self.root)
 
 if __name__ == "__main__":
     unittest.main()

@@ -450,7 +450,7 @@ def load_generated_models() -> dict:
     """Scan generated_models/<problem>/<solver>/<submission>/ -> {problem: {solver id: [entries]}}.
 
     Keyed on the integration id, never on its display name: the name is read
-    from `solvers/<id>/metadata.json` at render time so renaming an integration
+    from the integration's metadata.json at render time so renaming an integration
     is a one-line metadata edit, and two integrations sharing a display name
     cannot collapse into one group.
     """
@@ -773,9 +773,10 @@ def load_paradigm_vocabulary() -> list:
 def load_integrations() -> dict:
     """Solver integrations by ID. The metadata files are JSON despite the suffix."""
     out = {}
-    for path in sorted(SOLVERS_DIR.glob("*/metadata.json")):
+    from evaluation.execution import integration_folders
+    for solver_id, folder in integration_folders(SOLVERS_DIR.resolve().parent).items():
         try:
-            out[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
+            out[solver_id] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
     return out
@@ -962,13 +963,17 @@ def browse_button(solver: str, count: int) -> str:
 
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
-    one integration, under solvers/<id>/skills/. The skill's folder is named after
-    the skill, not the integration, so it is found by globbing."""
-    found = sorted((SOLVERS_DIR / solver / "skills").glob("*/SKILL.md"))
-    if not found:
+    one integration: the interface entry it reads when the skill serves several
+    bindings of one solver, else the skill's SKILL.md."""
+    from generation.skills import integration_skill, interface_entry
+    root = SOLVERS_DIR.resolve().parent
+    skill, interface = integration_skill(root, solver)
+    if not skill:
         return ""
-    name = found[0].parent.name
-    href = f"{REPO_URL}/blob/main/{found[0].as_posix()}"
+    name = Path(skill).name
+    entry = interface_entry(root / skill, interface) if interface else None
+    page = entry.relative_to(root).as_posix() if entry else f"{skill}/SKILL.md"
+    href = f"{REPO_URL}/blob/main/{page}"
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')
 

@@ -19,7 +19,13 @@ is a commit inside `bench/`, followed by a commit here that moves the pointer.
 
 *Rosetta* is this repository's model collection and the machinery that writes and checks
 it (see the README). Skills in `rosetta-skills/` work only here; skills in `skills/` and
-the solver skills in `solvers/<id>/skills/` must work anywhere.
+the solver skills must work anywhere. A solver has one folder `solvers/<solver>/`: its
+standalone skill under `skills/<name>/`, shared by its language bindings, with an
+`interfaces/<interface>.md` (or an `interfaces/<interface>/` folder entered through its
+`README.md`) per binding; and one integration folder per binding, `<interface>/`, with id
+`<solver>_<interface>` and its own `Dockerfile`, runner, `CONTRACT.md` and readiness record.
+Each integration is built, certified and modelled for on its own. Older integrations are
+flat, `solvers/<id>/`, with their own skill in `solvers/<id>/skills/`.
 
 Follow `rosetta-skills/model-generator`, which runs a
 campaign end to end, and `rosetta-skills/solver-setup` for adding a framework/solver.

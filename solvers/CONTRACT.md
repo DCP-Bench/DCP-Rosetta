@@ -1,8 +1,8 @@
 # The submission contract
 
 What every model submitted to DCP-Bench Open must do, whatever the solver, language or
-framework. Each integration realises it in its own terms, documented in
-`solvers/<id>/CONTRACT.md`. Read this file first, then the integration's contract, then
+framework. Each integration realises it in its own terms, documented in the
+`CONTRACT.md` of its folder (`solvers/<solver>/<interface>/`, or `solvers/<id>/`). Read this file first, then the integration's contract, then
 the solver skill for the API.
 
 The solver skill says what the solver does; the contracts say what the runner does,
@@ -122,7 +122,7 @@ always `json:0`.
 
 ## Mapping checklist
 
-Every `solvers/<id>/CONTRACT.md` answers these, under these headings, so a modeller can map
+Every integration's `CONTRACT.md` answers these, under these headings, so a modeller can map
 this contract onto the integration, and solver-setup knows what a new runner must define:
 
 | Heading | Question |
