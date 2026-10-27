@@ -32,6 +32,11 @@ system.
 `bench/` is pinned to one commit of the problems. To move to their latest
 `main`, run `git submodule update --remote bench` and commit the new pointer.
 
+The [Makefile](Makefile) wraps the commands below and in the skills: `make`
+lists its targets, such as `make serve` for the website, `make test` for the
+tests that need no Docker, and `make check MODEL=... PROBLEM=... SOLVER=...` to
+evaluate one model.
+
 ## The catalogue website
 
 From the repository root, build the static site and serve it:
@@ -42,7 +47,7 @@ python generate_site.py
 python -m http.server 8000 --directory site
 ```
 
-Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
+or `make serve`, which runs the same three steps. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
 
 Alongside the problem catalogue, the
 [solver breakdown](https://dcp-bench.github.io/DCP-Rosetta/paradigms.html)
