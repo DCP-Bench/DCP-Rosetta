@@ -79,13 +79,13 @@ startup and compilation, so it is not comparable to the runner's
 
 ## Submitting a model
 
-Pick an integration: any `solvers/<id>/` with a `metadata.json`. What a model
+Pick an integration: any integration folder (`solvers/<solver>/<interface>/`) with a `metadata.json`. What a model
 must do, for every integration, is the submission contract
 [solvers/CONTRACT.md](../solvers/CONTRACT.md); how a given integration takes it
-(file, entrypoint, instance, outputs, objective) is its `solvers/<id>/CONTRACT.md`.
-Each `solvers/<id>/` holds `metadata.json`, `run.py`, a `Dockerfile`, the
+(file, entrypoint, instance, outputs, objective) is the `CONTRACT.md` in its folder.
+Each integration folder holds `metadata.json`, `run.py`, a `Dockerfile`, the
 `readiness_test.py` that certifies it, that contract, and a standalone skill for
-the solver under `solvers/<id>/skills/`.
+the solver under `solvers/<solver>/skills/`.
 
 Models are instance-agnostic. Python implements `build(instance)`, C++
 implements `Build(instance, model, outputs)`, MiniZinc declares matching data
@@ -141,7 +141,7 @@ optimality itself and never trusts a claimed objective.
 
 ## Adding an integration
 
-Add a `solvers/<id>/` directory implementing the protocol, plus smoke tests, and
+Add a `solvers/<solver>/<interface>/` directory implementing the protocol, plus smoke tests, and
 a `CONTRACT.md` documenting how it realises [solvers/CONTRACT.md](../solvers/CONTRACT.md).
 The evaluator dispatches on integration ID, never on language name. Metadata
 declares `id`, `image`, `extension`, `enumeration`, descriptive

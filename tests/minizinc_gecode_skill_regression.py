@@ -67,7 +67,7 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: minizinc_gecode_skill_regression.py SKILL_BUNDLE")
     bundle = Path(sys.argv[1])
-    skill = (bundle / "SKILL.md").read_text(encoding="utf-8")
+    skill = "\n".join(p.read_text(encoding="utf-8") for p in [bundle / "SKILL.md", *sorted(bundle.glob("interfaces/**/*.md"))])
 
     failures = []
     with tempfile.TemporaryDirectory(prefix="dcp_skill_regression_") as directory:

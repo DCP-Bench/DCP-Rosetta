@@ -1,4 +1,4 @@
-"""Regression for the ortools-cp-sat-cpp skill's AddElement guidance.
+"""Regression for the ortools-cp-sat skill (cpp interface)'s AddElement guidance.
 
 Takes a skill bundle path and checks two things about one trap:
 
@@ -98,7 +98,7 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: ortools_cp_sat_cpp_skill_regression.py SKILL_BUNDLE")
     bundle = Path(sys.argv[1])
-    skill = (bundle / "SKILL.md").read_text(encoding="utf-8")
+    skill = "\n".join(p.read_text(encoding="utf-8") for p in [bundle / "SKILL.md", *sorted(bundle.glob("interfaces/**/*.md"))])
 
     failures = []
     with tempfile.TemporaryDirectory(prefix="dcp_cpp_regression_") as directory:
