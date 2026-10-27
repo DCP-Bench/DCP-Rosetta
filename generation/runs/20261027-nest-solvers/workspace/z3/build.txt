@@ -1,0 +1,45 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 480B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [1/4] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 6.54kB done
+#5 DONE 0.1s
+
+#6 [2/4] RUN pip install --no-cache-dir z3-solver==5.1.0.0
+#6 2.047 Collecting z3-solver==5.1.0.0
+#6 2.118   Downloading z3_solver-5.1.0.0-py3-none-manylinux_2_27_x86_64.whl.metadata (777 bytes)
+#6 2.131 Downloading z3_solver-5.1.0.0-py3-none-manylinux_2_27_x86_64.whl (33.1 MB)
+#6 4.216    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.1/33.1 MB 16.1 MB/s eta 0:00:00
+#6 4.244 Installing collected packages: z3-solver
+#6 4.722 Successfully installed z3-solver-5.1.0.0
+#6 4.722 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 4.811 
+#6 4.811 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#6 4.811 [notice] To update, run: pip install --upgrade pip
+#6 DONE 4.9s
+
+#7 [3/4] COPY runner/runtime.py /opt/runner/runtime.py
+#7 DONE 0.3s
+
+#8 [4/4] COPY solvers/z3/python/run.py /opt/runner/run.py
+#8 DONE 0.2s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.7s done
+#9 writing image sha256:10b5e928f4c6693b55df25bbf277ef5b5cc2b2e9f44bc1b0a076a8bfbe8edad1 0.0s done
+#9 naming to docker.io/dcp-eval/z3_python:v1 0.0s done
+#9 DONE 0.9s
