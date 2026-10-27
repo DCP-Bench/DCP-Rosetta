@@ -1,29 +1,13 @@
----
-name: ortools-cp-sat-cpp
-description: OR-Tools CP-SAT, Google's constraint programming and optimisation solver, used from C++ through its CpModelBuilder API. Use when writing, debugging or explaining CP-SAT models in C++, installing OR-Tools for C++ with CMake, or enumerating all solutions or all optimal solutions with it.
-license: Apache-2.0
-compatibility: Requires a C++17 compiler (tested with g++ 12.2), CMake 3.18+ and the OR-Tools 9.15 C++ binary archive (free, no key or account; tested on Debian 12 x86_64)
-metadata:
-  domain: constraint-programming
-  solver: ortools-cp-sat
-  paradigm: cp
----
+# OR-Tools CP-SAT in C++ (CpModelBuilder)
 
-# OR-Tools CP-SAT (C++)
-
-CP-SAT is a finite-domain constraint solver that combines propagation with clause learning. You declare integer and Boolean variables on a `CpModelBuilder`, add linear and global constraints, optionally add one objective, then call `Solve`. Two rules to keep in mind: every variable has a finite integer domain, and the objective is an integer linear expression (scale money to whole cents).
-
-Official guide: [CP-SAT solver](https://developers.google.com/optimization/cp/cp_solver) ([Markdown](https://developers.google.com/optimization/cp/cp_solver.md)). Builder API: [`cp_model.h`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h), whose comments are the reference.
+The native C++ API of OR-Tools, built with CMake against the binary archive.
+Shared concepts, statuses and enumeration strategy: [SKILL.md](../SKILL.md).
+Builder API: [`cp_model.h`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h), whose comments are the reference.
 
 ## Contents
-- [Install](#install)
-- [Quick start](#quick-start)
-- [Modelling](#modelling)
-- [Reading instance data](#reading-instance-data)
-- [Solving](#solving)
-- [All solutions](#all-solutions)
-- [Common issues](#common-issues)
-- [Further reading](#further-reading)
+- [Install](#install) · [Quick start](#quick-start) · [Reading instance data](#reading-instance-data)
+- [Modelling](#modelling) · [Solving](#solving) · [All solutions](#all-solutions)
+- [Common issues](#common-issues) · [Runnable examples](#runnable-examples)
 
 ## Install
 
@@ -40,7 +24,7 @@ The commands above fetch the Debian 12 x86_64 archive (the one tested). On other
 
 The archive bundles its own Abseil, protobuf and Boost, so the compiler and CMake are the only tools to install. Verify with the Quick start below: it prints `Objective: 12`.
 
-If OR-Tools is already unpacked somewhere (a container or a shared install), point `CMAKE_PREFIX_PATH` at that directory and add its `lib/` to `LD_LIBRARY_PATH`, then skip the download and go to the Quick start. Check with `echo $CMAKE_PREFIX_PATH`; if it is empty, use the commands above.
+If OR-Tools is already unpacked somewhere (a container or a shared install), point `CMAKE_PREFIX_PATH` at that directory and add its `lib/` to `LD_LIBRARY_PATH`, then skip the download and go to the Quick start. Check with `echo $CMAKE_PREFIX_PATH`; if it is empty, use the commands above. Without network access the download cannot work, so the OR-Tools prefix (and nlohmann/json, found by `find_package` like OR-Tools) must already be on the machine.
 
 ## Quick start
 
@@ -92,18 +76,20 @@ target_link_libraries(model PRIVATE ortools::ortools)
 cmake -S . -B build && cmake --build build && ./build/model
 ```
 
-Several programs in one project: list their names, and CMake builds each from `<name>.cc` into `build/bin`.
+Keep the build tree outside the source folder (`-B "$HOME/build/model"` instead of `-B build`), so it never mixes with sources and can always be deleted; the binary is then `"$HOME/build/model/model"`.
+
+Several programs in one project: list their names, and CMake builds each into `<build>/bin`. This version takes sources from `models/<name>.cpp` and links nlohmann/json (drop that line if no program reads JSON); for `<name>.cc` in the project root, change the `add_executable` path.
 
 ```cmake
+find_package(nlohmann_json CONFIG REQUIRED)
 set(PROGRAMS knapsack copy)
 foreach(program IN LISTS PROGRAMS)
-  add_executable(${program} ${program}.cc)
-  target_link_libraries(${program} PRIVATE ortools::ortools)
+  add_executable(${program} models/${program}.cpp)
+  target_link_libraries(${program} PRIVATE ortools::ortools nlohmann_json::nlohmann_json)
   set_target_properties(${program} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endforeach()
 ```
 
-Worked examples, one folder each under `assets/` with `model.cc`, `CMakeLists.txt` and a README: `satisfy-latin-square` (satisfy), `all-solutions-subset-sum`, `all-optimal-committee`, `maximise-production-plan`, `minimise-assignment`, `infeasible-pigeonhole`, `scheduling-cumulative` (cumulative resource) and `no-overlap-jobshop` (one machine per no-overlap constraint).
 
 ## Reading instance data
 
@@ -135,7 +121,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-`parse` throws on malformed JSON and `at` throws on a missing key, so a failure stops the program with an exception rather than a wrong answer. The full program is verified by building with `find_package(nlohmann_json)`; it prints `Value: 10` for weights `[3, 4, 5]`, values `[4, 5, 6]` and capacity `8`.
+Nested arrays convert in one call, for example `[machine, duration]` pairs per job: `instance.at("jobs").get<std::vector<std::vector<std::pair<int, int64_t>>>>()` (verified). `parse` throws on malformed JSON and `at` throws on a missing key, so a failure stops the program with an exception rather than a wrong answer. The full program is verified by building with `find_package(nlohmann_json)`; it prints `Value: 10` for weights `[3, 4, 5]`, values `[4, 5, 6]` and capacity `8`.
 
 ## Modelling
 
@@ -145,18 +131,19 @@ Full list: [`cp_model.h`](https://github.com/google/or-tools/blob/v9.15/ortools/
 |---|---|
 | Integer variable with bounds | [`NewIntVar(Domain(lo, hi))`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | Domain with holes | [`Domain::FromValues({-1, 1})`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
-| Boolean variable | [`NewBoolVar()`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); a `BoolVar` enters sums directly: `total += weight * take[i]` |
+| Boolean variable | [`NewBoolVar()`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); a `BoolVar` enters sums directly: `total += weight * take[i]`. Also verified: `int * IntVar` in sums, `LinearExpr - int64_t`, `AddMaxEquality(IntVar, {exprs})` |
 | Constant as a variable | [`NewConstant(k)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | Linear (in)equality | [`AddEquality`, `AddNotEqual`, `AddLessOrEqual`, `AddLessThan`, `AddGreaterOrEqual`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | Linear value in a set | [`AddLinearConstraint(expr, Domain::FromValues({3, 4, 7}))`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | All different | [`AddAllDifferent(std::vector<LinearExpr>)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | Element (array read at a variable index) | [`AddElement`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h), see [Common issues](#common-issues) |
 | Absolute value, min, max | [`AddAbsEquality`, `AddMinEquality`, `AddMaxEquality`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
-| Product, modulo | [`AddMultiplicationEquality`, `AddModuloEquality`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); chain a product two factors at a time, each intermediate bounded |
+| Product, division, modulo | [`AddMultiplicationEquality`, `AddDivisionEquality`, `AddModuloEquality`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); chain a product two factors at a time, each intermediate bounded; a divisor whose domain contains 0 makes the model invalid, so give it a domain without 0 |
 | Boolean clauses | [`AddBoolOr`, `AddBoolAnd`, `AddImplication`, `AddAtMostOne`, `AddExactlyOne`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | Reification | [`.OnlyEnforceIf(lit)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h), posted in both directions; see below |
 | Regular language | [`AddAutomaton(exprs, start, finals)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) then [`.AddTransition(tail, head, label)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) per arc |
-| Intervals and no-overlap | [`NewFixedSizeIntervalVar(start, size)`, `NewIntervalVar(start, size, end)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); [`AddNoOverlap(std::vector<IntervalVar>)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) takes the intervals of one machine per call, see `no-overlap-jobshop` |
+| Intervals and no-overlap | [`NewFixedSizeIntervalVar(start, size)`, `NewIntervalVar(start, size, end)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); [`AddNoOverlap(std::vector<IntervalVar>)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) takes the intervals of one machine per call, see [no-overlap-jobshop](../assets/cpp/no-overlap-jobshop/README.md) |
+| Interval ends | `interval.StartExpr()`, `interval.EndExpr()` and `SizeExpr()` are `LinearExpr`s usable in constraints, `AddMaxEquality` and `SolutionIntegerValue` (verified); a makespan is `AddMaxEquality(makespan, ends)` |
 | Cumulative resource | [`AddCumulative(capacity)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) then [`.AddDemand(interval, demand)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) |
 | 2-D no-overlap | [`AddNoOverlap2D()`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) then `.AddRectangle(x_interval, y_interval)` |
 | Minimise / maximise | [`Minimize(expr)` / `Maximize(expr)`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h); at most one objective |
@@ -173,15 +160,7 @@ This counts occurrences (`sum(x == v) == k` is a sum of `hit` indicators), and a
 
 ## Solving
 
-Status values: [`CpSolverStatus`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.proto). Parameters: [`sat_parameters.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/sat_parameters.proto).
-
-| Status | Meaning |
-|---|---|
-| `OPTIMAL` | Solution found; for an optimisation, optimality is proven |
-| `FEASIBLE` | Solution found but not proven optimal (time limit reached) |
-| `INFEASIBLE` | Proven: no solution exists |
-| `UNKNOWN` | Limit reached before any solution or proof |
-| `MODEL_INVALID` | The model is malformed; read `ValidateCpModel(model.Build())` |
+Status values: [`CpSolverStatus`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.proto) (`CpSolverStatus::OPTIMAL`, `FEASIBLE`, `INFEASIBLE`, `UNKNOWN`, `MODEL_INVALID`; name with `CpSolverStatus_Name`). Parameters: [`sat_parameters.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/sat_parameters.proto). Meanings: [SKILL.md](../SKILL.md#solving). For `MODEL_INVALID`, read `ValidateCpModel(model.Build())`.
 
 Read values only after checking the status is `OPTIMAL` or `FEASIBLE`.
 
@@ -204,7 +183,7 @@ const CpSolverResponse response = SolveWithParameters(model.Build(), parameters)
 
 ## All solutions
 
-Enumerate with a solution observer and one worker. Every variable in the model is part of the solution, so enumerate over decision variables only (see the first issue below). The snippet needs the same `using` lines as the Quick start, and these headers:
+Enumerate with a solution observer and one worker. Every variable in the model is part of the solution, so enumerate over decision variables only (see [SKILL.md](../SKILL.md#all-solutions)). The snippet needs the same `using` lines as the Quick start, and these headers:
 
 ```cpp
 #include "ortools/sat/cp_model.h"
@@ -224,30 +203,29 @@ enumerator.Add(NewSatParameters(parameters));
 const CpSolverResponse response = SolveCpModel(model.Build(), &enumerator);
 ```
 
-Pattern and runnable code: `all-solutions-subset-sum`. Reference: [`sat_parameters.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/sat_parameters.proto) (`enumerate_all_solutions`), [sample programs](https://github.com/google/or-tools/tree/v9.15/ortools/sat/samples).
+Pattern and runnable code: [all-solutions-subset-sum](../assets/cpp/all-solutions-subset-sum/README.md). Reference: [`sat_parameters.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/sat_parameters.proto) (`enumerate_all_solutions`), [sample programs](https://github.com/google/or-tools/tree/v9.15/ortools/sat/samples), starting with `cp_sat_example.cc` and `search_for_all_solutions_sample_sat.cc`.
 
-**All optimal solutions:** solve once to get the optimum `z*`. Build a second model from scratch with the same constraints, `AddEquality(objective_expr, z*)` and no objective, then enumerate it as above. A model that still carries the objective is optimised, not enumerated. Pattern and code: `all-optimal-committee`.
+**All optimal solutions:** solve once to get the optimum `z*`. Build a second model from scratch with the same constraints, `AddEquality(objective_expr, z*)` and no objective, then enumerate it as above. A model that still carries the objective is optimised, not enumerated. Pattern and code: [all-optimal-committee](../assets/cpp/all-optimal-committee/README.md).
 
 ## Common issues
 
 | Problem | Likely cause | Fix |
 |---|---|---|
-| Duplicate solutions from enumeration | Auxiliary variables are not fixed by the decision variables, so each decision tuple repeats once per auxiliary value | Remove the auxiliary variables from the enumerated model, or count distinct values of the decision variables |
-| Enumeration returns fewer solutions than exist | More than one worker: with 8 workers a 6-solution model returned 5 | `set_num_workers(1)` with `set_enumerate_all_solutions(true)` |
 | Compile error listing many `AddElement` candidates | `AddElement` takes a span of `LinearExpr` (or of `int64_t` constants), not of `IntVar`; a `std::vector<IntVar>` converts to neither | Convert once: `const std::vector<LinearExpr> exprs(vars.begin(), vars.end());`. `AddAllDifferent` and `AddMaxEquality` need the same conversion for expressions such as `queens[i] - i` |
 | Two-dimensional table indexed by two variables | Nested element constraints, or an `AddElement` on the wrong axis | Flatten the table into one `std::vector<LinearExpr>` of width `w`, add `AddEquality(cell, w * row + col)`, then one `AddElement(cell, ...)` |
-| Indicator takes either value | Reification posted in one direction only | Post the constraint under `lit` and its negation under `lit.Not()`; see [Modelling](#modelling) |
 | `MODEL_INVALID` | Malformed model, for example a domain with `lo > hi` | Print `ValidateCpModel(model.Build())` and fix the named variable or constraint |
-| `FEASIBLE` instead of `OPTIMAL` for an optimisation | Time limit reached; optimality not proven | Raise `set_max_time_in_seconds`, or accept the value and say it is not proven |
-| `AddModuloEquality` or `AddMultiplicationEquality` misbehaves | The target or an intermediate of a product has no finite domain covering its true range | Give each target and intermediate a bounded `Domain` |
-| Objective with decimal costs | CP-SAT works on integers; the floating-point `Minimize` overload scales coefficients internally | Multiply costs by 100 (or 1000) yourself and keep the objective integer |
 | Compile error: `Model`, `NewFeasibleSolutionObserver` or `NewSatParameters` not declared | The enumeration headers are missing | Include `ortools/sat/model.h` and `ortools/sat/sat_parameters.pb.h` with the other two headers, as in [All solutions](#all-solutions) |
-| Job shop reports makespan 23 where the optimum is 11 | One `AddNoOverlap` over the intervals of all machines, which also forbids overlap between machines | One `AddNoOverlap` call per machine, each over that machine's intervals; `no-overlap-jobshop` does this |
+| Job shop reports makespan 23 where the optimum is 11 | One `AddNoOverlap` over the intervals of all machines, which also forbids overlap between machines | One `AddNoOverlap` call per machine, each over that machine's intervals; [no-overlap-jobshop](../assets/cpp/no-overlap-jobshop/README.md) does this |
+| Ambiguous overload or no match for `queens[i] + i` style arithmetic in a `LinearExpr` context | Mixed `IntVar` and integer types of different widths | `IntVar + int` and `IntVar + size_t` compile; if a compiler complains anyway, write `LinearExpr(x) + int64_t(i)` |
 | `fatal error: nlohmann/json.hpp: No such file or directory` | nlohmann/json not installed, or not linked | Install `nlohmann-json3-dev`, then `find_package(nlohmann_json CONFIG REQUIRED)` and link `nlohmann_json::nlohmann_json`; see [Reading instance data](#reading-instance-data) |
 
-## Further reading
+## Runnable examples
 
-- Solver guide: [CP-SAT solver](https://developers.google.com/optimization/cp/cp_solver) ([Markdown](https://developers.google.com/optimization/cp/cp_solver.md))
-- API: [`cp_model.h`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.h) for every builder method, [`cp_model.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.proto) for statuses, [`sat_parameters.proto`](https://github.com/google/or-tools/blob/v9.15/ortools/sat/sat_parameters.proto) for parameters
-- Examples: [official samples](https://github.com/google/or-tools/tree/v9.15/ortools/sat/samples), starting with `cp_sat_example.cc` and `search_for_all_solutions_sample_sat.cc`
-- Install: [OR-Tools C++ binary](https://developers.google.com/optimization/install/cpp/binary_linux)
+- [satisfy-latin-square](../assets/cpp/satisfy-latin-square/README.md): satisfy
+- [all-solutions-subset-sum](../assets/cpp/all-solutions-subset-sum/README.md): all solutions
+- [all-optimal-committee](../assets/cpp/all-optimal-committee/README.md): all optimal solutions
+- [maximise-production-plan](../assets/cpp/maximise-production-plan/README.md): maximise
+- [minimise-assignment](../assets/cpp/minimise-assignment/README.md): minimise
+- [infeasible-pigeonhole](../assets/cpp/infeasible-pigeonhole/README.md): infeasible
+- [scheduling-cumulative](../assets/cpp/scheduling-cumulative/README.md): cumulative resource
+- [no-overlap-jobshop](../assets/cpp/no-overlap-jobshop/README.md): one no-overlap per machine

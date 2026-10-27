@@ -1,8 +1,8 @@
 # ortools_cp_sat_python: how this integration realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how OR-Tools
+Read [the submission contract](../../CONTRACT.md) first; this file only says how OR-Tools
 CP-SAT (Python) expresses it. Runner: [run.py](run.py), which calls `main("cp_sat")` in
-[runner/runtime.py](../../runner/runtime.py).
+[runner/runtime.py](../../../runner/runtime.py).
 
 ## Submission file
 
@@ -90,7 +90,7 @@ dcp-eval/ortools_cp_sat_python:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_cp_sat.py](../../tests/fixtures/model_cp_sat.py)
+The pilot fixture [tests/fixtures/model_cp_sat.py](../../../tests/fixtures/model_cp_sat.py)
 (instance fields `n`, `optimize`; outputs `x`, `y`):
 
 ```python

@@ -1,8 +1,8 @@
 # ortools_cp_sat_cpp: how this integration realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how OR-Tools
+Read [the submission contract](../../CONTRACT.md) first; this file only says how OR-Tools
 CP-SAT in C++ expresses it. Runner: [run.py](run.py), which calls `main("cpp")` in
-[runner/runtime.py](../../runner/runtime.py) (`cpp_solver`). That compiles the submission
+[runner/runtime.py](../../../runner/runtime.py) (`cpp_solver`). That compiles the submission
 together with the driver [cpp/driver.cpp](cpp/driver.cpp) using
 [cpp/CMakeLists.txt](cpp/CMakeLists.txt), then runs the binary, which owns `main`,
 solving, enumeration and printing.
@@ -112,7 +112,7 @@ none -v $PWD/model.cpp:/tmp/model.cpp:ro --entrypoint sh dcp-eval/ortools_cp_sat
 
 ## Example
 
-The pilot fixture [tests/fixtures/model.cpp](../../tests/fixtures/model.cpp) (instance
+The pilot fixture [tests/fixtures/model.cpp](../../../tests/fixtures/model.cpp) (instance
 fields `n`, `optimize`; outputs `x`, `y`):
 
 ```cpp
