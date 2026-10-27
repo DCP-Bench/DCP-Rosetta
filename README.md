@@ -47,7 +47,8 @@ python generate_site.py
 python -m http.server 8000 --directory site
 ```
 
-or `make serve`, which runs the same three steps. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
+or `make serve`, which runs the same steps but skips the first, the slow one, while
+`bench/dataset/` is unchanged. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
 
 Alongside the problem catalogue, the
 [solver breakdown](https://dcp-bench.github.io/DCP-Rosetta/paradigms.html)
