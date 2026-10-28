@@ -31,6 +31,9 @@ sys.path.insert(0, "/opt/runner")
 from runtime import emit, flatten, mapped  # noqa: E402
 from runtime import finish as runtime_finish  # noqa: E402
 
+import pychoco  # noqa: E402,F401 - loaded here, as start-up, not while the first model is built
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
+
 INPUT = Path("/input")
 DIRECTIONS = ("minimize", "maximize")
 # A search that stops with this much of its budget left really did run out of
@@ -128,12 +131,15 @@ def best_objective(instance, direction, deadline):
     return solution.get_int_val(objective[1]), None
 
 
-# Seconds the submission took to build the first model (posting into Choco), for benchmarking.
+# Seconds the submission took to build the first model (posting into Choco), and from STARTED until the
+# request was read, for benchmarking.
 BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
 
 
 def finish(status, detail=""):
-    runtime_finish(status, detail, build_seconds=BUILD_SECONDS)
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED)
 
 
 def solve(request):
@@ -180,7 +186,9 @@ def solve(request):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by choco_python")
 

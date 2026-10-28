@@ -420,10 +420,16 @@ fn emit(record: Value) {
 
 /// Nanoseconds the submission took to build the model (posting into the solver), for benchmarking.
 static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Nanoseconds from `run`'s start until the request was read, and when `run` started (benchmarking).
+static READ_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static RUN_START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
 
 fn status(kind: &str, detail: &str, seconds: f64) {
     let build = BUILD_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
-    emit(json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds, "build_seconds": build}));
+    let read = READ_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
+    let main = RUN_START.get().map_or(0.0, |start| start.elapsed().as_secs_f64());
+    emit(json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds, "build_seconds": build,
+               "read_seconds": read, "main_seconds": main}));
 }
 
 struct Budget {
@@ -448,6 +454,7 @@ impl Budget {
 /// Entry point the generated binary calls. Reads the request on stdin, solves,
 /// and writes the runner protocol on stdout.
 pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
+    let started = *RUN_START.get_or_init(Instant::now);
     let mut input = String::new();
     std::io::stdin()
         .read_to_string(&mut input)
@@ -463,6 +470,7 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
     let instance = Instance::new(request["instance"].clone());
     let mut solver = Solver::default();
     let building = Instant::now();
+    READ_NANOS.store(started.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
     let model = build(&instance, &mut solver);
     BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
 
