@@ -17,7 +17,7 @@ constraints. A model object is the factory for every variable and constraint, an
 returns does nothing until it is **posted** (or reified on purpose); the few calls that post at once
 are listed in the interface files. **Model with the globals.**
 Choco's strength is its propagators: a decomposition into pairwise relations or reified sums
-throws that away.
+throws that away. 
 
 ## Pick an interface
 
