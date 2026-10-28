@@ -447,7 +447,7 @@ def retain(attempt_path: str) -> Path:
             raise ManagementError(f"Evaluation does not match immutable attempt {key}")
     if evaluation.get("accepted") is not True:
         raise ManagementError("Only a strictly accepted evaluator result can be retained")
-    if evaluation.get("image", {}).get("id") != _read(folder / "readiness.json").get("image_id"):
+    if evaluation.get("image", {}).get("recipe") != _read(folder / "readiness.json").get("recipe"):
         raise ManagementError("Evaluated image differs from the tested integration image")
     instances = evaluation.get("instances")
     supply = evaluation.get("instances_available")

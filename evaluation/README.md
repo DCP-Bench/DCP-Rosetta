@@ -71,7 +71,9 @@ solve. Output is capped at 8 MiB per stream and container scratch at 512 MiB.
 
 Results carry per-instance outcomes, `instances_available`,
 `unperformed_instances`, `skipped_instances`, limits, timings, model/reference/instance hashes, and
-the image digest actually executed.
+the image actually executed: its local ID and the recipe digest that
+`evaluation.build` labelled it with (see `generation/README.md`). Only the
+recipe means the same on another machine.
 Evaluation stops at the first failure, so `instances_checked` counts only
 passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's

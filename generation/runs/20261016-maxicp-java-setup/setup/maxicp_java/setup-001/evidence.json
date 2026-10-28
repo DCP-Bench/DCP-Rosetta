@@ -41,10 +41,10 @@
     "rosetta_mentions": "python3 -m generation.skills rosetta-mentions solvers/maxicp_java/skills/maxicp-java",
     "skills_ref": "skills-ref validate solvers/maxicp_java/skills/maxicp-java (skills-ref from git, in ~/.cache/skills-ref)",
     "check_assets": "python3 skills/add-solver/scripts/check_assets.py solvers/maxicp_java/skills/maxicp-java --image dcp-eval/maxicp_java:v1 --env CLASSPATH=... --mount <jars>:/jars:ro",
-    "readiness": "/home/tias/.cache/dcp-bench-venv/bin/python -m generation.readiness check --solver maxicp_java --output solvers/maxicp_java/readiness.json",
+    "readiness": "python -m generation.readiness check --solver maxicp_java --output solvers/maxicp_java/readiness.json",
     "integration_check": "python3 rosetta-skills/solver-setup/scripts/check_integration.py maxicp_java [--static]"
   },
-  "python_environment": "repo requirements.txt installed into /home/tias/.cache/dcp-bench-venv (cpmpy 1.0.0, ortools 9.15.6755), needed by the readiness reference; the host python3 lacks cpmpy",
+  "python_environment": "repo requirements.txt installed into a virtualenv (cpmpy 1.0.0, ortools 9.15.6755), needed by the readiness reference; the host python3 lacks cpmpy",
   "toy_tests": "round-1 by a fresh agent with only the skill and toy/: 18/18 PASS (round-1/results.txt). Skill edited afterwards for missing table rows (makeIntVarArray 3-argument form, neq, ge(x,k), minus(x,k), sum with variable right-hand side, infeasibility under optimize). Those edits were NOT re-tested by a fresh agent.",
   "toy_tests_image": "round-1 ran on dcp-eval/maxicp_java:v1 before one later rebuild with identical sources",
   "discovered_bugs": [

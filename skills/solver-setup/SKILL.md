@@ -171,11 +171,11 @@ python -m generation.readiness check --solver ID --output <integration>/readines
 ```
 
 This runs `<integration>/readiness_test.py` against the built image and records the result only when every required check passes. Set `"readiness_level": 2` in `metadata.json`, which adds the bug-class checks of [integration files](references/integration.md); besides the required checks, include one that a solver crash comes back as `error` with the solver's own message. Tests skipped because Docker or the image is missing do not count. The record is write-once: after a fix,
-rebuild, delete `readiness.json`, and check and verify again (on a separately tagged image while a campaign is still evaluating on `:v1`). Then register it as a pilot (see *Once certified* in [integration files](references/integration.md)) and run `scripts/check_integration.py ID` without `--static`: it must exit 0 before you return **ready**. After changing shared runner code, rerun the affected existing integrations too.
+rebuild, move `readiness.json` to `readiness/superseded/`, and check and verify again (on a separately tagged image while a campaign is still evaluating on `:v1`). Then register it as a pilot (see *Once certified* in [integration files](references/integration.md)) and run `scripts/check_integration.py ID` without `--static`: it must exit 0 before you return **ready**. After changing shared runner code, rerun the affected existing integrations too.
 
 ## 3.4. Return
 
-Write the evidence under `generation/runs/RUN/setup/<id>/`: changed files, sources, versions, commands and their output, image identity, capabilities and limitations, and add-solver's report with its toy-test table. Record `setup_finished` or `setup_blocked` with `generation.manage event`.
+Write the evidence under `generation/runs/RUN/setup/<id>/`: changed files, sources, versions, commands and their output (with repository-relative paths, never a path under your home folder), the image's recipe digest, capabilities and limitations, and add-solver's report with its toy-test table. Record `setup_finished` or `setup_blocked` with `generation.manage event`.
 
 Return **ready** only after readiness passed. Otherwise return **blocked** with the exact failure, the attempts spent and what is left. Stop when the budget is spent; never recurse.
 

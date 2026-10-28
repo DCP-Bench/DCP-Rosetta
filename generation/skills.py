@@ -226,7 +226,7 @@ def propose(run, skill, candidate, evidence):
     write(proposal / "proposal.json", {"schema_version": 1, "target": str(skill.relative_to(ROOT)),
           "name": skill.name, "base_hashes": hashes(skill), "candidate_hashes": hashes(candidate),
           "evidence": evidence, "created_at": now(), "status": "proposed"})
-    log_change(proposal, "skill_proposed", {"target": str(skill), "evidence": evidence})
+    log_change(proposal, "skill_proposed", {"target": skill.relative_to(ROOT).as_posix(), "evidence": evidence})
     return str(proposal)
 
 
@@ -240,7 +240,7 @@ def log_change(path, kind, data):
     run = next((p for p in Path(path).parents if (p / "run.json").is_file()), None)
     if run is None:
         raise ValueError("Skill change has no run")
-    _append_event(run, kind, {"proposal": str(path), **data})
+    _append_event(run, kind, {"proposal": Path(path).resolve().relative_to(ROOT).as_posix(), **data})
 
 
 def check_proposal(path, checks_file):
@@ -263,7 +263,8 @@ def check_proposal(path, checks_file):
             raise ValueError("Proposal snapshot changed")
         validate(bundle, project=True)
         for check in checks:
-            argv = [arg.replace("{skill}", str(bundle)) for arg in check["argv"]]
+            # The checks run from the repository root, so the recorded command names no machine path.
+            argv = [arg.replace("{skill}", bundle.relative_to(ROOT).as_posix()) for arg in check["argv"]]
             try:
                 result = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=check.get("timeout", 60))
                 record = {"returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr}

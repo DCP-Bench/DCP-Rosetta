@@ -35,10 +35,14 @@ Whether an integration can still be trusted:
 python -m generation.readiness verify --solver z3_python --record solvers/z3/python/readiness.json
 ```
 
-A record ties an integration's image to the checks that were actually run
-against it. Change the runner, the Dockerfile or the checks and the record
-stops verifying, and the integration drops out of the queue until it is
-re-certified. That is the mechanism behind "an accepted model means something".
+A record ties the checks that were actually run to the integration's
+*recipe*: a digest of its Dockerfile and every repository file the Dockerfile
+copies (the runner, `runner/runtime.py`, driver sources). Change any of them, or
+the checks, and the record stops verifying, and the integration drops out of the
+queue until it is re-certified. The record does not pin a Docker image ID, which
+changes with every build: `python -m evaluation.build` stamps the recipe on the
+image as a label, so an image built from the same files on any machine verifies.
+`--files-only` checks a record against the repository alone, without Docker. That is the mechanism behind "an accepted model means something".
 
 ## Where the records live
 

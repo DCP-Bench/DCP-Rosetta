@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
-from evaluation.execution import OOM_REREADS, execute, validate_records
+from evaluation.execution import OOM_REREADS, execute, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -247,6 +247,54 @@ class OrchestrationTests(unittest.TestCase):
                                   instances=[{"n": 3, "optimize": False}], instance_count=2)
             self.assertTrue(result["accepted"], result)
             self.assertEqual(received, [b"original", b"original"])
+
+
+class RecipeTests(unittest.TestCase):
+    DOCKERFILE = ("FROM base@sha256:00 AS build\n"
+                  "COPY --from=build /opt/x /opt/x\n"
+                  "ADD --checksum=sha256:11 \\\n    https://example.org/x.jar /opt/x.jar\n"
+                  "COPY --chmod=0755 runner/runtime.py \\\n    solvers/demo/run.py /opt/runner/\n"
+                  "COPY solvers/demo/cpp /opt/cpp\n")
+
+    def checkout(self, root):
+        folder = root / "solvers" / "demo"
+        (folder / "cpp" / "__pycache__").mkdir(parents=True)
+        (root / "runner").mkdir()
+        (folder / "metadata.json").write_text('{"id": "demo"}', encoding="utf-8")
+        (folder / "Dockerfile").write_text(self.DOCKERFILE, encoding="utf-8")
+        (folder / "run.py").write_text("run", encoding="utf-8")
+        (folder / "cpp" / "main.cpp").write_text("int main() {}", encoding="utf-8")
+        (folder / "cpp" / "__pycache__" / "x.pyc").write_bytes(b"stray")
+        (root / "runner" / "runtime.py").write_text("runtime", encoding="utf-8")
+        return folder
+
+    def test_the_recipe_is_the_same_wherever_the_repository_is(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            self.checkout(Path(one)); self.checkout(Path(two))
+            self.assertEqual(recipe("demo", Path(one)), recipe("demo", Path(two)))
+
+    def test_the_recipe_covers_every_copied_file_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = self.checkout(root)
+            before = recipe("demo", root)
+            (folder / "cpp" / "__pycache__" / "x.pyc").write_bytes(b"other")
+            (folder / "notes.md").write_text("not copied", encoding="utf-8")
+            self.assertEqual(recipe("demo", root), before)
+            for path in (root / "runner" / "runtime.py", folder / "cpp" / "main.cpp", folder / "Dockerfile"):
+                original = path.read_bytes()
+                path.write_bytes(original + b"\n")
+                self.assertNotEqual(recipe("demo", root), before, path)
+                path.write_bytes(original)
+            self.assertEqual(recipe("demo", root), before)
+
+    def test_a_copied_file_missing_from_the_repository_is_an_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.checkout(root)
+            (root / "runner" / "runtime.py").unlink()
+            with self.assertRaises(EvaluationError):
+                recipe("demo", root)
 
 
 if __name__ == "__main__":

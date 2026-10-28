@@ -2,7 +2,7 @@ import subprocess
 import sys
 import time
 
-REPO = "/home/tias/research/kostis/DCP-Bench-Open/.claude/worktrees/cvc5-python"
+REPO = ".claude/worktrees/cvc5-python"
 ASSETS = "solvers/cvc5_python/skills/cvc5-python/assets/"
 
 for name in sys.argv[1:]:
