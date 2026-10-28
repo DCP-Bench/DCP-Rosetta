@@ -1,0 +1,27 @@
+name: Mirror skills
+
+# Asks DCP-Bench/DCP-skills to sync the solver skills on every push to main. The
+# sync there (its sync.yml) checks the skills and pushes any change straight to
+# its main; with nothing new it changes nothing.
+#
+# GITHUB_TOKEN cannot reach another repository, so this needs the secret
+# SKILLS_MIRROR_TOKEN: a fine-grained personal access token for
+# DCP-Bench/DCP-skills only, with Contents read and write.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start the sync in DCP-Bench/DCP-skills
+        env:
+          GH_TOKEN: ${{ secrets.SKILLS_MIRROR_TOKEN }}
+        run: |
+          gh api repos/DCP-Bench/DCP-skills/dispatches \
+            -f event_type=rosetta-push -f "client_payload[commit]=$GITHUB_SHA"
