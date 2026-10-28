@@ -92,9 +92,9 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
     std::atexit(OnExit);
     dup2(2, 1);  // anything Chuffed prints to stdout must not reach the protocol
     json outputs;
-    auto building = Clock::now();
+    auto building = std::chrono::steady_clock::now();
     Build(request.at("instance"), outputs);
-    double build_seconds = std::chrono::duration<double>(Clock::now() - building).count();
+    double build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     std::set<int> used;
     Collect(outputs, used);
