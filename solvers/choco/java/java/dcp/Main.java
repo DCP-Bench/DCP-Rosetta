@@ -48,6 +48,9 @@ public final class Main {
 
     private record Built(Model model, Outputs outputs) {}
 
+    // Seconds the submission took to build the first model (build: posting into Choco), for benchmarking.
+    private static double buildSeconds = 0;
+
     private enum Outcome { LIMIT, EXHAUSTED, TIMEOUT }
 
     public static void main(String[] args) {
@@ -80,7 +83,9 @@ public final class Main {
         Method settings = settings(submission);
 
         Factory factory = () -> build(build, settings, data);
+        long building = System.nanoTime();
         Built built = factory.make();
+        buildSeconds = (System.nanoTime() - building) / 1e9;
         Model model = built.model();
         List<JsonObject> found = new ArrayList<>();
         List<int[]> forbidden = new ArrayList<>();
@@ -239,6 +244,7 @@ public final class Main {
         record.put("type", "status");
         record.put("status", status);
         record.put("solve_seconds", (System.nanoTime() - started) / 1e9);
+        record.put("build_seconds", buildSeconds);
         record.put("detail", detail);
         protocol.println(GSON.toJson(record));
         protocol.flush();

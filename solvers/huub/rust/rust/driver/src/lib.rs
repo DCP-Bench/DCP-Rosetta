@@ -384,10 +384,14 @@ pub fn circuit(m: &mut Model, next: &[View<i64>]) -> Res<()> {
 // Runner protocol
 // ---------------------------------------------------------------------------
 
+/// Nanoseconds the submission took to build the model and lower it into the solver, for benchmarking.
+static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn status(kind: &str, detail: &str, seconds: f64) {
+    let build = BUILD_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
     println!(
         "{}",
-        json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds})
+        json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds, "build_seconds": build})
     );
 }
 
@@ -436,6 +440,7 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
 
     let instance = Instance::new(request["instance"].clone());
     let mut model = Model::default();
+    let building = Instant::now();
     let out = match build(&instance, &mut model) {
         Ok(out) => out,
         Err(_) => return status("unsat", "a constraint conflicts when it is posted", elapsed()),
@@ -457,6 +462,7 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
     let objective = out
         .objective
         .map(|(dir, view)| (dir, map.get(&mut solver, view)));
+    BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
 
     // One terminate callback for both phases: the deadline, or enough solutions.
     let enough = Rc::new(Cell::new(false));

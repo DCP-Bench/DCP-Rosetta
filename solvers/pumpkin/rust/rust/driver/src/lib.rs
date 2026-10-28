@@ -418,8 +418,12 @@ fn emit(record: Value) {
     println!("{record}");
 }
 
+/// Nanoseconds the submission took to build the model (posting into the solver), for benchmarking.
+static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn status(kind: &str, detail: &str, seconds: f64) {
-    emit(json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds}));
+    let build = BUILD_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
+    emit(json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds, "build_seconds": build}));
 }
 
 struct Budget {
@@ -458,7 +462,9 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
 
     let instance = Instance::new(request["instance"].clone());
     let mut solver = Solver::default();
+    let building = Instant::now();
     let model = build(&instance, &mut solver);
+    BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
 
     if model.outputs.is_empty() {
         status("error", "the model declared no outputs", budget.spent());

@@ -28,7 +28,8 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish, flatten, mapped  # noqa: E402
+from runtime import emit, flatten, mapped  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 INPUT = Path("/input")
 DIRECTIONS = ("minimize", "maximize")
@@ -127,10 +128,21 @@ def best_objective(instance, direction, deadline):
     return solution.get_int_val(objective[1]), None
 
 
+# Seconds the submission took to build the first model (posting into Choco), for benchmarking.
+BUILD_SECONDS = 0.0
+
+
+def finish(status, detail=""):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS)
+
+
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
     instance = request["instance"]
+    building = time.monotonic()
     model, outputs, objective = load(instance)
+    BUILD_SECONDS = time.monotonic() - building
 
     if objective is not None:
         best, failure = best_objective(instance, objective[0], deadline)

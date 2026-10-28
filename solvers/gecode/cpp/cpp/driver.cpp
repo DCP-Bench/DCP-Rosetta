@@ -47,8 +47,12 @@ long long Millis(Clock::time_point deadline) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now()).count();
 }
 
+// Seconds the submission took to build the model (dcp_make: posting into the space), for benchmarking.
+double g_build_seconds = 0;
+
 void Status(const std::string& status, double seconds, const std::string& detail = "") {
-  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"detail", detail}});
+  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"build_seconds", g_build_seconds},
+          {"detail", detail}});
 }
 
 void Solution(const json& values) {
@@ -125,7 +129,9 @@ int main() {
     int limit = request.at("solution_limit");
     if (limit < 1) throw std::runtime_error("solution_limit must be positive");
 
+    auto building = Clock::now();
     std::unique_ptr<dcp::Space> root(dcp_make(request.at("instance")));
+    g_build_seconds = Seconds(building);
     if (!root->has_outputs()) throw std::runtime_error("Expected output dictionary");
     if (root->status() == SS_FAILED) {
       Status("unsat", Seconds(start));
