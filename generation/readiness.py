@@ -197,8 +197,10 @@ def run_checks(solver_id: str, output_dir: str | Path) -> Path:
     failed = sorted(name for name, value in results.items() if value is not True)
     if failed:
         raise ReadinessError(f"Readiness checks did not pass: {', '.join(failed)}")
+    # Evidence is named relative to the report beside it, so the committed
+    # report carries no host path and `check` resolves it on any checkout.
     report = {"image_id": image_identity(integration(solver_id)),
-              "tests": [{"name": name, "passed": True, "evidence": [str(evidence)]} for name in sorted(results)]}
+              "tests": [{"name": name, "passed": True, "evidence": [evidence.name]} for name in sorted(results)]}
     # The readiness record is the immutable artifact; this report and the raw
     # output are working evidence, so a rerun after a repair may replace them.
     report_file = directory / "readiness-report.json"

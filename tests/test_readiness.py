@@ -138,6 +138,12 @@ class ReadinessTests(unittest.TestCase):
         self.assertTrue((self.root / "evidence" / "readiness-result.json").is_file())
         self.assertIn("checks", record["integration_files"])
 
+    def test_report_names_evidence_relative_to_itself(self):
+        """A committed report carries no host path, so it checks out on any machine."""
+        report = readiness.run_checks("demo", self.root / "evidence")
+        written = json.loads(Path(report).read_text(encoding="utf-8"))
+        self.assertEqual({e for item in written["tests"] for e in item["evidence"]}, {"readiness-result.json"})
+
     def test_checks_can_be_rerun_after_a_repair(self):
         """A failed run must not block the retry that fixes it."""
         self.write_script(ONE_FAILS)
