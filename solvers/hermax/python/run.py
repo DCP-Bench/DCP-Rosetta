@@ -42,14 +42,27 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish, mapped  # noqa: E402
+from runtime import emit, mapped  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 from hermax.model import (BoolMatrix, IntMatrix, IntVar, Literal, Model,  # noqa: E402
                           PBExpr, Term)
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 # `ok` on a SolveResult also covers interrupted_sat, which is not an answer here;
 # `proven` is true only for sat, optimum and unsat.
 ANSWERED = ("sat", "optimum")
+
+# Seconds the submission took to build its model, and from STARTED until the request
+# was read, for benchmarking. hermax hands the model to its solver only inside
+# solve(), so that hand-off counts as search.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
 
 
 def load(instance):
@@ -127,13 +140,16 @@ def blocking_clause(outputs, result):
 
 
 def main():
+    global BUILD_SECONDS, READ_SECONDS
     request = json.loads(Path("/input/request.json").read_text())
+    READ_SECONDS = time.monotonic() - STARTED
     if request.get("legacy"):
         return finish("unsupported", "This integration has no legacy submission format")
 
     started = time.monotonic()
     deadline = started + request["execution_timeout"]
     model, outputs = load(request["instance"])
+    BUILD_SECONDS = time.monotonic() - started
 
     limit = request["solution_limit"]
     best = None

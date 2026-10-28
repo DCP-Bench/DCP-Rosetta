@@ -28,9 +28,11 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish  # noqa: E402
+from runtime import emit  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 import pulp  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
 # CBC returns floats; a declared output has to be an integer, and anything
@@ -181,11 +183,25 @@ def register(problem, variables):
                              "no bound, so the solver would never give it a value")
 
 
+# Seconds the submission took to build the model (the LpProblem; PuLP hands it to CBC inside solve), and from STARTED until the
+# request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
+
+
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     problem, outputs = load(request["instance"])
     optimizing = problem.objective is not None
     register(problem, cut_variables(outputs))
+    BUILD_SECONDS = time.monotonic() - building
 
     verdict = attempt(problem, deadline)
     if verdict == "infeasible":
@@ -229,7 +245,9 @@ def solve(request):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by pulp_cbc")
 

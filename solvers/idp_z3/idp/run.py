@@ -60,6 +60,12 @@ except ImportError:
     if __name__ == "__main__":
         raise
     z3 = IDP = Theory = None
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
+
+# Seconds from loading the submission until its theory and data are handed to Z3,
+# and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
 
 
 def emit(record):
@@ -67,7 +73,8 @@ def emit(record):
 
 
 def finish(status, detail="", **metadata):
-    emit({"type": "status", "status": status, "detail": detail, **metadata})
+    emit({"type": "status", "status": status, "detail": detail, "build_seconds": BUILD_SECONDS,
+          "read_seconds": READ_SECONDS, "main_seconds": time.monotonic() - STARTED, **metadata})
 
 INPUT = Path("/input")
 DIRECTIONS = ("minimize", "maximize")
@@ -452,13 +459,16 @@ def load(request):
 
 
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     theory, vocab, goal = load(request)
     outputs = {name: output_terms(theory, name) for name in request["outputs"]}
     domains = {name: domain_tests(theory, vocab, name) for name in request["outputs"]}
     solver = theory.solver
     solver.push()
     theory._add_assignment(solver)
+    BUILD_SECONDS = time.monotonic() - building
 
     if goal is not None:
         target = output_terms(theory, goal)[()]
@@ -466,6 +476,7 @@ def solve(request):
         optimizer.push()
         theory._add_assignment(optimizer)
         handle = (optimizer.minimize if goal == "minimize" else optimizer.maximize)(target)
+        BUILD_SECONDS = time.monotonic() - building
         status = check(optimizer, deadline)
         if status == z3.unsat:
             return finish("unsat")
@@ -512,7 +523,9 @@ def solve(request):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by idp_z3")
 

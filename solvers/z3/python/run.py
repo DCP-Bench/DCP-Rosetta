@@ -15,9 +15,11 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish, flatten, mapped  # noqa: E402
+from runtime import emit, flatten, mapped  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 import z3  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
 DIRECTIONS = ("minimize", "maximize")
@@ -107,9 +109,23 @@ def optimum(constraints, direction, objective, deadline):
     return low.as_long(), None
 
 
+# Seconds the submission took to build the model (its z3 terms), and from STARTED until the
+# request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
+
+
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     constraints, outputs, objective = load(request["instance"])
+    BUILD_SECONDS = time.monotonic() - building
     flat = flatten(outputs)
 
     if objective is not None:
@@ -143,7 +159,9 @@ def solve(request):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by z3_python")
 

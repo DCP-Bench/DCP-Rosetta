@@ -30,8 +30,11 @@
 import util.
 
 main([RequestFile, RecordFile]) =>
+    Started = dcp_clock(),
     Out = open(RecordFile, write),
-    get_global_map().put(dcp_records, Out),
+    G = get_global_map(),
+    G.put(dcp_records, Out),
+    G.put(dcp_started, Started),
     (   catch(dcp_run(RequestFile), Error, dcp_report(Error))
     ->  true
     ;   dcp_status(error, "The picat driver failed without reaching a verdict")
@@ -44,6 +47,10 @@ dcp_run(RequestFile) =>
     close(In),
     Request = $dcp_request(Instance, Limit, ModelFile),
     Data = dcp_value(Instance),
+    G = get_global_map(),
+    G.put(dcp_read_seconds, dcp_clock() - G.get(dcp_started)),
+    % The build runs from compiling the submission until its first model is posted.
+    G.put(dcp_building, dcp_clock()),
     cl(ModelFile),
     Backend = dcp_backend(),
     dcp_solve(Data, Limit, Backend, Status),
@@ -162,7 +169,11 @@ dcp_build(Data, LabelVars, Outputs, Options, Objective) =>
     else
         dcp_fail("Options may hold at most one $min(...) or $max(...)")
     end,
-    LabelVars = vars([Vars, [dcp_pair_value(P) : P in Outputs], ObjVars]).
+    LabelVars = vars([Vars, [dcp_pair_value(P) : P in Outputs], ObjVars]),
+    G = get_global_map(),
+    if not G.has_key(dcp_build_seconds) then
+        G.put(dcp_build_seconds, dcp_clock() - G.get(dcp_building))
+    end.
 
 dcp_objective(min(_)) => true.
 dcp_objective(max(_)) => true.
@@ -245,8 +256,18 @@ dcp_escape([C|T]) = R, ord(C) < 32 => R = to_fstring("%s%04x", "\\u", ord(C)) ++
 dcp_escape([C|T]) = R => R = [C|dcp_escape(T)].
 
 dcp_status(Status, Detail) =>
+    G = get_global_map(),
+    Timing = to_fstring(",\"build_seconds\":%.6f,\"read_seconds\":%.6f,\"main_seconds\":%.6f",
+                        G.get(dcp_build_seconds, 0.0), G.get(dcp_read_seconds, 0.0),
+                        dcp_clock() - G.get(dcp_started)),
     dcp_record("{\"type\":\"status\",\"status\":" ++ dcp_quote(to_string(Status)) ++
-               ",\"detail\":" ++ dcp_quote(Detail) ++ "}").
+               ",\"detail\":" ++ dcp_quote(Detail) ++ Timing ++ "}").
+
+% Wall-clock seconds, for benchmarking: Picat offers only CPU time and whole
+% seconds, so this reads the kernel's uptime, which counts in hundredths.
+dcp_clock() = Seconds =>
+    [Uptime|_] = split(read_file_chars("/proc/uptime")),
+    Seconds = to_number(Uptime).
 
 dcp_record(Line) =>
     Out = get_global_map().get(dcp_records),

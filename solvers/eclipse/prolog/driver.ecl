@@ -27,8 +27,17 @@
 :- lib(timeout).
 
 :- local variable(dcp_count), variable(dcp_seen).
+% The driver's phase timings, for benchmarking: its start, and the seconds until the
+% request was read and that the submission took to build its first model. They use
+% hr_time, as session_time counts in hundredths.
+:- local variable(dcp_started), variable(dcp_read_seconds), variable(dcp_building),
+         variable(dcp_build_seconds).
 
 dcp_main :-
+    statistics(hr_time, Started),
+    setval(dcp_started, Started),
+    setval(dcp_read_seconds, 0.0),
+    setval(dcp_build_seconds, none),
     catch(dcp_run, Ball, dcp_report(Ball)),
     close_all,
     halt.
@@ -50,6 +59,12 @@ dcp_run :-
     read(In, request(Instance, Limit, Budget)),
     close(In),
     statistics(session_time, Start),
+    statistics(hr_time, Building),
+    getval(dcp_started, Started),
+    Read is Building - Started,
+    setval(dcp_read_seconds, Read),
+    % The build runs from compiling the submission until its first model is posted.
+    setval(dcp_building, Building),
     Deadline is Start + Budget,
     load_submission,
     dcp_solve(Instance, Limit, Deadline, Status),
@@ -170,7 +185,14 @@ dcp_build(Instance, Vars, Outputs, Objective) :-
         Objective = none
     ;   dcp_fail_with("The submission defines neither model/3 nor model/4")
     ),
-    dcp_check_outputs(Outputs).
+    dcp_check_outputs(Outputs),
+    (   getval(dcp_build_seconds, none)
+    ->  statistics(hr_time, Built),
+        getval(dcp_building, Building),
+        Seconds is Built - Building,
+        setval(dcp_build_seconds, Seconds)
+    ;   true
+    ).
 
 dcp_defined(Name, Arity) :-
     call(current_predicate(Name/Arity), user).
@@ -284,6 +306,14 @@ dcp_status(Status, Detail, Seconds) :-
     ->  printf(dcp_protocol, ", \"solve_seconds\": %w", [Seconds])
     ;   true
     ),
+    getval(dcp_build_seconds, Build),
+    getval(dcp_read_seconds, Read),
+    getval(dcp_started, Started),
+    statistics(hr_time, Now),
+    Main is Now - Started,
+    ( number(Build) -> Built = Build ; Built = 0.0 ),
+    printf(dcp_protocol, ", \"build_seconds\": %w, \"read_seconds\": %w, \"main_seconds\": %w",
+           [Built, Read, Main]),
     write(dcp_protocol, "}"),
     nl(dcp_protocol),
     flush(dcp_protocol).

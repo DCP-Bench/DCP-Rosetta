@@ -25,6 +25,11 @@
 :- use_module(library(lists)).
 
 main :-
+    % The driver's own clock (benchmarking): read_seconds and main_seconds count from here.
+    get_time(Started),
+    nb_setval(dcp_started, Started),
+    nb_setval(dcp_read_seconds, 0.0),
+    nb_setval(dcp_build_seconds, 0.0),
     catch(run, Error, report(Error)),
     halt.
 main :-
@@ -36,6 +41,11 @@ main :-
 run :-
     read_request(Request),
     get_time(Start),
+    nb_getval(dcp_started, Started),
+    Read is Start - Started,
+    nb_setval(dcp_read_seconds, Read),
+    % The build runs from consulting the submission until its first model is posted.
+    nb_setval(dcp_building, Start),
     Deadline is Start + Request.execution_timeout,
     consult('/input/model.pl'),
     search_options(Options),
@@ -131,7 +141,15 @@ build(Instance, AllVars, Outputs, Objective) :-
     ;   fail_with("The submission defines neither model/3 nor model/4")
     ),
     check_outputs(Outputs),
-    term_variables(Vars-Outputs, AllVars).
+    term_variables(Vars-Outputs, AllVars),
+    (   nb_current(dcp_built, true)
+    ->  true
+    ;   get_time(Built),
+        nb_getval(dcp_building, Building),
+        Seconds is Built - Building,
+        nb_setval(dcp_build_seconds, Seconds),
+        nb_setval(dcp_built, true)
+    ).
 
 check_objective(none) :- !.
 check_objective(min(_)) :- !.
@@ -177,10 +195,19 @@ output_pair(Name-Value, Name-Value) :-
     ).
 
 status(Status, Detail) :-
-    record(_{type: status, status: Status, detail: Detail}).
+    timed_record(_{type: status, status: Status, detail: Detail}).
 
 status(Status, Detail, Seconds) :-
-    record(_{type: status, status: Status, detail: Detail, solve_seconds: Seconds}).
+    timed_record(_{type: status, status: Status, detail: Detail, solve_seconds: Seconds}).
+
+% A status carries the driver's phase timings, for benchmarking.
+timed_record(Status) :-
+    nb_getval(dcp_build_seconds, Build),
+    nb_getval(dcp_read_seconds, Read),
+    nb_getval(dcp_started, Started),
+    get_time(Now),
+    Main is Now - Started,
+    record(Status.put(_{build_seconds: Build, read_seconds: Read, main_seconds: Main})).
 
 record(Dict) :-
     json_write_dict(current_output, Dict, [width(0)]),

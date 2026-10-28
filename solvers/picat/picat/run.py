@@ -32,6 +32,8 @@ MARGIN_SECONDS = 1.0
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
 # Picat colours its syntax-error marker; the escape codes are dropped from details.
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+# The driver's own phase timings (benchmarking), relayed with its status.
+TIMING = ("build_seconds", "read_seconds", "main_seconds")
 
 
 def atom(text):
@@ -146,7 +148,7 @@ def relay(records, killed, solution_limit, output, returncode):
         # A syntax error is reported by Picat's compiler on its own output, and
         # the thrown term alone does not say where it is.
         detail = f"{detail}; picat printed: {printed[-1500:]}"
-    finish(status["status"], detail)
+    finish(status["status"], detail, **{key: status[key] for key in TIMING if key in status})
 
 
 def main():

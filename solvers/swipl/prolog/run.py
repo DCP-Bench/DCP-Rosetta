@@ -32,6 +32,8 @@ GRACE_SECONDS = 4
 # this long after it is killed rather than waited on until the backstop.
 EXIT_SECONDS = 2
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
+# Status fields passed on: the solve time, and the driver's phase timings (benchmarking).
+RELAYED = ("solve_seconds", "build_seconds", "read_seconds", "main_seconds")
 
 
 def is_status(line):
@@ -106,7 +108,7 @@ def relay(records, solution_limit):
         return finish("error", f"The driver emitted {len(solutions)} solutions, "
                                f"more than the {solution_limit} requested")
     detail = status.get("detail") or ""
-    extra = {"solve_seconds": status["solve_seconds"]} if "solve_seconds" in status else {}
+    extra = {key: status[key] for key in RELAYED if key in status}
     finish(status["status"], detail, **extra)
 
 

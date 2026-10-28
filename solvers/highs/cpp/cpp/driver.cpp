@@ -41,15 +41,22 @@ void Record(const json& record) {
   std::fflush(g_protocol);
 }
 
-void Status(const std::string& status, double seconds, const std::string& detail = "") {
-  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"detail", detail}});
-}
-
-void Solution(const json& values) { Record({{"type", "solution"}, {"values", values}}); }
-
 double Seconds(Clock::time_point start) {
   return std::chrono::duration<double>(Clock::now() - start).count();
 }
+
+// Seconds the submission took to build the model (build, then the driver's options and objective), for
+// benchmarking; with the seconds from main's start until the request was read, and from main's start to the status.
+double g_build_seconds = 0;
+double g_read_seconds = 0;
+Clock::time_point g_main_start;
+
+void Status(const std::string& status, double seconds, const std::string& detail = "") {
+  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"build_seconds", g_build_seconds},
+          {"read_seconds", g_read_seconds}, {"main_seconds", Seconds(g_main_start)}, {"detail", detail}});
+}
+
+void Solution(const json& values) { Record({{"type", "solution"}, {"values", values}}); }
 
 // A problem with the submission or with HiGHS's answer; reported as `error`.
 struct SubmissionError : std::runtime_error {
@@ -228,7 +235,7 @@ void Configure(Highs& h) {
 }  // namespace
 
 int main() {
-  auto start = Clock::now();
+  auto start = g_main_start = Clock::now();
   g_protocol = fdopen(dup(1), "w");
   if (g_protocol == nullptr) return 1;
   dup2(2, 1);
@@ -241,7 +248,9 @@ int main() {
                                 std::chrono::duration<double>(std::max(0.1, budget - 0.3)));
     int limit = request.at("solution_limit");
     if (limit < 1) throw SubmissionError("solution_limit must be positive");
+    g_read_seconds = Seconds(start);
 
+    auto building = Clock::now();
     Highs h;
     Configure(h);
     dcp::Outputs out;
@@ -266,6 +275,7 @@ int main() {
       }
     }
     ApplyObjective(h, obj);
+    g_build_seconds = Seconds(building);
 
     Verdict verdict = Decide(h, obj, deadline);
     if (verdict == Verdict::Infeasible) {

@@ -50,6 +50,12 @@ from pathlib import Path
 sys.path.insert(0, "/opt/runner")
 import runtime
 
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
+# Seconds the first build took (from launching the compile of the submission until the
+# XCSP file is written), and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
 MODEL = "/input/model.py"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 COMPLETE = re.compile(r"(?m)^\s*d COMPLETE EXPLORATION\s*$")
@@ -259,17 +265,20 @@ def stop(process):
 
 
 def run_round(job, index, deadline, *, sols, objective, nogoods, outputs):
+    global BUILD_SECONDS
     left = deadline - time.monotonic()
     if left < 3:
         raise Timeout()
     outdir = job / f"round{index}"
     outdir.mkdir()
+    xml = outdir / "model-placeholder.xml"
     spec = {"model": MODEL, "instance": str(job / "instance.json"), "outdir": str(outdir),
             "sols": sols, "time_limit": int(left) - 2, "objective": objective,
             "nogoods": nogoods, "outputs": outputs, "result": str(outdir / "result.json")}
     (outdir / "spec.json").write_text(json.dumps(spec, allow_nan=False), encoding="utf-8")
     log_path = outdir / "child.log"
     with open(log_path, "w", encoding="utf-8") as log:
+        launched = time.time()  # wall clock, as a file's mtime
         process = subprocess.Popen([sys.executable, "/opt/runner/run.py", "--child", str(outdir / "spec.json")],
                                    stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                    start_new_session=True, cwd=str(outdir))
@@ -279,11 +288,13 @@ def run_round(job, index, deadline, *, sols, objective, nogoods, outputs):
             raise Timeout() from error
         finally:
             stop(process)  # also ends any Java process the round started
+            if index == 0 and xml.is_file():
+                BUILD_SECONDS = max(0.0, xml.stat().st_mtime - launched)
     if not os.path.isfile(spec["result"]):
         tail = log_path.read_text(encoding="utf-8", errors="replace")[-2000:]
         raise RuntimeError(f"pycsp3 process exited {process.returncode} without a result: {tail}")
     result = json.loads(Path(spec["result"]).read_text(encoding="utf-8"))
-    result["xml"] = str(outdir / "model-placeholder.xml")
+    result["xml"] = str(xml)
     return result
 
 
@@ -430,7 +441,21 @@ def pycsp3_solver(request):
         shutil.rmtree(job, ignore_errors=True)
 
 
-runtime.python_solver = lambda kind, request: pycsp3_solver(request)
+def finish(status, detail="", **metadata):
+    """runtime.finish with the benchmarking times. Writes the record itself, so that importing this
+    module twice in one process (as rosetta-bench does) does not wrap an already wrapped finish."""
+    runtime.emit({"type": "status", "status": status, "detail": detail, "build_seconds": BUILD_SECONDS,
+                  "read_seconds": READ_SECONDS, "main_seconds": time.monotonic() - STARTED, **metadata})
+
+
+def started_solving(request):
+    """runtime.main has read the request when it calls python_solver."""
+    global READ_SECONDS
+    READ_SECONDS = time.monotonic() - STARTED
+
+
+runtime.finish = finish
+runtime.python_solver = lambda kind, request: started_solving(request) or pycsp3_solver(request)
 
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--child":

@@ -43,7 +43,14 @@ import threading
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish  # noqa: E402
+from runtime import emit  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
+
+if "--worker" in sys.argv:
+    import pyscipopt  # noqa: F401 - loaded here, as start-up, not while the first model is built
+# This process's own clock (benchmarking): read_seconds and main_seconds count from here. The worker's
+# final status carries the worker's clock; the supervisor relays it unchanged.
+STARTED = time.monotonic()
 
 INPUT = Path("/input")
 # A declared integer value further from an integer than this is a modelling
@@ -53,10 +60,22 @@ TOLERANCE = 1e-6
 # kills the worker: start-up and build time count against the same budget.
 GRACE = 5
 
+# Seconds the submission took to build the model (build, then the runner's settings), and from STARTED
+# until the request was read, for benchmarking. The supervisor builds nothing, so its build_seconds is 0.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail=""):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED)
+
 
 def supervise():
     """Run the worker, relay its solutions, and decide the single final status."""
+    global READ_SECONDS
     request = json.loads((INPUT / "request.json").read_text())
+    READ_SECONDS = time.monotonic() - STARTED
     if request.get("legacy"):
         return finish("unsupported", "Legacy submissions are not supported by scip_python")
     worker = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker"],
@@ -281,11 +300,14 @@ def forbid(model, variables, current, index):
 
 
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     model, outputs = load(request["instance"])
     configure(model)
     objective = objective_of(model)
     variables = variables_of(outputs)
+    BUILD_SECONDS = time.monotonic() - building
     limit = request["solution_limit"]
     if limit > 1:
         continuous = [v.getName() for v in variables if v.vtype() == "CONTINUOUS"]
@@ -332,9 +354,11 @@ def solve(request):
 
 
 def worker_main():
+    global READ_SECONDS
     protocol_stream()
     try:
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         solve(request)
     except NotImplementedError as error:
         finish("unsupported", str(error))
