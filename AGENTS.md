@@ -19,7 +19,7 @@ is a commit inside `bench/`, followed by a commit here that moves the pointer.
 
 *Rosetta* is this repository's model collection and the machinery that writes and checks
 it (see the README). Skills in `skills/` work only here; the solver skills must work
-anywhere, and are mirrored to the public `DCP-Bench/skills` repository. A solver has one
+anywhere, and are mirrored to the public `DCP-Bench/DCP-skills` repository. A solver has one
 folder `solvers/<solver>/`: its standalone skill under `skills/dcp-<name>/` (the `dcp-`
 prefix keeps it apart from upstream skills of the same name), shared by its language bindings, with an
 `interfaces/<interface>.md` (or an `interfaces/<interface>/` folder entered through its

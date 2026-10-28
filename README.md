@@ -84,7 +84,7 @@ skill works outside this repository; a skill in `skills/` works only inside it.
 | Path | What it holds |
 | --- | --- |
 | `skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework and writes its standalone solver skill, `instance-curator` adds instances to the problems in `bench/`. |
-| `solvers/<solver>/skills/dcp-<name>/` | The public, Rosetta-independent solver skills, mirrored to [DCP-Bench/skills](https://github.com/DCP-Bench/skills). |
+| `solvers/<solver>/skills/dcp-<name>/` | The public, Rosetta-independent solver skills, mirrored to [DCP-Bench/DCP-skills](https://github.com/DCP-Bench/DCP-skills). |
 | `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
 
 
