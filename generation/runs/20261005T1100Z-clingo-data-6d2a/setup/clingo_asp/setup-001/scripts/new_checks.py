@@ -2,7 +2,7 @@
 import importlib.util, json, sys, tempfile
 from pathlib import Path
 
-REPO = Path(r"C:\Users\kostis\code\DCP-Bench-Open")
+REPO = Path(r".")
 
 if __name__ == "__main__":
     sys.path.insert(0, str(REPO))

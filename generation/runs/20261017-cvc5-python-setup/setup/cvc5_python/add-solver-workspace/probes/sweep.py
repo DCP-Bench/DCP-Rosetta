@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-REPO = "/home/tias/research/kostis/DCP-Bench-Open/.claude/worktrees/cvc5-python"
+REPO = "."
 PROBE = "generation/runs/20261017-cvc5-python-setup/setup/cvc5_python/add-solver-workspace/probes/p3_perf.py"
 JOBSHOP = "skills/add-solver/assets/toy-problems/jobshop/instances/small.json"
 JOBSHOP_FT = "skills/add-solver/assets/toy-problems/jobshop/instances/ft06.json"

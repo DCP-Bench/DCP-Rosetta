@@ -2,7 +2,7 @@
 import glob, json, re, sys, types
 from pathlib import Path
 
-REPO = Path(r"C:\Users\kostis\code\DCP-Bench-Open")
+REPO = Path(r".")
 HERE = Path(__file__).parent
 
 

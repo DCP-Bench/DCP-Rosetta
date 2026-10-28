@@ -2,7 +2,7 @@
 import os, sys, unittest
 
 if __name__ == "__main__":
-    sys.path.insert(0, r"C:\Users\kostis\code\DCP-Bench-Open")
+    sys.path.insert(0, r".")
     os.environ["DCP_CONTAINER_TESTS"] = "1"
     import tests.test_solvers as ts
     loader = unittest.TestLoader()

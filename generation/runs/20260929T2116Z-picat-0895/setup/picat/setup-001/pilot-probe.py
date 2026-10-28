@@ -1,7 +1,7 @@
 """The pilot and maximization cases of tests/test_solvers.py ContainerTests, for picat only."""
 import json, sys, tempfile
 from pathlib import Path
-sys.path.insert(0, r"C:\Users\kostis\code\DCP-Bench-Open")
+sys.path.insert(0, r".")
 from evaluation import evaluate
 from tests.test_evaluation import SOURCE, ROOT
 from tests.test_solvers import PILOTS, MAXIMIZATION_SWAPS
