@@ -4,7 +4,8 @@
 # loads them from a read-only depot and never touches the network. Python runs
 # the runner around the julia process.
 FROM julia:1.12-bookworm@sha256:709daad7eccdb0363b080df203601988cff8c6a9581162668b76804cca407888
-RUN apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 \
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261015T145452Z && apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 \
  && rm -rf /var/lib/apt/lists/*
 ENV JULIA_PROJECT=/opt/jump JULIA_DEPOT_PATH=/opt/julia-depot JULIA_PKG_OFFLINE=false
 COPY solvers/jump/julia/Project.toml solvers/jump/julia/Manifest.toml /opt/jump/

@@ -1,7 +1,8 @@
 # PyCSP3 2.6.1 (Python modelling) to XCSP3 and the ACE-2.6 solver, which ships
 # inside the pycsp3 wheel and needs a Java runtime (ACE class files are Java 8/11).
 FROM python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
-RUN apt-get update \
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261027T085039Z && apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless \
  && rm -rf /var/lib/apt/lists/*
 COPY solvers/pycsp3/python/requirements.txt /opt/requirements.txt

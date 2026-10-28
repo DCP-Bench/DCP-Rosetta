@@ -1,5 +1,6 @@
 FROM rust:1.98.1-slim-bookworm@sha256:ebd900bae66fd508b466cef82d64a83a5fb34682e4c8b2797a42908bddc95a57
-RUN apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261015T145814Z && apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 && rm -rf /var/lib/apt/lists/*
 COPY solvers/huub/rust/rust/driver /opt/crate
 WORKDIR /opt/crate
 # Cargo.lock is committed and the build is --locked, so the crate graph is the
@@ -14,7 +15,7 @@ WORKDIR /opt/crate
 # dependency rlibs, and the proc-macro dependencies, which build to .so rather
 # than .rlib and are needed all the same. The Cargo target directory and the
 # registry cache are build-time only, and /tmp is a 512 MiB tmpfs at run time.
-RUN apt-get update && apt-get install -y --no-install-recommends g++=4:12.2.0-3 libstdc++-12-dev=12.2.0-14+deb12u1 \
+RUN apt-snapshot 20261027T090022Z && apt-get update && apt-get install -y --no-install-recommends g++=4:12.2.0-3 libstdc++-12-dev=12.2.0-14+deb12u1 \
  && cargo build --locked --release \
  && mkdir -p /opt/rust/deps \
  && cp /opt/crate/target/release/libdcp_huub.rlib /opt/rust/libdcp_huub.rlib \

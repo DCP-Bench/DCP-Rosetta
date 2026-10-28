@@ -202,6 +202,24 @@ class MetadataTests(unittest.TestCase):
                 self.assertIn(metadata["name"], readme,
                               f"README.md does not name the certified integration {metadata['name']!r}")
 
+    def test_every_dockerfile_installs_only_locked_packages(self):
+        """A rebuild, on any machine, has to install what was certified.
+
+        Python packages come from a hashed lock (`python -m evaluation.lock`), so
+        pip installs those exact files or fails. Debian and Ubuntu packages come
+        from the snapshot archive at a fixed time (`solvers/apt-snapshot.sh`), so
+        pinned versions stay installable and unpinned ones resolve the same way.
+        """
+        for solver, folder in integration_folders(ROOT).items():
+            text = re.sub(r"\\\n", " ", (folder / "Dockerfile").read_text(encoding="utf-8"))
+            for command in re.findall(r"^RUN .*$", text, re.MULTILINE):
+                with self.subTest(solver=solver, command=command[:80]):
+                    for install in re.findall(r"pip install [^&;]*", command):
+                        self.assertIn("--require-hashes", install, "install from a hashed lock")
+                    if "apt-get update" in command:
+                        self.assertRegex(command, r"apt-snapshot \d{8}T\d{6}Z && apt-get update",
+                                         "point apt at the snapshot archive first")
+
     def test_every_python_model_imports_its_framework(self):
         """A model is supposed to be written in the framework it claims. Three
         integrations once shipped a repository-local modelling layer instead,

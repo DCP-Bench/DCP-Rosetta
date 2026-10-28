@@ -15,7 +15,8 @@ ARG PLUGINS_REF
 ARG PLUGIN_DIR
 ARG PYSAT_PLUGIN_DIR
 
-RUN apt-get update \
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261023T074720Z && apt-get update \
  && apt-get install -y --no-install-recommends \
       cmake=3.25.1-1 \
       g++=4:12.2.0-3 \
@@ -26,7 +27,8 @@ RUN apt-get update \
       ca-certificates=20250419~deb12u2 \
  && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir paramita==1.2.0
+COPY solvers/paramita/python/requirements.txt /opt/requirements.txt
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt
 
 # The plugins' FindZLIB.cmake downloads zlib from zlib.net at configure time, with no
 # hash. zlib.net now answers that URL with an HTML page, which broke the EvalMaxSAT
@@ -62,7 +64,8 @@ RUN mkdir -p /out \
 # ---------------------------------------------------------------- runtime
 FROM ${PYTHON_BASE} AS runtime
 
-RUN pip install --no-cache-dir paramita==1.2.0
+COPY solvers/paramita/python/requirements.txt /opt/requirements.txt
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt
 
 COPY --from=builder /out/ /
 COPY runner/runtime.py /opt/runner/runtime.py

@@ -1,5 +1,6 @@
 FROM eclipse-temurin:21-jdk-noble@sha256:b468c3fc688b14450571494f588bd939378e7fd542ed5a73f8efc13f17872a87
-RUN apt-get update && apt-get install -y --no-install-recommends python3=3.12.3-0ubuntu2.1 && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261016T110506Z && apt-get update && apt-get install -y --no-install-recommends python3=3.12.3-0ubuntu2.1 && rm -rf /var/lib/apt/lists/*
 # Choco 6.0.1 as Maven Central publishes it, with its dependencies bundled, and
 # Gson for the request JSON. Both are checked against their published hashes.
 ADD --checksum=sha256:c1956f7688f0982c55dc12edfa5695b60085fb9c37f3fbc6cf7efc53afc0da39 \

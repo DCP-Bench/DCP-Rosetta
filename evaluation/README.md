@@ -150,7 +150,12 @@ declares `id`, `image`, `extension`, `enumeration`, descriptive
 language/framework/solver fields, and optionally `compilation: true` to
 allocate the separate compilation budget. Installation belongs in the
 Dockerfile. Shared container code lives in `runner/`, which every image copies;
-`runner/requirements.txt` pins the Python solver stack.
+`runner/requirements.txt` locks the Python solver stack of the CPMpy and
+OR-Tools integrations; the other Python integrations keep their own lock beside
+their Dockerfile. Every lock carries the hash of each wheel, written from a
+certified image by `python -m evaluation.lock`, and Debian and Ubuntu packages
+come from the snapshot archive (`solvers/apt-snapshot.sh`), so a rebuild
+anywhere installs what was certified.
 
 Containers run with no network, a read-only root, an unprivileged user, no
 added capabilities, `no-new-privileges`, and memory/CPU/PID caps. Reference

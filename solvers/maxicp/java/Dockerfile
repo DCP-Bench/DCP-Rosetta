@@ -1,5 +1,6 @@
 FROM eclipse-temurin:21-jdk-noble@sha256:b468c3fc688b14450571494f588bd939378e7fd542ed5a73f8efc13f17872a87
-RUN apt-get update && apt-get install -y --no-install-recommends python3=3.12.3-0ubuntu2.1 && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
+RUN apt-snapshot 20261016T110506Z && apt-get update && apt-get install -y --no-install-recommends python3=3.12.3-0ubuntu2.1 && rm -rf /var/lib/apt/lists/*
 # MaxiCP 0.0.3, the latest release on Maven Central (org.maxicp:maxicp), with the
 # sha256 that Maven Central publishes for it, and Gson 2.11.0 for the request JSON.
 ADD --checksum=sha256:904df52ac0b0125661abfc9a3eedfdef7f95c241a84ac571ae194f05ff7c90d6 \

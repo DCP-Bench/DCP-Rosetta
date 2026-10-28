@@ -1,7 +1,8 @@
 FROM python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
 # cvc5 only: runner/runtime.py imports its solver stacks lazily, so this image
 # needs none of the shared requirements the CP integrations install.
-RUN pip install --no-cache-dir cvc5==1.4.2
+COPY solvers/cvc5/python/requirements.txt /opt/requirements.txt
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt
 COPY runner/runtime.py /opt/runner/runtime.py
 COPY solvers/cvc5/python/run.py /opt/runner/run.py
 ENTRYPOINT ["python", "/opt/runner/run.py"]
