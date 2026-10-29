@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -174,6 +174,9 @@ def main():
         exhausts("optimal_enumeration", check("optimal_enumeration", OPTIMAL.replace("SENSE", "MINIMIZE"),
                                               reference=OPTIMIZING, solution_limit=5), 3)
         check("proven_optimum", KNAPSACK_MODEL, reference=KNAPSACK)
+        # The MIPSOL callback reports the knapsack's improving solutions, which end at the proven optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", KNAPSACK_MODEL, reference=KNAPSACK), minimize=False)
         check("expression_output", EXPRESSION, solution_limit=2)
         check("matrix_output", MATRIX, solution_limit=3)
         check("library_stdout", NOISY)
