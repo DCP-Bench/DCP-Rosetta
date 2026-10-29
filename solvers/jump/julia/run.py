@@ -5,7 +5,8 @@ and its declared outputs. The solving side lives in `driver.jl` next to this
 file and runs in a separate `julia` process; this module owns that process. It
 starts the driver with a deadline, stops it if it outlives the execution budget,
 and turns what the driver recorded into the runner protocol, emitting exactly
-one status whatever the driver did.
+one status whatever the driver did. The incumbents of an optimisation solve are
+relayed while the driver runs; its solutions and status once it has stopped.
 
 The driver writes its records to a file rather than to standard output, so that
 anything the submission or HiGHS prints is relayed to stderr as a log and never
@@ -31,6 +32,21 @@ KILL_MARGIN = 1.0
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
 # The driver's own phase timings (benchmarking), relayed with its status.
 TIMING = ("build_seconds", "read_seconds", "main_seconds")
+# How often the runner looks for incumbents the driver has recorded while it searches.
+POLL_SECONDS = 0.1
+
+
+def relay_incumbents(recorded):
+    """Emit the incumbent records the driver has completed since the last call, as it finds them, so a run
+    cut off at its limit keeps them; everything else it records is relayed once it has stopped."""
+    while True:
+        position = recorded.tell()
+        line = recorded.readline()
+        if not line.endswith(b"\n"):
+            recorded.seek(position)  # not yet complete: read again next time
+            return
+        if b'"type":"incumbent"' in line:
+            emit(strict_loads(line.decode("utf-8")))
 
 
 def run_driver(budget, workdir):
@@ -43,12 +59,20 @@ def run_driver(budget, workdir):
         driver = subprocess.Popen(
             ["julia", "--startup-file=no", "--history-file=no", DRIVER, str(record_file), repr(deadline)],
             stdin=subprocess.DEVNULL, stdout=log, stderr=log, cwd=workdir)
-        try:
-            driver.wait(timeout=max(0.5, budget - KILL_MARGIN))
-        except subprocess.TimeoutExpired:
-            driver.kill()
-            driver.wait()
-            killed = True
+        stop = time.monotonic() + max(0.5, budget - KILL_MARGIN)
+        with record_file.open("rb") as recorded:
+            while True:
+                try:
+                    driver.wait(timeout=max(0.0, min(POLL_SECONDS, stop - time.monotonic())))
+                    break
+                except subprocess.TimeoutExpired:
+                    relay_incumbents(recorded)
+                    if time.monotonic() >= stop:
+                        driver.kill()
+                        driver.wait()
+                        killed = True
+                        break
+            relay_incumbents(recorded)
         log.seek(0)
         output = log.read()
     lines = [line for line in record_file.read_text(encoding="utf-8").splitlines() if line.strip()]

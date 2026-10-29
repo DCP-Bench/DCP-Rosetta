@@ -14,7 +14,8 @@ from the exit code: ECLiPSe exits 0 after errors.
 
 Keeping the two apart is deliberate. The driver cannot outlive its budget or
 report more solutions than were asked for, because this module, not the driver,
-decides what reaches the evaluator.
+decides what reaches the evaluator. The incumbents of an optimisation search are
+relayed while the driver runs; its solutions and status once it has stopped.
 """
 import json
 import math
@@ -41,6 +42,8 @@ GRACE_SECONDS = 4
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
 # Status fields passed on: the solve time, and the driver's phase timings (benchmarking).
 RELAYED = ("solve_seconds", "build_seconds", "read_seconds", "main_seconds")
+# How often the runner looks for incumbents the driver has recorded while it searches.
+POLL_SECONDS = 0.1
 
 
 def quoted(text, quote):
@@ -104,6 +107,25 @@ def read_text(path, limit=2000):
         return ""
 
 
+def relay_incumbents(recorded):
+    """Emit the incumbent records the driver has completed since the last call, as it finds them, so a run
+    cut off at its limit keeps them; everything else it records is relayed once it has stopped. Returns the
+    open protocol file (None until the driver has created it)."""
+    if recorded is None:
+        try:
+            recorded = PROTOCOL.open("rb")
+        except OSError:
+            return None
+    while True:
+        position = recorded.tell()
+        line = recorded.readline()
+        if not line.endswith(b"\n"):
+            recorded.seek(position)  # not yet complete: read again next time
+            return recorded
+        if b'"type": "incumbent"' in line:
+            emit(json.loads(line))
+
+
 def driver_records(request, started):
     """Run the driver and return the JSON records it wrote, or a failure."""
     budget = request["execution_timeout"]
@@ -119,12 +141,22 @@ def driver_records(request, started):
                                   stdin=subprocess.DEVNULL, stdout=printed, stderr=printed,
                                   env=environment)
         killed = False
-        try:
-            driver.wait(timeout=max(left, 0) + GRACE_SECONDS)
-        except subprocess.TimeoutExpired:
-            killed = True
-            driver.kill()
-            driver.wait()
+        deadline = time.monotonic() + max(left, 0) + GRACE_SECONDS
+        recorded = None
+        while True:
+            try:
+                driver.wait(timeout=max(0.0, min(POLL_SECONDS, deadline - time.monotonic())))
+                break
+            except subprocess.TimeoutExpired:
+                recorded = relay_incumbents(recorded)
+                if time.monotonic() >= deadline:
+                    killed = True
+                    driver.kill()
+                    driver.wait()
+                    break
+        recorded = relay_incumbents(recorded)
+        if recorded is not None:
+            recorded.close()
     # What the process printed and the messages ECLiPSe wrote are logs.
     sys.stderr.write(read_text(STDOUT, 1_000_000))
     sys.stderr.write(read_text(MESSAGES, 1_000_000))

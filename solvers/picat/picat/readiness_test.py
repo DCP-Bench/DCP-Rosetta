@@ -17,7 +17,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -171,6 +171,11 @@ def main():
         exhausted("sat_exhausted_enumeration", sat(AUXILIARY), 3)
         check("sat_minimization", sat(OPTIMAL.replace("OBJECTIVE", "min")), reference=OPTIMIZING)
         check("sat_maximization", sat(OPTIMAL.replace("OBJECTIVE", "max")), reference=MAXIMIZING)
+        # Labelling x then y upwards first finds x+y=2, which a maximisation improves on, so each module's
+        # $report must yield 2, 3, then the optimum 4.
+        for name, module in (("incumbents", lambda source: source), ("sat_incumbents", sat)):
+            results[name] = improving_incumbents(
+                check(name, module(OPTIMAL.replace("OBJECTIVE", "max")), reference=MAXIMIZING), minimize=False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

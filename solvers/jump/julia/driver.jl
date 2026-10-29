@@ -37,6 +37,31 @@ const TIMING = Dict{String, Float64}("build_seconds" => 0.0, "read_seconds" => 0
 seconds_since(start) = (time_ns() - start) / 1e9
 
 record(io, object) = (println(io, JSON.json(object)); flush(io))
+
+# Incumbents: HiGHS's improving-solution callback reports each improving solution of the
+# optimisation solve (anytime evidence, not a result) with its objective and the seconds
+# since that solve started. Only while REPORTING, so a feasibility re-solve that tells
+# infeasible from unbounded reports none.
+const SEARCH_START = Ref{UInt64}(0)
+const REPORTING = Ref(false)
+
+function report_incumbents!(io, model)
+    optimizer = unsafe_backend(model)
+    MOI.set(optimizer, HiGHS.CallbackFunction([HiGHS.kHighsCallbackMipImprovingSolution]),
+            (callback_type, message, data_out) -> begin
+                if REPORTING[] && callback_type == HiGHS.kHighsCallbackMipImprovingSolution
+                    value = data_out.objective_function_value
+                    rounded = round(value)
+                    # An objective that is not integral is no integer objective value to report.
+                    if isfinite(value) && abs(value - rounded) <= TOLERANCE
+                        record(io, Dict("type" => "incumbent", "objective" => Int(rounded),
+                                        "seconds" => seconds_since(SEARCH_START[])))
+                    end
+                end
+                return Cint(0)
+            end)
+    return optimizer
+end
 status(io, name, detail = "") = record(io, Dict("type" => "status", "status" => name, "detail" => detail,
                                                 TIMING..., "main_seconds" => seconds_since(STARTED[])))
 
@@ -164,6 +189,7 @@ end
 function infeasible_or_unbounded(model, deadline)
     sense = objective_sense(model)
     sense == FEASIBILITY_SENSE && return :infeasible
+    REPORTING[] = false
     objective = objective_function(model)
     set_objective_sense(model, FEASIBILITY_SENSE)
     try
@@ -214,7 +240,20 @@ function solve(io, request, deadline)
     TIMING["build_seconds"] = seconds_since(building)
     optimizing = objective_sense(model) != FEASIBILITY_SENSE
 
+    if optimizing
+        # The callback needs HiGHS attached; attaching copies the model, which optimize!
+        # would otherwise do as its first step.
+        MOI.Utilities.attach_optimizer(model)
+        reporting = report_incumbents!(io, model)
+    end
+    SEARCH_START[] = time_ns()
+    REPORTING[] = optimizing
     verdict = attempt(model, deadline)
+    if optimizing
+        # Later solves (the enumeration) report nothing.
+        REPORTING[] = false
+        MOI.set(reporting, HiGHS.CallbackFunction(), nothing)
+    end
     verdict == :infeasible && return status(io, "unsat")
     verdict == :unbounded && return status(io, "error", "The objective is unbounded")
     if verdict != :solved

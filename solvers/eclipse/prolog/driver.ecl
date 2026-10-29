@@ -32,6 +32,8 @@
 % hr_time, as session_time counts in hundredths.
 :- local variable(dcp_started), variable(dcp_read_seconds), variable(dcp_building),
          variable(dcp_build_seconds).
+% When the optimisation search (bb_min) started, for the incumbents' seconds.
+:- local variable(dcp_search_start).
 
 dcp_main :-
     statistics(hr_time, Started),
@@ -104,7 +106,7 @@ dcp_solve(Instance, Limit, Deadline, Status) :-
 
 % Branch and bound improves the incumbent by at least 1 until the search space
 % is exhausted, so the solution it returns is optimal; it is reported here, after
-% the proof. A model that fails, or branch and bound finding nothing, is `unsat`.
+% the proof (each improving one only as an incumbent, by dcp_incumbent/2). A model that fails, or branch and bound finding nothing, is `unsat`.
 % Running out of time leaves through the timeout exception and reports nothing.
 dcp_optimum(Instance, Optimum) :-
     (   dcp_build(Instance, Vars, Outputs, Objective)
@@ -116,8 +118,11 @@ dcp_optimum(Instance, Optimum) :-
             ->  Target = Cost
             ;   dcp_post(#=(Target, -(Cost)))
             ),
+            statistics(hr_time, SearchStart),
+            setval(dcp_search_start, SearchStart),
             (   bb_min(dcp_search_all(Vars, Outputs, Expression-Cost), Target,
-                       bb_options{strategy:continue, delta:1, factor:1})
+                       bb_options{strategy:continue, delta:1, factor:1,
+                                  report_success:dcp_incumbent(Direction)/1})
             ->  (   integer(Cost)
                 ->  Optimum = Cost
                 ;   dcp_fail_with("The objective is not an integer after search: %w", [Cost])
@@ -128,6 +133,19 @@ dcp_optimum(Instance, Optimum) :-
         )
     ;   Optimum = unsat
     ).
+
+% branch_and_bound's report_success hook, called with the bound variable's value on
+% each improving solution (its default only prints to log_output, so the search is
+% unchanged): an incumbent record, the objective and the seconds since bb_min started.
+% Maximisation minimises the negated cost, so its value is negated back.
+dcp_incumbent(Direction, Target) :-
+    ( Direction == min -> Value is fix(Target) ; Value is -fix(Target) ),
+    statistics(hr_time, Now),
+    getval(dcp_search_start, Start),
+    Seconds is max(0.0, Now - Start),
+    printf(dcp_protocol, "{\"type\": \"incumbent\", \"objective\": %d, \"seconds\": %.6f}%n",
+           [Value, Seconds]),
+    flush(dcp_protocol).
 
 dcp_enumerate(Instance, Limit, Optimum, Status) :-
     (   dcp_build(Instance, Vars, Outputs, Objective),
