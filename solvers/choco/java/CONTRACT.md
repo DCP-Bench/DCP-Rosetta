@@ -69,7 +69,8 @@ known from elsewhere.
 - **Optimisation:** branch and bound (`while (solver.solve())`) until the search ends. The
   last solution is the optimum only when the state is `TERMINATED`; a stop by the deadline
   (`STOPPED`) is `timeout` and nothing is emitted. Then a fresh model with the objective
-  cleared and `objective = optimum` posted enumerates further optima.
+  cleared and `objective = optimum` posted enumerates further optima. Each improving solution of
+  the branch and bound is reported as an `incumbent` (objective, seconds since the model was built).
 - **Enumeration:** after each solution the driver resets the solver and posts a no-good on
   the declared output variables, so solutions are distinct on the outputs and the next one
   must also come quickly. Under LCG (Choco 6.0.1 fails on constraints posted after a

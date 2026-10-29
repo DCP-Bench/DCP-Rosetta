@@ -90,11 +90,13 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
   try {
     g_fd = fd;
     std::atexit(OnExit);
+    int protocol = dup(1);  // the protocol stream, kept for incumbent records
     dup2(2, 1);  // anything Chuffed prints to stdout must not reach the protocol
     json outputs;
     auto building = std::chrono::steady_clock::now();
     Build(request.at("instance"), outputs);
-    double build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
+    auto search_start = std::chrono::steady_clock::now();
+    double build_seconds = std::chrono::duration<double>(search_start - building).count();
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     std::set<int> used;
     Collect(outputs, used);
@@ -132,6 +134,15 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
       json line = {{"values", Read(outputs)}};
       if (objective != nullptr) line["objective"] = objective->getVal();
       WriteLine(fd, line);
+      // An improving solution of the phase-1 branch and bound (anytime evidence, not a result): written straight
+      // to the protocol stream, unbuffered, with the seconds since this child's search started. The parent
+      // prints nothing while a child runs.
+      if (phase == 1 && has_objective && protocol >= 0) {
+        double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - search_start).count();
+        std::string text = json({{"type", "incumbent"}, {"objective", objective->getVal()}, {"seconds", elapsed}}).dump() + "\n";
+        ssize_t ignored = write(protocol, text.data(), text.size());  // one short line: a single atomic write
+        (void)ignored;
+      }
     });
     DriverProblem problem;
     engine.solve(&problem);

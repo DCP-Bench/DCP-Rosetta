@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -238,6 +238,8 @@ def main():
         check("maximization", OPTIMAL_MAX, reference=MAXIMIZING)
         check("optimum_enumeration", OPTIMAL_MIN, reference=OPTIMIZING, solution_limit=3)
         check("optimum_from_above", FROM_ABOVE, reference=OPTIMIZING, solution_limit=1)
+        # The first solution (total 4) is far from the optimum 2: the driver reports each improvement, ending at 2.
+        results["incumbents"] = improving_incumbents(check("incumbents", FROM_ABOVE, reference=OPTIMIZING))
         check("restarts", RESTARTS, reference=OPTIMIZING, solution_limit=3)
         check("lcg_optimization", LCG, reference=OPTIMIZING, solution_limit=3)
         check("lcg_enumeration", LCG_ENUMERATION, solution_limit=3)

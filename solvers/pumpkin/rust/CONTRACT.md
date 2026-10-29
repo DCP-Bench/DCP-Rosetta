@@ -78,7 +78,9 @@ objective expression with a constraint.
   `default_brancher()` and a `ResolutionResolver`; the model cannot change them.
 - With an objective it calls `optimise` with `LinearSatUnsat`: `Optimal` is the first
   solution, `Unsatisfiable` is `unsat`, and `Satisfiable`, `Stopped` or `Unknown` is
-  `timeout`. It then posts `var == optimum` and enumerates with `satisfy`.
+  `timeout`. It then posts `var == optimum` and enumerates with `satisfy`. `optimise`'s
+  solution callback reports each improving solution as an `incumbent` (objective,
+  seconds since the model was built).
 - After each solution it adds a clause over the `Var` and `Lit` leaves of the model
   (each must differ from its reported value); `i32`/`bool` constant leaves are not
   part of it. `Unsatisfiable` from `satisfy` is exhaustion (`complete`, or `unsat` with

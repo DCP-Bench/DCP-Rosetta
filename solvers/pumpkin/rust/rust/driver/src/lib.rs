@@ -418,6 +418,14 @@ fn emit(record: Value) {
     println!("{record}");
 }
 
+/// An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+/// seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+fn incumbent(objective: i32, search_start: Instant) {
+    use std::io::Write;
+    emit(json!({"type": "incumbent", "objective": objective, "seconds": search_start.elapsed().as_secs_f64()}));
+    let _ = std::io::stdout().flush();
+}
+
 /// Nanoseconds the submission took to build the model (posting into the solver), for benchmarking.
 static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 /// Nanoseconds from `run`'s start until the request was read, and when `run` started (benchmarking).
@@ -473,6 +481,7 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
     READ_NANOS.store(started.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
     let model = build(&instance, &mut solver);
     BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
+    let search_start = Instant::now();
 
     if model.outputs.is_empty() {
         status("error", "the model declared no outputs", budget.spent());
@@ -500,7 +509,8 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
                 Dir::Max => OptimisationDirection::Maximise,
             },
             objective,
-            |_: &Solver, _: SolutionReference, _: &DefaultBrancher, _: &ResolutionResolver| {
+            move |_: &Solver, solution: SolutionReference, _: &DefaultBrancher, _: &ResolutionResolver| {
+                incumbent(solution.get_integer_value(objective), search_start);
                 std::ops::ControlFlow::<()>::Continue(())
             },
         );

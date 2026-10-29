@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -396,6 +396,8 @@ def main():
                                            and all(item.get("solutions_received", 0) == 0
                                                    for item in result["instances"]))
         check("minimization_step_one", STEP, reference=STEP_REF)
+        # VAL_MAX makes the first solution x = n (objective 2) before the optimum 1: both are reported.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
         result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         # The 32-bit refusal is the documented limit, raised by Build as an execution_error.

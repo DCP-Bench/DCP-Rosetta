@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -157,6 +157,9 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "Minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "Maximize"), reference=MAXIMIZING)
+        # Every solution the observer reports improves on the last, and the last is the optimum 2.
+        results["incumbents"] = improving_incumbents(check("incumbents", OPTIMAL.replace("DIRECTION", "Minimize"),
+                                                           reference=OPTIMIZING))
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

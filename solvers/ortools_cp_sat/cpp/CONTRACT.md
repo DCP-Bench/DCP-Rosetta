@@ -59,7 +59,9 @@ constant has to be an `IntVar` first (`model.NewIntVar(...)` plus `AddEquality`,
 
 ## Solving
 
-- The driver solves with `SolveWithParameters` and these parameters, which the model
+- The driver solves with `SolveCpModel` (what `SolveWithParameters` does, plus a solution
+  observer that reports each improving solution of the optimisation search as an `incumbent`,
+  with the seconds since `Build` returned) and these parameters, which the model
   cannot change: `num_search_workers = 1`, `keep_all_feasible_solutions_in_presolve =
   true` (CP-SAT 9.11 to 9.15 dual presolve reductions can drop the optimum), and
   `max_time_in_seconds` set to what is left of the budget. Presolve is otherwise on, with
