@@ -99,6 +99,11 @@ Repeated output values are not emitted twice. `complete` when no further assignm
 Enumeration needs every such column to be integer with finite bounds; otherwise the status is
 `unsupported` with the reason. Values are emitted only after the optimum is proven.
 
+Incumbents: during the first solve of a problem with an objective, HiGHS's
+`kCallbackMipImprovingSolution` callback reports each improving MIP solution as an `incumbent`
+(its objective value, rounded; seconds since the model was built). An LP reports none; a MIP that
+presolve solves outright still reports its one solution.
+
 Time: the driver's deadline is `execution_timeout - 0.3 s` (at least 0.1 s), and every solve
 gets the time left. `timeout` reports a solve cut by the deadline; no unproven optimum is emitted.
 

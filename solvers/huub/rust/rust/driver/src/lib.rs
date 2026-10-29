@@ -401,6 +401,17 @@ fn status(kind: &str, detail: &str, seconds: f64) {
     );
 }
 
+/// An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+/// seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+fn incumbent(objective: i64, search_start: Instant) {
+    use std::io::Write;
+    println!(
+        "{}",
+        json!({"type": "incumbent", "objective": objective, "seconds": search_start.elapsed().as_secs_f64()})
+    );
+    let _ = std::io::stdout().flush();
+}
+
 /// Pushes the leaf views of `node` in declaration order.
 fn lower_node(node: &Node, map: &LoweringMap, solver: &mut Solver, views: &mut Vec<AnyView>) {
     match node {
@@ -470,6 +481,7 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
         .objective
         .map(|(dir, view)| (dir, map.get(&mut solver, view)));
     BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
+    let search_start = Instant::now();
 
     // One terminate callback for both phases: the deadline, or enough solutions.
     let enough = Rc::new(Cell::new(false));
@@ -486,9 +498,11 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
     // this solver; a later bound query reports a stale value.
     let mut pin = None;
     if let Some((dir, objective)) = objective {
+        // Each branch-and-bound solution improves on the last; the callback only reports it.
+        let report = move |sol: huub::solver::Solution<'_>| incumbent(objective.val(sol), search_start);
         let (outcome, best) = match dir {
-            Dir::Min => solver.solve().minimize(objective),
-            Dir::Max => solver.solve().maximize(objective),
+            Dir::Min => solver.solve().on_solution(report).minimize(objective),
+            Dir::Max => solver.solve().on_solution(report).maximize(objective),
         };
         match (outcome, best) {
             (Status::Complete, Some(value)) => {

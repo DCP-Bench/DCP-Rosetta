@@ -86,7 +86,8 @@ The runner forces:
 - The lowering defaults: `m.lower().to_solver()` with `int_eager_limit` 255 and restarts
   off. Search is Huub's default; the submission cannot change it.
 - Phase 1, when there is an objective: `minimize` or `maximize` is the first and only
-  solve on a fresh solver. Its result maps as follows:
+  solve on a fresh solver. Its `on_solution` callback reports each improving solution as an
+  `incumbent` (objective, seconds since the model was lowered). Its result maps as follows:
 
   | Huub result | Reported |
   | --- | --- |

@@ -28,7 +28,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -575,6 +575,8 @@ def main():
                                            and all(item.get("solutions_received", 0) == 0
                                                    for item in result["instances"]))
         check("minimization_step_one", STEP_RS, reference=STEP_REF)
+        # Branch and bound may reach x = n before the optimum n - 1: every solution it finds is reported.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP_RS, reference=STEP_REF))
         result = check("optimum_enumeration", SUM_RS, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         check("output_shapes", SHAPES_RS, reference=SHAPES_REF)
