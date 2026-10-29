@@ -45,6 +45,14 @@ enumerating.
 
 - Each solve is `PULP_CBC_CMD(msg=0, threads=1, timeLimit=max(1, int(seconds left)))`:
   one thread, a whole-second limit of at least 1 s; no gap or presolve option is set.
+- Incumbents: the first solve of an optimisation adds `logPath=<file>`, so CBC's log goes
+  to a file instead of `/dev/null` (same command line), with CBC's stdout line-buffered
+  (`LD_PRELOAD` of coreutils' `libstdbuf.so`, `_STDBUF_O=L`). A thread follows the file
+  and reports each `Cbc0004I`/`Cbc0012I`/`Cbc0016I Integer solution of V found` that
+  improves on the last as an `incumbent`, objective `(-V if maximising else V) + the
+  objective's constant` (CBC minimises internally and never sees PuLP's constant),
+  seconds from the call to `solve`. When CBC logs none (its preprocessing solved the
+  model) or not the optimum, the proven optimum is reported when the solve returns.
 - Status: `Infeasible` gives `unsat` on the first solve and `complete` after;
   `Unbounded` on the first solve gives `error` (see Traps). Otherwise a solve counts only
   when `sol_status` is `LpSolutionOptimal`: CBC reports `Optimal` even when it stopped on

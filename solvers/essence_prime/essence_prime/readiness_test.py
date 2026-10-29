@@ -30,7 +30,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -262,6 +262,11 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimising"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximising"), reference=MAXIMIZING)
+        # Minion's improving solutions, followed in its solutions file, end at the optimum 4; the probe and
+        # enumeration runs that solution_limit=2 adds report none.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "maximising"), reference=MAXIMIZING, solution_limit=2),
+            minimize=False)
         # Enumeration of an optimisation goes through the fixed-objective re-run.
         check("optimum_enumeration", OPTIMAL.replace("DIRECTION", "minimising"), reference=OPTIMIZING,
               solution_limit=5)
