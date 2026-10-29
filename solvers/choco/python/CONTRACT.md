@@ -38,8 +38,8 @@ rejected.
 ## Objective
 
 The third element of the return value: `("minimize", var)` or `("maximize", var)`, with
-`var` a Choco variable of that model. The runner proves the optimum with
-`find_optimal_solution`, rebuilds the model and posts `arithm(var, "=", best)` before
+`var` a Choco variable of that model. The runner proves the optimum with Choco's
+`find_optimal_solution` loop written out, rebuilds the model and posts `arithm(var, "=", best)` before
 enumerating.
 
 ## Solving
@@ -47,9 +47,12 @@ enumerating.
 - The runner sets one parameter, Choco's time limit, as `limit_time("<seconds>s")` with
   the time left (at least 1 ms). It is written in seconds because pychoco 0.2.1 ignores
   a limit written in milliseconds.
-- Optimisation: `find_optimal_solution` on a first build. A result returned at least
-  0.5 s before the budget left is the optimum; no result that early gives `unsat`; any
-  later return gives `timeout`.
+- Optimisation: on a first build, what `find_optimal_solution` does, written out:
+  `model.set_objective(var, maximize)`, then `solver.solve()` until it returns false
+  (the same search: same solution count and optimum). Each success is strictly better
+  and is reported as an `incumbent` record, `seconds` from just before the loop. A loop
+  that ends at least 0.5 s before the budget left proves the last value optimal; with no
+  solution that early it gives `unsat`; any later end gives `timeout`.
 - Enumeration: repeated `solver.solve()` on a fresh build with `arithm(objective, "=",
   best)` posted. No no-good is added: Choco moves on to its next assignment of all
   variables, and the runner skips any whose declared outputs it has already reported.
