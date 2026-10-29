@@ -117,6 +117,18 @@ already in the brief a modeller works from, and no solution is ever included:
 
 Solution records are followed by exactly one status.
 
+During an optimisation search a runner may also report each improving solution it finds, before proving
+the optimum, as it finds it (flushed, so a run cut off at its limit keeps them):
+
+```json
+{"type":"incumbent","objective":12,"seconds":0.31}
+```
+
+`objective` is the solution's integer objective value, `seconds` the time since the search started
+(after the model was built), nondecreasing. Incumbents come anywhere before the status and are evidence for
+anytime measures, never results: the evaluator checks their shape, keeps them per instance as `incumbents`
+(`[[seconds, objective], ...]`) and otherwise ignores them. They carry no values.
+
 | Status | Meaning |
 | --- | --- |
 | `limit` | requested solution count reached |
@@ -138,8 +150,8 @@ Zero solutions never pass. Returning fewer than N distinct solutions requires
 `complete`, which is the runner's report that the *submitted* model has no more
 — it is not read as a claim about the reference. Anything less from a runner
 that neither reached the count nor reported exhaustion is `invalid_output`.
-Optimization runners emit only final optimal outputs; the evaluator re-derives
-optimality itself and never trusts a claimed objective.
+Optimization runners emit only final optimal outputs (and, optionally, incumbent
+records along the way); the evaluator re-derives optimality itself and never trusts a claimed objective.
 
 ## Adding an integration
 
