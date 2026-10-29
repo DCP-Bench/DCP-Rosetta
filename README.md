@@ -1,6 +1,7 @@
 # DCP Rosetta
 
 [![Website](https://img.shields.io/badge/Website-DCP%20Rosetta-4f46e5?logo=googlechrome&logoColor=white)](https://dcp-bench.github.io/DCP-Rosetta/)
+[![skills.sh](https://skills.sh/b/DCP-Bench/DCP-Skills)](https://skills.sh/DCP-Bench/DCP-skills)
 [![Deploy](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml/badge.svg)](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml)
 [![License](https://img.shields.io/github/license/DCP-Bench/DCP-Rosetta)](LICENSE)
 
@@ -8,7 +9,9 @@ DCP Rosetta collects executable models of the [DCP-Bench Open](https://github.co
 
 [**Open the interactive catalogue →**](https://dcp-bench.github.io/DCP-Rosetta/)
 
-The generated models shown on the website are a draft collection: every one was
+All models are generated using our collection of [Agent Skills](https://github.com/DCP-Bench/DCP-Skills).
+
+The models shown on the website are a draft collection: every one was
 accepted by this repository's evaluator, but coverage is still growing, so the
 collection is not yet a settled generated-model benchmark. When reporting
 results, cite the DCP Rosetta commit you used; it also pins the version of the
