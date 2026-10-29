@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -235,6 +235,11 @@ def main():
         exhausts("optimal_enumeration", check("optimal_enumeration", OPTIMAL.replace("SENSE", "minimize"),
                                               reference=OPTIMIZING, solution_limit=5), 3)
         check("proven_optimum", KNAPSACK_MODEL, reference=KNAPSACK)
+        # SCIP's BESTSOLFOUND events are relayed as incumbents, strictly improving and ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("SENSE", "minimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", KNAPSACK_MODEL, reference=KNAPSACK), minimize=False)
         check("expression_output", EXPRESSION, solution_limit=2)
         check("general_constraints", GENERAL, solution_limit=3)
         check("auxiliary_free_distinct", AUXILIARY, solution_limit=2)

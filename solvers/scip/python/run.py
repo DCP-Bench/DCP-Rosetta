@@ -223,6 +223,42 @@ def integral_objective(objective):
     return True
 
 
+def report_incumbents(model):
+    """Report each new best solution of the optimisation search as an incumbent record, while SCIP searches:
+    an event handler on BESTSOLFOUND that only reads the solution's objective value. Returns a switch that
+    stops the reports (for the enumeration after the optimum). Seconds count from this call, which comes
+    right after the build. Only an objective value within TOLERANCE of an integer is reported, and only one
+    strictly better than the last reported."""
+    from pyscipopt import Eventhdlr, SCIP_EVENTTYPE
+    started = time.monotonic()
+    minimize = model.getObjectiveSense() == "minimize"
+
+    class Incumbents(Eventhdlr):
+        active, last = True, None
+
+        def eventinit(self):
+            self.model.catchEvent(SCIP_EVENTTYPE.BESTSOLFOUND, self)
+
+        def eventexit(self):
+            self.model.dropEvent(SCIP_EVENTTYPE.BESTSOLFOUND, self)
+
+        def eventexec(self, event):
+            if not self.active:
+                return
+            value = self.model.getSolObjVal(self.model.getBestSol())
+            whole = round(value)
+            if abs(value - whole) > TOLERANCE:
+                return
+            if self.last is not None and not (whole < self.last if minimize else whole > self.last):
+                return
+            self.last = whole
+            emit({"type": "incumbent", "objective": int(whole), "seconds": time.monotonic() - started})
+
+    handler = Incumbents()
+    model.includeEventhdlr(handler, "dcp_incumbents", "reports improving solutions")
+    return handler
+
+
 def attempt(model, deadline):
     """Solve once inside the remaining budget; say what SCIP actually concluded."""
     left = deadline - time.monotonic()
@@ -308,6 +344,7 @@ def solve(request):
     objective = objective_of(model)
     variables = variables_of(outputs)
     BUILD_SECONDS = time.monotonic() - building
+    incumbents = report_incumbents(model) if objective is not None else None
     limit = request["solution_limit"]
     if limit > 1:
         continuous = [v.getName() for v in variables if v.vtype() == "CONTINUOUS"]
@@ -316,6 +353,8 @@ def solve(request):
                                          f"{continuous[0]} is continuous")
 
     verdict = attempt(model, deadline)
+    if incumbents is not None:
+        incumbents.active = False  # the enumeration that follows is not the optimisation search
     if verdict == "infeasible":
         return finish("unsat")
     if verdict == "unbounded":

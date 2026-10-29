@@ -139,8 +139,10 @@ def optimum(constraints, setup, direction, objective, deadline):
 
     Each step asserts a strictly better objective on one incremental solver. The
     last model found is the optimum once the next step is unsat; unknown or
-    running out of time before that is `timeout`.
+    running out of time before that is `timeout`. Each model found is reported
+    as an incumbent (seconds since the search started) as it is found.
     """
+    search_start = time.monotonic()
     solver = fresh(setup)
     solver.add(constraints)
     best = None
@@ -157,6 +159,7 @@ def optimum(constraints, setup, direction, objective, deadline):
         if not isinstance(value, cz.IntNumRef):
             return None, ("error", "Objective is not an integer expression")
         best = value.as_long()
+        emit({"type": "incumbent", "objective": best, "seconds": time.monotonic() - search_start})
         if direction == "minimize":
             solver.add(objective < best)
         else:

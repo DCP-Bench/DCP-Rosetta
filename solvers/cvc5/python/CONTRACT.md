@@ -62,7 +62,9 @@ the objective. Solutions are only reported at the proven optimum.
   the constraints. Each `sat` result records the objective value `best` and asserts
   `objective < best` (minimise) or `objective > best` (maximise). `unsat` after at least
   one `sat` proves `best` optimal. `unsat` at the first check is `unsat`. `unknown` (below)
-  or running out of time before the proof is `timeout`, and no solution is emitted.
+  or running out of time before the proof is `timeout`, and no solution is emitted. Each
+  `best` is reported as it is found as an `incumbent` record, `seconds` counted from the
+  start of the tightening loop (right after `build`).
 - Enumeration after the proof: a fresh solver over the constraints plus `objective == best`.
   Each model is emitted, then `Or(leaf != value)` over every declared output leaf that is
   not a Python constant is asserted, and the solver checks again. `unsat` gives `complete`

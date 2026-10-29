@@ -194,7 +194,9 @@ asserts the theory's assignments into `theory.solver` (a `z3.Solver`) and, for a
 optimisation, `theory.optimize_solver` (a `z3.Optimize`), with z3 defaults otherwise.
 
 - **Optimisation**: one `Optimize.check()` on the objective term. `unsat` is `unsat`; any
-  other non-`sat` answer is `timeout` ("Candidate optimum was not proven"). The optimum is
+  other non-`sat` answer is `timeout` ("Candidate optimum was not proven"). Each strictly
+  better model z3 hands to `set_on_model` during that check is reported as an `incumbent`
+  record, `seconds` from the end of the build. The optimum is
   proven only when the objective's lower and upper bounds are equal finite integers;
   unequal bounds are `timeout`, and non-integer (infinite) bounds are `error` ("The
   objective is unbounded: between L and H"). The optimum is then pinned on the solver

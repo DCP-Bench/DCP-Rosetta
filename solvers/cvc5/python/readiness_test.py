@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -305,6 +305,9 @@ def main():
               execution_timeout=2, reference=REFERENCE)
         check("minimization_step_one", PROOF_SUBMISSION,
               reference=PROOF_REFERENCE, solution_limit=1)
+        # The first model (objective 21) is not optimal: the runner reports each tightening, ending at 8.
+        results["incumbents"] = improving_incumbents(check("incumbents", PROOF_SUBMISSION,
+                                                           reference=PROOF_REFERENCE))
         check("negative_offset_minimize", NEGATIVE_SUBMISSION.replace("DIRECTION", "minimize"),
               reference=NEGATIVE_REFERENCE.replace("DIRECTION", "minimize"))
         check("negative_offset_maximize", NEGATIVE_SUBMISSION.replace("DIRECTION", "maximize"),

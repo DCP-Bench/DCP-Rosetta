@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -315,6 +315,12 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        # z3's on_model callback under IDP-Z3 reports each improving model, ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
+            minimize=False)
         check("range_type", RANGE_TYPE, reference=REFERENCE_RANGE, instances=[{"k": 4}],
               instance_count=2, solution_limit=5)
         results["range_type_refused"] = (
