@@ -49,6 +49,13 @@ import time
 sys.path.insert(0, "/opt/runner")
 import runtime
 
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
+# Seconds the first build took (Savile Row's translation, until the Minion input is
+# written), and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+BUILT = False
+
 SAVILEROW = "/opt/savilerow"
 # Essence' and Savile Row words. A field or output with one of these names is written
 # `<name>_` in the model, and binds or reads back under that name.
@@ -349,6 +356,7 @@ def savile_row(work, source, param, deadline, count):
     """One Savile Row + Minion run. Returns (solutions, info, error). `solutions`
     is a list of dicts of every find variable; `count` caps them (`None` for an
     optimisation, which writes one)."""
+    global BUILD_SECONDS, BUILT
     for old in glob.glob(os.path.join(work, "out*")) + glob.glob(os.path.join(work, ".MINION*")):
         os.remove(old)
     with open(os.path.join(work, "model.eprime"), "w", encoding="utf-8") as handle:
@@ -365,6 +373,7 @@ def savile_row(work, source, param, deadline, count):
                "-out-aux", "out.aux"]
     if count is not None:
         command += ["-num-solutions", str(count)]
+    launched = time.time()  # wall clock, as a file's mtime
     process = subprocess.Popen(command, cwd=work, stdout=sys.stderr, stderr=sys.stderr,
                                start_new_session=True)
     try:
@@ -378,6 +387,10 @@ def savile_row(work, source, param, deadline, count):
             except ProcessLookupError:
                 shutil.rmtree(work, ignore_errors=True)
             process.wait()
+        minion = os.path.join(work, "out.minion")
+        if not BUILT and os.path.isfile(minion):
+            BUILD_SECONDS = max(0.0, os.stat(minion).st_mtime - launched)
+        BUILT = True
     info = read_info(os.path.join(work, "out.info"))
     if info.get("SavileRowTimeOut") == "1":
         return None, info, "timeout"
@@ -485,9 +498,23 @@ def run(request, source, work, deadline):
                 nogoods.append(text)
 
 
+def finish(status, detail="", **metadata):
+    """runtime.finish with the benchmarking times. Writes the record itself, so that importing this
+    module twice in one process (as rosetta-bench does) does not wrap an already wrapped finish."""
+    runtime.emit({"type": "status", "status": status, "detail": detail, "build_seconds": BUILD_SECONDS,
+                  "read_seconds": READ_SECONDS, "main_seconds": time.monotonic() - STARTED, **metadata})
+
+
+def started_solving(request):
+    """runtime.main has read the request when it calls python_solver."""
+    global READ_SECONDS
+    READ_SECONDS = time.monotonic() - STARTED
+
+
+runtime.finish = finish
 # runtime.main sends any kind it does not know to python_solver, so replacing it
 # keeps main's request parsing, time budget, status and error handling unchanged.
-runtime.python_solver = lambda kind, request: essence_solver(request)
+runtime.python_solver = lambda kind, request: started_solving(request) or essence_solver(request)
 
 if __name__ == "__main__":
     runtime.main("essence")

@@ -57,10 +57,14 @@ import threading
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish  # noqa: E402
+from runtime import emit  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 from pysat.formula import CNF, WCNF  # noqa: E402
 from pysat.integer import Integer, LinearExpr  # noqa: E402
+from pysat.examples.rc2 import RC2Stratified  # noqa: E402 - loaded here, as start-up, not while the model is built
+from pysat.solvers import Solver  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 # Glucose rather than CaDiCaL: PySAT raises NotImplementedError for
 # "limited solve" on CaDiCaL and Lingeling, so those two cannot be stopped
@@ -73,6 +77,16 @@ SOLVER_NAME = "glucose42"
 # finishes processing its last core after an interrupt, so it gets more room.
 INTERRUPT_MARGIN = 0.5
 RC2_INTERRUPT_MARGIN = 2.0
+
+# Seconds from the submission's build until its formula is loaded into Glucose or
+# RC2, and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
 
 
 class BudgetExceeded(Exception):
@@ -189,8 +203,7 @@ def blocking_clause(outputs, model, truth):
 
 def satisfy(formula, outputs, request, started):
     """Enumerate solutions of a satisfaction problem with Glucose."""
-    from pysat.solvers import Solver
-
+    global BUILD_SECONDS
     if isinstance(formula, WCNF):
         formula = CNF(from_clauses=formula.hard)
     limit = request["solution_limit"]
@@ -198,6 +211,7 @@ def satisfy(formula, outputs, request, started):
     # Declared outputs already reported; see blocking_clause on LinearExpr.
     seen = set()
     with Solver(name=SOLVER_NAME, bootstrap_with=formula) as solver:
+        BUILD_SECONDS = time.monotonic() - started
         while emitted < limit:
             left = request["execution_timeout"] - (time.monotonic() - started)
             if left <= 0:
@@ -241,14 +255,14 @@ def satisfy(formula, outputs, request, started):
 
 def optimise(formula, outputs, request, started):
     """Enumerate optimal solutions of a weighted formula with RC2."""
-    from pysat.examples.rc2 import RC2Stratified
-
+    global BUILD_SECONDS
     limit = request["solution_limit"]
     best = None
     emitted = 0
     # Declared outputs already reported; see blocking_clause on LinearExpr.
     seen = set()
     with RC2Stratified(formula, solver=SOLVER_NAME) as rc2:
+        BUILD_SECONDS = time.monotonic() - started
         while emitted < limit:
             left = request["execution_timeout"] - (time.monotonic() - started)
             if left <= 0:
@@ -294,7 +308,9 @@ def optimise(formula, outputs, request, started):
 
 
 def main():
+    global READ_SECONDS
     request = json.loads(Path("/input/request.json").read_text())
+    READ_SECONDS = time.monotonic() - STARTED
     if request.get("legacy"):
         return finish("unsupported", "This integration has no legacy submission format")
 

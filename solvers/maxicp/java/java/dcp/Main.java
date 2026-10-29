@@ -48,6 +48,10 @@ public final class Main {
     private static final Gson GSON = new Gson();
     private static PrintStream protocol;
     private static long started;
+    // Seconds the submission took to build the model (build, then the driver's objective and branching), for benchmarking.
+    private static double buildSeconds = 0;
+    // Seconds from main's start until the request was read (benchmarking).
+    private static double readSeconds = 0;
 
     private enum Outcome { LIMIT, EXHAUSTED, TIMEOUT }
 
@@ -57,6 +61,7 @@ public final class Main {
         System.setOut(System.err);
         try {
             JsonObject request = JsonParser.parseReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)).getAsJsonObject();
+            readSeconds = (System.nanoTime() - started) / 1e9;
             run(request);
         } catch (Throwable error) {
             Throwable cause = error instanceof InvocationTargetException ? error.getCause() : error;
@@ -77,6 +82,7 @@ public final class Main {
         long deadline = started - jvmAgeNanos + (long) (Math.max(0.1, budget - 0.5) * 1e9);
         Predicate<SearchStatistics> timeUp = stats -> System.nanoTime() >= deadline;
 
+        long building = System.nanoTime();
         Model model = new Model();
         Outputs out = new Outputs();
         try {
@@ -84,6 +90,7 @@ public final class Main {
         } catch (InvocationTargetException error) {
             // A constraint refuted at the root while the model was built: no solution.
             if (error.getCause() instanceof InconsistencyException) {
+                buildSeconds = (System.nanoTime() - building) / 1e9;
                 status("unsat", "");
                 return;
             }
@@ -106,6 +113,7 @@ public final class Main {
             decisions.add(objective);
         }
         Supplier<Runnable[]> branching = Searches.firstFailBinary(decisions.toArray(new CPIntVar[0]));
+        buildSeconds = (System.nanoTime() - building) / 1e9;
 
         List<JsonObject> found = new ArrayList<>();
         Outcome outcome;
@@ -212,6 +220,9 @@ public final class Main {
         record.put("type", "status");
         record.put("status", status);
         record.put("solve_seconds", (System.nanoTime() - started) / 1e9);
+        record.put("build_seconds", buildSeconds);
+        record.put("read_seconds", readSeconds);
+        record.put("main_seconds", (System.nanoTime() - started) / 1e9);
         record.put("detail", detail);
         protocol.println(GSON.toJson(record));
         protocol.flush();

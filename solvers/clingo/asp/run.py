@@ -25,11 +25,23 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish  # noqa: E402
+from runtime import emit  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 import clingo  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
+
+# Seconds spent building the model (the instance facts and the program, added and
+# grounded), and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
 
 
 def predicate(key):
@@ -156,12 +168,15 @@ def outputs_of(model, wanted):
 
 
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     control = clingo.Control(["0"])
     control.configuration.solve.opt_mode = "optN"
     control.add("base", [], facts(request["instance"]) + "\n" +
                 (INPUT / "model.lp").read_text(encoding="utf-8"))
     control.ground([("base", [])])
+    BUILD_SECONDS = time.monotonic() - building
 
     wanted = declared_names(request.get("outputs"))
     seen, count, optimizing = set(), 0, False
@@ -194,7 +209,9 @@ def solve(request):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by clingo_asp")
 

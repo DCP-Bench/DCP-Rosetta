@@ -384,10 +384,20 @@ pub fn circuit(m: &mut Model, next: &[View<i64>]) -> Res<()> {
 // Runner protocol
 // ---------------------------------------------------------------------------
 
+/// Nanoseconds the submission took to build the model and lower it into the solver, for benchmarking.
+static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Nanoseconds from `run`'s start until the request was read, and when `run` started (benchmarking).
+static READ_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static RUN_START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+
 fn status(kind: &str, detail: &str, seconds: f64) {
+    let build = BUILD_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
+    let read = READ_NANOS.load(std::sync::atomic::Ordering::Relaxed) as f64 / 1e9;
+    let main = RUN_START.get().map_or(0.0, |start| start.elapsed().as_secs_f64());
     println!(
         "{}",
-        json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds})
+        json!({"type": "status", "status": kind, "detail": detail, "solve_seconds": seconds, "build_seconds": build,
+               "read_seconds": read, "main_seconds": main})
     );
 }
 
@@ -422,7 +432,7 @@ fn solution_record(out: &Out, leaves: Vec<Json>) -> Json {
 /// Entry point the generated binary calls. Reads the request on stdin, solves,
 /// and writes the runner protocol on stdout.
 pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
-    let started = Instant::now();
+    let started = *RUN_START.get_or_init(Instant::now);
     let elapsed = || started.elapsed().as_secs_f64();
 
     let mut input = String::new();
@@ -436,6 +446,8 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
 
     let instance = Instance::new(request["instance"].clone());
     let mut model = Model::default();
+    let building = Instant::now();
+    READ_NANOS.store(started.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
     let out = match build(&instance, &mut model) {
         Ok(out) => out,
         Err(_) => return status("unsat", "a constraint conflicts when it is posted", elapsed()),
@@ -457,6 +469,7 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
     let objective = out
         .objective
         .map(|(dir, view)| (dir, map.get(&mut solver, view)));
+    BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
 
     // One terminate callback for both phases: the deadline, or enough solutions.
     let enough = Rc::new(Cell::new(false));

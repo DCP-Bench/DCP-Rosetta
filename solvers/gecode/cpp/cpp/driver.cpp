@@ -47,8 +47,15 @@ long long Millis(Clock::time_point deadline) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now()).count();
 }
 
+// Seconds the submission took to build the model (dcp_make: posting into the space), for benchmarking; with
+// the seconds from main's start until the request was read, and from main's start to the status.
+double g_build_seconds = 0;
+double g_read_seconds = 0;
+Clock::time_point g_main_start;
+
 void Status(const std::string& status, double seconds, const std::string& detail = "") {
-  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"detail", detail}});
+  Record({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"build_seconds", g_build_seconds},
+          {"read_seconds", g_read_seconds}, {"main_seconds", Seconds(g_main_start)}, {"detail", detail}});
 }
 
 void Solution(const json& values) {
@@ -111,7 +118,7 @@ void Finish(Outcome outcome, const Pool& pool, double seconds) {
 }  // namespace
 
 int main() {
-  auto start = Clock::now();
+  auto start = g_main_start = Clock::now();
   g_protocol = fdopen(dup(1), "w");
   if (g_protocol == nullptr) return 1;
   dup2(2, 1);
@@ -125,7 +132,10 @@ int main() {
     int limit = request.at("solution_limit");
     if (limit < 1) throw std::runtime_error("solution_limit must be positive");
 
+    auto building = Clock::now();
+    g_read_seconds = Seconds(start);
     std::unique_ptr<dcp::Space> root(dcp_make(request.at("instance")));
+    g_build_seconds = Seconds(building);
     if (!root->has_outputs()) throw std::runtime_error("Expected output dictionary");
     if (root->status() == SS_FAILED) {
       Status("unsat", Seconds(start));

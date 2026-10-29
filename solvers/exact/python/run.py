@@ -26,9 +26,11 @@ import sys
 import time
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish, flatten, mapped  # noqa: E402
+from runtime import emit, flatten, mapped  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 from exact import Exact  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 DIRECTIONS = ("minimize", "maximize")
 
@@ -62,20 +64,36 @@ def load(instance):
     return solver, outputs, objective
 
 
+# Seconds the submission took to build the model (posting into Exact, its objective included),
+# and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
+
+
 def main():
+    global BUILD_SECONDS, READ_SECONDS
     request = json.loads(Path("/input/request.json").read_text())
+    READ_SECONDS = time.monotonic() - STARTED
     if request.get("legacy"):
         return finish("unsupported", "This integration has no legacy submission format")
 
     started = time.monotonic()
     deadline = started + request["execution_timeout"]
+    building = time.monotonic()
     solver, outputs, objective = load(request["instance"])
-    names = flatten(outputs)
-
     if objective is not None:
         direction, terms = objective
         minimise = direction == "minimize"
         solver.setObjective(list(terms), minimize=minimise)
+    BUILD_SECONDS = time.monotonic() - building
+    names = flatten(outputs)
+
+    if objective is not None:
         left = deadline - time.monotonic()
         if left <= 0:
             return finish("timeout", "the budget ran out before the search began",

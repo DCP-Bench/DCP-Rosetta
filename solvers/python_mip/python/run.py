@@ -42,6 +42,7 @@ import runtime  # noqa: E402
 
 import mip  # noqa: E402
 from mip import OptimizationStatus, xsum  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
 # CBC returns floats. A declared output is an integer, and a value further from one than
@@ -68,9 +69,16 @@ def emit(record):
         runtime.emit(record)
 
 
+# Seconds the submission took to build the model (posting into CBC), and from STARTED until the
+# request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
 def finish(status, detail="", **metadata):
     with protocol_stdout():
-        runtime.finish(status, detail, **metadata)
+        runtime.finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                       main_seconds=time.monotonic() - STARTED, **metadata)
 
 
 def leaves(value):
@@ -225,9 +233,12 @@ def attempt(model, deadline, optimizing):
 
 
 def solve(request):
+    global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    building = time.monotonic()
     model, outputs = load(request["instance"])
     force_settings(model)
+    BUILD_SECONDS = time.monotonic() - building
     optimizing = bool(model.objective.expr) or model.objective.const != 0
     limit = request["solution_limit"]
     variables = cut_variables(outputs)
@@ -279,7 +290,9 @@ def expired(signum, frame):
 
 def main():
     try:
+        global READ_SECONDS
         request = json.loads((INPUT / "request.json").read_text())
+        READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
             return finish("unsupported", "Legacy submissions are not supported by mip_cbc")
         signal.signal(signal.SIGALRM, expired)
@@ -290,6 +303,11 @@ def main():
     except Exception as error:
         traceback.print_exc(file=sys.stderr)
         finish("error", f"{type(error).__name__}: {error}")
+    finally:
+        # A host that runs this runner in its own process (the benchmark) carries on after it: disarm
+        # the budget, and close the protocol copy of stdout so a reader of that pipe sees its end.
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        PROTOCOL.close()
 
 
 if __name__ == "__main__":

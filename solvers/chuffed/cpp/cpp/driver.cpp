@@ -92,7 +92,9 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
     std::atexit(OnExit);
     dup2(2, 1);  // anything Chuffed prints to stdout must not reach the protocol
     json outputs;
+    auto building = std::chrono::steady_clock::now();
     Build(request.at("instance"), outputs);
+    double build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     std::set<int> used;
     Collect(outputs, used);
@@ -113,7 +115,7 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
     bool has_objective = objective != nullptr;
     // Announce the objective before solving: if the parent kills this child at
     // the deadline, it must still know that unproven solutions may not be emitted.
-    WriteLine(fd, {{"declared", has_objective}});
+    WriteLine(fd, {{"declared", has_objective}, {"build_seconds", build_seconds}});
     if (phase == 2) {
       if (!has_objective) throw std::runtime_error("Objective disappeared between phases");
       int_rel(objective, IRT_EQ, static_cast<int>(best));
@@ -153,6 +155,7 @@ struct Phase {
   bool has_objective = false;
   bool timed_out = false;
   std::string error;
+  double build_seconds = 0;   // the child's model build
 };
 
 using Clock = std::chrono::steady_clock;
@@ -211,6 +214,7 @@ Phase RunPhase(const json& request, int phase, long long best, int limit, Clock:
       result.objectives.push_back(line.contains("objective") ? line["objective"].get<long long>() : 0);
     } else if (line.contains("declared")) {
       result.has_objective = line["declared"].get<bool>();
+      if (line.contains("build_seconds")) result.build_seconds = line["build_seconds"].get<double>();
     } else if (line.contains("end")) {
       result.end = line["end"].get<std::string>();
       result.has_objective = line["objective"].get<bool>();
@@ -225,8 +229,17 @@ Phase RunPhase(const json& request, int phase, long long best, int limit, Clock:
   return result;
 }
 
+// Seconds the first phase's child took to build the model, for benchmarking.
+double g_build_seconds = 0;
+// Seconds from main's start until the request was read, and from main's start to the status (benchmarking).
+double g_read_seconds = 0;
+Clock::time_point g_main_start;
+
 void Status(const std::string& status, double seconds, const std::string& detail = "") {
-  std::cout << json({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"detail", detail}}).dump() << std::endl;
+  std::cout << json({{"type", "status"}, {"status", status}, {"solve_seconds", seconds},
+                     {"build_seconds", g_build_seconds}, {"read_seconds", g_read_seconds},
+                     {"main_seconds", std::chrono::duration<double>(Clock::now() - g_main_start).count()},
+                     {"detail", detail}}).dump() << std::endl;
 }
 
 void Solution(const json& values) {
@@ -243,10 +256,11 @@ int out(IntVar* v) {
 }  // namespace dcp
 
 int main() {
-  auto start = Clock::now();
+  auto start = g_main_start = Clock::now();
   try {
     json request;
     std::cin >> request;
+    g_read_seconds = std::chrono::duration<double>(Clock::now() - start).count();
     double budget = request.at("execution_timeout").get<double>();
     // Finish a little before the runner's own timer so the status is ours.
     auto deadline = start + std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(std::max(0.1, budget - 0.3)));
@@ -255,6 +269,7 @@ int main() {
     auto seconds = [&] { return std::chrono::duration<double>(Clock::now() - start).count(); };
 
     Phase first = RunPhase(request, 1, 0, limit, deadline);
+    g_build_seconds = first.build_seconds;
     if (!first.error.empty()) { Status("error", seconds(), first.error); return 0; }
 
     if (!first.has_objective) {

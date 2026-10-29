@@ -60,7 +60,10 @@ descriptor 2 and the protocol is written to a saved copy of the original.
 The default PB encoder recurses once per term, so a PB constraint over about a
 thousand Bools overflows the default 8 MB stack and the process dies with
 signal 11. The runner therefore raises its stack limit to the hard limit and
-re-executes itself before doing anything else.
+re-executes itself before doing anything else. Run inside another program's
+process (a benchmark harness, through runpy), it cannot re-execute without
+taking that program with it, so it raises the limit in place: the main thread's
+stack then grows to the new limit, as far as the memory map leaves room.
 """
 import os
 import resource
@@ -69,8 +72,11 @@ import sys
 _SOFT, _HARD = resource.getrlimit(resource.RLIMIT_STACK)
 if _SOFT != _HARD and os.environ.get("DCP_STACK_RAISED") != "1":
     resource.setrlimit(resource.RLIMIT_STACK, (_HARD, _HARD))
-    os.environ["DCP_STACK_RAISED"] = "1"
-    os.execv(sys.executable, [sys.executable] + sys.argv)
+    # runpy sets sys.argv[0] to this file too; only the interpreter's own command
+    # line tells whether this runner is the program.
+    if os.path.realpath(__file__) in map(os.path.realpath, sys.orig_argv[1:]):
+        os.environ["DCP_STACK_RAISED"] = "1"
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 # `sum(...)` over n Bools is a chain of n nested additions, and the expression
 # walkers below and in paramita recurse once per link: a flat sum of about a
 # thousand terms exceeds Python's default depth of 1000. The raised stack holds
@@ -79,6 +85,7 @@ sys.setrecursionlimit(1_000_000)
 
 # Taken before any paramita import, because the plugins print to descriptor 1
 # when they load and when EvalMaxSAT reports a hard-clause conflict.
+_STDOUT = sys.stdout
 _PROTOCOL = os.fdopen(os.dup(1), "w", buffering=1)
 os.dup2(2, 1)
 sys.stdout = _PROTOCOL
@@ -94,7 +101,8 @@ import time  # noqa: E402
 import traceback  # noqa: E402
 
 sys.path.insert(0, "/opt/runner")
-from runtime import emit, finish  # noqa: E402
+from runtime import emit  # noqa: E402
+from runtime import finish as runtime_finish  # noqa: E402
 
 from paramita.modelling import (  # noqa: E402
     Bool,
@@ -110,6 +118,7 @@ from paramita.modelling import (  # noqa: E402
     to_cnf,
 )
 from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver, SatSolver, SolvingBudget  # noqa: E402
+STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 SAT_SOLVER = "Cadical300"
 MAXSAT_SOLVER = "EvalMaxSAT2022"
@@ -128,6 +137,16 @@ MAXSAT_MARGIN = 0.5
 
 BOOLEAN_EXPRESSIONS = (Bool, UnaryOperation, BinaryOperation, PseudoBooleanOperation)
 INTEGER_EXPRESSIONS = (UnaryIntegerOperation, BinaryIntegerOperation)
+
+# Seconds from the submission's build until its constraints are encoded into the
+# first solver, and from STARTED until the request was read, for benchmarking.
+BUILD_SECONDS = 0.0
+READ_SECONDS = 0.0
+
+
+def finish(status, detail="", **metadata):
+    runtime_finish(status, detail, build_seconds=BUILD_SECONDS, read_seconds=READ_SECONDS,
+                   main_seconds=time.monotonic() - STARTED, **metadata)
 
 
 class BudgetExceeded(Exception):
@@ -304,9 +323,11 @@ def enumerate_models(solver, pool, outputs, names, request, deadline, seen, emit
 
 
 def satisfy(subject_to, outputs, request, deadline):
+    global BUILD_SECONDS
     solver = SatSolver.from_name(SAT_SOLVER)
     pool = DimacsVariablePool()
     encode(pool, solver, subject_to)
+    BUILD_SECONDS = deadline_spent(deadline)
     names = sorted(bool_names(outputs, set()))
     emitted, status = enumerate_models(solver, pool, outputs, names, request, deadline, set(), 0)
     if status == "timeout":
@@ -361,6 +382,7 @@ def solve_maxsat(solver, deadline):
 
 
 def optimise(subject_to, outputs, objective, request, deadline):
+    global BUILD_SECONDS
     direction, expression = objective
     # add_to_weighted_container maximises its argument.
     passed = expression if direction == "maximize" else -expression
@@ -370,6 +392,7 @@ def optimise(subject_to, outputs, objective, request, deadline):
     constant = add_to_weighted_container(
         obj=passed, subject_to=conjunction(subject_to), cnf_transformer=to_cnf,
         container=maxsat, var_pool=pool)
+    BUILD_SECONDS = deadline_spent(deadline)
     status, model, benefit = solve_maxsat(maxsat, deadline)
     if status == "UNSATISFIABLE":
         return finish("unsat", solve_seconds=deadline_spent(deadline))
@@ -487,7 +510,9 @@ def conjunction(subject_to):
 
 
 def main():
+    global READ_SECONDS
     request = json.loads(Path("/input/request.json").read_text())
+    READ_SECONDS = time.monotonic() - STARTED
     if request.get("legacy"):
         return finish("unsupported", "This integration has no legacy submission format")
 
@@ -515,3 +540,10 @@ if __name__ == "__main__":
     except Exception as error:
         traceback.print_exc(file=sys.stderr)
         finish("error", str(error))
+    finally:
+        # Descriptor 1 back to the protocol, and the saved copy closed, for a
+        # program that runs this runner in its own process and reads on after.
+        _PROTOCOL.flush()
+        os.dup2(_PROTOCOL.fileno(), 1)
+        _PROTOCOL.close()
+        sys.stdout = _STDOUT

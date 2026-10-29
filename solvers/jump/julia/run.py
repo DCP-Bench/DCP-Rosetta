@@ -29,6 +29,8 @@ DRIVER = "/opt/runner/driver.jl"
 DRIVER_MARGIN = 2.0
 KILL_MARGIN = 1.0
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
+# The driver's own phase timings (benchmarking), relayed with its status.
+TIMING = ("build_seconds", "read_seconds", "main_seconds")
 
 
 def run_driver(budget, workdir):
@@ -90,7 +92,7 @@ def relay(records, killed, solution_limit, output, returncode):
         # A syntax error's location is in Julia's own message, not only in the
         # exception the driver caught.
         detail = f"{detail}; julia printed: {output.strip()[-1500:]}"
-    finish(status["status"], detail)
+    finish(status["status"], detail, **{key: status[key] for key in TIMING if key in status})
 
 
 def main():

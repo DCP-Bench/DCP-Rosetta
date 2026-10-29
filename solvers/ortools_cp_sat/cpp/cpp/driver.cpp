@@ -31,15 +31,28 @@ json Read(const json& layout, const CpSolverResponse& response, std::vector<int>
   return response.solution(index);
 }
 
+// Seconds the submission took to build the model (Build into the CpModelBuilder), for benchmarking.
+double g_build_seconds = 0;
+// Seconds from main's start until the request was read, and from main's start to the status (benchmarking).
+double g_read_seconds = 0;
+std::chrono::steady_clock::time_point g_main_start;
+
 void Status(const std::string& status, double seconds, const std::string& detail = "") {
-  std::cout << json({{"type", "status"}, {"status", status}, {"solve_seconds", seconds}, {"detail", detail}}).dump() << std::endl;
+  std::cout << json({{"type", "status"}, {"status", status}, {"solve_seconds", seconds},
+                     {"build_seconds", g_build_seconds}, {"read_seconds", g_read_seconds},
+                     {"main_seconds", std::chrono::duration<double>(std::chrono::steady_clock::now() - g_main_start).count()},
+                     {"detail", detail}}).dump() << std::endl;
 }
 
 int main() {
+  g_main_start = std::chrono::steady_clock::now();
   try {
     json request; std::cin >> request;
     CpModelBuilder model; json outputs;
+    auto building = std::chrono::steady_clock::now();
+    g_read_seconds = std::chrono::duration<double>(building - g_main_start).count();
     Build(request.at("instance"), model, outputs);
+    g_build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
     if (model.Build().has_floating_point_objective()) { Status("unsupported", 0, "Use an integer objective"); return 0; }
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     auto start = std::chrono::steady_clock::now();

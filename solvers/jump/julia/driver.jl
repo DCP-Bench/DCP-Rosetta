@@ -30,8 +30,15 @@ struct SubmissionError <: Exception
 end
 Base.showerror(io::IO, e::SubmissionError) = print(io, e.message)
 
+# The driver's phase timings, for benchmarking: its start (main's), the seconds until
+# the request was read, and the seconds the submission took to build the model.
+const STARTED = Ref{UInt64}(0)
+const TIMING = Dict{String, Float64}("build_seconds" => 0.0, "read_seconds" => 0.0)
+seconds_since(start) = (time_ns() - start) / 1e9
+
 record(io, object) = (println(io, JSON.json(object)); flush(io))
-status(io, name, detail = "") = record(io, Dict("type" => "status", "status" => name, "detail" => detail))
+status(io, name, detail = "") = record(io, Dict("type" => "status", "status" => name, "detail" => detail,
+                                                TIMING..., "main_seconds" => seconds_since(STARTED[])))
 
 # ---------------------------------------------------------------------------
 # The declared outputs
@@ -195,6 +202,8 @@ function load(instance)
 end
 
 function solve(io, request, deadline)
+    # The build runs from including the submission until HiGHS is attached and set up.
+    building = time_ns()
     model, outputs = load(request["instance"])
     # The runner, not the submission, chooses and configures the solver: one
     # thread, silent, and no optimality gap, so OPTIMAL means proven.
@@ -202,6 +211,7 @@ function solve(io, request, deadline)
     set_silent(model)
     set_attribute(model, "threads", 1)
     set_attribute(model, "mip_rel_gap", 0.0)
+    TIMING["build_seconds"] = seconds_since(building)
     optimizing = objective_sense(model) != FEASIBILITY_SENSE
 
     verdict = attempt(model, deadline)
@@ -245,10 +255,12 @@ function solve(io, request, deadline)
 end
 
 function main(arguments)
+    STARTED[] = time_ns()
     record_file, deadline = arguments[1], parse(Float64, arguments[2])
     open(record_file, "w") do io
         try
             request = JSON.parsefile("/input/request.json"; dicttype = Dict{String, Any})
+            TIMING["read_seconds"] = seconds_since(STARTED[])
             solve(io, request, deadline)
         catch error
             showerror(stderr, error, catch_backtrace())

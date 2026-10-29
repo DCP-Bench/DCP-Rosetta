@@ -39,6 +39,8 @@ STDOUT = Path("/tmp/dcp_stdout.txt")
 # alarm until it returns), and stays inside the container's own wall clock.
 GRACE_SECONDS = 4
 STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
+# Status fields passed on: the solve time, and the driver's phase timings (benchmarking).
+RELAYED = ("solve_seconds", "build_seconds", "read_seconds", "main_seconds")
 
 
 def quoted(text, quote):
@@ -165,7 +167,7 @@ def relay(records, solution_limit):
             return finish("error", "The driver emitted a solution without declared outputs")
         emit({"type": "solution", "values": values})
     detail = status.get("detail") or ""
-    extra = {"solve_seconds": status["solve_seconds"]} if "solve_seconds" in status else {}
+    extra = {key: status[key] for key in RELAYED if key in status}
     finish(status["status"], detail, **extra)
 
 
