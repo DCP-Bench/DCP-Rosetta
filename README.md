@@ -50,7 +50,8 @@ python generate_site.py
 python -m http.server 8000 --directory site
 ```
 
-or `make serve`, which runs the same three steps. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
+or `make serve`, which runs the same steps but skips the first, the slow one, while
+`bench/dataset/` is unchanged. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
 
 Alongside the problem catalogue, the
 [solver breakdown](https://dcp-bench.github.io/DCP-Rosetta/paradigms.html)
@@ -58,7 +59,13 @@ groups the verified models by the kind of model they are — constraint
 programming, CLP, MIP, SMT, ASP and so on — with the solvers behind each kind,
 how much of the catalogue each one reaches, and which problems have been
 modelled in more than one of them. Those are the problems worth reading side by
-side.
+side. A solver with several interfaces, such as Choco from Java and from Python,
+is listed once: its native interface, the first its skill's `interfaces:` names,
+shows by default and the others are a tab away.
+The catalogue filters models by
+paradigm, solver and language, all tested on one model: Choco and Java lists
+Choco's Java models. A problem opened from it keeps those filters, as chips that
+can be removed, and offers only the models they accept.
 
 ## Repository Structure
 

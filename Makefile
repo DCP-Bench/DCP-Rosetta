@@ -12,6 +12,9 @@ MODEL ?=
 LIMIT ?= 20
 
 DATASET := bench/dcp-bench-open.jsonl
+# The conversion solves every reference model (about 20 s), so the jsonl is
+# rebuilt only when a problem file or the converter is newer than it.
+DATASET_SOURCES := $(shell find bench/dataset -type f 2>/dev/null) bench/jsonl_convert.py
 # Where an integration lives, `solvers/<solver>/<interface>/`, read from its ID.
 FOLDER = $(shell $(PYTHON) -c "from evaluation.execution import integration_folder; print(integration_folder('$(SOLVER)').relative_to(__import__('pathlib').Path.cwd()))")
 
@@ -30,12 +33,15 @@ help: ## List the targets
 install: ## Install the Python requirements (Python 3.12)
 	$(PYTHON) -m pip install -r requirements.txt
 
-dataset: ## Rebuild bench/dcp-bench-open.jsonl from bench/dataset/
+$(DATASET): $(DATASET_SOURCES)
+	cd bench && $(PYTHON) jsonl_convert.py
+
+dataset: ## Rebuild bench/dcp-bench-open.jsonl from bench/dataset/, even when it looks current
 	cd bench && $(PYTHON) jsonl_convert.py
 
 # ---- Website ---------------------------------------------------------------
 
-site: dataset ## Build the catalogue website into site/
+site: $(DATASET) ## Build the catalogue website into site/
 	$(PYTHON) generate_site.py
 
 serve: site ## Build the website and serve it on localhost (PORT=)
@@ -84,7 +90,7 @@ check: ## Evaluate one model: MODEL=path PROBLEM=id SOLVER=id
 	$(PYTHON) -m evaluation.check --problem $(PROBLEM) --solver $(SOLVER) $(MODEL)
 
 # Four of the five are wrong on purpose, so eval.py's failing exit is expected.
-eval-sample: dataset ## Check sample_test.jsonl's five models with CPMpy
+eval-sample: $(DATASET) ## Check sample_test.jsonl's five models with CPMpy
 	-$(PYTHON) eval.py --dataset_file $(DATASET) --test_file sample_test.jsonl --modelling_framework CPMpy
 
 # ---- Model generation ------------------------------------------------------
