@@ -27,12 +27,18 @@ print(json.dumps(solution))
 '''
 
 
+def built_image():
+    """Stand in for the cpmpy_python image, which CI builds only after these tests run."""
+    return patch.multiple("evaluation.check", image_identity=lambda metadata: "sha256:test",
+                          image_recipe=lambda metadata: "sha256:recipe")
+
+
 class OrchestrationTests(unittest.TestCase):
     def run_records(self, records, timing=None, **kwargs):
         with tempfile.TemporaryDirectory() as temp:
             model = Path(temp) / "model.py"
             model.write_text("# deliberately not executable on host")
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", return_value=(records, timing or {})):
+            with built_image(), patch("evaluation.check.execute", return_value=(records, timing or {})):
                 return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE, instances=[], **kwargs)
 
     def test_runner_records_are_validated(self):
@@ -74,7 +80,7 @@ class OrchestrationTests(unittest.TestCase):
             second = [{"n": 3, "optimize": False}]
 
             def run(records, **kwargs):
-                with patch("evaluation.check.image_identity", return_value="sha256:test"),                      patch("evaluation.check.execute", side_effect=records):
+                with built_image(), patch("evaluation.check.execute", side_effect=records):
                     return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                     instances=second, instance_count=2, **kwargs)
 
@@ -225,7 +231,7 @@ class OrchestrationTests(unittest.TestCase):
             model = Path(temp) / "model.py"
             model.write_text("# stub")
             records = [{"type": "solution", "values": {}}, {"type": "status", "status": "limit"}]
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", return_value=(records, {})) as execute:
+            with built_image(), patch("evaluation.check.execute", return_value=(records, {})) as execute:
                 result = evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                   instances=[{"n": 3, "optimize": False}], instance_count=2)
                 self.assertFalse(result["accepted"])
@@ -242,7 +248,7 @@ class OrchestrationTests(unittest.TestCase):
                 model.write_bytes(b"changed during evaluation")
                 return ([{"type": "solution", "values": {"x": 0, "y": instance["n"]}},
                          {"type": "status", "status": "limit"}], {})
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", side_effect=runner):
+            with built_image(), patch("evaluation.check.execute", side_effect=runner):
                 result = evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                   instances=[{"n": 3, "optimize": False}], instance_count=2)
             self.assertTrue(result["accepted"], result)
