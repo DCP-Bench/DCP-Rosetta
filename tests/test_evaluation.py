@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
-from evaluation.execution import OOM_REREADS, execute, recipe, validate_records
+from evaluation.execution import OOM_REREADS, _copied_sources, execute, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -27,12 +27,18 @@ print(json.dumps(solution))
 '''
 
 
+def built_image():
+    """Stand in for the cpmpy_python image, which CI builds only after these tests run."""
+    return patch.multiple("evaluation.check", image_identity=lambda metadata: "sha256:test",
+                          image_recipe=lambda metadata: "sha256:recipe")
+
+
 class OrchestrationTests(unittest.TestCase):
     def run_records(self, records, timing=None, **kwargs):
         with tempfile.TemporaryDirectory() as temp:
             model = Path(temp) / "model.py"
             model.write_text("# deliberately not executable on host")
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", return_value=(records, timing or {})):
+            with built_image(), patch("evaluation.check.execute", return_value=(records, timing or {})):
                 return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE, instances=[], **kwargs)
 
     def test_runner_records_are_validated(self):
@@ -74,7 +80,7 @@ class OrchestrationTests(unittest.TestCase):
             second = [{"n": 3, "optimize": False}]
 
             def run(records, **kwargs):
-                with patch("evaluation.check.image_identity", return_value="sha256:test"),                      patch("evaluation.check.execute", side_effect=records):
+                with built_image(), patch("evaluation.check.execute", side_effect=records):
                     return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                     instances=second, instance_count=2, **kwargs)
 
@@ -225,7 +231,7 @@ class OrchestrationTests(unittest.TestCase):
             model = Path(temp) / "model.py"
             model.write_text("# stub")
             records = [{"type": "solution", "values": {}}, {"type": "status", "status": "limit"}]
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", return_value=(records, {})) as execute:
+            with built_image(), patch("evaluation.check.execute", return_value=(records, {})) as execute:
                 result = evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                   instances=[{"n": 3, "optimize": False}], instance_count=2)
                 self.assertFalse(result["accepted"])
@@ -242,7 +248,7 @@ class OrchestrationTests(unittest.TestCase):
                 model.write_bytes(b"changed during evaluation")
                 return ([{"type": "solution", "values": {"x": 0, "y": instance["n"]}},
                          {"type": "status", "status": "limit"}], {})
-            with patch("evaluation.check.image_identity", return_value="sha256:test"), patch("evaluation.check.execute", side_effect=runner):
+            with built_image(), patch("evaluation.check.execute", side_effect=runner):
                 result = evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE,
                                   instances=[{"n": 3, "optimize": False}], instance_count=2)
             self.assertTrue(result["accepted"], result)
@@ -287,6 +293,18 @@ class RecipeTests(unittest.TestCase):
                 self.assertNotEqual(recipe("demo", root), before, path)
                 path.write_bytes(original)
             self.assertEqual(recipe("demo", root), before)
+
+    def test_copied_files_are_hashed_in_the_same_order_on_every_platform(self):
+        """Windows compares paths case-insensitively; the recipe must sort as POSIX does."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = self.checkout(root)
+            (folder / "Manifest.toml").write_text("manifest", encoding="utf-8")
+            (folder / "driver.jl").write_text("driver", encoding="utf-8")
+            with open(folder / "Dockerfile", "a", encoding="utf-8") as dockerfile:
+                dockerfile.write("COPY solvers/demo/driver.jl solvers/demo/Manifest.toml /opt/\n")
+            names = [path.name for path in _copied_sources(folder / "Dockerfile", root)]
+            self.assertLess(names.index("Manifest.toml"), names.index("driver.jl"))
 
     def test_a_copied_file_missing_from_the_repository_is_an_error(self):
         with tempfile.TemporaryDirectory() as temp:
