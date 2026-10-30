@@ -19,8 +19,9 @@ on:
 jobs:
   evaluation:
     runs-on: ubuntu-latest
-    # The apt snapshot mirrors alone took evaluation.build from 13 to 26 minutes.
-    timeout-minutes: 45
+    # With an empty layer cache, evaluation.build takes about 39 minutes: 26 from
+    # the slow apt snapshot mirrors, the rest writing the cache and loading images.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
