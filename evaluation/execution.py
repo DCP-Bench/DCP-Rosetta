@@ -142,7 +142,8 @@ def _copied_sources(dockerfile, root):
             files = [match] if match.is_file() else [path for path in match.rglob("*") if path.is_file()]
             # As .dockerignore: bytecode never reaches an image.
             paths.update(path for path in files if "__pycache__" not in path.parts and path.suffix != ".pyc")
-    return sorted(paths)
+    # By parts, as POSIX sorts paths: a Windows path compares case-insensitively.
+    return sorted(paths, key=lambda path: path.parts)
 
 
 def recipe(solver_id, root=ROOT):

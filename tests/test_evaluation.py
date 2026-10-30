@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
-from evaluation.execution import OOM_REREADS, execute, recipe, validate_records
+from evaluation.execution import OOM_REREADS, _copied_sources, execute, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -293,6 +293,18 @@ class RecipeTests(unittest.TestCase):
                 self.assertNotEqual(recipe("demo", root), before, path)
                 path.write_bytes(original)
             self.assertEqual(recipe("demo", root), before)
+
+    def test_copied_files_are_hashed_in_the_same_order_on_every_platform(self):
+        """Windows compares paths case-insensitively; the recipe must sort as POSIX does."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = self.checkout(root)
+            (folder / "Manifest.toml").write_text("manifest", encoding="utf-8")
+            (folder / "driver.jl").write_text("driver", encoding="utf-8")
+            with open(folder / "Dockerfile", "a", encoding="utf-8") as dockerfile:
+                dockerfile.write("COPY solvers/demo/driver.jl solvers/demo/Manifest.toml /opt/\n")
+            names = [path.name for path in _copied_sources(folder / "Dockerfile", root)]
+            self.assertLess(names.index("Manifest.toml"), names.index("driver.jl"))
 
     def test_a_copied_file_missing_from_the_repository_is_an_error(self):
         with tempfile.TemporaryDirectory() as temp:
