@@ -1,10 +1,20 @@
-# Sources for `pindakaas-rust`
+# Sources for `dcp-pindakaas`
 
 Tested with pindakaas 0.6.0 (crate, MPL-2.0, released 2026-10-13), Rust 1.98.1 and g++ 12.2
 on Linux with Docker. The skill text is Apache-2.0.
 
 Existing skills: not searched for beyond the spike that preceded this skill. Run
 `npx skills find pindakaas` before a public release.
+
+The skill was written for the Rust API, the only interface so far; the claims below are for it.
+
+## Shared (SKILL.md)
+
+The solver-level text in `SKILL.md` (no optimiser, enumeration or global constraints, narrowing by
+implied constraints over integers, views before reading, `i64` overflow, wide domains, encoders,
+deadlines and Kissat) comes from the checks under Rust below, each run in the Rust binding.
+
+## Rust (interfaces/rust.md)
 
 Documentation this skill's instructions were written from:
 

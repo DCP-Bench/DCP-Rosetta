@@ -1,6 +1,6 @@
 # pindakaas_rust: how this integration realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how Pindakaas in
+Read [the submission contract](../../CONTRACT.md) first; this file only says how Pindakaas in
 Rust expresses it. Runner: [run.py](run.py), which compiles [rust/main.rs](rust/main.rs)
 with the submission spliced in and runs the binary. The harness is the `dcp_pindakaas`
 library, [rust/driver/src/lib.rs](rust/driver/src/lib.rs): it defines `Instance`, `Out`,
@@ -172,6 +172,32 @@ value, and do not wrap bits in `IntVar::from_binary_encoding` and post linear co
 it: that path still enumerates the domain and aborts. Single bits are `w.bits[i]`; a
 `wide_int` over a range that is not a power of two adds one cut so the top is not reachable.
 
+## Environment
+
+Image `dcp-eval/pindakaas_rust:v1`, built from `rust:1.98.1-slim-bookworm` pinned by digest:
+
+- Rust 1.98.1 (`rustc` and `cargo` on `PATH`); `pindakaas` 0.6.0 with its default features
+  plus `cadical` (CaDiCaL is compiled from the vendored source at image build), and
+  `serde_json` 1.0.151. The driver's `Cargo.lock` is committed and built with `--locked`.
+- The driver crate and all its dependencies were built once at image build. Only
+  `/opt/rust/libdcp_pindakaas.rlib` and `/opt/rust/deps/*.rlib` are kept. The Cargo registry
+  and the target directory are removed, so no crate can be fetched or rebuilt.
+- `g++` is purged after the build. `libstdc++-12-dev` stays, because rustc links each
+  submission through `cc` against the libstdc++ that the static CaDiCaL objects need.
+  Submissions cannot compile C++.
+- The evaluator runs the container with no network, a read-only root file system, user
+  65534, `HOME=/tmp`, a 512 MiB writable `/tmp` and `/input` read-only. Python 3.11.2 runs
+  the runner.
+
+For an ad hoc build, mount the file at `/input/model.rs` and run the runner's `rustc`
+command (`RUSTC` in [run.py](run.py)) with the same flags:
+
+```
+docker run --rm --network none -v $PWD/model.rs:/input/model.rs:ro --entrypoint rustc \
+  dcp-eval/pindakaas_rust:v1 --edition 2021 -D unused_must_use /opt/rust/main.rs -o /tmp/c \
+  --extern dcp_pindakaas=/opt/rust/libdcp_pindakaas.rlib -L dependency=/opt/rust/deps
+```
+
 ## Traps
 
 These are the failures found while building this integration. The first three give silent
@@ -222,7 +248,7 @@ wrong answers.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_pindakaas.rs](../../tests/fixtures/model_pindakaas.rs)
+The pilot fixture [tests/fixtures/model_pindakaas.rs](../../../tests/fixtures/model_pindakaas.rs)
 (instance fields `n`, `optimize`; outputs `x`, `y`; satisfaction instances only):
 
 ```rust
@@ -235,30 +261,4 @@ fn build(inst: &Instance, s: &mut Cadical) -> Res<Out> {
     out.put("x", &x).put("y", &y);
     Ok(out)
 }
-```
-
-## Environment
-
-Image `dcp-eval/pindakaas_rust:v1`, built from `rust:1.98.1-slim-bookworm` pinned by digest:
-
-- Rust 1.98.1 (`rustc` and `cargo` on `PATH`); `pindakaas` 0.6.0 with its default features
-  plus `cadical` (CaDiCaL is compiled from the vendored source at image build), and
-  `serde_json` 1.0.151. The driver's `Cargo.lock` is committed and built with `--locked`.
-- The driver crate and all its dependencies were built once at image build. Only
-  `/opt/rust/libdcp_pindakaas.rlib` and `/opt/rust/deps/*.rlib` are kept. The Cargo registry
-  and the target directory are removed, so no crate can be fetched or rebuilt.
-- `g++` is purged after the build. `libstdc++-12-dev` stays, because rustc links each
-  submission through `cc` against the libstdc++ that the static CaDiCaL objects need.
-  Submissions cannot compile C++.
-- The evaluator runs the container with no network, a read-only root file system, user
-  65534, `HOME=/tmp`, a 512 MiB writable `/tmp` and `/input` read-only. Python 3.11.2 runs
-  the runner.
-
-For an ad hoc build, mount the file at `/input/model.rs` and run the runner's `rustc`
-command (`RUSTC` in [run.py](run.py)) with the same flags:
-
-```
-docker run --rm --network none -v $PWD/model.rs:/input/model.rs:ro --entrypoint rustc \
-  dcp-eval/pindakaas_rust:v1 --edition 2021 -D unused_must_use /opt/rust/main.rs -o /tmp/c \
-  --extern dcp_pindakaas=/opt/rust/libdcp_pindakaas.rlib -L dependency=/opt/rust/deps
 ```

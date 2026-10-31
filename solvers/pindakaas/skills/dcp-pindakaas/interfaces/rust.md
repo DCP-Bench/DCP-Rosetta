@@ -1,33 +1,6 @@
----
-name: pindakaas-rust
-description: Pindakaas, a Rust library that encodes Boolean and integer constraints (clauses, propositional formulas, linear, pseudo-Boolean and cardinality constraints, integer variables) into CNF and solves them with the bundled CaDiCaL SAT solver (crate pindakaas 0.6.0). Use when writing, debugging or explaining a SAT or pseudo-Boolean model in Rust with Pindakaas, when a constraint has to be hand-encoded to clauses, or when the user has chosen Pindakaas.
-license: Apache-2.0
-compatibility: Requires Rust with cargo (tested with Rust 1.98.1), pindakaas 0.6.0 from crates.io (MPL-2.0), and a C++ compiler (g++) on PATH, because the crate builds the CaDiCaL SAT solver. Needs network access, or a vendored copy of the crates.
-metadata:
-  domain: sat
-  solver: cadical
-  paradigm: sat
----
+# Pindakaas in Rust (crate `pindakaas`)
 
-# Pindakaas (Rust)
-
-Pindakaas is a library of CNF encodings with a SAT solver attached. You create literals and
-integer variables on a solver, encode constraints into it, and solve. It has **no optimiser,
-no enumeration and no global constraints** (no all-different, element, table, min/max,
-multiplication, reification): those are clauses and linear constraints that you write. Three
-rules matter most. **Every encoding call returns a `Result`**: propagate it with `?`.
-**`encode_implied` over integer terms narrows the variables for good** and gives wrong
-answers: use the safe form below. **An integer variable has to have a view before you read
-it** or `value()` returns the domain minimum.
-
-## Contents
-- [Install](#install)
-- [Quick start](#quick-start)
-- [Modelling](#modelling)
-- [Solving](#solving)
-- [Common issues](#common-issues)
-- [Further reading](#further-reading)
-- Runnable examples: `assets/`, one folder per pattern
+Pindakaas's native API: a Rust crate. Shared concepts, outcomes and enumeration strategy: [SKILL.md](../SKILL.md).
 
 ## Install
 
@@ -148,9 +121,10 @@ fn define(s: &mut Cadical, e: LinExp) -> Result<IntVar, Unsatisfiable> {
 // b <-> e == k:     b = z.equals(k)
 ```
 
-`define` needs an expression with no constant term. The examples in `assets/` carry this and
-the other helpers as tested code; `assets/conditional-constraints` shows all 51 solutions of
-`b -> x + y <= 4` surviving.
+`define` needs an expression with no constant term. The examples in `assets/rust/` carry this
+and the other helpers as tested code;
+[conditional-constraints](../assets/rust/conditional-constraints/README.md) shows all 51
+solutions of `b -> x + y <= 4` surviving.
 
 ### Wide integers and sparse domains
 
@@ -171,7 +145,8 @@ quadratic at-most-one. Two ways around it:
   constraint. Read the value from the bits, and exclude a value with a clause that negates its
   bit pattern. Do not wrap the bits in `IntVar::from_binary_encoding` and post linear
   constraints on it: that path still enumerates the domain and aborts. The adder propagates
-  weakly, so use it for the wide arithmetic only. `assets/wide-integers` is a runnable example.
+  weakly, so use it for the wide arithmetic only.
+  [wide-integers](../assets/rust/wide-integers/README.md) is a runnable example.
 
 `x.with_binary_encoding(..)` followed by `x.constrain(..)` gives an `IntVar` that no linear
 constraint touches a readable binary view instead of an equality view.
@@ -188,7 +163,7 @@ constraint touches a readable binary view instead of an equality view.
 - **Optimise:** there is no optimiser. Define the objective as an integer variable and
   search linearly with an assumption: `solve_assuming(vec![bound])` where `bound` is
   `obj.at_most(&mut s, best - 1)?` (for a minimum), until `Unsatisfiable` or the bound is
-  `BoolVal::Const(false)` (no better value in the domain). `assets/` has no optimisation
+  `BoolVal::Const(false)` (no better value in the domain). `assets/rust/` has no optimisation
   example; the loop is ten lines.
 - **Deadline:** `s.set_terminate_callback(Some(move || if Instant::now() >= deadline {
   TermSignal::Terminate } else { TermSignal::Continue }))` stops the search in about a
@@ -213,7 +188,7 @@ constraint touches a readable binary view instead of an equality view.
 | Panic "attempt to divide by zero" | a zero coefficient on an integer term; leave the term out |
 | Panic on `IntVar::new(5..=3)` or on `CardinalityOne` with `a` and `!a` | an empty domain or a trivially contradictory call; guard it |
 | Wrong answers after reusing a variable in a second solver | an integer variable belongs to the first solver that encodes it; rebuild fresh variables for a new solver |
-| Out of memory or a C++ `bad_alloc` abort | a wide domain: a linear constraint lists every value of an `IntVar` (about 1.9 GB at `10^7`, abort at `10^8`), and order and equality views grow with the domain too. Keep domains small, derive tight bounds from the data, avoid `at_least`, `at_most` and `equals` on wide variables; see Wide integers and sparse domains (sparse `RangeList` domain, or bits with the adder encoder) |
+| Out of memory or a C++ `bad_alloc` abort | a wide domain: a linear constraint lists every value of an `IntVar` (about 1.9 GB at `10^7`, abort at `10^8`), and order and equality views grow with the domain too. Keep domains small, derive tight bounds from the data, avoid `at_least`, `at_most` and `equals` on wide variables; see [Wide integers and sparse domains](#wide-integers-and-sparse-domains) (sparse `RangeList` domain, or bits with the adder encoder) |
 | A grid of integer variables behaves as one variable | `IntVar` is `Clone` and a clone is the same variable: `vec![x.clone(); n]` repeats one variable; call `IntVar::new` for each |
 | `E0499` borrowing the solver twice | two uses of `s` in one expression, such as `f(s, x.equals(s, v)?)`; bind `x.equals(s, v)?` to a local first |
 | An encoding runs past the deadline | encoding does not poll the terminate callback; keep weights and domains small |
@@ -223,10 +198,17 @@ constraint touches a readable binary view instead of an equality view.
 | Process aborts with "Coverage goal" using Kissat | Kissat is not incremental: a clause added after a solve aborts the process; use CaDiCaL |
 | An ignored `Err` | write `?` on every encoding call; a compiler flag `-D unused_must_use` turns an ignored one into an error |
 
+## Runnable examples
+
+In `assets/rust/`, each a cargo project that checks its own results:
+[queens-enumeration](../assets/rust/queens-enumeration/README.md),
+[conditional-constraints](../assets/rust/conditional-constraints/README.md),
+[element-table-minmax](../assets/rust/element-table-minmax/README.md),
+[magic-square](../assets/rust/magic-square/README.md),
+[infeasible-and-deadline](../assets/rust/infeasible-and-deadline/README.md),
+[wide-integers](../assets/rust/wide-integers/README.md).
+
 ## Further reading
 
 - API reference: <https://docs.rs/pindakaas/0.6.0/pindakaas/>
 - Repository and changelog: <https://github.com/pindakaashq/pindakaas>
-- Examples in `assets/`: `queens-enumeration`, `conditional-constraints`, `element-table-minmax`,
-  `magic-square`, `infeasible-and-deadline`, `wide-integers`. Each is a cargo project that checks
-  its own results.
