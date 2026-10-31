@@ -25,7 +25,7 @@ VENV = ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/pytho
 PYTHON = str(VENV) if VENV.exists() else sys.executable
 PROBLEM = "csplib_054_n_queens"
 SOLVER = "cpmpy_python"
-SKILL = "solvers/cpmpy_python/skills/cpmpy-python"
+SKILL = "solvers/cpmpy/skills/dcp-cpmpy"
 
 
 def helper(*arguments):
@@ -45,7 +45,7 @@ def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: model_generator_resume_regression.py SKILL_BUNDLE")
     bundle = Path(sys.argv[1])
-    skill = (bundle / "SKILL.md").read_text(encoding="utf-8")
+    skill = "\n".join(p.read_text(encoding="utf-8") for p in [bundle / "SKILL.md", *sorted(bundle.glob("interfaces/**/*.md"))])
 
     failures = []
     run = "resume-regression-" + tempfile.mkdtemp(prefix="", dir=tempfile.gettempdir()).rsplit("\\", 1)[-1][-8:]

@@ -6,7 +6,7 @@
  * the wrong kind of token.
  *
  * Keywords follow the MiniZinc 2.8 specification. `built_in` lists the standard
- * functions and the globals from solvers/minizinc_gecode's skill; adding a
+ * functions and the globals from solvers/minizinc's skill; adding a
  * global here is a one-word change.
  */
 (function () {

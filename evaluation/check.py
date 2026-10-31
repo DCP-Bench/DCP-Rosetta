@@ -7,9 +7,17 @@ from pathlib import Path
 import sys
 import time
 
-from .execution import ROOT, execute, image_identity, integration, validate_records
+from .execution import ROOT, execute, image_identity, image_recipe, integration, validate_records
 from bench.dcp_bench.reference import ReferenceSession, available_instances, choose_instances
 from .results import EvaluationError, canonical, digest, strict_json
+
+
+def _shown(path):
+    """A path as a committed result may name it: relative to the repository when inside it."""
+    try:
+        return Path(path).resolve().relative_to(ROOT).as_posix()
+    except (TypeError, ValueError):
+        return str(path)
 
 
 # Reasons that say "we could not tell", as opposed to "this model is wrong".
@@ -66,7 +74,10 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
             try:
                 reference_source = (folder / f"{problem_id}.cpmpy.py").read_text(encoding="utf-8-sig")
                 instances = strict_json((folder / f"{problem_id}.json").read_text(encoding="utf-8-sig"))
-            except (OSError, ValueError) as error:
+            except OSError as error:
+                # Results are committed, so name the file relative to the repository, not this machine.
+                raise EvaluationError("reference_error", f"{error.strerror}: {_shown(error.filename)}") from error
+            except ValueError as error:
                 raise EvaluationError("reference_error", str(error)) from error
         result["reference_hash"] = digest(reference_source.encode())
         available = available_instances(reference_source, [] if instances is None else instances)
@@ -78,7 +89,8 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
         if solution_limit > 1 and not metadata["enumeration"]:
             raise EvaluationError("unsupported_capability", "This integration does not support enumeration")
         image = image_identity(metadata)
-        result["image"] = {"tag": metadata["image"], "id": image}
+        # The ID names the bytes run here; the recipe is what a readiness record pins.
+        result["image"] = {"tag": metadata["image"], "id": image, "recipe": image_recipe(metadata)}
         for instance_id, instance in chosen:
             result["unperformed_instances"].remove(instance_id)
             item = {"id": instance_id, "instance_hash": digest(instance), "accepted": False, "solutions_checked": 0}

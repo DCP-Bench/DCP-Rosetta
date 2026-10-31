@@ -398,6 +398,47 @@ table.matrix td.fail { background: var(--fail-bg); color: var(--fail-fg); font-w
 .picker-label[title] { cursor: help; }
 .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .model-group > .tab-pane { border-top: 1px solid var(--border); border-radius: var(--radius); }
+/* Models the catalogue's filters hide, and the paradigm rows left empty. */
+.model-picker [hidden] { display: none; }
+.binding-bar [hidden] { display: none; }
+
+/* The catalogue's model filters, carried to a problem page: one chip each,
+   its × removing it. Quiet beside the model pills, which stay the choice. */
+.model-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 14px; font-size: 0.82rem; }
+.model-filters[hidden] { display: none; }
+.filter-label { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.filter-chip-group { color: var(--muted); }
+.filter-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.filter-chip:hover .filter-chip-x, .filter-chip:focus-visible .filter-chip-x { background: var(--accent); color: var(--bg); }
+.filter-clear { font-size: inherit; }
+.filter-count { margin-left: auto; color: var(--muted); }
+.filter-empty { flex-basis: 100%; margin: 4px 0 0; color: var(--muted); }
+/* A solver's models in several languages: tabs inside its pane, not a second card. */
+.binding-group { margin-top: 0; }
+.binding-bar { margin-bottom: 16px; }
+.binding-group > .tab-pane { padding: 0; border: 0; box-shadow: none; background: none; border-radius: 0; }
 
 /* The reference model's sources: links named by site and page, citations as written. */
 .source-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.92rem; }
@@ -890,6 +931,25 @@ html:not(.js) .row-toggle { display: none; }
 .solver-list li:last-child { border-bottom: 0; }
 .solver-list li:target { background: var(--accent-soft); scroll-margin-top: 90px; }
 .solver-count { white-space: nowrap; text-align: right; min-width: 80px; }
+/* A solver with several interfaces lists them under its name, native first,
+   each with the problems it models; the solver's count is any of them. */
+/* A solver with several interfaces: one quiet sub-row each, native first,
+   in the solver's columns. Smaller, muted, plain links: the solver's own row
+   keeps the pills and the weight. */
+.solver-list li.has-bindings { row-gap: 0; }
+.has-bindings > .binding, .has-bindings > .binding-count, .has-bindings > .binding-action {
+  padding-block: 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.binding { margin-left: 2px; padding-left: 12px; border-left: 2px solid var(--border); }
+.has-bindings > .solver-name { padding-bottom: 4px; }
+.binding-count { text-align: right; font-variant-numeric: tabular-nums; }
+.binding-action { text-align: right; }
+.binding-skill { margin-left: 8px; color: var(--muted); font-size: 0.72rem; }
+.binding-browse { color: var(--accent); white-space: nowrap; }
+.binding-skill:hover, .binding-browse:hover { text-decoration: underline; }
+.binding:target, .solver-list li:has(> .solver-name > [id]:target) { background: var(--accent-soft); scroll-margin-top: 90px; }
 /* What the framework hands the model to, e.g. Gecode under MiniZinc. */
 .backend { color: var(--muted); margin-left: 8px; font-size: 0.82rem; }
 .backend::before { content: "· "; }

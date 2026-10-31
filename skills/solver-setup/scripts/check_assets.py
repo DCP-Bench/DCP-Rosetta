@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run every example in a skill's assets/ and check its output. Standard library only.
 
-Usage: check_assets.py SKILL_FOLDER [--timeout 120]
-       check_assets.py SKILL_FOLDER --image IMAGE [--env K=V ...] [--mount SRC:DST[:ro] ...] [--network none]
+Usage: check_assets.py SKILL_FOLDER [--interface NAME] [--timeout 120]
+       check_assets.py SKILL_FOLDER [--interface NAME] --image IMAGE [--env K=V ...] [--mount SRC:DST[:ro] ...] [--network none]
 
 Each example is a folder assets/<example>/ with a README.md containing:
 
@@ -10,8 +10,9 @@ Each example is a folder assets/<example>/ with a README.md containing:
     **Expected:** `Objective: 70`        (optional, may repeat; each must appear in stdout)
 
 The examples run from a temporary copy of the skill, so compiled binaries and caches
-never land in the skill folder. The Run command is executed with a shell inside the
-example folder: on this machine by default, or with --image inside a fresh container
+never land in the skill folder. A skill with interfaces/ keeps the examples of each
+interface in assets/<interface>/<example>/; --interface picks which set to run.
+The Run command is executed with a shell inside the example folder: on this machine by default, or with --image inside a fresh container
 of that image, as the current user, with no network unless --network says otherwise
 (the copy is mounted at /skill). Run is what a user types on their own machine, so an
 image that needs a binary on PATH or an environment variable gets it with --env.
@@ -79,9 +80,13 @@ def main():
     parser.add_argument("--env", action="append", default=[], metavar="K=V", help="environment for --image")
     parser.add_argument("--mount", action="append", default=[], metavar="SRC:DST[:ro]", help="extra mount for --image")
     parser.add_argument("--network", default="none", help="container network for --image (default none)")
+    parser.add_argument("--interface", help="run the examples of assets/INTERFACE/ (required when the skill has interfaces/)")
     args = parser.parse_args()
 
-    assets = args.skill / "assets"
+    if not args.interface and (args.skill / "interfaces").is_dir():
+        sys.exit("this skill has interfaces/: pass --interface NAME, once per interface, each with its own --image")
+    relative = Path("assets", args.interface) if args.interface else Path("assets")
+    assets = args.skill / relative
     examples = sorted(p.name for p in assets.iterdir() if p.is_dir()) if assets.is_dir() else []
     if not examples:
         sys.exit(f"no example folders in {assets}")
@@ -90,7 +95,7 @@ def main():
         skill_copy = Path(directory) / args.skill.resolve().name
         shutil.copytree(args.skill, skill_copy, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         for name in examples:
-            passed, reason = check(skill_copy / "assets" / name, args, skill_copy)
+            passed, reason = check(skill_copy / relative / name, args, skill_copy)
             results.append(passed)
             print(f"{'PASS' if passed else 'FAIL'}  {name}: {reason}", flush=True)
     print(f"\n{sum(results)}/{len(results)} passed")

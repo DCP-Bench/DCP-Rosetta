@@ -34,9 +34,10 @@ BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
 TITLE = "DCP Rosetta"
-ASSET_VERSION = "catalogue-v54"
-# Set by main() from the content of data.js.
+ASSET_VERSION = "catalogue-v60"
+# Set by main() from the content of data.js and labels.js.
 DATA_VERSION = ""
+LABELS_VERSION = ""
 SUBTITLE = (
     "A growing collection of natural language <strong>D</strong>iscrete <strong>C</strong>ombinatorial "
     "<strong>P</strong>roblems, <br>with executable models for a wide range of solvers and paradigms."
@@ -382,6 +383,8 @@ def page(title: str, prefix: str, active: str, body: str, description: str = "",
         if math:
             head.append(f'<link rel="stylesheet" href="{KATEX}/katex.min.css">')
             scripts.append(f"{KATEX}/katex.min.js")
+        # What the model filters carried over from the catalogue are called.
+        scripts.append(f"{prefix}labels.js?v={LABELS_VERSION}")
     if active == "index":
         scripts.append(f"{prefix}data.js?v={DATA_VERSION}")
     scripts.append(f"{prefix}app.js?v={ASSET_VERSION}")
@@ -450,7 +453,7 @@ def load_generated_models() -> dict:
     """Scan generated_models/<problem>/<solver>/<submission>/ -> {problem: {solver id: [entries]}}.
 
     Keyed on the integration id, never on its display name: the name is read
-    from `solvers/<id>/metadata.json` at render time so renaming an integration
+    from the integration's metadata.json at render time so renaming an integration
     is a one-line metadata edit, and two integrations sharing a display name
     cannot collapse into one group.
     """
@@ -503,8 +506,8 @@ def load_generated_models() -> dict:
     return out
 
 
-def model_language(metrics: dict, model_file: str) -> tuple:
-    """(highlight.js grammar, label) for a generated model's code block.
+def model_language_key(metrics: dict, model_file: str) -> str:
+    """The `language` a generated model is written in, as LANGUAGES keys it.
 
     Read from the integration's declared `language`, so a new integration is
     labelled correctly the moment it declares one. The file extension is only
@@ -513,6 +516,12 @@ def model_language(metrics: dict, model_file: str) -> tuple:
     language = (INTEGRATIONS.get(metrics.get("solver")) or {}).get("language")
     if language not in LANGUAGES and model_file:
         language = EXTENSION_LANGUAGE.get(Path(model_file).suffix)
+    return language or ""
+
+
+def model_language(metrics: dict, model_file: str) -> tuple:
+    """(highlight.js grammar, label) for a generated model's code block."""
+    language = model_language_key(metrics, model_file)
     return LANGUAGES.get(language, ("plaintext", language or "Model"))
 
 
@@ -756,6 +765,10 @@ def select_best_generated(gen_by_fw: dict) -> dict:
 # Filled in by main(); the per-model renderers need them and threading them
 # through every call site would say less than it costs.
 INTEGRATIONS = {}
+# The solvers those integrations bind (see load_solvers), and each
+# integration's solver.
+SOLVERS = {}
+SOLVER_OF = {}
 PARADIGM_NAMES = {}
 PARADIGM_ABBREVS = {}
 # Paradigm IDs in the order the Solvers page lists them.
@@ -773,11 +786,47 @@ def load_paradigm_vocabulary() -> list:
 def load_integrations() -> dict:
     """Solver integrations by ID. The metadata files are JSON despite the suffix."""
     out = {}
-    for path in sorted(SOLVERS_DIR.glob("*/metadata.json")):
+    from evaluation.execution import integration_folders
+    for solver_id, folder in integration_folders(SOLVERS_DIR.resolve().parent).items():
         try:
-            out[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
+            out[solver_id] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+    return out
+
+
+def load_solvers(integrations: dict) -> dict:
+    """Integrations grouped by the solver they bind, `solvers/<solver>/<interface>/`:
+    {solver: {"name", "bindings", "skill"}}.
+
+    The bindings read native first: in the order the shared skill's `interfaces:`
+    lists them, which is the default the site shows. A solver with one binding
+    keeps that integration's name; one with several takes the skill's title, as
+    the name no longer names one language. An integration outside that layout is
+    a solver of its own.
+    """
+    from evaluation.execution import integration_folders
+    root = SOLVERS_DIR.resolve().parent
+    folders = integration_folders(root)
+    by_solver = {}
+    for solver_id in integrations:
+        folder = folders.get(solver_id)
+        nested = folder is not None and folder.parent != root / "solvers"
+        by_solver.setdefault(folder.parent.name if nested else solver_id, []).append(solver_id)
+    out = {}
+    for solver, bindings in by_solver.items():
+        skills = sorted((root / "solvers" / solver / "skills").glob("*/SKILL.md"))
+        text = skills[0].read_text(encoding="utf-8") if len(skills) == 1 else ""
+        listed = re.search(r'^\s*interfaces:\s*"?([^"\n]*)', text, re.MULTILINE)
+        order = [name.strip() for name in listed.group(1).split(",")] if listed else []
+        bindings.sort(key=lambda solver_id: (
+            order.index(folders[solver_id].name) if folders[solver_id].name in order else len(order),
+            solver_id))
+        title = re.search(r"^# (.+)$", text, re.MULTILINE)
+        name = (integrations[bindings[0]].get("name", bindings[0]) if len(bindings) == 1 or not title
+                else title.group(1).strip())
+        out[solver] = {"name": name, "bindings": bindings,
+                       "skill": skills[0].parent.relative_to(root).as_posix() if len(skills) == 1 else None}
     return out
 
 
@@ -807,8 +856,13 @@ SCOPE_NOTES = {"sat": "SAT counts satisfaction problems only."}
 
 
 def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
-                       problem_types: dict | None = None, scopes: dict = PARADIGM_SCOPE) -> dict:
+                       problem_types: dict | None = None, scopes: dict = PARADIGM_SCOPE,
+                       solver_of: dict | None = None) -> dict:
     """Group verified models and the problems they cover by paradigm.
+
+    Each integration is also counted under its solver (`solver_of`, by default
+    the integration itself): a solver models a problem when any of its bindings
+    does, so Choco's Java and Python bindings make one entry in a paradigm.
 
     An integration may declare several paradigms, and then counts towards each
     one, so the per-paradigm totals deliberately do not sum to the overall
@@ -822,8 +876,11 @@ def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
     problems = {tag: set() for tag in entries}
     integration_models = {}
     integration_problems = {}
+    solver_problems = {}
     by_paradigm = {}
+    by_paradigm_solver = {}
     per_problem = {}
+    solver_of = solver_of or {}
 
     # A problem one integration has several accepted models for counts once:
     # what is measured is how many problems each integration models.
@@ -831,11 +888,13 @@ def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
     for problem, solver in sorted(pairs):
         integration_models[solver] = integration_models.get(solver, 0) + 1
         integration_problems.setdefault(solver, set()).add(problem)
+        solver_problems.setdefault(solver_of.get(solver, solver), set()).add(problem)
         kind = (problem_types or {}).get(problem)
         for tag in integrations[solver].get("paradigms") or []:
             if kind and tag in scopes and scopes[tag] != kind:
                 continue
             by_paradigm.setdefault(tag, {}).setdefault(solver, set()).add(problem)
+            by_paradigm_solver.setdefault(tag, {}).setdefault(solver_of.get(solver, solver), set()).add(problem)
             if tag not in entries:
                 entries[tag] = {"id": tag, "name": tag, "summary":
                                 "Not described in solvers/paradigms.json."}
@@ -851,6 +910,7 @@ def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
             solver for solver, metadata in integrations.items()
             if tag in (metadata.get("paradigms") or [])
         )
+        item["solvers"] = sorted({solver_of.get(solver, solver) for solver in item["integrations"]})
     # Ties keep the order paradigms.json documents them in.
     order = {item["id"]: i for i, item in enumerate(vocabulary)}
     ranked = sorted(entries.values(),
@@ -860,9 +920,13 @@ def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
         "per_problem": {problem: sorted(tags) for problem, tags in per_problem.items()},
         "integration_models": integration_models,
         "integration_problems": {k: len(v) for k, v in integration_problems.items()},
+        "solver_problems": {k: len(v) for k, v in solver_problems.items()},
         # Problems per integration within one paradigm, after scoping.
         "by_paradigm": {tag: {solver: len(found) for solver, found in solvers.items()}
                         for tag, solvers in by_paradigm.items()},
+        # The same per solver, a problem any of its bindings models counted once.
+        "by_paradigm_solver": {tag: {solver: len(found) for solver, found in solvers.items()}
+                               for tag, solvers in by_paradigm_solver.items()},
     }
 
 
@@ -875,6 +939,15 @@ def model_paradigm(solver_id: str, problem_type: str) -> str:
         if PARADIGM_SCOPE.get(tag, problem_type) == problem_type:
             return tag
     return tags[0] if tags else ""
+
+
+def model_paradigms(solver_id: str, problem_type: str) -> list:
+    """Every paradigm a model of a problem counts towards: its integration's,
+    less any whose scope excludes the problem's type, as paradigm_breakdown
+    counts them. The catalogue's Paradigm filter and the problem page's
+    filter chips read these, so both agree with the Solvers page."""
+    tags = (INTEGRATIONS.get(solver_id) or {}).get("paradigms") or []
+    return [tag for tag in tags if PARADIGM_SCOPE.get(tag, problem_type) == problem_type]
 
 
 def paradigm_chips(solver_id: str, prefix: str) -> str:
@@ -945,32 +1018,91 @@ def backend_label(solver: str, paradigm: str = "") -> str:
 
 
 def paradigm_order(ranked: list) -> list:
-    """Paradigms with the most integrations first, as the Solvers page lists
+    """Paradigms with the most solvers first, as the Solvers page lists
     them; ties keep the order paradigms.json documents them in."""
     order = list(PARADIGM_NAMES)
-    return sorted(ranked, key=lambda item: (-len(item["integrations"]),
+    return sorted(ranked, key=lambda item: (-len(item["solvers"]),
                                             order.index(item["id"]) if item["id"] in order else len(order)))
 
 
+def solver_name(solver: str) -> str:
+    """What the catalogue calls a solver: Choco, or for a solver with one
+    binding that integration's name, CPMpy (Python)."""
+    return (SOLVERS.get(solver) or {}).get("name") or framework_name(solver)
+
+
 def browse_button(solver: str, count: int) -> str:
-    """Opens the catalogue filtered to the problems one integration models;
-    each problem there links straight to that integration's model."""
+    """Opens the catalogue filtered to the problems one solver models; each
+    problem there links straight to that solver's model."""
     if not count:
         return ""
     return f'<a class="browse" href="index.html?framework={esc(solver)}">Browse<span class="browse-long"> models</span> &rarr;</a>'
 
 
+def binding_browse_button(binding: str, count: int) -> str:
+    """The same for one interface of a solver: the catalogue filtered on the
+    solver and the language, whose problems open on that language's tab."""
+    if not count:
+        return ""
+    href = f"index.html?framework={SOLVER_OF[binding]}&language={INTEGRATIONS[binding].get('language', '')}"
+    label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
+    return (f'<a class="binding-browse" href="{esc(href)}" '
+            f'title="The problems with a {esc(label)} model of this solver">{esc(label)} models &rarr;</a>')
+
+
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
-    one integration, under solvers/<id>/skills/. The skill's folder is named after
-    the skill, not the integration, so it is found by globbing."""
-    found = sorted((SOLVERS_DIR / solver / "skills").glob("*/SKILL.md"))
-    if not found:
+    one integration: the interface entry it reads when the skill serves several
+    bindings of one solver, else the skill's SKILL.md."""
+    from generation.skills import integration_skill, interface_entry
+    root = SOLVERS_DIR.resolve().parent
+    skill, interface = integration_skill(root, solver)
+    if not skill:
         return ""
-    name = found[0].parent.name
-    href = f"{REPO_URL}/blob/main/{found[0].as_posix()}"
+    name = Path(skill).name
+    entry = interface_entry(root / skill, interface) if interface else None
+    page = entry.relative_to(root).as_posix() if entry else f"{skill}/SKILL.md"
+    href = f"{REPO_URL}/blob/main/{page}"
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')
+
+
+def solver_skill_button(solver: str) -> str:
+    """The skill a solver's bindings share, at its SKILL.md; a solver with one
+    binding links what that integration's modelling agent reads instead."""
+    info = SOLVERS.get(solver) or {}
+    if len(info.get("bindings") or []) < 2:
+        return skill_button(solver if solver in INTEGRATIONS else (info.get("bindings") or [solver])[0])
+    if not info.get("skill"):
+        return ""
+    href = f"{REPO_URL}/blob/main/{info['skill']}/SKILL.md"
+    return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
+            f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
+
+
+def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, total: int) -> str:
+    """A solver's bindings as quiet sub-rows under its own, native first, in
+    the row's three columns: the language with a link to its part of the
+    shared skill, the problems it models, and a link to those models. Plain
+    text links, so the solver's pills and count stay what the eye lands on."""
+    from generation.skills import integration_skill, interface_entry
+    root = SOLVERS_DIR.resolve().parent
+    cells = []
+    for binding in bindings:
+        anchor = "" if binding in anchored else f' id="solver-{esc(binding)}"'
+        anchored.add(binding)
+        label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
+        skill, interface = integration_skill(root, binding)
+        entry = interface_entry(root / skill, interface) if skill and interface else None
+        skill_link = (f'<a class="binding-skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
+                      f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
+                      if entry else "")
+        cells.append(f'<span class="binding"{anchor}>{esc(label)}{skill_link}</span>'
+                     # The hidden " / 164" lines the count up under the solver's.
+                     f'<span class="binding-count">{found.get(binding, 0)}'
+                     f'<span class="of" aria-hidden="true" style="visibility:hidden"> / {total}</span></span>'
+                     f'<span class="binding-action">{binding_browse_button(binding, modelled.get(binding, 0))}</span>')
+    return "".join(cells)
 
 
 def coverage_count(count, total: int) -> str:
@@ -990,7 +1122,7 @@ def info_tip(tip_id: str, label: str, text: str) -> str:
 def build_paradigms(problems: list, breakdown: dict) -> None:
     """One table: a row per paradigm, expanding to the integrations behind it."""
     ranked = breakdown["paradigms"]
-    integration_problems = breakdown["integration_problems"]
+    solver_problems = breakdown["solver_problems"]
 
     types = {p["id"]: p["type"] for p in problems}
     type_counts = {kind: sum(1 for t in types.values() if t == kind) for kind in set(types.values())}
@@ -999,15 +1131,17 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 
     groups, notes = [], []
     anchored: set = set()
+    listed: set = set()
     for item in by_solvers:
         tag = item["id"]
         scope = PARADIGM_SCOPE.get(tag)
         denominator = type_counts.get(scope, 0) if scope else len(types)
-        found = breakdown["by_paradigm"].get(tag, {})
+        found = breakdown["by_paradigm_solver"].get(tag, {})
+        per_binding = breakdown["by_paradigm"].get(tag, {})
         # The solvers that model the most problems in this paradigm lead;
         # ties read alphabetically by display name.
-        solvers = sorted(item["integrations"], key=lambda solver: (
-            -found.get(solver, 0), INTEGRATIONS[solver].get("name", solver).lower()))
+        solvers = sorted(item["solvers"], key=lambda solver: (
+            -found.get(solver, 0), solver_name(solver).lower()))
         counts = [found.get(solver, 0) for solver in solvers]
 
         mark = ""
@@ -1017,14 +1151,24 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 
         entries = []
         for solver in solvers:
-            # A solver listed under two paradigms keeps its anchor on the first.
+            # A solver listed under two paradigms keeps its anchors on the first.
             anchor = "" if solver in anchored else f' id="solver-{esc(solver)}"'
             anchored.add(solver)
+            listed.add(solver)
+            bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
+            target, rows, kind = "", "", ""
+            if len(SOLVERS[solver]["bindings"]) > 1:
+                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], denominator)
+                kind = ' class="has-bindings"'
+            elif bindings[0] not in anchored:
+                # The integration's own ID stays a target: older links use it.
+                target = f'<span id="solver-{esc(bindings[0])}"></span>'
+            anchored.add(bindings[0])
             entries.append(
-                f'<li{anchor}><span class="solver-name">{esc(INTEGRATIONS[solver].get("name", solver))}'
-                f'{backend_label(solver, tag)}{skill_button(solver)}</span>'
+                f'<li{anchor}{kind}><span class="solver-name">{esc(solver_name(solver))}'
+                f'{backend_label(bindings[0], tag)}{solver_skill_button(solver)}{target}</span>'
                 f'<span class="solver-count">{coverage_count(found.get(solver, 0), denominator)}</span>'
-                f'{browse_button(solver, integration_problems.get(solver, 0))}</li>'
+                f'{browse_button(solver, solver_problems.get(solver, 0)) or "<span></span>"}{rows}</li>'
             )
 
         average = sum(counts) / len(counts) if counts else 0
@@ -1052,7 +1196,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
         groups.append(f'<tbody class="paradigm collapsed" id="{esc(tag)}">{head}{panel}</tbody>')
 
     body = f"""
-    <div class="section"><div class="section-head"><h2>Solvers by paradigm <span class="tab-count">{len(anchored)}</span></h2>
+    <div class="section"><div class="section-head"><h2>Solvers by paradigm <span class="tab-count">{len(listed)}</span></h2>
       <button type="button" class="btn expand-all" aria-pressed="false">Show all</button></div>
       <table class="plain paradigm-table"><thead><tr><th>Abbrev.</th><th>Name</th>
       <th class="num">Solvers</th><th class="num">Avg. problems</th></tr></thead>{"".join(groups)}</table>
@@ -1070,8 +1214,6 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 # --------------------------------------------------------------------------
 # Index page (Problem view)
 # --------------------------------------------------------------------------
-
-IS_OPT_RE = re.compile(r"\b(minimize|maximize)\s*\(")
 
 
 def source_group(meta: dict) -> str:
@@ -1091,18 +1233,23 @@ def build_index(problems: list, generated: dict, breakdown: dict) -> None:
         f'{esc(item["name"])}</label>'
         for item in breakdown["paradigms"] if item["problems"]
     )
-    generated_frameworks = sorted(
-        {
-            framework
-            for models in generated.values()
-            for framework in select_best_generated(models)
-        }
-    )
+    generated_solvers, generated_languages = {}, set()
+    for models in generated.values():
+        for framework, entry in select_best_generated(models).items():
+            generated_solvers.setdefault(SOLVER_OF.get(framework, framework), set()).add(framework)
+            generated_languages.add(model_language_key(entry["metrics"], entry["model_file"]))
+    # A link naming one binding, index.html?framework=choco_python, ticks its solver.
     framework_options = "".join(
-        f'<label><input type="checkbox" data-filter-group="framework" value="{esc(framework)}">'
-        f'{esc(framework_name(framework))}</label>'
-        for framework in sorted(generated_frameworks,
-                                key=lambda s: framework_name(s).casefold())
+        f'<label><input type="checkbox" data-filter-group="framework" value="{esc(solver)}" '
+        f'data-aliases="{esc(" ".join(sorted(generated_solvers[solver])))}">'
+        f'{esc(solver_name(solver))}</label>'
+        for solver in sorted(generated_solvers, key=lambda s: solver_name(s).casefold())
+    )
+    language_options = "".join(
+        f'<label><input type="checkbox" data-filter-group="language" value="{esc(language)}">'
+        f'{esc(LANGUAGES.get(language, ("", language))[1])}</label>'
+        for language in sorted(generated_languages - {""},
+                               key=lambda language: LANGUAGES.get(language, ("", language))[1].casefold())
     )
     body = f"""
     <div class="controls" aria-label="Problem filters">
@@ -1127,6 +1274,12 @@ def build_index(problems: list, generated: dict, breakdown: dict) -> None:
         <button type="button" class="filter-trigger" id="filter-framework" aria-expanded="false">Solver: All</button>
         <div class="filter-options" role="group" aria-label="Filter by the solver of a generated model">
           {framework_options}
+        </div>
+      </div>
+      <div class="filter-menu" data-filter-menu="language">
+        <button type="button" class="filter-trigger" id="filter-language" aria-expanded="false">Language: All</button>
+        <div class="filter-options" role="group" aria-label="Filter by the language of a generated model">
+          {language_options}
         </div>
       </div>
       <button type="button" id="reset-filters" class="reset-btn" disabled>Reset</button>
@@ -1240,10 +1393,15 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
         f'</div>'
     ]
     # The generated models in one row per paradigm, in the Solvers page's
-    # order, each row alphabetical.
+    # order, each row alphabetical: a chip per solver, filed under the
+    # paradigm of the model it opens on.
+    by_solver = {}
+    for fw in best:
+        by_solver.setdefault(SOLVER_OF.get(fw, fw), []).append(fw)
     by_paradigm = {}
-    for fw in sorted(best, key=lambda solver: framework_name(solver).casefold()):
-        by_paradigm.setdefault(model_paradigm(fw, p["type"]), []).append(fw)
+    for solver in sorted(by_solver, key=lambda solver: solver_name(solver).casefold()):
+        by_solver[solver] = native_first(solver, by_solver[solver])
+        by_paradigm.setdefault(model_paradigm(by_solver[solver][0], p["type"]), []).append(solver)
     rank = {tag: i for i, tag in enumerate(PARADIGM_ORDER)}
     rows = [
         '<div class="picker-row reference-row"><span class="picker-label" title="Written by hand; the ground '
@@ -1253,23 +1411,57 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
     ]
     for tag in sorted(by_paradigm, key=lambda tag: (rank.get(tag, len(rank)), tag)):
         buttons = []
-        for fw in by_paradigm[tag]:
-            slug = fw.lower().replace(" ", "_")
-            buttons.append(f'<button class="tab-btn pick" type="button" data-tab="{slug}">'
-                           f'{esc(framework_name(fw))}</button>')
-            panes.append(f'<div class="tab-pane" data-pane="{slug}">'
-                         f'{generated_model_html(best[fw], bool(problem_instances(p)))}</div>')
+        for solver in by_paradigm[tag]:
+            # ?model= may also name one binding, as links did before solvers
+            # were grouped: the chip answers to each of its bindings' IDs.
+            # What the model filters read: a solver's bindings agree on their
+            # paradigms (tests/test_site.py), so the first one's stand for all.
+            languages = " ".join(dict.fromkeys(
+                model_language_key(best[fw]["metrics"], best[fw]["model_file"]) for fw in by_solver[solver]))
+            buttons.append(f'<button class="tab-btn pick" type="button" data-tab="{esc(solver)}" '
+                           f'data-aliases="{esc(" ".join(by_solver[solver]))}" '
+                           f'data-paradigms="{esc(" ".join(model_paradigms(by_solver[solver][0], p["type"])))}" '
+                           f'data-languages="{esc(languages)}">{esc(solver_name(solver))}</button>')
+            panes.append(f'<div class="tab-pane" data-pane="{esc(solver)}">'
+                         f'{solver_models_html(by_solver[solver], best, bool(problem_instances(p)))}</div>')
         label = PARADIGM_ABBREVS.get(tag, tag) or "Other"
         rows.append(
             f'<div class="picker-row"><span class="picker-label" title="{esc(PARADIGM_NAMES.get(tag, label))}">'
             f'{esc(label)}</span><div class="picker-chips">{"".join(buttons)}</div></div>'
         )
+    # app.js fills the filter bar from the address: the catalogue's paradigm,
+    # solver and language filters, each a chip that can be removed.
     return (
         f'<div class="page-section"><h2>Models</h2>'
+        f'<div class="model-filters" hidden></div>'
         f'<div class="tab-group model-group"><div class="tab-bar picker model-picker">{"".join(rows)}</div>'
         + "".join(panes)
         + "</div></div>"
     )
+
+
+def native_first(solver: str, bindings: list) -> list:
+    """Some of a solver's bindings, in the order the Solvers page lists them."""
+    order = (SOLVERS.get(solver) or {}).get("bindings") or []
+    return sorted(bindings, key=lambda binding: (order.index(binding) if binding in order else len(order), binding))
+
+
+def solver_models_html(bindings: list, best: dict, has_instances: bool) -> str:
+    """One solver's models of a problem. With models in several of its
+    bindings, a tab per language, the native one open."""
+    if len(bindings) == 1:
+        return generated_model_html(best[bindings[0]], has_instances)
+    tabs, panes = [], []
+    for i, binding in enumerate(bindings):
+        state = " active" if i == 0 else ""
+        label = model_language(best[binding]["metrics"], best[binding]["model_file"])[1]
+        language = model_language_key(best[binding]["metrics"], best[binding]["model_file"])
+        tabs.append(f'<button class="tab-btn{state}" type="button" data-tab="{esc(binding)}" '
+                    f'data-language="{esc(language)}">{esc(label)}</button>')
+        panes.append(f'<div class="tab-pane{state}" data-pane="{esc(binding)}">'
+                     f'{generated_model_html(best[binding], has_instances)}</div>')
+    return (f'<div class="tab-group binding-group"><div class="tab-bar binding-bar" aria-label="Interface">'
+            f'{"".join(tabs)}</div>{"".join(panes)}</div>')
 
 
 def source_html(category: str) -> str:
@@ -1403,6 +1595,13 @@ def main() -> None:
             if not line:
                 continue
             data = json.loads(line)
+            # The reference model says whether it optimises: an objective can be a
+            # keyword of Model, which a search of the source for minimize( misses.
+            if not isinstance(data.get("is_optimization"), bool):
+                raise SystemExit(
+                    f"{DATASET_JSONL}: {data['id']} has no is_optimization. "
+                    "Rebuild it with `python jsonl_convert.py` inside bench/."
+                )
             meta = parse_metadata(data.get("metadata", []))
             problems.append(
                 {
@@ -1414,7 +1613,7 @@ def main() -> None:
                     "example_solution": data.get("example_solution", {}),
                     "decision_variables": data.get("decision_variables", []),
                     "source": source_group(meta),
-                    "type": "optimization" if IS_OPT_RE.search(data.get("model", "")) else "satisfaction",
+                    "type": "optimization" if data["is_optimization"] else "satisfaction",
                     "meta": meta,
                     "snippet": snippet(plain_text(data.get("description", ""))),
                 }
@@ -1422,13 +1621,16 @@ def main() -> None:
 
     generated = load_generated_models()
 
-    global INTEGRATIONS, PARADIGM_NAMES, PARADIGM_ABBREVS, PARADIGM_ORDER
+    global INTEGRATIONS, SOLVERS, SOLVER_OF, PARADIGM_NAMES, PARADIGM_ABBREVS, PARADIGM_ORDER
     INTEGRATIONS = load_integrations()
+    SOLVERS = load_solvers(INTEGRATIONS)
+    SOLVER_OF = {binding: solver for solver, info in SOLVERS.items() for binding in info["bindings"]}
     vocabulary = load_paradigm_vocabulary()
     PARADIGM_NAMES = {item["id"]: item["name"] for item in vocabulary}
     PARADIGM_ABBREVS = {item["id"]: item.get("abbrev", item["id"]) for item in vocabulary}
     breakdown = paradigm_breakdown(generated, INTEGRATIONS, vocabulary,
-                                   problem_types={p["id"]: p["type"] for p in problems})
+                                   problem_types={p["id"]: p["type"] for p in problems},
+                                   solver_of=SOLVER_OF)
     PARADIGM_ORDER = [item["id"] for item in paradigm_order(breakdown["paradigms"])]
 
     # client-side index data (escaped so it can't break out of <script>)
@@ -1440,11 +1642,20 @@ def main() -> None:
                 "snippet": p["snippet"],
                 "text": plain_text(p["description"]),
                 "instances": len(problem_instances(p)),
-                "generatedFrameworks": sorted(select_best_generated(generated.get(p["id"], {})).keys()),
-                "paradigms": breakdown["per_problem"].get(p["id"], []),
+                # Each model by its integration, with the paradigms it counts
+                # towards here; `modelInfo` below has its solver and language.
+                # The model filters (paradigm, solver, language) all test one model.
+                "models": {framework: model_paradigms(framework, p["type"]) for framework
+                           in sorted(select_best_generated(generated.get(p["id"], {})))},
             }
             for p in problems
-        ]
+        ],
+        "modelInfo": {
+            framework: {"solver": SOLVER_OF.get(framework, framework),
+                        "language": model_language_key(entry["metrics"], entry["model_file"])}
+            for models in generated.values()
+            for framework, entry in select_best_generated(models).items()
+        },
     }
     js = "window.DCP_DATA = " + json.dumps(index_data, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
     (OUTPUT_DIR / "data.js").write_text(js, encoding="utf-8")
@@ -1452,6 +1663,19 @@ def main() -> None:
     # fetched again rather than served from a browser's cache.
     global DATA_VERSION
     DATA_VERSION = digest(js.encode())[:12]
+
+    labels = {
+        "paradigm": {item["id"]: item["name"] for item in breakdown["paradigms"]},
+        "framework": {solver: solver_name(solver) for solver in SOLVERS},
+        "language": {key: label for key, (_grammar, label) in LANGUAGES.items()},
+        # A link may name a binding (framework=choco_java): its solver and language.
+        "binding": {binding: {"solver": solver, "language": INTEGRATIONS[binding].get("language", "")}
+                    for binding, solver in SOLVER_OF.items()},
+    }
+    labels_js = "window.DCP_LABELS = " + json.dumps(labels, ensure_ascii=False).replace("<", "\\u003c") + ";\n"
+    (OUTPUT_DIR / "labels.js").write_text(labels_js, encoding="utf-8")
+    global LABELS_VERSION
+    LABELS_VERSION = digest(labels_js.encode())[:12]
 
     build_index(problems, generated, breakdown)
     build_not_found()

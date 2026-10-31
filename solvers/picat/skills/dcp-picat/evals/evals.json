@@ -1,0 +1,20 @@
+{"skill_name": "dcp-picat", "evals": [
+  {"id": 1, "prompt": "Write a Picat program that places 8 queens on a chessboard so that no two attack each other, and print one placement.", "expected_skill": "dcp-picat",
+   "expected_output": "A cp model with one variable per row, all_different and diagonal constraints, solved with solve/1", "assertions": ["Imports cp", "Posts all_different on columns and on the two diagonal offsets", "Prints the solution only after solve succeeds"]},
+  {"id": 2, "prompt": "In Picat, find every way to split the numbers 1 to 6 into two groups with equal sums and list all the solutions.", "expected_skill": "dcp-picat",
+   "expected_output": "Enumeration with findall over the decision variables only", "assertions": ["Enumerates with findall(Vars, solve(Vars)) or solve_all", "Enumerates only the decision variables, not auxiliary sums"]},
+  {"id": 3, "prompt": "Using Picat, find the minimum-cost assignment of 4 tasks to 4 workers, and all assignments that reach that cost.", "expected_skill": "dcp-picat",
+   "expected_output": "Two passes: prove the optimum with $min, rebuild, post the optimum, then enumerate", "assertions": ["Writes the objective as $min(...) inside the solve options list", "Rebuilds the model before posting the optimum", "Looks up costs with matrix_element/4 or element/3, not by indexing with a variable"]},
+  {"id": 4, "prompt": "Write a Picat model that maximises the total value of a knapsack with capacity 10, and check the solver result.", "expected_skill": "dcp-picat",
+   "expected_output": "A maximise model with $max over the value expression", "assertions": ["Uses $max(...) with the $", "Lists the options before the variables in solve/2"]},
+  {"id": 5, "prompt": "Write a Picat model that schedules five tasks on a machine of capacity 2 using cumulative/4, minimising the makespan.", "expected_skill": "dcp-picat",
+   "expected_output": "A cumulative model with a makespan variable minimised", "assertions": ["Uses cumulative/4 over start times, durations and demands", "Minimises the makespan with $min"]},
+  {"id": 6, "prompt": "Write a Picat program that shows four pigeons cannot fit in three holes, and reports that the model is infeasible.", "expected_skill": "dcp-picat",
+   "expected_output": "An infeasible model that reports the outcome without stopping", "assertions": ["Wraps the constraints and solve in an if condition", "Prints an infeasibility message in the else branch"]},
+  {"id": 7, "prompt": "Write a Python program that uses OR-Tools CP-SAT to solve a knapsack problem.", "expected_skill": null,
+   "expected_output": "The picat skill is not used", "assertions": ["The picat skill is not loaded", "The answer uses OR-Tools, not Picat"]},
+  {"id": 8, "prompt": "Write a MiniZinc model for a 4-queens problem.", "expected_skill": null,
+   "expected_output": "The picat skill is not used", "assertions": ["The picat skill is not loaded"]},
+  {"id": 9, "prompt": "How do I install Picat on Linux and check its version?", "expected_skill": "dcp-picat",
+   "expected_output": "The install steps from the skill, with picat --version", "assertions": ["Gives the download and extraction steps", "Shows picat --version as the check"]}
+]}

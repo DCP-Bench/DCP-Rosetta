@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
-from evaluation.execution import image_identity, run_process
+from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
 
@@ -33,7 +33,7 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
 # entry, because there is no direction in their fixture to turn around.
 def satisfaction_only(solver):
-    path = ROOT / "solvers" / solver / "metadata.json"
+    path = integration_folder(solver, ROOT) / "metadata.json"
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
@@ -100,14 +100,14 @@ class MetadataTests(unittest.TestCase):
         self.vocabulary = json.loads(
             (ROOT / "solvers/paradigms.json").read_text(encoding="utf-8"))
         self.integrations = {
-            path.parent.name: json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted((ROOT / "solvers").glob("*/metadata.json"))
+            solver: json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
+            for solver, folder in integration_folders(ROOT).items()
         }
         # An integration counts as certified once it carries a readiness record,
         # which is also what next_work uses to decide it may be used at all.
         self.certified = {
             solver: metadata for solver, metadata in self.integrations.items()
-            if (ROOT / "solvers" / solver / "readiness.json").is_file()
+            if (integration_folder(solver, ROOT) / "readiness.json").is_file()
         }
 
     def test_paradigm_vocabulary_is_well_formed(self):
@@ -158,8 +158,8 @@ class MetadataTests(unittest.TestCase):
         self.assertIn("Entrypoint", headings, "the mapping checklist lists the required headings")
         for solver in self.integrations:
             with self.subTest(solver=solver):
-                path = ROOT / "solvers" / solver / "CONTRACT.md"
-                self.assertTrue(path.is_file(), f"write solvers/{solver}/CONTRACT.md")
+                path = integration_folder(solver, ROOT) / "CONTRACT.md"
+                self.assertTrue(path.is_file(), f"write {path.relative_to(ROOT)}")
                 present = re.findall(r"^## (.+?)\s*$", path.read_text(encoding="utf-8"), re.M)
                 self.assertEqual([h for h in present if h in headings], headings,
                                  "use every checklist heading, in order")
@@ -203,6 +203,24 @@ class MetadataTests(unittest.TestCase):
             with self.subTest(solver=solver):
                 self.assertIn(metadata["name"], readme,
                               f"README.md does not name the certified integration {metadata['name']!r}")
+
+    def test_every_dockerfile_installs_only_locked_packages(self):
+        """A rebuild, on any machine, has to install what was certified.
+
+        Python packages come from a hashed lock (`python -m evaluation.lock`), so
+        pip installs those exact files or fails. Debian and Ubuntu packages come
+        from the snapshot archive at a fixed time (`solvers/apt-snapshot.sh`), so
+        pinned versions stay installable and unpinned ones resolve the same way.
+        """
+        for solver, folder in integration_folders(ROOT).items():
+            text = re.sub(r"\\\n", " ", (folder / "Dockerfile").read_text(encoding="utf-8"))
+            for command in re.findall(r"^RUN .*$", text, re.MULTILINE):
+                with self.subTest(solver=solver, command=command[:80]):
+                    for install in re.findall(r"pip install [^&;]*", command):
+                        self.assertIn("--require-hashes", install, "install from a hashed lock")
+                    if "apt-get update" in command:
+                        self.assertRegex(command, r"apt-snapshot \d{8}T\d{6}Z && apt-get update",
+                                         "point apt at the snapshot archive first")
 
     def test_every_python_model_imports_its_framework(self):
         """A model is supposed to be written in the framework it claims. Three

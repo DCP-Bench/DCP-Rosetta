@@ -1,0 +1,11 @@
+PASS  all-optimal: sh all-optimal.sh
+PASS  jobshop: savilerow jobshop.eprime jobshop.param -run-solver -solutions-to-stdout
+PASS  json-input: python3 solve.py data.json
+PASS  knapsack: savilerow knapsack.eprime knapsack.param -run-solver -solutions-to-stdout
+PASS  pigeonhole: savilerow model.eprime -run-solver -solutions-to-stdout && grep -E 'SolverSatisfiable|SolverTimeOut' model.eprime.info
+PASS  queens-all: savilerow queens.eprime n6.param -run-solver -all-solutions -S0 -solutions-to-stdout
+PASS  scheduling: savilerow rcpsp.eprime project.param -run-solver -solutions-to-stdout
+PASS  send-more-money: savilerow model.eprime -run-solver -solutions-to-stdout
+PASS  vertex-cover: savilerow cover.eprime graph.param -run-solver -solutions-to-stdout
+
+9/9 passed

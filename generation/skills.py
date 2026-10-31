@@ -16,6 +16,8 @@ import uuid
 
 import yaml
 
+from evaluation.execution import integration_folder
+
 ROOT = Path(__file__).resolve().parents[1]
 # Where canonical skills live: public skills, the Rosetta skills, and solver skills.
 SKILL_ROOTS = ("skills", "rosetta-skills", "solvers")
@@ -79,6 +81,39 @@ def rosetta_mentions(folder):
                  for match in [ROSETTA_TEXT.search(line)] if match]
     return hits
 
+def integration_skill(root, solver_id):
+    """The solver skill an integration's models are written from, and which of its
+    interfaces they use, as (path relative to root, interface).
+
+    An integration nested under its solver, `solvers/<solver>/<interface>/`, uses
+    the one skill its solver's bindings share under `solvers/<solver>/skills/`, in
+    the interface its folder is named after (see interface_entry). A flat
+    integration, `solvers/<id>/`, has its own bundle under `solvers/<id>/skills/`
+    and no interface. The path is None when there is no bundle, or several.
+    """
+    root = Path(root)
+    folder = integration_folder(solver_id, root)
+    nested = folder.parent != root / "solvers"
+    found = sorted(((folder.parent if nested else folder) / "skills").glob("*/SKILL.md"))
+    path = found[0].parent.relative_to(root).as_posix() if len(found) == 1 else None
+    return path, folder.name if nested else None
+
+
+def interface_entry(skill, interface):
+    """The file an agent reads for one interface of a skill: `interfaces/<interface>.md`,
+    or `interfaces/<interface>/README.md` when the interface needs more than one file.
+    None when there is neither, or both."""
+    folder = Path(skill) / "interfaces"
+    found = [path for path in (folder / f"{interface}.md", folder / interface / "README.md") if path.is_file()]
+    return found[0] if len(found) == 1 else None
+
+
+# Every solver skill, solvers/<solver>/skills/<name>/, is named with this prefix: skills
+# have no namespace, and once published a bare solver name (cpmpy, z3) would clash with
+# that solver's own skills.
+SOLVER_SKILL_PREFIX = "dcp-"
+
+
 def validate(folder, project=False):
     folder = Path(folder).resolve()
     text = (folder / "SKILL.md").read_text(encoding="utf-8")
@@ -91,6 +126,8 @@ def validate(folder, project=False):
     name, description = metadata.get("name"), metadata.get("description")
     if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name) or len(name) > 64 or name != folder.name:
         raise ValueError("Skill name must match its directory and use lowercase letters/digits/hyphens")
+    if folder.parent.name == "skills" and folder.parents[2].name == "solvers" and not name.startswith(SOLVER_SKILL_PREFIX):
+        raise ValueError(f"A solver skill's name starts with {SOLVER_SKILL_PREFIX!r}: {SOLVER_SKILL_PREFIX}{name}")
     if not isinstance(description, str) or not description.strip() or len(description) > 1024:
         raise ValueError("Invalid description")
     allowed = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
@@ -114,6 +151,33 @@ def validate(folder, project=False):
             if not target.is_file():
                 raise ValueError(f"Broken resource link: {link} (links must point at an existing file; "
                                  "for a folder, link a file in it such as its README.md)")
+    # The entrypoint routes to each interface, so an interface it does not link
+    # is one no agent finds. An interface with a folder of its own enters through
+    # its README.md, which in turn links every other file of the folder.
+    def links(file):
+        return {(file.parent / link.split("#")[0]).resolve()
+                for link in re.findall(r"\]\(([^)]+)\)", file.read_text(encoding="utf-8"))
+                if "://" not in link and not link.startswith("#") and "<" not in link}
+    interfaces = folder / "interfaces"
+    linked = links(folder / "SKILL.md")
+    entries = sorted(interfaces.glob("*.md")) + sorted(interfaces.glob("*/README.md"))
+    for entry in entries:
+        shown = entry.relative_to(folder).as_posix()
+        if entry.resolve() not in linked:
+            raise ValueError(f"{shown} is not linked from SKILL.md (add it to the interface table)")
+        if entry.name == "README.md":
+            if (interfaces / f"{entry.parent.name}.md").is_file():
+                raise ValueError(f"interfaces/{entry.parent.name} is both a file and a folder; keep one")
+            inside_links = links(entry)
+            for file in sorted(entry.parent.rglob("*")):
+                if file.is_file() and file != entry and file.resolve() not in inside_links:
+                    raise ValueError(f"{file.relative_to(folder).as_posix()} is not linked from {shown}")
+    if interfaces.is_dir():
+        strays = [path.name for path in sorted(interfaces.iterdir())
+                  if not (path.is_file() and path.suffix == ".md") and not (path / "README.md").is_file()]
+        if strays:
+            raise ValueError("interfaces/ holds an <interface>.md file or an <interface>/ folder "
+                             f"with a README.md, not {strays}")
     if project:
         # Provenance is a plain sources.md: which documentation the instructions
         # came from. Bundle bytes are hashed per attempt, where it matters.
@@ -162,7 +226,7 @@ def propose(run, skill, candidate, evidence):
     write(proposal / "proposal.json", {"schema_version": 1, "target": str(skill.relative_to(ROOT)),
           "name": skill.name, "base_hashes": hashes(skill), "candidate_hashes": hashes(candidate),
           "evidence": evidence, "created_at": now(), "status": "proposed"})
-    log_change(proposal, "skill_proposed", {"target": str(skill), "evidence": evidence})
+    log_change(proposal, "skill_proposed", {"target": skill.relative_to(ROOT).as_posix(), "evidence": evidence})
     return str(proposal)
 
 
@@ -176,7 +240,7 @@ def log_change(path, kind, data):
     run = next((p for p in Path(path).parents if (p / "run.json").is_file()), None)
     if run is None:
         raise ValueError("Skill change has no run")
-    _append_event(run, kind, {"proposal": str(path), **data})
+    _append_event(run, kind, {"proposal": Path(path).resolve().relative_to(ROOT).as_posix(), **data})
 
 
 def check_proposal(path, checks_file):
@@ -199,7 +263,8 @@ def check_proposal(path, checks_file):
             raise ValueError("Proposal snapshot changed")
         validate(bundle, project=True)
         for check in checks:
-            argv = [arg.replace("{skill}", str(bundle)) for arg in check["argv"]]
+            # The checks run from the repository root, so the recorded command names no machine path.
+            argv = [arg.replace("{skill}", bundle.relative_to(ROOT).as_posix()) for arg in check["argv"]]
             try:
                 result = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=check.get("timeout", 60))
                 record = {"returncode": result.returncode, "stdout": result.stdout, "stderr": result.stderr}

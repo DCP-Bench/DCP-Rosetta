@@ -1,4 +1,4 @@
-"""Bind solver readiness evidence to the current integration and Docker image."""
+"""Bind solver readiness evidence to the current integration and the recipe its image is built from."""
 from __future__ import annotations
 
 import argparse
@@ -9,12 +9,14 @@ import subprocess
 import sys
 from typing import Any
 
-from evaluation.execution import ROOT as EVALUATION_ROOT, image_identity, integration
+from evaluation.execution import ROOT as EVALUATION_ROOT, image_recipe, integration, integration_folder, recipe
 from evaluation.results import EvaluationError
 
 
 ROOT = EVALUATION_ROOT
-SCHEMA = 1
+# Schema 1 pinned the local Docker image ID, which no other machine (and no
+# rebuild) reproduces. Schema 2 pins the image's recipe instead; see _recipe.
+SCHEMA = 2
 CHECK_SCRIPT = "readiness_test.py"
 
 # Fields of metadata.json the catalogue reads and readiness does not. Renaming
@@ -69,7 +71,7 @@ def _write_new(path: Path, value: Any) -> None:
 
 def _files(solver_id: str) -> tuple[dict[str, Any], dict[str, str]]:
     metadata = integration(solver_id)
-    folder = ROOT / "solvers" / solver_id
+    folder = integration_folder(solver_id, ROOT)
     paths = {"metadata": folder / "metadata.json", "runner": folder / "run.py", "dockerfile": folder / "Dockerfile",
              "checks": folder / CHECK_SCRIPT}
     missing = [name for name, path in paths.items() if not path.is_file()]
@@ -81,6 +83,23 @@ def _files(solver_id: str) -> tuple[dict[str, Any], dict[str, str]]:
     digests = {name: _hash(path) for name, path in paths.items() if name != "metadata"}
     digests["metadata"] = _metadata_digest(metadata)
     return metadata, digests
+
+
+def _recipe(solver_id: str, metadata: dict[str, Any], image: bool = True) -> str:
+    """The integration's recipe digest, after checking the local image was built from it.
+
+    The record pins the recipe, not the local image ID, so it verifies on any
+    machine that builds the image from the same files. The label that
+    evaluation.build stamps on the image is what says it was.
+    """
+    expected = recipe(solver_id, ROOT)
+    if image:
+        built = image_recipe(metadata)
+        if built != expected:
+            state = "has no recipe label" if built is None else "was built from other files"
+            raise ReadinessError(f"Image {metadata['image']} {state}; rebuild it with "
+                                 f"`python -m evaluation.build {solver_id}`")
+    return expected
 
 
 def _required(metadata: dict[str, Any]) -> set[str]:
@@ -176,7 +195,7 @@ def run_checks(solver_id: str, output_dir: str | Path) -> Path:
     zero only when every check passed. Running it here, rather than accepting a
     report someone typed, is what ties the record to an actual execution.
     """
-    script = ROOT / "solvers" / solver_id / CHECK_SCRIPT
+    script = integration_folder(solver_id, ROOT) / CHECK_SCRIPT
     if not script.is_file():
         raise ReadinessError(f"Integration has no {CHECK_SCRIPT}: write one before claiming readiness")
     directory = Path(output_dir).resolve()
@@ -197,8 +216,9 @@ def run_checks(solver_id: str, output_dir: str | Path) -> Path:
     failed = sorted(name for name, value in results.items() if value is not True)
     if failed:
         raise ReadinessError(f"Readiness checks did not pass: {', '.join(failed)}")
-    report = {"image_id": image_identity(integration(solver_id)),
-              "tests": [{"name": name, "passed": True, "evidence": [str(evidence)]} for name in sorted(results)]}
+    # Evidence is named relative to the report, so the report means the same on every checkout.
+    report = {"recipe": _recipe(solver_id, integration(solver_id)),
+              "tests": [{"name": name, "passed": True, "evidence": [evidence.name]} for name in sorted(results)]}
     # The readiness record is the immutable artifact; this report and the raw
     # output are working evidence, so a rerun after a repair may replace them.
     report_file = directory / "readiness-report.json"
@@ -215,13 +235,13 @@ def check(solver_id: str, report_path: str | Path, output_path: str | Path) -> d
     if not isinstance(report, dict):
         raise ReadinessError("Readiness report must be a JSON object")
     metadata, files = _files(solver_id)
-    actual_image = image_identity(metadata)
-    if report.get("image_id") != actual_image:
-        raise ReadinessError("Report image_id does not match the current integration image")
+    actual = _recipe(solver_id, metadata)
+    if report.get("recipe") != actual:
+        raise ReadinessError("Report recipe does not match the current integration recipe")
     tests = _tests(report.get("tests"), metadata, report_file.parent)
     record = {"schema": SCHEMA, "accepted": True, "solver_id": solver_id,
               "metadata": behavioural(metadata),
-              "integration_files": files, "image_id": actual_image, "tests": tests,
+              "integration_files": files, "recipe": actual, "tests": tests,
               "report_sha256": _hash(report_file)}
     _write_new(Path(output_path).resolve(), record)
     return record
@@ -248,7 +268,8 @@ def _verify_tests(values: Any, metadata: dict[str, Any]) -> None:
         raise ReadinessError(f"Readiness record lacks required tests: {', '.join(missing)}")
 
 
-def verify(solver_id: str, record_path: str | Path) -> dict[str, Any]:
+def verify(solver_id: str, record_path: str | Path, image: bool = True) -> dict[str, Any]:
+    """Check a record still describes the integration's files and, with image, the local image."""
     record_file = Path(record_path).resolve()
     record = _read(record_file)
     if not isinstance(record, dict) or record.get("schema") != SCHEMA or record.get("accepted") is not True:
@@ -258,8 +279,10 @@ def verify(solver_id: str, record_path: str | Path) -> dict[str, Any]:
     metadata, files = _files(solver_id)
     if record.get("metadata") != behavioural(metadata) or record.get("integration_files") != files:
         raise ReadinessError("Integration files or metadata changed since readiness check")
-    if record.get("image_id") != image_identity(metadata):
-        raise ReadinessError("Integration image changed since readiness check")
+    if record.get("recipe") != _recipe(solver_id, metadata, image=False):
+        raise ReadinessError("Files the integration image is built from changed since readiness check")
+    if image:
+        _recipe(solver_id, metadata)
     _verify_tests(record.get("tests"), metadata)
     return record
 
@@ -269,16 +292,18 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     check_p = commands.add_parser("check", help="run the integration's checks and record the evidence")
     check_p.add_argument("--solver", required=True); check_p.add_argument("--output", required=True)
-    check_p.add_argument("--evidence-dir", help="where to write the check output (default: beside --output)")
+    check_p.add_argument("--evidence-dir", help="where to write the check output (default: readiness/ beside --output)")
     check_p.add_argument("--report", help="use an existing report instead of running readiness_test.py")
     verify_p = commands.add_parser("verify", help="verify a readiness record remains current")
     verify_p.add_argument("--solver", required=True); verify_p.add_argument("--record", required=True)
+    verify_p.add_argument("--files-only", action="store_true",
+                          help="check the record against the repository alone, without Docker")
     args = parser.parse_args(argv)
     try:
         if args.command == "verify":
-            result = verify(args.solver, args.record)
+            result = verify(args.solver, args.record, image=not args.files_only)
         else:
-            report = args.report or run_checks(args.solver, args.evidence_dir or Path(args.output).resolve().parent)
+            report = args.report or run_checks(args.solver, args.evidence_dir or Path(args.output).resolve().parent / "readiness")
             result = check(args.solver, report, args.output)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0

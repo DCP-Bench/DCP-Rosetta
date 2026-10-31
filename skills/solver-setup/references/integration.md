@@ -1,6 +1,6 @@
 # Integration files
 
-What `solvers/<id>/` holds besides the standalone skill, in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
+What an integration folder `<integration>/` holds besides the standalone skill (`solvers/<solver>/<interface>/` beside the solver's skill), in build order. Full protocol: `evaluation/README.md`; readiness: `generation/AGENTS.md`; enforced rules: `tests/test_solvers.py`.
 
 ## Contents
 
@@ -57,7 +57,22 @@ When the framework binds the data (a typed modelling language):
 
 ## 2. `Dockerfile`
 
-- Pin the base image by digest and every dependency by version.
+- Pin the base image by digest and every dependency by version, so a rebuild on
+  another machine installs what was certified:
+  - Python packages: while setting up, `pip install` them by version. Once the image
+    passes readiness, run `python -m evaluation.lock ID`, which freezes the image and
+    writes the hashed `requirements.txt` beside the Dockerfile, and switch to
+    `COPY <integration>/requirements.txt /opt/requirements.txt` and
+    `RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt`
+    (drop `--only-binary=:all:` when the lock says a package has no wheel). Then
+    rebuild and certify again: the lock changes the recipe.
+  - Debian and Ubuntu packages: `COPY --chmod=0755 solvers/apt-snapshot.sh
+    /usr/local/bin/apt-snapshot` once per stage, and start every apt RUN with
+    `apt-snapshot <UTC time, YYYYMMDDTHHMMSSZ> && apt-get update`, using the time
+    you first build that RUN. Pinned versions then stay installable after the
+    mirrors move on.
+  - Downloads: by checksum (`ADD --checksum=`, or `sha256sum -c`); source checkouts
+    at a fixed tag or commit; Rust with a committed `Cargo.lock` and `--locked`.
 - It runs unprivileged, read-only, without network, with bounded scratch space;
   compilation happens inside it, within its own budget.
 - Check `.dockerignore` before relying on a build file; never widen the context to
@@ -161,7 +176,7 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
 - Use exactly the headings of the *Mapping checklist* in `solvers/CONTRACT.md`:
   `## Submission file`, `## Entrypoint`, `## Instance`, `## Outputs`, `## Objective`,
   `## Solving`, `## Compilation`, `## Environment`, `## Traps`, `## Example`. Follow
-  `solvers/cpmpy_python/CONTRACT.md` as a model.
+  `solvers/cpmpy/python/CONTRACT.md` as a model.
 - State what `run.py` does, not what you meant it to do: signatures, how the instance is
   represented, the output container, the objective form, the settings the runner forces.
 - Every fact about the container (binary paths, environment variables, network,
@@ -172,7 +187,7 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
 
 ## 6. `readiness_test.py`
 
-Adapt `solvers/cpmpy_python/readiness_test.py`, which implements every check below with
+Adapt `solvers/cpmpy/python/readiness_test.py`, which implements every check below with
 a trusted reference. It drives the real evaluator against the built image, prints a JSON
 object of check name to Boolean, and exits nonzero on any failure. Each check must be
 able to fail, with its submission in this integration's own form.

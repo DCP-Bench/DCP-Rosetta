@@ -71,7 +71,9 @@ solve. Output is capped at 8 MiB per stream and container scratch at 512 MiB.
 
 Results carry per-instance outcomes, `instances_available`,
 `unperformed_instances`, `skipped_instances`, limits, timings, model/reference/instance hashes, and
-the image digest actually executed.
+the image actually executed: its local ID and the recipe digest that
+`evaluation.build` labelled it with (see `generation/README.md`). Only the
+recipe means the same on another machine.
 Evaluation stops at the first failure, so `instances_checked` counts only
 passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's
@@ -79,13 +81,13 @@ startup and compilation, so it is not comparable to the runner's
 
 ## Submitting a model
 
-Pick an integration: any `solvers/<id>/` with a `metadata.json`. What a model
+Pick an integration: any integration folder (`solvers/<solver>/<interface>/`) with a `metadata.json`. What a model
 must do, for every integration, is the submission contract
 [solvers/CONTRACT.md](../solvers/CONTRACT.md); how a given integration takes it
-(file, entrypoint, instance, outputs, objective) is its `solvers/<id>/CONTRACT.md`.
-Each `solvers/<id>/` holds `metadata.json`, `run.py`, a `Dockerfile`, the
+(file, entrypoint, instance, outputs, objective) is the `CONTRACT.md` in its folder.
+Each integration folder holds `metadata.json`, `run.py`, a `Dockerfile`, the
 `readiness_test.py` that certifies it, that contract, and a standalone skill for
-the solver under `solvers/<id>/skills/`.
+the solver under `solvers/<solver>/skills/`.
 
 Models are instance-agnostic. Python implements `build(instance)`, C++
 implements `Build(instance, model, outputs)`, MiniZinc declares matching data
@@ -141,14 +143,19 @@ optimality itself and never trusts a claimed objective.
 
 ## Adding an integration
 
-Add a `solvers/<id>/` directory implementing the protocol, plus smoke tests, and
+Add a `solvers/<solver>/<interface>/` directory implementing the protocol, plus smoke tests, and
 a `CONTRACT.md` documenting how it realises [solvers/CONTRACT.md](../solvers/CONTRACT.md).
 The evaluator dispatches on integration ID, never on language name. Metadata
 declares `id`, `image`, `extension`, `enumeration`, descriptive
 language/framework/solver fields, and optionally `compilation: true` to
 allocate the separate compilation budget. Installation belongs in the
 Dockerfile. Shared container code lives in `runner/`, which every image copies;
-`runner/requirements.txt` pins the Python solver stack.
+`runner/requirements.txt` locks the Python solver stack of the CPMpy and
+OR-Tools integrations; the other Python integrations keep their own lock beside
+their Dockerfile. Every lock carries the hash of each wheel, written from a
+certified image by `python -m evaluation.lock`, and Debian and Ubuntu packages
+come from the snapshot archive (`solvers/apt-snapshot.sh`), so a rebuild
+anywhere installs what was certified.
 
 Containers run with no network, a read-only root, an unprivileged user, no
 added capabilities, `no-new-privileges`, and memory/CPU/PID caps. Reference

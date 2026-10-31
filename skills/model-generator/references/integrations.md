@@ -4,10 +4,10 @@ Read this only when the integration you need is missing or unusable.
 
 ## When the integration you need does not exist
 
-Read `rosetta-skills/solver-setup/SKILL.md` and follow it yourself. It needs the
-`skills/add-solver` skill, which generates the standalone skill under
-`solvers/<id>/skills/<name>/`; it then adds `metadata.json`, `Dockerfile`, `run.py`,
-`readiness_test.py` and the integration contract `solvers/<id>/CONTRACT.md`, and runs the
+Read `skills/solver-setup/SKILL.md` and follow it yourself. It writes the standalone
+skill under `solvers/<solver>/skills/dcp-<name>/`; it then adds the integration folder
+`solvers/<solver>/<interface>/` (id `<solver>_<interface>`) with `metadata.json`, `Dockerfile`,
+`run.py`, `readiness_test.py` and the integration contract `CONTRACT.md`, and runs the
 readiness checklist before the integration may be used. An integration without a
 `CONTRACT.md` cannot be used for modelling: `generation.manage attempt` refuses it.
 
@@ -16,7 +16,7 @@ file**, so the record freezes the instructions that guided the work rather than
 whatever they became afterwards:
 
 ```sh
-python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill rosetta-skills/solver-setup --skill skills/add-solver
+python -m generation.manage setup-attempt --run <run-id> --solver SOLVER --skill skills/solver-setup
 ```
 
 Doing it the other way round records the skill after the fact, which
@@ -37,18 +37,18 @@ An integration without a current `readiness.json` is reported as unusable by
 Certify it instead — a one-time job per integration, and the same steps after
 any change that invalidates an existing record:
 
-1. Write `solvers/<id>/readiness_test.py` that drives the repository evaluator
+1. Write `readiness_test.py` in the integration's folder (`solvers/<solver>/<interface>/`) that drives the repository evaluator
    through the whole checklist — satisfaction, changed instances, malformed
    output, empty output, timeout cleanup, isolation, missing image, minimization,
    maximization, enumeration, plus `compilation_error` for a compiled
    integration — printing a JSON object of check name to Boolean and exiting
    nonzero if any failed.
-   `solvers/cpmpy_python/readiness_test.py` is a working example to adapt; the required names are in `generation/AGENTS.md`.
+   `solvers/cpmpy/python/readiness_test.py` is a working example to adapt; the required names are in `generation/AGENTS.md`.
 2. Build the image if it is not present: `python -m evaluation.build <id>`.
 3. Record readiness, which runs your script and keeps its output as evidence:
 
    ```sh
-   python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
+   python -m generation.readiness check --solver ID --output <integration folder>/readiness.json
    ```
 
 The record binds the image identity and the hashes of `metadata.json`, `run.py`,

@@ -1,6 +1,7 @@
 # DCP Rosetta
 
 [![Website](https://img.shields.io/badge/Website-DCP%20Rosetta-4f46e5?logo=googlechrome&logoColor=white)](https://dcp-bench.github.io/DCP-Rosetta/)
+[![skills.sh](https://skills.sh/b/DCP-Bench/DCP-Skills)](https://skills.sh/DCP-Bench/DCP-skills)
 [![Deploy](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml/badge.svg)](https://github.com/DCP-Bench/DCP-Rosetta/actions/workflows/deploy.yml)
 [![License](https://img.shields.io/github/license/DCP-Bench/DCP-Rosetta)](LICENSE)
 
@@ -8,7 +9,9 @@ DCP Rosetta collects executable models of the [DCP-Bench Open](https://github.co
 
 [**Open the interactive catalogue →**](https://dcp-bench.github.io/DCP-Rosetta/)
 
-The generated models shown on the website are a draft collection: every one was
+All models are generated using our collection of [Agent Skills](https://github.com/DCP-Bench/DCP-Skills).
+
+The models shown on the website are a draft collection: every one was
 accepted by this repository's evaluator, but coverage is still growing, so the
 collection is not yet a settled generated-model benchmark. When reporting
 results, cite the DCP Rosetta commit you used; it also pins the version of the
@@ -32,6 +35,11 @@ system.
 `bench/` is pinned to one commit of the problems. To move to their latest
 `main`, run `git submodule update --remote bench` and commit the new pointer.
 
+The [Makefile](Makefile) wraps the commands below and in the skills: `make`
+lists its targets, such as `make serve` for the website, `make test` for the
+tests that need no Docker, and `make check MODEL=... PROBLEM=... SOLVER=...` to
+evaluate one model.
+
 ## The catalogue website
 
 From the repository root, build the static site and serve it:
@@ -42,7 +50,8 @@ python generate_site.py
 python -m http.server 8000 --directory site
 ```
 
-Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
+or `make serve`, which runs the same steps but skips the first, the slow one, while
+`bench/dataset/` is unchanged. Then open <http://localhost:8000/>. The hosted version is the [interactive catalogue](https://dcp-bench.github.io/DCP-Rosetta/).
 
 Alongside the problem catalogue, the
 [solver breakdown](https://dcp-bench.github.io/DCP-Rosetta/paradigms.html)
@@ -50,7 +59,13 @@ groups the verified models by the kind of model they are — constraint
 programming, CLP, MIP, SMT, ASP and so on — with the solvers behind each kind,
 how much of the catalogue each one reaches, and which problems have been
 modelled in more than one of them. Those are the problems worth reading side by
-side.
+side. A solver with several interfaces, such as Choco from Java and from Python,
+is listed once: its native interface, the first its skill's `interfaces:` names,
+shows by default and the others are a tab away.
+The catalogue filters models by
+paradigm, solver and language, all tested on one model: Choco and Java lists
+Choco's Java models. A problem opened from it keeps those filters, as chips that
+can be removed, and offers only the models they accept.
 
 ## Repository Structure
 
@@ -74,12 +89,12 @@ The evaluation framework:
 The model generation framework. *Rosetta* names the collection of models (one per problem
 and framework, shown side by side in the catalogue) and the machinery here that writes and
 checks them: integrations, contracts, evaluator and campaign harness. A Rosetta-independent
-skill works outside this repository; a skill in `rosetta-skills/` works only inside it.
+skill works outside this repository; a skill in `skills/` works only inside it.
 
 | Path | What it holds |
 | --- | --- |
-| `skills/` | Public, Rosetta-independent skills: `add-solver` writes a standalone skill for any solver. |
-| `rosetta-skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework (on top of `add-solver`), `instance-curator` adds instances to the problems in `bench/`. |
+| `skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework and writes its standalone solver skill, `instance-curator` adds instances to the problems in `bench/`. |
+| `solvers/<solver>/skills/dcp-<name>/` | The public, Rosetta-independent solver skills, mirrored to [DCP-Bench/DCP-skills](https://github.com/DCP-Bench/DCP-skills). |
 | `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
 
 
@@ -120,7 +135,7 @@ To check a model against the other instances of a problem, use the evaluation pa
 The same problem modelled in many frameworks is more useful than the same
 problem modelled once, so this repository also contains the machinery to write and evaluate models.
 
-An agent follows `rosetta-skills/model-generator`: it picks work from a queue ordered
+An agent follows `skills/model-generator`: it picks work from a queue ordered
 so that problems with several instances come first (a model that hardcoded the
 example cannot survive a second instance), writes a model from the reference,
 and submits it to the evaluator. A model is kept only when the evaluator
@@ -131,6 +146,6 @@ what the evaluator said, and what was kept, including the attempts that failed.
 
 ## How to Contribute
 
-A new solver integration follows `rosetta-skills/solver-setup`, and new models follow
-`rosetta-skills/model-generator`. New problems and instances belong in the problem
+A new solver integration follows `skills/solver-setup`, and new models follow
+`skills/model-generator`. New problems and instances belong in the problem
 repository linked above.

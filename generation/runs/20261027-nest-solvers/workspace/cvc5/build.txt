@@ -1,0 +1,45 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 477B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [1/4] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 8.53kB done
+#5 DONE 0.1s
+
+#6 [2/4] RUN pip install --no-cache-dir cvc5==1.4.2
+#6 1.319 Collecting cvc5==1.4.2
+#6 1.368   Downloading cvc5-1.4.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (757 bytes)
+#6 1.378 Downloading cvc5-1.4.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (14.3 MB)
+#6 2.317    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.3/14.3 MB 15.6 MB/s eta 0:00:00
+#6 2.333 Installing collected packages: cvc5
+#6 2.586 Successfully installed cvc5-1.4.2
+#6 2.586 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 2.729 
+#6 2.729 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#6 2.729 [notice] To update, run: pip install --upgrade pip
+#6 DONE 3.1s
+
+#7 [3/4] COPY runner/runtime.py /opt/runner/runtime.py
+#7 DONE 0.2s
+
+#8 [4/4] COPY solvers/cvc5/python/run.py /opt/runner/run.py
+#8 DONE 0.2s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.4s done
+#9 writing image sha256:4ed604639d8812d657359183eccfe61117ed1f5fec49e7d98fb95c4e2a7092a5 done
+#9 naming to docker.io/dcp-eval/cvc5_python:v1 0.0s done
+#9 DONE 0.4s

@@ -29,9 +29,17 @@ program the user runs; enumeration in the user's own loop; timings; generic inst
 advice (containers, `PATH`, no network); a comment stating the problem atop a program
 and one in the problem's words before each block of constraints.
 
+## Shared claims
+
+When the skill has `interfaces/`, also report under category `interface` any statement in
+`SKILL.md` that one interface file or the interface table contradicts: a constraint,
+option or status presented as general that a binding lacks or names differently. The
+interface table is the only place where bindings may differ.
+
 ## Output
 
-Write one JSON object to `solvers/<id>/standalone-review.json`, outside the skill folder:
+Write one JSON object to `solvers/<solver>/standalone-review.json` (the folder holding
+`skills/dcp-<name>/`), outside the skill folder. It covers every interface:
 
 ```json
 {

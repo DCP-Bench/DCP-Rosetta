@@ -1,0 +1,66 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 647B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [1/4] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 12.92kB done
+#5 DONE 0.1s
+
+#6 [2/4] RUN pip install --no-cache-dir cplex==22.2.0.1 docplex==2.32.264
+#6 1.588 Collecting cplex==22.2.0.1
+#6 1.655   Downloading cplex-22.2.0.1-cp312-cp312-manylinux2014_x86_64.whl.metadata (56 kB)
+#6 1.796 Collecting docplex==2.32.264
+#6 1.804   Downloading docplex-2.32.264.tar.gz (663 kB)
+#6 1.846      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 664.0/664.0 kB 21.3 MB/s eta 0:00:00
+#6 1.879   Installing build dependencies: started
+#6 2.930   Installing build dependencies: finished with status 'done'
+#6 2.931   Getting requirements to build wheel: started
+#6 3.059   Getting requirements to build wheel: finished with status 'done'
+#6 3.059   Preparing metadata (pyproject.toml): started
+#6 3.176   Preparing metadata (pyproject.toml): finished with status 'done'
+#6 3.198 Collecting six (from docplex==2.32.264)
+#6 3.213   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+#6 3.227 Downloading cplex-22.2.0.1-cp312-cp312-manylinux2014_x86_64.whl (52.2 MB)
+#6 8.128    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.2/52.2 MB 10.7 MB/s eta 0:00:00
+#6 8.136 Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#6 8.170 Building wheels for collected packages: docplex
+#6 8.171   Building wheel for docplex (pyproject.toml): started
+#6 8.461   Building wheel for docplex (pyproject.toml): finished with status 'done'
+#6 8.462   Created wheel for docplex: filename=docplex-2.32.264-py3-none-any.whl size=703859 sha256=c60f4b1314e3e1de7e013e481617ac684a0d4774e72b7a7776b9245e5a73e765
+#6 8.462   Stored in directory: /tmp/pip-ephem-wheel-cache-_n3lcyy0/wheels/97/b5/26/18406a8f08f4c096c3ee64caedd446a4b0b5ea9675c4a214f0
+#6 8.465 Successfully built docplex
+#6 8.470 Installing collected packages: six, cplex, docplex
+#6 9.494 Successfully installed cplex-22.2.0.1 docplex-2.32.264 six-1.17.0
+#6 9.494 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 9.587 
+#6 9.587 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#6 9.587 [notice] To update, run: pip install --upgrade pip
+#6 DONE 10.0s
+
+#7 [3/4] COPY runner/runtime.py /opt/runner/runtime.py
+#7 DONE 0.3s
+
+#8 [4/4] COPY solvers/docplex/python/run.py /opt/runner/run.py
+#8 DONE 0.3s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.5s done
+#9 writing image sha256:76fc9e6df77708ec9041ec6a8f1fae6b9dba4fd8514f1239d8c8bb2b2cd0a4ef done
+#9 naming to docker.io/dcp-eval/docplex_cplex:v1 done
+#9 DONE 0.6s

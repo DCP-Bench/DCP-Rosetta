@@ -25,7 +25,7 @@ class GenerationTests(unittest.TestCase):
                                     RUNS_ROOT=self.root / "generation" / "runs",
                                     GENERATED_ROOT=self.root / "generated_models")
         self.patch.start()
-        readiness = patch.object(manage, "_readiness", return_value={"image_id": "sha256:test"})
+        readiness = patch.object(manage, "_readiness", return_value={"recipe": "sha256:test"})
         readiness.start(); self.addCleanup(readiness.stop)
 
     def tearDown(self):
@@ -42,7 +42,7 @@ class GenerationTests(unittest.TestCase):
                               "tolerate_inconclusive": False},
                 "limits": {key: value for key, value in manage.PROFILE_DEFAULTS.items()
                            if key not in ("instance_count", "solution_limit", "tolerate_inconclusive")},
-                "model_hash": manage._sha256(path), "image": {"id": "sha256:test"},
+                "model_hash": manage._sha256(path), "image": {"id": "sha256:local", "recipe": "sha256:test"},
                 "instances_available": 1, "instances_checked": 1,
                 "solutions_checked": 1, "unperformed_instances": [], "skipped_instances": [],
                 "instances": [{"accepted": True, "solutions_checked": 1}]}

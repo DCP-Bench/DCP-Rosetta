@@ -1,6 +1,8 @@
 """Resource-bounded Docker execution. No implicit builds or dependency installation."""
+import hashlib
 import json
 from pathlib import Path
+import shlex
 import subprocess
 import tempfile
 import threading
@@ -11,6 +13,9 @@ from .results import EvaluationError, strict_json
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_LIMIT = 8 * 1024 * 1024
+PLATFORM = "linux/amd64"
+# The image label evaluation.build stamps with the integration's recipe digest.
+RECIPE_LABEL = "org.dcp-rosetta.recipe"
 
 
 def run_process(command, timeout, input_bytes=None):
@@ -56,10 +61,45 @@ def run_process(command, timeout, input_bytes=None):
     return process.returncode, *(b.decode("utf-8", errors="replace") for b in buffers)
 
 
+def integration_folders(root=ROOT):
+    """Every integration's folder by ID, in ID order.
+
+    An integration is a folder holding metadata.json: `solvers/<id>/`, or, beside
+    the skill its solver's bindings share, `solvers/<solver>/<interface>/`. A nested
+    integration's ID is the `id` in its metadata.json, so an integration keeps its ID
+    (and with it its image and models) when it moves; `<solver>_<interface>` is the
+    convention for new ones and the fallback when metadata.json has no readable ID.
+    A folder under a flat integration is part of it, not an integration of its own.
+    """
+    solvers = Path(root) / "solvers"
+    folders = {path.parent.name: path.parent for path in solvers.glob("*/metadata.json")}
+    for path in solvers.glob("*/*/metadata.json"):
+        solver = path.parent.parent
+        if (solver / "metadata.json").is_file():
+            continue
+        try:
+            solver_id = strict_json(path.read_text(encoding="utf-8"))["id"]
+        except (OSError, ValueError, KeyError, TypeError, EvaluationError):
+            solver_id = None
+        if not isinstance(solver_id, str) or not solver_id:
+            solver_id = f"{solver.name}_{path.parent.name}"
+        if solver_id in folders:
+            raise EvaluationError("infrastructure_error",
+                                  f"Two folders claim integration {solver_id}: {folders[solver_id]} and {path.parent}")
+        folders[solver_id] = path.parent
+    return dict(sorted(folders.items()))
+
+
+def integration_folder(solver_id, root=ROOT):
+    """The folder of one integration (see integration_folders); it need not exist yet,
+    so a missing integration reads as `solvers/<id>/`."""
+    return integration_folders(root).get(solver_id, Path(root) / "solvers" / solver_id)
+
+
 def integration(solver_id):
     if not isinstance(solver_id, str) or not solver_id or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789_" for c in solver_id):
         raise EvaluationError("unsupported_solver", "Use an installed solver integration ID")
-    path = ROOT / "solvers" / solver_id / "metadata.json"
+    path = integration_folder(solver_id) / "metadata.json"
     if not path.is_file():
         raise EvaluationError("unsupported_solver", f"No integration: {solver_id}")
     metadata = strict_json(path.read_text(encoding="utf-8"))
@@ -68,14 +108,84 @@ def integration(solver_id):
     return metadata
 
 
-def image_identity(metadata):
-    code, stdout, stderr = run_process(["docker", "image", "inspect", metadata["image"], "--format", "{{.Id}}"], 15)
+def _copied_sources(dockerfile, root):
+    """The build-context paths a Dockerfile's COPY and ADD instructions read.
+
+    Sources from another stage (--from) and URLs are not in the context: the
+    Dockerfile itself names them, with their checksums.
+    """
+    lines = []
+    for line in dockerfile.read_text(encoding="utf-8").splitlines():
+        if lines and lines[-1].endswith("\\"):
+            lines[-1] = lines[-1][:-1] + " " + line
+        else:
+            lines.append(line)
+    sources = []
+    for line in lines:
+        words = line.strip().split(None, 1)
+        if len(words) != 2 or words[0].upper() not in ("COPY", "ADD"):
+            continue
+        rest = words[1].strip()
+        arguments = json.loads(rest) if rest.startswith("[") else shlex.split(rest)
+        flags = [word for word in arguments if word.startswith("--")]
+        if any(flag.startswith("--from") for flag in flags):
+            continue
+        sources += [word for word in arguments if not word.startswith("--")][:-1]
+    paths = set()
+    for source in sources:
+        if "://" in source:
+            continue
+        matches = sorted(Path(root).glob(source.lstrip("/"))) if any(c in source for c in "*?[") else [Path(root) / source]
+        if not matches or not all(match.exists() for match in matches):
+            raise EvaluationError("infrastructure_error", f"{dockerfile} copies {source}, which is not in the repository")
+        for match in matches:
+            files = [match] if match.is_file() else [path for path in match.rglob("*") if path.is_file()]
+            # As .dockerignore: bytecode never reaches an image.
+            paths.update(path for path in files if "__pycache__" not in path.parts and path.suffix != ".pyc")
+    # By parts, as POSIX sorts paths: a Windows path compares case-insensitively.
+    return sorted(paths, key=lambda path: path.parts)
+
+
+def recipe(solver_id, root=ROOT):
+    """A digest of what an integration's image is built from, the same on every machine.
+
+    It covers the platform, the Dockerfile (which pins base images by digest and
+    downloads by checksum) and every repository file the Dockerfile copies in. A
+    Docker image ID cannot stand in for it: an image rebuilt from the same files
+    gets a new ID, on another machine or on this one.
+    """
+    dockerfile = integration_folder(solver_id, root) / "Dockerfile"
+    if not dockerfile.is_file():
+        raise EvaluationError("infrastructure_error", f"No Dockerfile for integration {solver_id}")
+    digest = hashlib.sha256(f"platform {PLATFORM}\n".encode())
+    for path in [dockerfile, *_copied_sources(dockerfile, root)]:
+        relative = path.resolve().relative_to(Path(root).resolve()).as_posix()
+        digest.update(f"{relative} {hashlib.sha256(path.read_bytes()).hexdigest()}\n".encode())
+    return "sha256:" + digest.hexdigest()
+
+
+def _inspect(metadata, template):
+    code, stdout, stderr = run_process(["docker", "image", "inspect", metadata["image"], "--format", template], 15)
     if code:
         raise EvaluationError("infrastructure_error", f"Image unavailable; start Docker and explicitly build {metadata['id']}. {stderr.strip()}")
-    identity = stdout.strip()
+    return stdout.strip()
+
+
+def image_identity(metadata):
+    """The local image ID. It names the bytes run on this machine only; see recipe."""
+    identity = _inspect(metadata, "{{.Id}}")
     if not identity.startswith("sha256:"):
         raise EvaluationError("infrastructure_error", "Docker did not return an image identity")
     return identity
+
+
+def image_recipe(metadata):
+    """The recipe digest evaluation.build stamped on the local image, or None if it has none."""
+    try:
+        labels = json.loads(_inspect(metadata, "{{json .Config.Labels}}")) or {}
+    except ValueError as error:
+        raise EvaluationError("infrastructure_error", f"Docker returned unreadable labels: {error}") from error
+    return labels.get(RECIPE_LABEL)
 
 
 OOM_REREADS = 8

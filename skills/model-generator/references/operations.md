@@ -26,6 +26,9 @@ All skill levels use the same workflow:
    format, resource links, `sources.md` and eval schema.
 5. Use `generation.skills propose`, then `check` with coordinator-owned trusted
    commands targeting `{skill}`. Both old and candidate versions are tested.
+   A solver skill shared by several bindings is checked for each of them: its
+   examples run per interface (`check_assets.py {skill} --interface I --image
+   IMAGE`), since a change to its `SKILL.md` reaches every binding.
 6. Apply only a validated unchanged proposal using `generation.skills apply`.
    Rejected or untested proposals remain pending with evidence. Meta/setup-skill
    changes take effect on the next attempt/run, never retroactively.

@@ -1,11 +1,13 @@
 """Unit tests for deterministic solver readiness evidence binding."""
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from evaluation.execution import integration_folders
 from generation import readiness
 
 REQUIRED = ["satisfaction", "changed_instances", "malformed_output", "empty_output", "timeout_cleanup",
@@ -40,7 +42,9 @@ class ReadinessTests(unittest.TestCase):
         self.metadata = {"id": "demo", "image": "demo:image", "enumeration": True}
         self.patch = patch.multiple(readiness, ROOT=self.root,
                                     integration=lambda solver: self.metadata if solver == "demo" else None,
-                                    image_identity=lambda metadata: "sha256:image")
+                                    recipe=lambda solver, root: self.recipe,
+                                    image_recipe=lambda metadata: self.built)
+        self.recipe = self.built = "sha256:recipe"
         self.patch.start()
 
     def tearDown(self):
@@ -52,7 +56,7 @@ class ReadinessTests(unittest.TestCase):
     def report(self, names=None):
         required = names or {"satisfaction", "changed_instances", "malformed_output", "empty_output", "timeout_cleanup",
                              "isolation", "missing_image", "minimization", "maximization", "enumeration"}
-        return {"image_id": "sha256:image", "tests": [{"name": name, "passed": True, "evidence": [str(self.evidence)]}
+        return {"recipe": "sha256:recipe", "tests": [{"name": name, "passed": True, "evidence": [str(self.evidence)]}
                                                             for name in sorted(required)]}
 
     def write_report(self, value):
@@ -62,7 +66,7 @@ class ReadinessTests(unittest.TestCase):
         record_path = self.root / "record.json"
         record = readiness.check("demo", self.write_report(self.report()), record_path)
         self.assertTrue(record["accepted"])
-        self.assertEqual(readiness.verify("demo", record_path)["image_id"], "sha256:image")
+        self.assertEqual(readiness.verify("demo", record_path)["recipe"], "sha256:recipe")
 
     def test_rejects_missing_duplicate_failed_and_empty_evidence(self):
         missing = self.report({"satisfaction"})
@@ -168,9 +172,32 @@ class ReadinessTests(unittest.TestCase):
         with self.assertRaisesRegex(readiness.ReadinessError, readiness.CHECK_SCRIPT):
             readiness.run_checks("demo", self.root / "evidence")
 
-    def test_report_image_must_match_actual(self):
-        report = self.report(); report["image_id"] = "sha256:wrong"
+    def test_report_recipe_must_match_actual(self):
+        report = self.report(); report["recipe"] = "sha256:wrong"
         with self.assertRaises(readiness.ReadinessError): readiness.check("demo", self.write_report(report), self.root / "record.json")
+
+    def test_an_image_rebuilt_from_the_same_files_stays_ready(self):
+        """A rebuild, here or on another machine, gives a new image ID but the same recipe."""
+        record = self.root / "record.json"
+        readiness.check("demo", self.write_report(self.report()), record)
+        readiness.verify("demo", record)
+
+    def test_an_image_not_built_from_the_current_files_is_not_ready(self):
+        record = self.root / "record.json"
+        readiness.check("demo", self.write_report(self.report()), record)
+        for built in (None, "sha256:stale"):
+            self.built = built
+            with self.assertRaisesRegex(readiness.ReadinessError, "rebuild it"):
+                readiness.verify("demo", record)
+        # Without Docker, the record is still checked against the repository.
+        readiness.verify("demo", record, image=False)
+        self.recipe = "sha256:edited"
+        with self.assertRaisesRegex(readiness.ReadinessError, "changed since readiness check"):
+            readiness.verify("demo", record, image=False)
+
+    def test_a_check_report_names_its_evidence_relative_to_itself(self):
+        report = json.loads(readiness.run_checks("demo", self.root / "evidence").read_text(encoding="utf-8"))
+        self.assertEqual({path for test in report["tests"] for path in test["evidence"]}, {"readiness-result.json"})
 
 
     def test_a_record_verifies_after_the_repository_moves(self):
@@ -206,6 +233,39 @@ class ReadinessTests(unittest.TestCase):
         record.write_text(json.dumps(stored), encoding="utf-8")
         with self.assertRaisesRegex(readiness.ReadinessError, "repository-relative"):
             readiness.verify("demo", record)
+
+
+class CommittedRecordTests(unittest.TestCase):
+    """The committed records, checked against this checkout without Docker."""
+
+    # Pinned through report_sha256 by records that retained models cite, so
+    # rewriting them would change those records. They predate relative evidence.
+    PINNED = {"generation/runs/20261017-cvc5-python-models/readiness-report.json",
+              "generation/runs/20261017-mip-python-models/readiness-report.json",
+              "generation/runs/20261018-eclipse-clp-models/readiness-report.json",
+              "generation/runs/20261027-nest-solvers/workspace/chuffed/old/readiness-report.json"}
+    # For `git grep -E`: a home folder on Linux or macOS, or a Windows user folder.
+    MACHINE_PATH = r"/home/[A-Za-z0-9_.-]+/|/Users/[A-Za-z0-9_.-]+/|[A-Za-z]:(\\\\|\\|/)Users"
+
+    def test_every_record_matches_the_files_its_image_is_built_from(self):
+        """Editing a runner, a Dockerfile or anything they copy needs a new readiness run."""
+        for solver_id, folder in integration_folders(readiness.ROOT).items():
+            record = folder / "readiness.json"
+            if record.is_file():
+                with self.subTest(solver_id):
+                    readiness.verify(solver_id, record, image=False)
+
+    def test_no_committed_file_names_a_machine_path(self):
+        """A path under someone's home pins a file to one machine and leaks who made it."""
+        try:
+            listed = subprocess.run(["git", "grep", "-lIE", self.MACHINE_PATH], cwd=readiness.ROOT,
+                                    capture_output=True, text=True, check=False)
+        except OSError:
+            self.skipTest("git is not available")
+        self.assertIn(listed.returncode, (0, 1), listed.stderr)
+        found = set(listed.stdout.split()) - self.PINNED
+        self.assertEqual(found, set())
+
 
 if __name__ == "__main__":
     unittest.main()

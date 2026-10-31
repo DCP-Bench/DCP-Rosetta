@@ -3,17 +3,22 @@ skills/** -text whitespace=cr-at-eol
 rosetta-skills/** -text whitespace=cr-at-eol
 # An attempt hashes both submission contracts.
 solvers/CONTRACT.md -text whitespace=cr-at-eol
-solvers/*/CONTRACT.md -text whitespace=cr-at-eol
+solvers/**/CONTRACT.md -text whitespace=cr-at-eol
 # A readiness record hashes these files, so a checkout must reproduce their
 # bytes; core.autocrlf would otherwise invalidate every record. metadata.json is
 # hashed by its parsed behavioural fields rather than its bytes, and is kept
-# here so a checkout still round-trips it unchanged.
-solvers/*/metadata.json -text whitespace=cr-at-eol
-solvers/*/run.py -text whitespace=cr-at-eol
-solvers/*/Dockerfile -text whitespace=cr-at-eol
-solvers/*/readiness_test.py -text whitespace=cr-at-eol
-solvers/*/readiness.json -text whitespace=cr-at-eol
-solvers/*/readiness/** -text whitespace=cr-at-eol
-solvers/*/readiness-*.json -text whitespace=cr-at-eol
+# here so a checkout still round-trips it unchanged. `**` covers both a flat
+# integration, solvers/<id>/, and one nested under its solver, solvers/<solver>/<interface>/.
+solvers/**/metadata.json -text whitespace=cr-at-eol
+solvers/**/run.py -text whitespace=cr-at-eol
+solvers/**/Dockerfile -text whitespace=cr-at-eol
+solvers/**/readiness_test.py -text whitespace=cr-at-eol
+solvers/**/readiness.json -text whitespace=cr-at-eol
+solvers/**/readiness/** -text whitespace=cr-at-eol
+solvers/**/readiness-*.json -text whitespace=cr-at-eol
 solvers/**/skills/** -text whitespace=cr-at-eol
 generation/runs/** -text whitespace=cr-at-eol
+# An integration's recipe digest (evaluation.execution.recipe) hashes every file
+# its Dockerfile copies in: runner/ and whatever an integration folder holds.
+runner/** -text whitespace=cr-at-eol
+solvers/** -text whitespace=cr-at-eol

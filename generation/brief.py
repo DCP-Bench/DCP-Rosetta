@@ -23,7 +23,7 @@ import json
 import sys
 import types
 
-from evaluation.execution import ROOT
+from evaluation.execution import ROOT, integration_folder
 from bench.dcp_bench.reference import embedded_instance, load_reference
 from evaluation.results import EvaluationError
 
@@ -113,7 +113,7 @@ _runners = {}
 def runner(solver_id):
     """The solver's run.py, loaded on the host with the container's `runtime` stubbed."""
     if solver_id not in _runners:
-        path = ROOT / "solvers" / solver_id / "run.py"
+        path = integration_folder(solver_id, ROOT) / "run.py"
         spec = importlib.util.spec_from_file_location(f"runner_{solver_id}", path)
         module = importlib.util.module_from_spec(spec)
         saved = sys.modules.get("runtime")

@@ -16,12 +16,18 @@ skill-name/
 - `SKILL.md` begins with YAML frontmatter containing `name` and `description`.
   Choose a lowercase ASCII letter/digit/hyphen name of 1–64 characters, no leading,
   trailing, or consecutive hyphens. It must equal the containing directory name.
+  A solver skill in this repository, `solvers/<solver>/skills/`, is named `dcp-<solver>`
+  (`dcp-choco`): skills have no namespace, and a bare solver name clashes with the
+  solver's own skills once published.
   Description is nonempty, at most 1024 characters, and explains when to use it.
 - Optional standard fields include `license`, `compatibility` (at most 500
   characters), and `metadata` (string-to-string mapping). Do not invent a license
   for third-party material or infer tool permissions from `allowed-tools`.
-- Keep the entrypoint below 500 lines; put conditional detail into linked
-  references. Every bundled supporting file must have a purpose and a discoverable
+- Keep the entrypoint and each interface file below 500 lines; put conditional
+  detail into linked references, one level deep. A solver skill links every
+  interface entry from its entrypoint: `interfaces/<interface>.md`, or
+  `interfaces/<interface>/README.md`, which links every other file of its folder
+  (`generation.skills validate` checks both). Every bundled supporting file must have a purpose and a discoverable
   link or command. Avoid placeholders and redundant manuals.
 - Resource links are relative to the bundle and resolve after it is copied alone.
   Describe repository-root prerequisites explicitly; do not use `../../...` links
