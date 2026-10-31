@@ -1,29 +1,6 @@
----
-name: jacop-java
-description: JaCoP, a Java constraint programming (CP) solver over finite integer domains; package org.jacop (core, constraints, search). Use when writing, debugging or explaining JaCoP models in Java - scheduling, assignment, puzzles, optimisation with global constraints - or when the user has chosen JaCoP.
-license: Apache-2.0
-compatibility: Requires a JDK 11+ (Java 21 tested) and the org.jacop:jacop jar (AGPL-3.0, no licence key); examples read JSON with org.json
-metadata:
-  domain: constraint-programming
-  solver: jacop
-  paradigm: cp
----
+# JaCoP in Java (org.jacop:jacop)
 
-# JaCoP (Java)
-
-JaCoP is a finite-domain CP solver used as a plain Java library. A model is a
-`Store` holding `IntVar`s, constraints are objects passed to `store.impose(...)`,
-and solving is a separate **search** object you configure: which variables to
-label, in which order, with which values. The one idea to keep in mind: *JaCoP
-only reports a solution once every variable you gave the search is fixed*, so the
-variables you label decide both what a solution is and how many duplicates you see.
-
-## Contents
-- [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling)
-- [Solving](#solving) · [All solutions](#all-solutions) · [Common issues](#common-issues)
-- Runnable examples in `assets/`: `all-solutions` (subset sum, de-duplicated
-  enumeration), `all-optimal` (maximise, then every optimal assignment),
-  `scheduling` (`CumulativeUnary`, minimise makespan)
+JaCoP's native API: a Java library. Shared concepts, outcomes and enumeration strategy: [SKILL.md](../SKILL.md).
 
 ## Install
 
@@ -35,7 +12,7 @@ mkdir -p lib
 curl -fsSLo lib/jacop.jar https://repo1.maven.org/maven2/org/jacop/jacop/4.10.0/jacop-4.10.0.jar
 curl -fsSLo lib/json.jar  https://repo1.maven.org/maven2/org/json/json/20250517/json-20250517.jar
 export CLASSPATH="$PWD/lib/jacop.jar:$PWD/lib/json.jar"
-java Main.java data.json          # JDK 11+: compiles and runs one source file
+java Main.java data.json          # JDK 11+ runs one source file; the examples need 16+ (records)
 ```
 
 The Java API needs no other dependency (Scala and slf4j in its POM serve the
@@ -99,9 +76,10 @@ Comparison strings are `"=="`, `"!="`, `"<"`, `"<="`, `">"`, `">="`.
 | reification `b <-> c` | `new Reified(PrimitiveConstraint c, IntVar b)` |
 | implication, if-then, logic | `Implies(b, c)`, `IfThen(c1, c2)`, `Or(c1, c2)` / `Or(c[])`, `And(...)`, `Not(c)` |
 
-`Reified`, `Implies`, `IfThen`, `Or`, `And` and `Not` take `PrimitiveConstraint`s
-(the `X...` and `LinearInt` family), never global constraints such as `Alldifferent`.
-To reify a global, reify its decomposition.
+`Reified`, `Implies`, `IfThen`, `Or`, `And` and `Not` take `PrimitiveConstraint`s: the
+comparison classes (`XeqC`, `XltY`, ...), `XplusYeqZ`, `XmulCeqZ`, `AbsXeqY`, `LinearInt`
+and `SumInt`. `XmulYeqZ`, `XdivYeqZ`, `XmodYeqZ`, `Max`, `Min` and global constraints such
+as `Alldifferent` are not; to reify one, reify its decomposition.
 
 ## Solving
 
@@ -121,31 +99,13 @@ assigned in the variables: read it with `x.value()`. Outcomes:
 
 - **Maximise** by minimising the negation: `IntVar neg = new IntVar(store, -hi, -lo);
   store.impose(new XmulCeqZ(obj, -1, neg));` then label with cost `neg`. See
-  [assets/all-optimal](assets/all-optimal/README.md).
+  [assets/java/all-optimal](../assets/java/all-optimal/README.md).
 - **Time limit**: `search.setTimeOut(seconds)` or `setTimeOutMilliseconds(ms)`.
 - **Heuristics**: `new SimpleSelect<>(vars, comparator, indomain)`; comparator `null`
   keeps input order, `SmallestDomain` is first-fail, `SmallestMin` suits start
   times; values via `IndomainMin`, `IndomainMax`, `IndomainMiddle`, `IndomainRandom`.
-- **Search order and value choice decide many models.** `SimpleSelect` over every
-  variable in input order, or smallest-domain over auxiliary 0/1 helpers, can fail
-  where an explicit order succeeds. Label the decision variables first and the helper
-  Booleans last; for a minimisation over Boolean flips label the smaller group first;
-  for a 0/1 matrix try column-major order with `IndomainMax`. Test two or three orders
-  on the largest instance before concluding the model is too weak.
-- **No restarts, no dom/wdeg.** For a hard satisfaction instance a static order after
-  ranking values by difficulty, or `SmallestDomain` with `IndomainRandom`, worked where
-  the defaults did not. Cheap wins before any of that: implied sums and prefix bounds,
-  equalities where the problem says exactly, a `Table` over an enumerated pattern space
-  (build the tuples in Java; tens of thousands are fine), and symmetry breaking only
-  where the problem allows it.
-- **Prefer a deterministic order to `IndomainRandom`.** Random value choice without
-  restarts solved a hard puzzle one run in three. Labelling the counters one group at a
-  time, so each new group closes constraints against groups already fixed, was reliable.
-- **Check the first solution, not a later one.** A model can emit a wrong first solution
-  and a right second one when a constraint loses propagation.
-- **Which variables to label**: label every variable whose value you read, plus
-  any auxiliary that propagation does not fix once those are fixed. When unsure,
-  label all of them (decisions first) and de-duplicate, as below.
+  For a 0/1 matrix, column-major order with `IndomainMax` is the order to try first
+  ([SKILL.md](../SKILL.md#solving) has the rest of the search advice).
 - **Errors**: JaCoP reports nothing on stderr for an inconsistent model; it just
   returns `false`. Bad arguments throw Java exceptions (stack trace on stderr).
   `store.consistency()` returning `false` before search means infeasible already.
@@ -160,14 +120,12 @@ int count = search.getSolutionListener().solutionsNo();
 Domain[] first = search.getSolutionListener().getSolution(1);   // 1-based; order of the select's variables
 ```
 
-Every distinct assignment of the **labelled** variables counts, so labelling an
-auxiliary that is not fixed by your outputs yields duplicates. Either label only
-output variables that fix everything else, or print from a listener that keeps a
-`Set` of output tuples: [assets/all-solutions](assets/all-solutions/README.md).
+To avoid duplicates from labelled auxiliaries, print from a listener that keeps a
+`Set` of output tuples: [assets/java/all-solutions](../assets/java/all-solutions/README.md).
 
-**All optimal solutions**: optimise, read the optimum, then build the model again
-in a fresh `Store`, post `XeqC(obj, optimum)` and enumerate. Write the model in a
-method so it can be built twice ([assets/all-optimal](assets/all-optimal/README.md)).
+**All optimal solutions**: after optimising, build the model again in a fresh `Store`,
+post `XeqC(obj, optimum)` and enumerate
+([assets/java/all-optimal](../assets/java/all-optimal/README.md)).
 
 ## Common issues
 
@@ -176,24 +134,27 @@ method so it can be built twice ([assets/all-optimal](assets/all-optimal/README.
 | `Labeling has finished ...` / `DFS1: ...` lines on stdout | search prints by default | `search.setPrintInfo(false)` |
 | element or circuit off by one | `Element` and `Circuit` are 1-based | `Element.choose(i, a, v, -1)`; map circuit values with `- 1` |
 | `ElementInteger(...) is not public` / deprecation warning on `new Element` | constructors hidden or deprecated | use `Element.choose(...)` |
-| more solutions than expected, repeats in output | auxiliary variables labelled | de-duplicate on output tuples ([All solutions](#all-solutions)) |
 | optimum reported after a timeout | only `found` was checked | also require `!search.timeOutOccured` ([Solving](#solving)) |
-| maximisation returns the minimum | `labeling(..., cost)` always minimises | label with the negated objective |
-| second search on the same `Store` gives stale or wrong results | the first solution stays assigned in the store, and constraints added afterwards are not reliably kept | build a fresh `Store` for every search |
 | a constraint seems ignored; a wrong value is accepted | the constraint was built, not imposed (`Element.choose` returns an object) | `store.impose(c)` for every constraint |
 | `Arrays.copyOf(w, n)` weights give an infeasible model with no error | it pads with zeros when `n` exceeds the length, so weights and variables no longer match | give `LinearInt` weight and variable arrays of equal length |
 | `cannot find symbol ... setDom` | `IntVar` has no such method | give the domain in the constructor |
 | `no suitable constructor found for SumInt(..., String, int)` | the sum's right side must be an `IntVar` | `new IntVar(store, n, n)` or `LinearInt` |
-| `... durations must be greater than 0 violated` from `Cumulative` | a zero duration or resource need | drop those tasks from the constraint |
 | `... not in the allowed range` on a large constant | `IntDomain.MaxInt` is 536870909, not 2^31-1 | split a big product into two halves and join them with a `Table` over (x, target/x) |
-| `GCC failure : join domain of x variables doesn't cover all count variables` | `GCC` counts the values 0, 1, 2, ... in order, and a counter's value is one no `x` variable can take | shift the variables so they start at 0 (`XplusCeqZ`) and use one counter per shifted value |
-| an invalid first solution with overlapping or inconsistent items, and no error | an auxiliary placement Boolean was left outside `search`, so channelling from coordinates did not fix it | put the Booleans that define the model in the labelled array, not only the coordinates derived from them |
+| `GCC failure : join domain of x variables doesn't cover all count variables` | `GCC` counts the values 0, 1, 2, ... in order | shift the variables so they start at 0 (`XplusCeqZ`) and use one counter per shifted value |
 | a conditional step such as `x - 3 = y` fails on every branch | an unconditional `XplusCeqZ` holds on all branches | `Reified(XeqC(selector, k), b)` then `Implies(b, c)` |
-| a product-of-sums objective, or squares via `XmulYeqZ`, never proves the optimum | weak propagation | use Boolean membership with linear sums, or a Table, where possible |
+| a product-of-sums objective, or squares via `XmulYeqZ`, never proves the optimum | weak propagation | use Boolean membership with linear sums, or a `Table`, where possible |
 | `ArrayIndexOutOfBoundsException` inside `LinearInt` / `SumInt` | posted over an empty array | skip the constraint, or compare the constant 0 directly |
 | `is not abstract and does not override` / generic errors with `SimpleSelect` | raw types | use `IntVar[]` and `new SimpleSelect<>(..)`, `new IndomainMin<>()` |
 | global constraint passed to `Reified` / `Or` will not compile | those take `PrimitiveConstraint` only | reify a decomposition ([Modelling](#modelling)) |
 | a printed value is wrong although `labeling` returned `true` | that variable was not in the search and is still unfixed: `value()` then silently returns a domain bound | add it to the labelled array; `x.singleton()` tells whether it is fixed |
+
+## Runnable examples
+
+In `assets/java/`, each folder with its `README.md`, the program and `data.json`:
+[all-solutions](../assets/java/all-solutions/README.md) (subset sum, de-duplicated
+enumeration), [all-optimal](../assets/java/all-optimal/README.md) (maximise, then every
+optimal assignment), [scheduling](../assets/java/scheduling/README.md) (`CumulativeUnary`,
+minimise makespan).
 
 ## Further reading
 

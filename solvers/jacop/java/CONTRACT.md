@@ -1,12 +1,12 @@
 # jacop_java: how this runner realises the submission contract
 
-Read [the submission contract](../CONTRACT.md) first; this file only says how JaCoP in Java
+Read [the submission contract](../../CONTRACT.md) first; this file only says how JaCoP in Java
 expresses it. Runner: [run.py](run.py), which compiles the submission with `javac` and starts the
 driver [java/dcp/jacop/Runner.java](java/dcp/jacop/Runner.java), which owns the search, the optimum
 proof, the enumeration and the protocol. The only helper class a submission sees is
 [java/dcp/jacop/Model.java](java/dcp/jacop/Model.java). It wraps no JaCoP API: variables and
 constraints are JaCoP's own classes, created on the `Store` the runner hands over. The solver skill
-([skills/jacop-java/SKILL.md](skills/jacop-java/SKILL.md)) teaches standalone programs with their own
+([skills/dcp-jacop/SKILL.md](../skills/dcp-jacop/SKILL.md)) teaches standalone programs with their own
 `main` and search; this file describes the submission form only.
 
 ## Submission file
@@ -121,7 +121,7 @@ read-only filesystem except `/tmp`, unprivileged. No licence key or size limits.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_jacop_java.java](../../tests/fixtures/model_jacop_java.java)
+The pilot fixture [tests/fixtures/model_jacop_java.java](../../../tests/fixtures/model_jacop_java.java)
 (instance fields `n`, `optimize`; outputs `x`, `y`):
 
 ```java
