@@ -23,8 +23,8 @@ import json
 import sys
 import types
 
-from evaluation.execution import ROOT
-from evaluation.reference import embedded_instance, load_reference
+from evaluation.execution import ROOT, integration_folder
+from bench.dcp_bench.reference import embedded_instance, load_reference
 from evaluation.results import EvaluationError
 
 RECTANGULAR_UNIFORM = "rectangular_uniform"
@@ -73,7 +73,7 @@ def describe(value):
 
 
 def instance_rows(problem):
-    path = ROOT / "dataset" / problem / f"{problem}.json"
+    path = ROOT / "bench" / "dataset" / problem / f"{problem}.json"
     try:
         rows = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
@@ -91,7 +91,7 @@ def instance_of(problem):
     rows = instance_rows(problem)
     if rows:
         return rows[0]
-    source = ROOT / "dataset" / problem / f"{problem}.cpmpy.py"
+    source = ROOT / "bench" / "dataset" / problem / f"{problem}.cpmpy.py"
     if not source.is_file():
         return None
     try:
@@ -113,7 +113,7 @@ _runners = {}
 def runner(solver_id):
     """The solver's run.py, loaded on the host with the container's `runtime` stubbed."""
     if solver_id not in _runners:
-        path = ROOT / "solvers" / solver_id / "run.py"
+        path = integration_folder(solver_id, ROOT) / "run.py"
         spec = importlib.util.spec_from_file_location(f"runner_{solver_id}", path)
         module = importlib.util.module_from_spec(spec)
         saved = sys.modules.get("runtime")
@@ -171,7 +171,7 @@ def shape_of(value):
 
 
 def brief(problem):
-    source = (ROOT / "dataset" / problem / f"{problem}.cpmpy.py").read_text(encoding="utf-8")
+    source = (ROOT / "bench" / "dataset" / problem / f"{problem}.cpmpy.py").read_text(encoding="utf-8")
     rows = instance_rows(problem)
     instance = rows[0] if rows else embedded_instance(source)
     model, outputs = load_reference(source, instance)
@@ -196,7 +196,7 @@ def brief(problem):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("problem", help="the problem id, as under dataset/")
+    parser.add_argument("problem", help="the problem id, as under bench/dataset/")
     args = parser.parse_args(argv)
     try:
         print(json.dumps(brief(args.problem), indent=2, sort_keys=True))

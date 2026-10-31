@@ -1,0 +1,70 @@
+{
+  "accepted": false,
+  "detail": "Unsupported PB item: <class 'hermax.model.variables._VectorElementInt'>",
+  "evaluator_version": 1,
+  "image": {
+    "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+    "tag": "dcp-eval/hermax:v1"
+  },
+  "instances": [
+    {
+      "accepted": false,
+      "checking_seconds": 1.4849938452243805e-06,
+      "detail": "Unsupported PB item: <class 'hermax.model.variables._VectorElementInt'>",
+      "execution_wall_seconds": 0.6334928389405832,
+      "id": "example",
+      "instance_hash": "31ae3ffc518aa0a5eb4bc075616ab3894593c98e95eb3bfe78741b5be5d5700c",
+      "is_optimization": false,
+      "oom_killed": false,
+      "optimum": null,
+      "outputs": [
+        "hil"
+      ],
+      "reason": "execution_error",
+      "reference_setup_seconds": 1.2051529490854591,
+      "runner_status": {
+        "detail": "Unsupported PB item: <class 'hermax.model.variables._VectorElementInt'>",
+        "status": "error",
+        "type": "status"
+      },
+      "solutions_checked": 0,
+      "solutions_received": 0,
+      "stderr": "Traceback (most recent call last):\n  File \"/opt/runner/run.py\", line 186, in <module>\n    main()\n  File \"/opt/runner/run.py\", line 136, in main\n    model, outputs = load(request[\"instance\"])\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/runner/run.py\", line 61, in load\n    returned = module.build(instance)\n               ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/input/model.py\", line 69, in build\n    m &= (handshakes[i] + handshakes[j] == max_handshakes)\n          ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/variables.py\", line 870, in __add__\n    return self._as_pbexpr().__add__(other)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/expressions.py\", line 1452, in __add__\n    return self._merge(PBExpr.from_item(other), +1)\n                       ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/expressions.py\", line 1410, in from_item\n    raise TypeError(f\"Unsupported PB item: {type(item)!r}\")\nTypeError: Unsupported PB item: <class 'hermax.model.variables._VectorElementInt'>\n"
+    }
+  ],
+  "instances_available": 5,
+  "instances_checked": 0,
+  "limits": {
+    "compilation_timeout": 300,
+    "cpus": 1,
+    "execution_timeout": 180,
+    "memory_mb": 2048,
+    "reference_timeout": 180
+  },
+  "model_hash": "4c647601c35df8428a42bf4ccb526cb727c9ec1fa1ad82cb7e225611fc8fb606",
+  "problem_id": "handshaking",
+  "reason": "execution_error",
+  "reference_hash": "6e0d6650271f5d480fa03235ece6f71602ce37a799ac2fc69cb1a6f4529091f1",
+  "reference_runtime": {
+    "cpmpy": "1.0.0",
+    "numpy": "2.4.6",
+    "ortools": "9.15.6755",
+    "python": "3.13.2"
+  },
+  "requested": {
+    "instance_count": 99,
+    "instance_ids": null,
+    "solution_limit": 2,
+    "tolerate_inconclusive": true
+  },
+  "skipped_instances": [],
+  "solutions_checked": 0,
+  "solver_id": "hermax",
+  "total_wall_seconds": 1.977553450036794,
+  "unperformed_instances": [
+    "json:1",
+    "json:2",
+    "json:3",
+    "json:4"
+  ]
+}

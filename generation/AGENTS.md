@@ -3,13 +3,14 @@
 The contract an agent works to. `generation/README.md` is the short human
 overview; this file is the exact syntax, schemas and rules.
 
-`rosetta-skills/model-generator` runs the campaign loop; `rosetta-skills/solver-setup` creates or
+`skills/model-generator` runs the campaign loop; `skills/solver-setup` creates or
 repairs integrations. One agent reads them and does the work. What a model must look
 like is in two repository files both skills share: the submission contract
-`solvers/CONTRACT.md`, and each integration's `solvers/<id>/CONTRACT.md` saying how that
-integration realises it. How to model with a solver is in its standalone skill: the
-released copy under `skills/solvers/`, or the development copy under `solvers/<id>/skills/`
-until it is released; `next_work` reports which as each integration's `skill`. These Python
+`solvers/CONTRACT.md`, and each integration's `CONTRACT.md` saying how that
+integration realises it. An integration's folder is `solvers/<solver>/<interface>/` (id
+`<solver>_<interface>`), beside the standalone skill its solver's bindings share under
+`solvers/<solver>/skills/`. `next_work` reports each integration's `skill`, and its `interface`
+when the skill is shared. These Python
 commands provide records and checks; they do not choose a solver, call an LLM
 provider, or replace the skills.
 Use the repository Python environment from the repository root. All operations
@@ -43,9 +44,9 @@ python -m generation.instances check PROBLEM candidates.json [--append]
 python -m generation.instances recheck PROBLEM --instances json:K ... [--flag] [--jobs N]
 ```
 
-`rosetta-skills/instance-curator` is the procedure. `status` lists problems with data
+`skills/instance-curator` is the procedure. `status` lists problems with data
 fields and fewer than 5 distinct instances, leaving out those listed under
-"Instances not added" in `SOURCES.md`. `check` takes a JSON list of candidate
+"Instances not added" in `bench/SOURCES.md`. `check` takes a JSON list of candidate
 records and refuses one with missing or extra fields, a changed value type or
 nesting, a new ragged or mixed-type field, inputs equal to a listed instance,
 no `note`, or a reference that does not find a solution (or prove the optimum)
@@ -70,8 +71,8 @@ relative to the repository), `instance`, `instance_hash`, `reason`, `detail`,
 
 ```sh
 python -m generation.manage init --run RUN --config config.json
-python -m generation.manage setup-attempt --run RUN --solver SOLVER --skill rosetta-skills/solver-setup --skill skills/add-solver
-python -m generation.manage attempt --run RUN --problem abbots_puzzle --solver SOLVER --skill rosetta-skills/model-generator --skill SOLVER_SKILL --agent "TOOL (MODEL-ID)"
+python -m generation.manage setup-attempt --run RUN --solver SOLVER --skill skills/solver-setup
+python -m generation.manage attempt --run RUN --problem abbots_puzzle --solver SOLVER --skill skills/model-generator --skill SOLVER_SKILL --agent "TOOL (MODEL-ID)"
 python -m generation.manage evaluate --attempt ATTEMPT_PATH --model MODEL_PATH
 python -m generation.manage retain --attempt ATTEMPT_PATH
 python -m generation.manage status --run RUN
@@ -123,7 +124,7 @@ child beneath `generated_models/PROBLEM/SOLVER/`.
 
 ## Integration readiness
 
-Every integration ships `solvers/<id>/readiness_test.py`, a required artifact
+Every integration ships `readiness_test.py` in its folder, a required artifact
 alongside the runner and Dockerfile. It drives the evaluator against the built
 image, prints a JSON object mapping check name to Boolean on stdout, and exits
 nonzero if any check failed. `generation.readiness check` runs it, keeps its
@@ -141,13 +142,13 @@ covers one check per runner bug class the campaigns exposed: `output_shapes`,
 `instance_shapes`, `error_detail`, `stray_stdout`, `large_model`; when it optimises,
 `optimization_timeout` and `minimization_step_one`; when it enumerates,
 `auxiliary_free_distinct`; and when it does both, `optimum_enumeration`.
-`solvers/cpmpy_python/readiness_test.py` implements all of them. Named checks must match actual
+`solvers/cpmpy/python/readiness_test.py` implements all of them. Named checks must match actual
 test assertions in the evidence; the coordinator is responsible for that
 assessment. The helper prevents omission/stale evidence, not falsified reports.
 
 ```sh
-python -m generation.readiness check --solver ID --output solvers/ID/readiness.json
-python -m generation.readiness verify --solver ID --record solvers/ID/readiness.json
+python -m generation.readiness check --solver ID --output <integration folder>/readiness.json
+python -m generation.readiness verify --solver ID --record <integration folder>/readiness.json
 ```
 
 **A committed record does not survive a rebuild, so a fresh checkout has to
@@ -163,7 +164,7 @@ consult readiness, so evaluating models needs only the built image.
 integration whose checks genuinely cannot run from one script; prefer the script.
 
 The record binds actual image identity, the hashes of `run.py`, `Dockerfile`
-and `readiness_test.py`, the behavioural fields of `metadata.yaml`, and the
+and `readiness_test.py`, the behavioural fields of `metadata.json`, and the
 evidence hashes, so editing any of them invalidates it. `name` and `paradigms`
 are excluded: the catalogue reads them, the container does not, and hashing the
 whole file once invalidated every record over a rename. Attempt creation, evaluation, and retention
@@ -175,8 +176,8 @@ path.
 ## Skill provenance and improvement (all skill levels)
 
 ```sh
-python -m generation.skills validate rosetta-skills/model-generator --project
-python -m generation.skills propose --run RUN --skill rosetta-skills/model-generator --candidate working/model-generator --evidence "Failure cause and run evidence path"
+python -m generation.skills validate skills/model-generator --project
+python -m generation.skills propose --run RUN --skill skills/model-generator --candidate working/model-generator --evidence "Failure cause and run evidence path"
 python -m generation.skills check PROPOSAL_PATH --checks trusted-checks.json
 python -m generation.skills apply PROPOSAL_PATH
 ```
@@ -187,7 +188,7 @@ behavioural eval manifest. An attempt records each skill by reference, not by co
 ran against, whether that path had uncommitted changes, and a hash of its bytes.
 Evaluation and retention re-hash the live bundles and both contracts, so editing a
 skill or a contract mid-attempt is refused. `propose`/`apply` accept skills under
-`skills/`, `rosetta-skills/` and `solvers/`. That record is what ties a model to the skill version behind it.
+`skills/` and `solvers/`. That record is what ties a model to the skill version behind it.
 
 `trusted-checks.json` is a nonempty list such as:
 
@@ -210,51 +211,13 @@ attempt records the skill afresh; existing attempts never adopt edits retroactiv
 Tests executed by these helpers are evidence, not an adversarial security
 boundary against another process with write access to the repository.
 
-## Releasing a solver skill
-
-Solver skills are developed in `solvers/<id>/skills/<name>/` and released, when the user
-decides, to the public skill repository `skills/solvers/<name>/`. Never edit a released copy
-directly; change the source and release again.
-
-```sh
-python -m generation.release digest ID                 # what a standalone review must name
-python -m generation.release publish ID -m "what changed" --review REVIEW.json [--bump patch|minor|major | --version X.Y.Z] [--dry-run]
-python -m generation.release status [--strict]
-python -m generation.release withdraw NAME -m "why"
-```
-
-`publish` stages the git-tracked files of the source, refuses uncommitted changes (unless
-`--allow-dirty`, which is recorded), a skill that fails `generation.skills validate --project`,
-and one that names this repository (`generation.skills rosetta-mentions`: `DCP-Bench`,
-image tags, repository paths, `build(instance)`, ...). It also needs a clean standalone
-review (`rosetta-skills/solver-setup/references/standalone-review.md`): a fresh agent's JSON
-verdict that the skill teaches the solver, not this benchmark's harness, naming the digest
-`release digest` prints, so it covers exactly what ships. `--skip-review` releases without
-one and the ledger records that. It
-copies the skill wholesale and stamps `metadata.version` into the published `SKILL.md`. The
-first release is `0.1.0`, and `--bump` defaults to `patch`, so `--bump major` declares a
-skill stable at `1.0.0`. It records the release in `skills/versions.json`: version, the
-digest of the published folder, the digest of the source content, the source commit and git
-tree, whether the source was dirty, the review (reviewer and file hash), the readiness record and image, the `Tested with` line
-of `sources.md`, and the earlier releases. It regenerates the catalog table in
-`skills/README.md` and the `solvers` plugin in `skills/.claude-plugin/marketplace.json`,
-which lists every released solver skill so install tools show them as one group (meta
-skills such as add-solver sit in a hand-maintained `meta` plugin). That plugin has no
-`version`, so Claude Code follows commits and picks up every release. It prepends to `skills/CHANGELOG.md`,
-and prints a commit message. It never commits. Unchanged content is a no-op unless
-`--bump`/`--version` is given.
-
-`status` lists every solver skill as unreleased, up to date, or changed since release, and
-flags a published copy that was edited directly, is missing or is not in the ledger;
-`--strict` exits 1 on those.
-
 ## Behavioural evaluations
 
 The skill bundles contain `evals/evals.json` with prompts and observable
 assertions. They are specifications, not stored pass claims.
 
 ```sh
-python -m generation.behaviour prepare --skill rosetta-skills/model-generator --case empty-solvers --output TRIAL_DIRECTORY
+python -m generation.behaviour prepare --skill skills/model-generator --case empty-solvers --output TRIAL_DIRECTORY
 python -m generation.behaviour assess TRIAL_DIRECTORY --assessment assessment.json
 ```
 

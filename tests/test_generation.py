@@ -25,7 +25,7 @@ class GenerationTests(unittest.TestCase):
                                     RUNS_ROOT=self.root / "generation" / "runs",
                                     GENERATED_ROOT=self.root / "generated_models")
         self.patch.start()
-        readiness = patch.object(manage, "_readiness", return_value={"image_id": "sha256:test"})
+        readiness = patch.object(manage, "_readiness", return_value={"recipe": "sha256:test"})
         readiness.start(); self.addCleanup(readiness.stop)
 
     def tearDown(self):
@@ -42,7 +42,7 @@ class GenerationTests(unittest.TestCase):
                               "tolerate_inconclusive": False},
                 "limits": {key: value for key, value in manage.PROFILE_DEFAULTS.items()
                            if key not in ("instance_count", "solution_limit", "tolerate_inconclusive")},
-                "model_hash": manage._sha256(path), "image": {"id": "sha256:test"},
+                "model_hash": manage._sha256(path), "image": {"id": "sha256:local", "recipe": "sha256:test"},
                 "instances_available": 1, "instances_checked": 1,
                 "solutions_checked": 1, "unperformed_instances": [], "skipped_instances": [],
                 "instances": [{"accepted": True, "solutions_checked": 1}]}
@@ -52,7 +52,7 @@ class GenerationTests(unittest.TestCase):
         attempt = self.new_attempt()
         record = manage._read(attempt / "attempt.json")
         self.assertFalse((attempt / "skill").exists())
-        self.assertEqual(record["skill_source"], str(Path("skills") / "demo"))
+        self.assertEqual(record["skill_source"], "skills/demo")
         self.assertEqual(record["skill_bundle_hash"], manage._skill_hash(self.root / "skills" / "demo"))
         self.assertEqual(set(record["skill_version"]), {"path", "commit", "modified"})
         # Every file counts, so a change anywhere in the bundle moves the hash.
@@ -289,12 +289,12 @@ class GenerationTests(unittest.TestCase):
 
     def test_work_queue_reports_blockers_and_remaining_pairs(self):
         """An integration without readiness is unusable, so its pairs are not offered."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
-        (self.root / "dataset" / "p2").mkdir(parents=True)
-        (self.root / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         generated = self.root / "generated_models"
         with patch.multiple(next_work, ROOT=self.root, GENERATED=generated),              patch.object(next_work, "integration", return_value={"id": "s1", "enumeration": True}):
             unready = next_work.report()
@@ -304,10 +304,10 @@ class GenerationTests(unittest.TestCase):
             # Listing an unusable integration is opt-in, and still not coverage.
             self.assertEqual(next_work.report(include_unready=True)["eligible_pairs"], 2)
             # A problem with several instances comes first: hardcoding cannot hide there.
-            (self.root / "dataset" / "p2" / "p2.json").write_text('[{}, {}, {}]', encoding="utf-8")
+            (self.root / "bench" / "dataset" / "p2" / "p2.json").write_text('[{}, {}, {}]', encoding="utf-8")
             ordered = next_work.report(include_unready=True)["next_pairs"]
             self.assertEqual([x["problem"] for x in ordered], ["p2", "p1"])
-            (self.root / "dataset" / "p2" / "p2.json").unlink()
+            (self.root / "bench" / "dataset" / "p2" / "p2.json").unlink()
             (self.root / "solvers" / "s1" / "readiness.json").write_text("{}", encoding="utf-8")
             kept = generated / "p1" / "s1" / "run-attempt-001"
             kept.mkdir(parents=True)
@@ -334,12 +334,12 @@ class GenerationTests(unittest.TestCase):
 
     def test_recorded_blockers_leave_the_queue(self):
         """A pair known not to be worth retrying must not keep being offered."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
-        (self.root / "dataset" / "p2").mkdir(parents=True)
-        (self.root / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p2").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p2" / "p2.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         blockers = self.root / "blockers.json"
         with patch.multiple(next_work, ROOT=self.root, GENERATED=self.root / "generated_models",
                             BLOCKERS=blockers),              patch.object(next_work, "integration", return_value={"id": "s1", "enumeration": True}):
@@ -361,10 +361,10 @@ class GenerationTests(unittest.TestCase):
 
     def test_flagged_models_no_longer_cover_their_pair(self):
         """A model a later instance disproved is shown, but its pair is offered again."""
-        (self.root / "dataset" / "p1").mkdir(parents=True)
-        (self.root / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
+        (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)
+        (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
-        (self.root / "solvers" / "s1" / "metadata.yaml").write_text("{}", encoding="utf-8")
+        (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
         kept = self.root / "generated_models" / "p1" / "s1" / "run-attempt-001"
         kept.mkdir(parents=True)
         (kept / "record.json").write_text(

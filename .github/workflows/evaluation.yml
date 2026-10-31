@@ -10,7 +10,7 @@ on:
       - 'generation/**'
       - 'skills/**'
       - 'tests/**'
-      - 'dataset/**'
+      - 'bench'
       - 'eval.py'
       - 'requirements.txt'
       - '.gitattributes'
@@ -19,19 +19,29 @@ on:
 jobs:
   evaluation:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # With an empty layer cache, evaluation.build takes about 39 minutes: 26 from
+    # the slow apt snapshot mirrors, the rest writing the cache and loading images.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m unittest tests.test_evaluation tests.test_generation tests.test_skill_workflow tests.test_readiness -v
-      - run: python -m generation.skills validate rosetta-skills/model-generator --project
-      - run: python -m generation.skills validate rosetta-skills/solver-setup --project
-      - run: python -m generation.release status --strict
+      - run: make validate-skills
       - run: python -m generation.next_work --limit 1
-      - run: python -m evaluation.build
+      - uses: docker/setup-buildx-action@v4
+        id: buildx
+        with:
+          use: false
+      # Exposes the cache service's URL and token, which only actions see by default.
+      - uses: crazy-max/ghaction-github-runtime@v4
+      - run: python -m evaluation.build --gha-cache
+        env:
+          BUILDX_BUILDER: ${{ steps.buildx.outputs.name }}
       - run: python -m unittest tests.test_solvers tests.test_generation_containers -v
         env:
           DCP_CONTAINER_TESTS: '1'

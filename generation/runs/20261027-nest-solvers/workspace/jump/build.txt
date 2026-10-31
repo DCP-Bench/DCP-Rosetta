@@ -1,0 +1,43 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.31kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/julia:1.12-bookworm@sha256:709daad7eccdb0363b080df203601988cff8c6a9581162668b76804cca407888
+#2 DONE 0.7s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/julia:1.12-bookworm@sha256:709daad7eccdb0363b080df203601988cff8c6a9581162668b76804cca407888
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 27.59kB done
+#5 DONE 0.0s
+
+#6 [3/7] COPY solvers/jump/julia/Project.toml solvers/jump/julia/Manifest.toml /opt/jump/
+#6 CACHED
+
+#7 [6/7] COPY solvers/jump/julia/run.py /opt/runner/run.py
+#7 CACHED
+
+#8 [5/7] COPY runner/runtime.py /opt/runner/runtime.py
+#8 CACHED
+
+#9 [2/7] RUN apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1  && rm -rf /var/lib/apt/lists/*
+#9 CACHED
+
+#10 [4/7] RUN julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile(); using JuMP, HiGHS, JSON'  && chmod -R a+rX /opt/julia-depot /opt/jump
+#10 CACHED
+
+#11 [7/7] COPY solvers/jump/julia/driver.jl /opt/runner/driver.jl
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:36289b32243fac7875319df1498408132b051e2562814ead2df7f68345bac957 done
+#12 naming to docker.io/dcp-eval/jump_highs:v1 0.0s done
+#12 DONE 0.1s

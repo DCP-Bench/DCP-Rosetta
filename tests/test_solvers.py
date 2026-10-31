@@ -5,15 +5,15 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
-from evaluation.execution import image_identity, run_process
+from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
 
 PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_sat.py",
           "ortools_cp_sat_cpp": "model.cpp", "chuffed_cpp": "model_chuffed.cpp", "minizinc_gecode": "model.mzn",
-          "z3_python": "model_z3.py", "clingo_asp": "model_clingo.lp",
-          "swipl_clpfd": "model_swipl.pl", "pulp_cbc": "model_pulp.py",
-          "pumpkin_rust": "model.rs", "pindakaas_rust": "model_pindakaas.rs", "choco_python": "model_choco.py",
+          "z3_python": "model_z3.py", "cvc5_python": "model_cvc5.py", "clingo_asp": "model_clingo.lp",
+          "swipl_clpfd": "model_swipl.pl", "pulp_cbc": "model_pulp.py", "mip_cbc": "model_mip.py",
+          "pumpkin_rust": "model.rs", "huub_rust": "model_huub.rs", "pindakaas_rust": "model_pindakaas.rs", "choco_python": "model_choco.py",
           "pysat": "model_pysat.py", "paramita_python": "model_paramita.py", "hermax": "model_hermax.py",
           "exact": "model_exact.py", "gurobipy_python": "model_gurobipy.py",
           "docplex_cplex": "model_docplex.py", "picat": "model_picat.pi",
@@ -21,15 +21,18 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
           "essence_prime_minion": "model_essence.eprime",
           "pycsp3_ace": "model_pycsp3.py",
           "gecode_cpp": "model_gecode.cpp",
+          "highs_cpp": "model_highs_cpp.cpp",
           "scip_python": "model_scip.py",
           "idp_z3": "model_idp.idp",
-          "choco_java": "model_choco_java.java"}
+          "choco_java": "model_choco_java.java",
+          "eclipse_clp": "model_eclipse.ecl",
+          "maxicp_java": "model_maxicp_java.java"}
 
 # Integrations whose metadata says they cannot optimize. The pilot cases that
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
 # entry, because there is no direction in their fixture to turn around.
 def satisfaction_only(solver):
-    path = ROOT / "solvers" / solver / "metadata.yaml"
+    path = integration_folder(solver, ROOT) / "metadata.json"
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
@@ -37,10 +40,14 @@ def satisfaction_only(solver):
 MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_python": ("minimize", "maximize"),
                       "ortools_cp_sat_cpp": ("Minimize", "Maximize"), "chuffed_cpp": ("OPT_MIN", "OPT_MAX"), "minizinc_gecode": ("minimize", "maximize"),
                       "z3_python": ("minimize", "maximize"),
+                      "cvc5_python": ("minimize", "maximize"),
                       "clingo_asp": ("minimize", "maximize"),
                       "swipl_clpfd": ("min(", "max("),
+                      "eclipse_clp": ("min(", "max("),
                       "pulp_cbc": ("LpMinimize", "LpMaximize"),
+                      "mip_cbc": ("mip.MINIMIZE", "mip.MAXIMIZE"),
                       "pumpkin_rust": ("minimise", "maximise"),
+                      "huub_rust": ("minimise", "maximise"),
                       "choco_python": ("minimize", "maximize"),
                       # hermax carries its objective on model.obj rather than
                       # in a keyword, so the swap replaces the whole expression
@@ -57,7 +64,9 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       "essence_prime_minion": ("minimising", "maximising"),
                       "pycsp3_ace": ("minimize", "maximize"),
                       "gecode_cpp": ("minimize(", "maximize("),
+                      "highs_cpp": ("minimize(", "maximize("),
                       "choco_java": ("Model.MINIMIZE", "Model.MAXIMIZE"),
+                      "maxicp_java": ("minimize", "maximize"),
                       "paramita_python": ("minimize", "maximize"),
                       "scip_python": ("minimize", "maximize"),
                       "idp_z3": ("minimize", "maximize")}
@@ -89,14 +98,14 @@ class MetadataTests(unittest.TestCase):
         self.vocabulary = json.loads(
             (ROOT / "solvers/paradigms.json").read_text(encoding="utf-8"))
         self.integrations = {
-            path.parent.name: json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted((ROOT / "solvers").glob("*/metadata.yaml"))
+            solver: json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
+            for solver, folder in integration_folders(ROOT).items()
         }
         # An integration counts as certified once it carries a readiness record,
         # which is also what next_work uses to decide it may be used at all.
         self.certified = {
             solver: metadata for solver, metadata in self.integrations.items()
-            if (ROOT / "solvers" / solver / "readiness.json").is_file()
+            if (integration_folder(solver, ROOT) / "readiness.json").is_file()
         }
 
     def test_paradigm_vocabulary_is_well_formed(self):
@@ -147,8 +156,8 @@ class MetadataTests(unittest.TestCase):
         self.assertIn("Entrypoint", headings, "the mapping checklist lists the required headings")
         for solver in self.integrations:
             with self.subTest(solver=solver):
-                path = ROOT / "solvers" / solver / "CONTRACT.md"
-                self.assertTrue(path.is_file(), f"write solvers/{solver}/CONTRACT.md")
+                path = integration_folder(solver, ROOT) / "CONTRACT.md"
+                self.assertTrue(path.is_file(), f"write {path.relative_to(ROOT)}")
                 present = re.findall(r"^## (.+?)\s*$", path.read_text(encoding="utf-8"), re.M)
                 self.assertEqual([h for h in present if h in headings], headings,
                                  "use every checklist heading, in order")
@@ -193,12 +202,30 @@ class MetadataTests(unittest.TestCase):
                 self.assertIn(metadata["name"], readme,
                               f"README.md does not name the certified integration {metadata['name']!r}")
 
+    def test_every_dockerfile_installs_only_locked_packages(self):
+        """A rebuild, on any machine, has to install what was certified.
+
+        Python packages come from a hashed lock (`python -m evaluation.lock`), so
+        pip installs those exact files or fails. Debian and Ubuntu packages come
+        from the snapshot archive at a fixed time (`solvers/apt-snapshot.sh`), so
+        pinned versions stay installable and unpinned ones resolve the same way.
+        """
+        for solver, folder in integration_folders(ROOT).items():
+            text = re.sub(r"\\\n", " ", (folder / "Dockerfile").read_text(encoding="utf-8"))
+            for command in re.findall(r"^RUN .*$", text, re.MULTILINE):
+                with self.subTest(solver=solver, command=command[:80]):
+                    for install in re.findall(r"pip install [^&;]*", command):
+                        self.assertIn("--require-hashes", install, "install from a hashed lock")
+                    if "apt-get update" in command:
+                        self.assertRegex(command, r"apt-snapshot \d{8}T\d{6}Z && apt-get update",
+                                         "point apt at the snapshot archive first")
+
     def test_every_python_model_imports_its_framework(self):
         """A model is supposed to be written in the framework it claims. Three
         integrations once shipped a repository-local modelling layer instead,
         and every model for them imported that rather than the framework, which
         no evaluator could notice: the answers were right, the models were not
-        in the language they were advertised in. `framework` in metadata.yaml
+        in the language they were advertised in. `framework` in metadata.json
         matches the import name for every Python integration here.
 
         This only covers Python. The Rust, MiniZinc, Prolog and C++

@@ -1,0 +1,54 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 480B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 159B done
+#3 DONE 0.1s
+
+#4 [1/5] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 9.03kB done
+#5 DONE 0.1s
+
+#6 [2/4] RUN pip install --no-cache-dir clingo==5.8.2
+#6 1.501 Collecting clingo==5.8.2
+#6 1.550   Downloading clingo-5.8.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (1.2 kB)
+#6 1.624 Collecting cffi (from clingo==5.8.2)
+#6 1.633   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+#6 1.647 Collecting pycparser (from cffi->clingo==5.8.2)
+#6 1.655   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+#6 1.669 Downloading clingo-5.8.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (2.3 MB)
+#6 1.804    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 20.2 MB/s eta 0:00:00
+#6 1.813 Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+#6 1.833 Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+#6 1.849 Installing collected packages: pycparser, cffi, clingo
+#6 2.063 Successfully installed cffi-2.1.1 clingo-5.8.2 pycparser-3.12
+#6 2.063 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#6 2.157 
+#6 2.157 [notice] A new release of pip is available: 25.0.1 -> 26.2.2
+#6 2.157 [notice] To update, run: pip install --upgrade pip
+#6 DONE 2.4s
+
+#7 [3/4] COPY runner/runtime.py /opt/runner/runtime.py
+#7 DONE 0.4s
+
+#8 [4/4] COPY solvers/clingo/asp/run.py /opt/runner/run.py
+#8 DONE 0.3s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.5s done
+#9 writing image sha256:42fee0eb837a2087a66e13b79b7ae106b3ef7fd44f7bfaee4837568d6e346c1b done
+#9 naming to docker.io/dcp-eval/clingo_asp:v1 0.0s done
+#9 DONE 0.6s

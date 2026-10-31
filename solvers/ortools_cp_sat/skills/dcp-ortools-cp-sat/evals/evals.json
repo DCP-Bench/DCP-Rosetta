@@ -1,0 +1,216 @@
+{
+  "skill_name": "dcp-ortools-cp-sat",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a C++ program using OR-Tools CP-SAT that completes a 4x4 Latin square from the clues in a 4x4 grid (0 for empty cells), prints the status and the completed grid, and builds with CMake.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "A CMake project with a satisfy model: AllDifferent per row and column, clues as equalities, status checked before the values are read",
+      "assertions": [
+        "Converts std::vector<IntVar> to std::vector<LinearExpr> before AddAllDifferent",
+        "Checks the status is OPTIMAL or FEASIBLE before reading values with SolutionIntegerValue",
+        "Links ortools::ortools through find_package(ortools CONFIG REQUIRED)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Using OR-Tools CP-SAT from C++, list every subset of {2, 3, 4, 5, 6, 7} that sums to 10, with a count at the end.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Three subsets, enumerated over Boolean decision variables with a solution observer",
+      "assertions": [
+        "Enables enumerate_all_solutions and sets num_workers to 1",
+        "Enumerates only decision variables, with no auxiliary variable that could repeat a subset",
+        "Prints the count of solutions found"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "With OR-Tools CP-SAT in C++, find the cheapest way to choose 3 of 6 candidates with at least one from each group, then list every choice that reaches the minimum cost.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "The optimum, then every optimal choice enumerated from a second model with cost fixed to the optimum",
+      "assertions": [
+        "Solves for the optimum first and checks the status is OPTIMAL",
+        "Builds a second model with the objective equal to the optimum and no objective, rather than adding a bound to the first model",
+        "Enumerates with set_enumerate_all_solutions(true) and one worker"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Write an OR-Tools CP-SAT C++ model that assigns 4 workers to 4 tasks from a cost table at minimum total cost.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "A minimise model using AddElement over a constant cost row and AddAllDifferent over the task variables",
+      "assertions": [
+        "Passes the constant cost row to AddElement as a span of int64_t and the task variable as the index",
+        "Uses Minimize on an integer linear expression",
+        "Reads the optimum from response.objective_value() only after the status check"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Schedule five tasks with precedences on a resource of capacity 3 using OR-Tools CP-SAT in C++, minimising the makespan.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "A cumulative model with interval variables, precedence constraints and a makespan objective",
+      "assertions": [
+        "Creates interval variables with NewFixedSizeIntervalVar and posts them through AddCumulative(capacity) with AddDemand",
+        "Minimises a makespan variable that is at least every task finish time"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Install OR-Tools for C++ on a Debian 12 machine and confirm it works by building a small CP-SAT model.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "The binary archive is downloaded, checked against its SHA-256, extracted, and CMAKE_PREFIX_PATH is set before a CMake build",
+      "assertions": [
+        "Verifies the archive with the published SHA-256 before extracting it",
+        "Sets CMAKE_PREFIX_PATH rather than passing a hard-coded path to every cmake call"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Using OR-Tools CP-SAT in C++, schedule three jobs whose operations run in order on three machines, where each machine does one operation at a time, to minimise the makespan. Read the instance from a JSON file given on the command line.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "A job-shop model with one AddNoOverlap per machine over std::vector<IntervalVar>, precedence inside each job, a makespan objective, and nlohmann/json reading argv[1]",
+      "assertions": [
+        "Posts one AddNoOverlap call per machine, not one over all intervals",
+        "Passes the machine's intervals as a std::vector<IntervalVar> to AddNoOverlap",
+        "Reads the instance path from argv[1] with nlohmann/json and links nlohmann_json::nlohmann_json through CMake"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Write a Python CP-SAT model that picks 2 of 4 items with values 3, 3, 3 and 1 to maximise total value, and lists every optimal pick. Use OR-Tools from Python.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "All optimal solutions enumerated after clearing the objective",
+      "files": [],
+      "assertions": [
+        "Solves for the optimum first and reads objective_value as an integer",
+        "Posts the objective as a constraint and calls clear_objective before enumerating",
+        "Uses enumerate_all_solutions with a solution callback over the Boolean picks",
+        "Reports three optimal solutions"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Use CP-SAT in Python to find the fewest coins from {1, 5, 6, 9} that make 23, and check whether the solver proved the optimum.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Minimum of 3 coins with status OPTIMAL",
+      "files": [],
+      "assertions": [
+        "Models the counts as integer variables bounded by the amount",
+        "Minimises the sum of counts",
+        "Checks the status is OPTIMAL before reading the objective"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Write a CP-SAT model in Python that enumerates all 3-element subsets of 1..6 summing to 10.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Three subsets: [1, 3, 6], [1, 4, 5], [2, 3, 5]",
+      "files": [],
+      "assertions": [
+        "Uses enumerate_all_solutions with a CpSolverSolutionCallback",
+        "Records only the Boolean picks, not auxiliary variables"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "My CP-SAT model reports INFEASIBLE for 4 pigeons in 3 holes. Is that a bug in the solver?",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Explain that INFEASIBLE is a proof, not an error",
+      "files": [],
+      "assertions": [
+        "States that INFEASIBLE means proven no solution exists",
+        "Does not treat it as a solver failure"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "Solve a small job scheduling problem with CP-SAT in Python: 5 tasks sharing 2 units of a resource, with precedences, minimising the makespan.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Interval variables with add_cumulative and a minimised makespan",
+      "files": [],
+      "assertions": [
+        "Uses new_interval_var and add_cumulative",
+        "Defines the makespan and minimises it"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Use OR-Tools CP-SAT from Python to schedule 3 jobs on 3 machines, where each job visits its machines in a fixed order and each machine runs one operation at a time. Minimise the makespan.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Makespan 11 with status OPTIMAL",
+      "files": [],
+      "assertions": [
+        "Creates one interval variable per operation and one add_no_overlap per machine",
+        "Adds job-order precedences between consecutive operations of a job",
+        "Minimises a makespan defined with add_max_equality over the last operations",
+        "Checks the status is OPTIMAL before reading the makespan"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "Colour a graph with OR-Tools CP-SAT in Python so adjacent nodes get different colours, using as few colours as possible. Edges: 0-1, 1-2, 2-3, 3-0, 0-2.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "3 colours, status OPTIMAL",
+      "files": [],
+      "assertions": [
+        "Adds an inequality constraint for each edge",
+        "Minimises the largest colour index with add_max_equality rather than a count of colours",
+        "Reports 3 distinct colours"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "My CP-SAT model maximises 0.5 times a variable z and reports the optimum. My supervisor's checker rejects it because the objective is a float. How do I fix it with CP-SAT?",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "Scale the objective to integer coefficients",
+      "files": [],
+      "assertions": [
+        "Says that the objective must have integer coefficients",
+        "Explains that a local solve succeeding does not prove the model is accepted",
+        "Rewrites the objective with integer coefficients and keeps the same optimum"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Enumerate all solutions with OR-Tools CP-SAT in Python for three Booleans where exactly five must be true. What does an empty result mean?",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "No solutions, reported by status INFEASIBLE",
+      "files": [],
+      "assertions": [
+        "Explains the callback is never called when there are no solutions",
+        "Reads the status INFEASIBLE rather than treating an empty list as an error"
+      ]
+    },
+    {
+      "prompt": "Model a small scheduling problem with OR-Tools CP-SAT and enumerate every optimal schedule. I have not chosen a language yet.",
+      "expected_skill": "dcp-ortools-cp-sat",
+      "expected_output": "The skill's interface table routes to one interface file; the model enumerates all optimal solutions",
+      "assertions": [
+        "Reads SKILL.md and picks an interface from the table",
+        "Solves for the optimum, fixes the objective, then enumerates"
+      ],
+      "id": 17
+    },
+    {
+      "id": 18,
+      "prompt": "Write a MiniZinc model for the 8-queens problem and solve it with Gecode.",
+      "expected_skill": null,
+      "expected_output": "The ortools-cp-sat skill is not used: a different solver and language are named",
+      "assertions": [
+        "The OR-Tools skill is not loaded",
+        "The answer uses MiniZinc, not CP-SAT"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Write a Gurobi model in Python for the same knapsack problem.",
+      "expected_skill": null,
+      "expected_output": "The skill is not used",
+      "files": [],
+      "assertions": [
+        "ortools-cp-sat is not loaded"
+      ]
+    }
+  ]
+}

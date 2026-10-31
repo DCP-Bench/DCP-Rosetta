@@ -1,0 +1,16 @@
+{"skill_name": "dcp-exact", "evals": [
+  {"id": 1, "prompt": "Write an Exact Python model that picks integer quantities of two products to maximise profit under two resource limits, and check the status is proven optimal.", "expected_skill": "dcp-exact",
+   "expected_output": "A model using setObjective with minimize=False and toOptimum, which reports SAT only as a proven optimum and flips the sign of the maximised value", "assertions": ["Uses Exact's addVariable, addConstraint and setObjective", "Reads the value from toOptimum and negates it for a maximisation", "Accepts only the SAT state as a proven optimum"]},
+  {"id": 2, "prompt": "Enumerate every solution of a small Exact model, without counting auxiliary variables twice.", "expected_skill": "dcp-exact",
+   "expected_output": "A runFull(optimize=False) loop with invalidateLastSol over the declared variables only", "assertions": ["Blocks solutions with invalidateLastSol(names) on the declared variables", "Stops when runFull returns UNSAT"]},
+  {"id": 3, "prompt": "Enumerate all optimal solutions of a 0/1 selection model with Exact.", "expected_skill": "dcp-exact",
+   "expected_output": "Solve for the optimum, pin the objective at that value, then enumerate", "assertions": ["Pins the real objective terms at the optimum with addConstraint", "Enumerates with invalidateLastSol over the decision variables"]},
+  {"id": 4, "prompt": "Model 'either x is at most 3 or at least 8' in Exact.", "expected_skill": "dcp-exact",
+   "expected_output": "Two reified switch variables and a disjunction", "assertions": ["Uses addReification or addLeftReification/addRightReification with a head variable", "Requires one of the switches to hold"]},
+  {"id": 5, "prompt": "Write a Gurobi model for knapsack in Python.", "expected_skill": null,
+   "expected_output": "The exact skill is not used", "assertions": ["The exact skill is not loaded"]},
+  {"id": 6, "prompt": "Write a CP-SAT model for n-queens with all_different.", "expected_skill": null,
+   "expected_output": "The exact skill is not used", "assertions": ["The exact skill is not loaded"]},
+  {"id": 7, "prompt": "Explain what a pseudo-Boolean solver is, in general terms.", "expected_skill": null,
+   "expected_output": "The exact skill is not used", "assertions": ["The exact skill is not loaded"]}
+]}

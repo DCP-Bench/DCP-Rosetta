@@ -71,7 +71,9 @@ solve. Output is capped at 8 MiB per stream and container scratch at 512 MiB.
 
 Results carry per-instance outcomes, `instances_available`,
 `unperformed_instances`, `skipped_instances`, limits, timings, model/reference/instance hashes, and
-the image digest actually executed.
+the image actually executed: its local ID and the recipe digest that
+`evaluation.build` labelled it with (see `generation/README.md`). Only the
+recipe means the same on another machine.
 Evaluation stops at the first failure, so `instances_checked` counts only
 passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's
@@ -79,13 +81,13 @@ startup and compilation, so it is not comparable to the runner's
 
 ## Submitting a model
 
-Pick an integration: any `solvers/<id>/` with a `metadata.yaml`. What a model
+Pick an integration: any integration folder (`solvers/<solver>/<interface>/`) with a `metadata.json`. What a model
 must do, for every integration, is the submission contract
 [solvers/CONTRACT.md](../solvers/CONTRACT.md); how a given integration takes it
-(file, entrypoint, instance, outputs, objective) is its `solvers/<id>/CONTRACT.md`.
-Each `solvers/<id>/` holds `metadata.yaml`, `run.py`, a `Dockerfile`, the
+(file, entrypoint, instance, outputs, objective) is the `CONTRACT.md` in its folder.
+Each integration folder holds `metadata.json`, `run.py`, a `Dockerfile`, the
 `readiness_test.py` that certifies it, that contract, and a standalone skill for
-the solver under `skills/`.
+the solver under `solvers/<solver>/skills/`.
 
 Models are instance-agnostic. Python implements `build(instance)`, C++
 implements `Build(instance, model, outputs)`, MiniZinc declares matching data
@@ -141,14 +143,19 @@ optimality itself and never trusts a claimed objective.
 
 ## Adding an integration
 
-Add a `solvers/<id>/` directory implementing the protocol, plus smoke tests, and
+Add a `solvers/<solver>/<interface>/` directory implementing the protocol, plus smoke tests, and
 a `CONTRACT.md` documenting how it realises [solvers/CONTRACT.md](../solvers/CONTRACT.md).
 The evaluator dispatches on integration ID, never on language name. Metadata
 declares `id`, `image`, `extension`, `enumeration`, descriptive
 language/framework/solver fields, and optionally `compilation: true` to
 allocate the separate compilation budget. Installation belongs in the
 Dockerfile. Shared container code lives in `runner/`, which every image copies;
-`runner/requirements.txt` pins the Python solver stack.
+`runner/requirements.txt` locks the Python solver stack of the CPMpy and
+OR-Tools integrations; the other Python integrations keep their own lock beside
+their Dockerfile. Every lock carries the hash of each wheel, written from a
+certified image by `python -m evaluation.lock`, and Debian and Ubuntu packages
+come from the snapshot archive (`solvers/apt-snapshot.sh`), so a rebuild
+anywhere installs what was certified.
 
 Containers run with no network, a read-only root, an unprivileged user, no
 added capabilities, `no-new-privileges`, and memory/CPU/PID caps. Reference
@@ -159,6 +166,10 @@ every staged file in the artifact hash — never on the host, and never by
 mounting a submission directory.
 
 ## The reference loader
+
+The loader lives with the problems in DCP-Bench Open, at
+`bench/dcp_bench/reference.py`, and the evaluator imports it from there; its own
+tests and the dataset audit run in that repository.
 
 References are trusted dataset scripts. The loader parses the AST, substitutes
 instance values for the marked `# Data` section, and drops the solve/output
@@ -186,19 +197,23 @@ retains a model.
 python -m unittest tests.test_evaluation -v
 ```
 
-The dataset audit runs every time: all references must load, the first instance
+The dataset audit runs in `bench/`: all references must load, the first instance
 entry must equal the embedded example exactly, every listed instance must build
 the reference, and only `name`/`note` extra keys are permitted.
+
+```sh
+(cd bench && python -m unittest tests.test_dataset -v)
+```
 
 Two checks are opt-in:
 
 ```sh
 DCP_CONTAINER_TESTS=1 python -m unittest tests.test_solvers -v   # needs built images
-DCP_UNSAT_AUDIT=1 python -m unittest tests.test_evaluation.ReferenceTests.test_no_unsat_instances
+(cd bench && DCP_UNSAT_AUDIT=1 python -m unittest tests.test_dataset.ReferenceTests.test_no_unsat_instances)
 ```
 
 Skipped container tests are not evidence of end-to-end success: the container
 run is the authoritative one.
 
 Dataset changes and the reasoning behind them are recorded in
-[SOURCES.md](../SOURCES.md).
+[SOURCES.md](https://github.com/DCP-Bench/DCP-Bench-Open/blob/main/SOURCES.md) in DCP-Bench.

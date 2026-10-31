@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from generation import manage
-from evaluation.execution import image_identity, integration
+from evaluation.execution import image_recipe, integration
 
 
 @unittest.skipUnless(os.environ.get("DCP_CONTAINER_TESTS") == "1", "Requires existing CPMpy pilot image")
@@ -18,11 +18,14 @@ class GenerationContainerTests(unittest.TestCase):
             root = Path(temp)
             # Tests the bookkeeping boundary with the already-tested pilot;
             # readiness validation has its own independent fixture tests.
-            identity = image_identity(integration("cpmpy_python"))
-            with patch.multiple(manage, REPO_ROOT=root, RUNS_ROOT=root / "generation/runs", GENERATED_ROOT=root / "generated_models"), patch.object(manage, "_readiness", return_value={"image_id": identity}):
+            identity = image_recipe(integration("cpmpy_python"))
+            with patch.multiple(manage, REPO_ROOT=root, RUNS_ROOT=root / "generation/runs", GENERATED_ROOT=root / "generated_models"), patch.object(manage, "_readiness", return_value={"recipe": identity}):
                 skill = root / "skills/test-solver"
                 skill.mkdir(parents=True)
                 (skill / "SKILL.md").write_text("---\nname: test-solver\ndescription: Test CPMpy submissions.\n---\nUse build(instance).\n")
+                (root / "solvers/cpmpy_python").mkdir(parents=True)
+                (root / "solvers/CONTRACT.md").write_text("# Contract\n", encoding="utf-8")
+                (root / "solvers/cpmpy_python/CONTRACT.md").write_text("# cpmpy_python\n", encoding="utf-8")
                 config = root / "config.json"
                 config.write_text(json.dumps({"agent": "deterministic test fixture", "profile": {"solution_limit": 2}}))
                 manage.init("repair", str(config))

@@ -1,0 +1,70 @@
+{
+  "accepted": false,
+  "detail": "sum_var() expects IntVar or Literal items.",
+  "evaluator_version": 1,
+  "image": {
+    "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+    "tag": "dcp-eval/hermax:v1"
+  },
+  "instances": [
+    {
+      "accepted": false,
+      "checking_seconds": 1.401989720761776e-06,
+      "detail": "sum_var() expects IntVar or Literal items.",
+      "execution_wall_seconds": 0.5826565980678424,
+      "id": "example",
+      "instance_hash": "4276f65e49268cf89ceb3c72889f821cf2649ab4b24e04e3f0e953b4cfaaaaa5",
+      "is_optimization": true,
+      "oom_killed": false,
+      "optimum": 19,
+      "outputs": [
+        "final_sum"
+      ],
+      "reason": "execution_error",
+      "reference_setup_seconds": 1.223011935944669,
+      "runner_status": {
+        "detail": "sum_var() expects IntVar or Literal items.",
+        "status": "error",
+        "type": "status"
+      },
+      "solutions_checked": 0,
+      "solutions_received": 0,
+      "stderr": "Traceback (most recent call last):\n  File \"/opt/runner/run.py\", line 186, in <module>\n    main()\n  File \"/opt/runner/run.py\", line 136, in main\n    model, outputs = load(request[\"instance\"])\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/runner/run.py\", line 61, in load\n    returned = module.build(instance)\n               ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/input/model.py\", line 31, in build\n    total_cost = m.sum_var([0])  # Start with 0\n                 ^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/hermax/model/core.py\", line 2178, in sum_var\n    raise TypeError(\"sum_var() expects IntVar or Literal items.\")\nTypeError: sum_var() expects IntVar or Literal items.\n"
+    }
+  ],
+  "instances_available": 5,
+  "instances_checked": 0,
+  "limits": {
+    "compilation_timeout": 300,
+    "cpus": 1,
+    "execution_timeout": 180,
+    "memory_mb": 2048,
+    "reference_timeout": 180
+  },
+  "model_hash": "5593807693c869fa1991be290e88fafc4cdb43e4b9e4975f6fb3b060cf200db2",
+  "problem_id": "cabling",
+  "reason": "execution_error",
+  "reference_hash": "47e1b8d57cd1b569fe0e1a64c6cbbfdad587f4ae2567f853d17b87faa4593c2c",
+  "reference_runtime": {
+    "cpmpy": "1.0.0",
+    "numpy": "2.4.6",
+    "ortools": "9.15.6755",
+    "python": "3.13.2"
+  },
+  "requested": {
+    "instance_count": 99,
+    "instance_ids": null,
+    "solution_limit": 2,
+    "tolerate_inconclusive": true
+  },
+  "skipped_instances": [],
+  "solutions_checked": 0,
+  "solver_id": "hermax",
+  "total_wall_seconds": 1.9463186139473692,
+  "unperformed_instances": [
+    "json:1",
+    "json:2",
+    "json:3",
+    "json:4"
+  ]
+}

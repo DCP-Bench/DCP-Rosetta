@@ -17,6 +17,7 @@ from typing import Any
 
 from evaluation import evaluate as evaluate_model
 from evaluation.check import INCONCLUSIVE as INCONCLUSIVE_REASONS
+from evaluation.execution import integration_folder
 from evaluation.results import EvaluationError
 
 
@@ -217,7 +218,8 @@ def _skills(skills: str | list[str]) -> list[dict[str, Any]]:
 def _contracts(solver_id: str) -> dict[str, str]:
     """Hashes of the generic submission contract and the integration's own contract."""
     hashes = {}
-    for relative in ("solvers/CONTRACT.md", f"solvers/{solver_id}/CONTRACT.md"):
+    own = (integration_folder(solver_id, REPO_ROOT) / "CONTRACT.md").relative_to(REPO_ROOT).as_posix()
+    for relative in ("solvers/CONTRACT.md", own):
         path = REPO_ROOT / relative
         if not path.is_file():
             raise ManagementError(f"Integration contract missing: {relative} (solver-setup writes it)")
@@ -234,7 +236,7 @@ def _legacy_skill_fields(cited: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _readiness(solver_id: str, record: Path | None = None) -> dict[str, Any]:
     from .readiness import verify
-    path = record or REPO_ROOT / "solvers" / solver_id / "readiness.json"
+    path = record or integration_folder(solver_id, REPO_ROOT) / "readiness.json"
     try:
         return verify(solver_id, path)
     except (OSError, ValueError, KeyError, EvaluationError) as error:
@@ -406,7 +408,7 @@ def retained_record(record: dict[str, Any], evaluation: dict[str, Any], model_fi
         "schema": 2,
         "problem": record["problem_id"],
         # No display name here. The catalogue reads it from
-        # solvers/<id>/metadata.yaml, so renaming an integration never has to
+        # solvers/<id>/metadata.json, so renaming an integration never has to
         # chase a copy frozen into every record it ever produced.
         "solver": record["solver_id"],
         "model_file": model_file,
@@ -445,7 +447,7 @@ def retain(attempt_path: str) -> Path:
             raise ManagementError(f"Evaluation does not match immutable attempt {key}")
     if evaluation.get("accepted") is not True:
         raise ManagementError("Only a strictly accepted evaluator result can be retained")
-    if evaluation.get("image", {}).get("id") != _read(folder / "readiness.json").get("image_id"):
+    if evaluation.get("image", {}).get("recipe") != _read(folder / "readiness.json").get("recipe"):
         raise ManagementError("Evaluated image differs from the tested integration image")
     instances = evaluation.get("instances")
     supply = evaluation.get("instances_available")
@@ -561,7 +563,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_p = commands.add_parser("setup-attempt", help="cite the skills for one setup attempt")
     setup_p.add_argument("--run", required=True); setup_p.add_argument("--solver", required=True)
     setup_p.add_argument("--skill", required=True, action="append",
-                         help="a skill the setup follows; repeat for each (solver-setup, add-solver)")
+                         help="a skill the setup follows; repeat for each (skills/solver-setup)")
     eval_p = commands.add_parser("evaluate", help="evaluate a preserved candidate")
     eval_p.add_argument("--attempt", required=True); eval_p.add_argument("--model", required=True)
     retain_p = commands.add_parser("retain", help="persist an accepted immutable attempt")

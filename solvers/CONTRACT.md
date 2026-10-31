@@ -1,8 +1,8 @@
 # The submission contract
 
 What every model submitted to DCP-Bench Open must do, whatever the solver, language or
-framework. Each integration realises it in its own terms, documented in
-`solvers/<id>/CONTRACT.md`. Read this file first, then the integration's contract, then
+framework. Each integration realises it in its own terms, documented in the
+`CONTRACT.md` of its folder (`solvers/<solver>/<interface>/`). Read this file first, then the integration's contract, then
 the solver skill for the API.
 
 The solver skill says what the solver does; the contracts say what the runner does,
@@ -12,7 +12,7 @@ standalone programs, not submissions. Where the skill and a contract disagree ab
 submission, the contract wins, and the skill is corrected if it is wrong about the solver.
 
 A submission is checked against a trusted reference
-(`dataset/<problem>/<problem>.cpmpy.py`) by the evaluator ([evaluation/README.md](../evaluation/README.md)).
+(`bench/dataset/<problem>/<problem>.cpmpy.py`) by the evaluator ([evaluation/README.md](../evaluation/README.md)).
 `python -m generation.brief PROBLEM` prints the facts this contract refers to: the declared
 outputs and their shapes, the objective direction, and every instance field with its shape.
 
@@ -36,6 +36,9 @@ outputs and their shapes, the objective direction, and every instance field with
 - The model exposes a mapping from **each declared output name** to a value of the
   **declared shape** (a scalar, or a nested array with exactly the declared dimensions).
   Exactly those names: none missing, none extra.
+- The brief prints each dimension as it is on the example instance (`[10]int`). A
+  dimension that follows an instance field (`n`, the length of `demand`) follows it on
+  every instance: size the output from the data, never from the brief's number.
 - Every leaf is an **integer or a Boolean**. Floats and strings are rejected, never
   coerced; a Boolean may also be given as 0/1. The leaf kind follows the brief, not the
   description's wording: an output the brief shows as `int` must be an integer even where
@@ -119,7 +122,7 @@ always `json:0`.
 
 ## Mapping checklist
 
-Every `solvers/<id>/CONTRACT.md` answers these, under these headings, so a modeller can map
+Every integration's `CONTRACT.md` answers these, under these headings, so a modeller can map
 this contract onto the integration, and solver-setup knows what a new runner must define:
 
 | Heading | Question |

@@ -3,7 +3,7 @@ import glob, json, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-REPO = Path(r"C:\Users\kostis\code\DCP-Bench-Open")
+REPO = Path(".")
 OUT = Path(sys.argv[1])
 STRINGS = ["cabling", "facility_location", "room_assignment", "session2_movie_scheduling", "who_killed_agatha"]
 CAPS = ["covering_opl", "csplib_018_water_bucket", "csplib_023_magic_hexagon", "csplib_050_diamond_free",

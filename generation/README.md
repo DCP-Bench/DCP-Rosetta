@@ -2,7 +2,7 @@
 
 Bookkeeping for models written by an agent rather than by hand.
 
-The agent itself is not here — it lives in `skills/`. This package only keeps
+The agent's instructions are not here: they live in `skills/`. This package only keeps
 the records that make a generated model trustworthy: what was attempted, what
 the evaluator said, and whether an integration was in a state to be trusted at
 all. No module calls an LLM or decides what to model.
@@ -32,13 +32,17 @@ instance rather than by review.
 Whether an integration can still be trusted:
 
 ```sh
-python -m generation.readiness verify --solver z3_python --record solvers/z3_python/readiness.json
+python -m generation.readiness verify --solver z3_python --record solvers/z3/python/readiness.json
 ```
 
-A record ties an integration's image to the checks that were actually run
-against it. Change the runner, the Dockerfile or the checks and the record
-stops verifying, and the integration drops out of the queue until it is
-re-certified. That is the mechanism behind "an accepted model means something".
+A record ties the checks that were actually run to the integration's
+*recipe*: a digest of its Dockerfile and every repository file the Dockerfile
+copies (the runner, `runner/runtime.py`, driver sources). Change any of them, or
+the checks, and the record stops verifying, and the integration drops out of the
+queue until it is re-certified. The record does not pin a Docker image ID, which
+changes with every build: `python -m evaluation.build` stamps the recipe on the
+image as a label, so an image built from the same files on any machine verifies.
+`--files-only` checks a record against the repository alone, without Docker. That is the mechanism behind "an accepted model means something".
 
 ## Where the records live
 

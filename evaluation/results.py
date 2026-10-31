@@ -1,34 +1,9 @@
-"""Small, JSON-compatible evaluation records and errors."""
-import hashlib
-import json
+"""Small, JSON-compatible evaluation records and errors.
 
+They live with the reference loader in DCP-Bench Open, at
+bench/dcp_bench/results.py, so an EvaluationError raised while loading a
+reference is the same class the evaluator catches.
+"""
+from bench.dcp_bench.results import EvaluationError, canonical, digest, strict_json
 
-class EvaluationError(Exception):
-    def __init__(self, reason, detail):
-        super().__init__(detail)
-        self.reason = reason
-        self.detail = detail
-
-
-def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-
-
-def digest(value):
-    if not isinstance(value, bytes):
-        value = canonical(value).encode()
-    return hashlib.sha256(value).hexdigest()
-
-
-def strict_json(text):
-    def pairs(items):
-        result = {}
-        for key, value in items:
-            if key in result:
-                raise ValueError(f"Duplicate JSON key: {key}")
-            result[key] = value
-        return result
-
-    def invalid(value):
-        raise ValueError(f"Non-finite JSON number: {value}")
-    return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid)
+__all__ = ["EvaluationError", "canonical", "digest", "strict_json"]

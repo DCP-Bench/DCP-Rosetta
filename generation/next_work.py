@@ -14,28 +14,35 @@ import argparse
 import json
 import sys
 
-from evaluation.execution import ROOT, integration
+from evaluation.execution import ROOT, integration, integration_folders
 from evaluation.results import EvaluationError
 
 from .brief import RECTANGULAR_UNIFORM, RESHAPED, runner_refusals, unbindable
-from .release import skill_for
 from .readiness import ReadinessError, verify
+from .skills import integration_skill
 
 GENERATED = ROOT / "generated_models"
 BLOCKERS = ROOT / "generation" / "blockers.json"
 FLAGS = ROOT / "generation" / "flags.json"
 
 
+def solver_skill(solver_id):
+    """The integration's solver skill and the interface of it the model is written in;
+    see generation.skills.integration_skill."""
+    return integration_skill(ROOT, solver_id)
+
+
 def integrations():
     """Every declared integration, with whether it is usable right now."""
     result = []
-    for path in sorted((ROOT / "solvers").glob("*/metadata.yaml")):
-        solver_id = path.parent.name
+    for solver_id, folder in integration_folders(ROOT).items():
         record = {"id": solver_id, "ready": False}
-        # The solver skill to pass to `generation.manage attempt --skill`: the released copy
-        # the public gets, or the development copy until the solver has a release.
-        record["skill"], record["skill_released"] = skill_for(solver_id, ROOT)
-        readiness = path.parent / "readiness.json"
+        # The solver skill to pass to `generation.manage attempt --skill`, and the
+        # file under its interfaces/ to read when the skill serves several bindings.
+        record["skill"], interface = solver_skill(solver_id)
+        if interface:
+            record["interface"] = interface
+        readiness = folder / "readiness.json"
         try:
             metadata = integration(solver_id)
             record["enumeration"] = bool(metadata.get("enumeration"))
@@ -106,7 +113,7 @@ def listed_instances(problem):
     Exact identity needs the reference loader; this is enough to prefer problems
     where a hardcoded model can actually be caught.
     """
-    path = ROOT / "dataset" / problem / f"{problem}.json"
+    path = ROOT / "bench" / "dataset" / problem / f"{problem}.json"
     if not path.is_file():
         return 1
     try:
@@ -117,7 +124,7 @@ def listed_instances(problem):
 
 
 def report(limit=20, include_unready=False):
-    problems = sorted(path.parent.name for path in (ROOT / "dataset").glob("*/*.cpmpy.py"))
+    problems = sorted(path.parent.name for path in (ROOT / "bench" / "dataset").glob("*/*.cpmpy.py"))
     counts = {problem: listed_instances(problem) for problem in problems}
     declared = integrations()
     usable = [item["id"] for item in declared if item["ready"] or include_unready]
