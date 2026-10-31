@@ -1,0 +1,2 @@
+- Board size is read from game_data, not from the brief's [8][8]: instance json:1 is 6x6.
+- Revealed cells are constrained safe (mine = 0). The evaluator accepted this on all 5 instances.

@@ -1,0 +1,3 @@
+- Row-major search with the runner's default value order (IndomainMin) timed out at n=13 (attempt-001, -002, -003). Attempt-002 added the implied degree constraint and attempt-003 made the pair cover an equality. Neither was enough alone.
+- What worked: label the membership booleans column by column (element by element) with IndomainMax. n=13 went from timeout to about 6 s. Row 0 fixed to {0,1,2} did not help (json:1 timed out).
+- Attempts 002 and 003 were checked but not evaluated. The evaluator record is for attempt-004 only.
