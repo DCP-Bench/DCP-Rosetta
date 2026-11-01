@@ -1,40 +1,42 @@
-# Water bucket problem (CSPLib 18): starting from the initial contents of three buckets, pour water
-# between them (each pour empties the source or fills the target) to reach the goal contents in as
-# few transfers as possible. The sequence of states has a fixed length; after the goal it is padded.
+# csplib_018_water_bucket: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `csplib_018_water_bucket.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python csplib_018_water_bucket.py csplib_018_water_bucket.json
+
+import itertools
+
 from pychoco.model import Model
 
 
-def build(instance):
-    capacities = instance["capacities"]
-    initial_state = instance["initial_state"]
-    goal_state = instance["goal_state"]
-    max_steps = instance["MAX_STEPS"]  # fixed length of the state sequence
-    pad = instance["PADDING_VALUE"]  # value filling the states after the goal
+def create_model(instance):
+    """Three buckets hold water, and the first one starts full. Pour water from one
+    bucket into another to reach the goal amounts with the fewest transfers. A pour
+    stops when the source is empty or the target is full."""
+    capacities = instance["capacities"]        # capacities[b]: how much bucket b can hold
+    initial_state = instance["initial_state"]  # the amount of water in each bucket at the start
+    goal_state = instance["goal_state"]        # the amount of water each bucket must end with
+    max_steps = instance["MAX_STEPS"]          # the number of states in the sequence to report
+    pad = instance["PADDING_VALUE"]            # the value that fills the states after the goal is reached
     n_buckets = len(capacities)
-    total_water = max(initial_state)  # as in the reference: the water in the full bucket
 
-    # Every state the buckets can be in: each bucket within its capacity, all water kept.
-    states = []
+    # Water is never created or lost, so every state holds this much in total.
+    total_water = sum(initial_state)
 
-    def enumerate_states(prefix):
-        if len(prefix) == n_buckets:
-            if sum(prefix) == total_water:
-                states.append(tuple(prefix))
-            return
-        for amount in range(capacities[len(prefix)] + 1):
-            enumerate_states(prefix + [amount])
+    # All states: the water in each bucket, within its capacity, adding up to the total.
+    all_states = [s for s in itertools.product(*(range(c + 1) for c in capacities))
+                  if sum(s) == total_water]
+    # The number of each state, used to refer to it in the sequence.
+    state_number = {s: k for k, s in enumerate(all_states)}
+    pad_number = len(all_states)  # the number after the real states, for padding
+    goal_number = state_number[tuple(goal_state)]
 
-    enumerate_states([])
-    index = {s: k for k, s in enumerate(states)}
-    pad_index = len(states)  # the padding state gets the index after the real states
-    goal_index = index[tuple(goal_state)]
-
-    # Allowed (state, next state) pairs, by index. From a state that is not the goal, one pour from
-    # bucket i into bucket j of min(contents of i, room left in j) > 0 pints. After the goal, and
-    # after padding, comes padding.
+    # The allowed steps, as (state, next state) pairs of state numbers. Pouring from
+    # bucket i into bucket j moves the smaller of the water in i and the free room in j,
+    # and a pour must move water. The goal is followed by padding, and padding by padding.
     moves = set()
-    for s in states:
-        if index[s] == goal_index:
+    for s in all_states:
+        if state_number[s] == goal_number:
             continue
         for i in range(n_buckets):
             for j in range(n_buckets):
@@ -42,38 +44,67 @@ def build(instance):
                     continue
                 amount = min(s[i], capacities[j] - s[j])
                 if amount > 0:
-                    nxt = list(s)
-                    nxt[i] -= amount
-                    nxt[j] += amount
-                    moves.add((index[s], index[tuple(nxt)]))
-    moves.add((goal_index, pad_index))
-    moves.add((pad_index, pad_index))
+                    after = list(s)
+                    after[i] -= amount
+                    after[j] += amount
+                    moves.add((state_number[s], state_number[tuple(after)]))
+    moves.add((goal_number, pad_number))
+    moves.add((pad_number, pad_number))
 
     model = Model()
 
-    # state[t] = index of the state at step t (pad_index once the goal has been passed)
-    state = [model.intvar(0, pad_index, name=f"state_{t}") for t in range(max_steps)]
-    # sequence[t][b] = pints in bucket b at step t, or the padding value
+    # state[t] is the number of the state after t transfers, or the padding number once the goal is passed.
+    state = [model.intvar(0, pad_number, name=f"state_{t}") for t in range(max_steps)]
+    # sequence[t][b] is the water in bucket b after t transfers, or the padding value.
     sequence = [[model.intvar(min(pad, 0), max(max(capacities), pad), name=f"sequence_{t}_{b}")
                  for b in range(n_buckets)] for t in range(max_steps)]
-    contents = [(k,) + s for k, s in enumerate(states)] + [(pad_index,) + (pad,) * n_buckets]
+
+    # contents pairs each state number with its amounts, and the padding number with the padding value.
+    contents = [(k,) + s for k, s in enumerate(all_states)] + [(pad_number,) + (pad,) * n_buckets]
+    # Each step of the sequence has the amounts that go with its state number.
     for t in range(max_steps):
         model.table([state[t]] + sequence[t], contents).post()
 
-    # The sequence starts with the initial state.
-    model.arithm(state[0], "=", index[tuple(initial_state)]).post()
+    # The sequence starts in the initial state.
+    model.arithm(state[0], "=", state_number[tuple(initial_state)]).post()
 
-    # Each step is a valid transfer, or the padding after the goal.
+    # Each step is a pour, or padding after the goal.
     for t in range(max_steps - 1):
         model.table([state[t], state[t + 1]], [list(mv) for mv in moves]).post()
 
-    # The goal is reached: since padding only follows the goal, the last state is the goal or padding.
-    model.member(state[max_steps - 1], [goal_index, pad_index]).post()
+    # The last state is the goal or padding, so the goal is reached within the sequence.
+    model.member(state[max_steps - 1], [goal_number, pad_number]).post()
 
-    # The cost is the number of transfers: the number of states before the padding, minus one.
+    # n_pad counts the padding states in the sequence.
     n_pad = model.intvar(0, max_steps, name="n_pad")
-    model.count(pad_index, state, n_pad).post()
+    model.count(pad_number, state, n_pad).post()
+    # cost is the number of transfers: the states that are not padding, minus the starting one.
     cost = model.intvar(0, max_steps - 1, name="cost")
     model.arithm(cost, "+", n_pad, "=", max_steps - 1).post()
 
-    return model, {"cost": cost, "sequence": sequence}, ("minimize", cost)
+    # Use as few transfers as possible.
+    return model, {"cost": cost, "sequence": sequence}, {"objective": cost, "maximize": False}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

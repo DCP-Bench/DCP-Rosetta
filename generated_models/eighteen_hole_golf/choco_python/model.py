@@ -1,20 +1,42 @@
-# Eighteen-hole golf: lay out 18 holes, each of length 3, 4 or 5, totalling 72.
+# eighteen_hole_golf: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python eighteen_hole_golf.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data; the hole count, lengths and total are its statement.
-NUM_HOLES = 18
-TOTAL_LENGTH = 72
 
-
-def build(instance):
-    del instance  # the puzzle carries no instance data
+def create_model(instance):
+    """Lay out a golf course of 18 holes, each 3, 4 or 5 long, whose lengths
+    add up to 72."""
+    n_holes = 18        # the course has 18 holes
+    total_length = 72   # the total length of the course
 
     model = Model()
 
-    # holes[i] = the length of hole i, one of 3, 4 or 5
-    holes = [model.intvar(3, 5, name=f"holes_{i}") for i in range(NUM_HOLES)]
+    # holes[i] is the length of hole i, 3, 4 or 5
+    holes = [model.intvar(3, 5, name=f"holes_{i}") for i in range(n_holes)]
 
-    # The course is 72 long.
-    model.sum(holes, "=", TOTAL_LENGTH).post()
+    # The lengths of the holes add up to the total length.
+    model.sum(holes, "=", total_length).post()
 
-    return model, {"holes": holes}
+    return model, {"holes": holes}, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

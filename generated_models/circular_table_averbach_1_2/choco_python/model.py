@@ -1,37 +1,63 @@
-# Averbach's card-passing riddle: three players X, Y, Z of three different
-# nationalities (American, English, French) sit round a table, each passing
-# three cards to the person on their right. Y passed to the American, and X
-# passed to the person who passed to the Frenchwoman. Find who is who.
-# A seat is 0, 1 or 2 and seat b+1 (mod 3) is to the right of seat b.
+# circular_table_averbach_1_2: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circular_table_averbach_1_2.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python circular_table_averbach_1_2.py
+
 from pychoco.model import Model
 
 
-def build(instance):
-    # The riddle fixes everything; the instance carries no data.
+def create_model(instance):
+    """Three players of different nationalities sit round a circular table, and each passes three
+    cards to the person on their right. Work out who is who from what Y and X passed."""
+    n_seats = 3  # the seats round the table, numbered 0, 1 and 2, each on the right of the one before
+
     model = Model()
 
-    # seats of the three players, all different
-    x = model.intvar(0, 2, name="x")
-    y = model.intvar(0, 2, name="y")
-    z = model.intvar(0, 2, name="z")
+    # seat a is on the right of seat b
+    def right_of(a, b):
+        # the seat after b, numbered 1 to 3 so that the seat after seat 2 is seat 0 again
+        next_seat = model.intvar(1, n_seats, name="next_seat")
+        model.arithm(b, "+", 1, "=", next_seat).post()
+        model.mod(next_seat, n_seats, a).post()
+
+    # x, y, z: the seat of X, Y and Z
+    x = model.intvar(0, n_seats - 1, name="x")
+    y = model.intvar(0, n_seats - 1, name="y")
+    z = model.intvar(0, n_seats - 1, name="z")
+    # The three players sit in different seats.
     model.all_different([x, y, z]).post()
 
-    # seats of the three nationalities, all different: the same seat number in
-    # the player and nationality outputs denotes the same person
-    american = model.intvar(0, 2, name="american")
-    english = model.intvar(0, 2, name="english")
-    french = model.intvar(0, 2, name="french")
+    # american, english, french: the seat of the American, the English player and the Frenchwoman
+    american = model.intvar(0, n_seats - 1, name="american")
+    english = model.intvar(0, n_seats - 1, name="english")
+    french = model.intvar(0, n_seats - 1, name="french")
+    # The three nationalities sit in different seats.
     model.all_different([american, english, french]).post()
 
-    def right_to(a, b):
-        """The seat a is immediately to the right of the seat b."""
-        next_seat = model.intvar(1, 3, name="next_seat")
-        model.arithm(b, "+", 1, "=", next_seat).post()
-        model.mod(next_seat, 3, a).post()
+    # The American sits on Y's right, since Y passed three hearts to the American.
+    right_of(american, y)
+    # X sits on the Frenchwoman's right, since X passed to the person who passed to her.
+    right_of(x, french)
 
-    # the American sits to the right of Y, since Y passed to the American
-    right_to(american, y)
-    # X sits to the right of the Frenchwoman, since X passed to the person who passed to her
-    right_to(x, french)
+    return model, {
+        "x": x, "y": y, "z": z, "american": american, "english": english, "french": french,
+    }, None
 
-    return model, {"x": x, "y": y, "z": z, "american": american, "english": english, "french": french}
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

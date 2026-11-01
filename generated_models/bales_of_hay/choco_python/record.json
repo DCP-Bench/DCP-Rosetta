@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790946457.405095,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/choco/python/CONTRACT.md": "fe481dbed51dc280c641fb39f92bea76c23f3ca1063da02ffc250ac77bbb2707"
+    },
+    "created_at": 1793553919.8839912,
     "problem_id": "bales_of_hay",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,37 +18,58 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "e595fd6735e3313488a7c8992e36a7124c2b5083c485d58266670990c8436816",
-    "run_id": "20261001T1218Z-choco-8f0c",
-    "schema": 2,
-    "skill_bundle_hash": "28a7884d8e6aff92bc4a2687d6e2cc8a8517236e2cd851d073a0fc60e975551e",
-    "skill_source": "solvers\\choco_python\\skills\\choco-python",
+    "readiness_hash": "467cbc7fa40d970b2844eea4e5521824c092f0f0e9403c62df3e6a5bb142992b",
+    "run_id": "choco-objective-dict",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "4113655c1cb38b8a051c9d2486c318e1fb26a484",
+      "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
       "modified": false,
-      "path": "solvers/choco_python/skills/choco-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e303cc8342a940509a9be5b14f01f4715d876fdca79964cc2237f33a2ec92321",
+        "source": "solvers/choco/skills/dcp-choco",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": true,
+          "path": "solvers/choco/skills/dcp-choco"
+        }
+      }
+    ],
     "solver_id": "choco_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:aea1da6f5800787ebd155a6b47b21473010c3573266e899b5dccb76141fdd519",
+      "id": "sha256:e4fa63b1e42cd2a7d06482e5d38da0be01001e180f536b8af43cac19ccdcd20a",
+      "recipe": "sha256:622ff1475738df50af0895e22c63efafc4f26d105dd9e3c1b32b4eed63efcfa2",
       "tag": "dcp-eval/choco_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.00765289999981178,
-        "execution_wall_seconds": 0.8877560999990237,
+        "checking_seconds": 0.009885928011499345,
+        "execution_wall_seconds": 0.2807837480213493,
         "first_solution": {
           "bales": [
             41,
             39,
-            43,
+            44,
             47,
-            44
+            43
           ]
         },
         "id": "example",
@@ -56,9 +81,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0701626000009128,
+        "reference_setup_seconds": 0.36224377690814435,
         "runner_status": {
+          "build_seconds": 0.0009311400353908539,
           "detail": "",
+          "main_seconds": 0.019848182913847268,
+          "read_seconds": 0.0001164809800684452,
           "status": "limit",
           "type": "status"
         },
@@ -68,8 +96,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.003961299998991308,
-        "execution_wall_seconds": 1.05648199999996,
+        "checking_seconds": 0.0038819779874756932,
+        "execution_wall_seconds": 0.3829829270252958,
         "first_solution": {
           "bales": [
             14,
@@ -86,9 +114,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.063795600000958,
+        "reference_setup_seconds": 0.40680900902953,
         "runner_status": {
+          "build_seconds": 0.0007180279353633523,
           "detail": "",
+          "main_seconds": 0.0012345180148258805,
+          "read_seconds": 9.695498738437891e-05,
           "status": "limit",
           "type": "status"
         },
@@ -98,8 +129,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006918500001120265,
-        "execution_wall_seconds": 1.0321461000003183,
+        "checking_seconds": 0.002592502976767719,
+        "execution_wall_seconds": 0.28728865401353687,
         "first_solution": {
           "bales": [
             21,
@@ -117,9 +148,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2108499000005395,
+        "reference_setup_seconds": 0.36939609493128955,
         "runner_status": {
+          "build_seconds": 0.0009163999930024147,
           "detail": "",
+          "main_seconds": 0.0019681480480358005,
+          "read_seconds": 0.00012325402349233627,
           "status": "limit",
           "type": "status"
         },
@@ -129,16 +163,16 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.009172400001261849,
-        "execution_wall_seconds": 0.9640015999993921,
+        "checking_seconds": 0.014251866028644145,
+        "execution_wall_seconds": 0.4018229909706861,
         "first_solution": {
           "bales": [
             9,
             16,
             24,
+            39,
             38,
-            35,
-            39
+            35
           ]
         },
         "id": "json:3",
@@ -150,9 +184,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4612852999998722,
+        "reference_setup_seconds": 0.45878112700302154,
         "runner_status": {
+          "build_seconds": 0.0013990870211273432,
           "detail": "",
+          "main_seconds": 0.04037023498676717,
+          "read_seconds": 0.0001790219685062766,
           "status": "limit",
           "type": "status"
         },
@@ -162,8 +199,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0126005999991321,
-        "execution_wall_seconds": 1.003972700000304,
+        "checking_seconds": 0.01809154509101063,
+        "execution_wall_seconds": 0.44811062596272677,
         "first_solution": {
           "bales": [
             9,
@@ -184,9 +221,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.668880100000024,
+        "reference_setup_seconds": 0.4871939530130476,
         "runner_status": {
+          "build_seconds": 0.0013848270755261183,
           "detail": "",
+          "main_seconds": 0.007855833973735571,
+          "read_seconds": 0.00016013102140277624,
           "status": "limit",
           "type": "status"
         },
@@ -198,21 +238,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "2df6373568cfa3bad6aef646301cdbd8ac21c01e6560d5ba2c48ec3adbbe1bc0",
+    "model_hash": "fdbff4d165654e86616ce9d97e7bdbe5834a85fb04c395d6a0c4ca5598aa82c7",
     "problem_id": "bales_of_hay",
     "reason": "accepted",
     "reference_hash": "69b6ae74d49064a60e9b54a530c658ab4881f6fe368eb3206b19e86b9f9402c9",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -223,7 +263,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "choco_python",
-    "total_wall_seconds": 13.022456999999122,
+    "total_wall_seconds": 4.474752258975059,
     "unperformed_instances": []
   },
   "generated_by": {

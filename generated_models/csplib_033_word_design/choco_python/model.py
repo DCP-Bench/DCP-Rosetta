@@ -1,42 +1,73 @@
-# Word design: find a set of DNA words (A, C, G, T) of equal length such that each
-# word has four C/G letters, any two distinct words differ in at least four
-# positions, and any reversed word differs from any complemented word in at
-# least four positions.
+# csplib_033_word_design: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `csplib_033_word_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python csplib_033_word_design.py csplib_033_word_design.json
+
 from pychoco.model import Model
 
-# Letters are coded as in the problem statement: 1 = A, 2 = C, 3 = G, 4 = T.
-A, C, G, T = 1, 2, 3, 4
-# Problem constants (fixed by the problem statement, not by the instance):
-CG_PER_WORD = 4  # every word has exactly four letters from {C, G}
-MIN_DIFFERENCES = 4  # minimum number of differing positions in each comparison
+A, C, G, T = 1, 2, 3, 4  # the four DNA letters
+GC_LETTERS = 4           # the number of C or G letters in each word
+MIN_DIFFERENCES = 4      # the least number of positions in which two words differ
 
 
-def build(instance):
-    n = instance["n"]  # length of each word
-    num_words = instance["num_words"]  # number of words to find
+def create_model(instance):
+    """Find a set of num_words DNA words of length n such that every word has four letters from
+    {C, G}, any two different words differ in at least four positions, and for any two words x and
+    y (the same word allowed) the reverse of x differs from the Watson-Crick complement of y in at
+    least four positions."""
+    n_letters = instance["n"]        # the length of each word
+    n_words = instance["num_words"]  # the number of words in the set
 
     model = Model()
 
-    # words[i][j] = the j-th letter of the i-th word
-    words = [[model.intvar(A, T, name=f"words_{i}_{j}") for j in range(n)] for i in range(num_words)]
+    # words[i][j] is the letter at position j of word i
+    words = [[model.intvar(A, T, name=f"words_{i}_{j}") for j in range(n_letters)]
+             for i in range(n_words)]
 
-    # each word has exactly four letters from {C, G}
+    # Each word has exactly GC_LETTERS letters that are C or G.
     for word in words:
-        model.among(model.intvar(CG_PER_WORD, CG_PER_WORD), word, [C, G]).post()
+        model.among(model.intvar(GC_LETTERS, GC_LETTERS), word, [C, G]).post()
 
-    # each pair of distinct words differs in at least four positions
-    for i in range(num_words):
-        for k in range(i + 1, num_words):
-            differs = [model.arithm(words[i][j], "!=", words[k][j]).reify() for j in range(n)]
+    # Two different words differ in at least MIN_DIFFERENCES positions.
+    for i in range(n_words):
+        for k in range(i + 1, n_words):
+            # differs[j] is true when the two words have different letters at position j
+            differs = [model.arithm(words[i][j], "!=", words[k][j]).reify() for j in range(n_letters)]
             model.sum(differs, ">=", MIN_DIFFERENCES).post()
 
-    # for every pair of words x and y (also x = y), the reverse of x and the
-    # Watson-Crick complement of y (A<->T, C<->G, i.e. letter 5 - y) differ in at
-    # least four positions: position j compares x[n-1-j] with 5 - y[j],
-    # which differ exactly when x[n-1-j] + y[j] != 5
+    # The reverse of x and the Watson-Crick complement of y differ in at least MIN_DIFFERENCES
+    # positions. Position j of the reverse holds x[n - 1 - j], and the complement of y[j] is the
+    # letter that pairs with it: A with T and C with G, so the two letters add up to 5.
     for x in words:
         for y in words:
-            differs = [model.arithm(x[n - 1 - j], "+", y[j], "!=", 5).reify() for j in range(n)]
+            # differs[j] is true when the reversed letter and the complemented letter at position j differ
+            differs = [model.arithm(x[n_letters - 1 - j], "+", y[j], "!=", 5).reify()
+                       for j in range(n_letters)]
             model.sum(differs, ">=", MIN_DIFFERENCES).post()
 
-    return model, {"words": words}
+    return model, {"words": words}, None
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

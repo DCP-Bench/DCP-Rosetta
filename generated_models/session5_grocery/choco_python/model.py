@@ -1,6 +1,9 @@
-# Grocery: a kid buys some items. The cashier multiplied the prices instead of adding
-# them, and the product (read in dollars) came out equal to the sum. Find the prices,
-# in cents, of the items.
+# session5_grocery: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `session5_grocery.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_grocery.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python session5_grocery.py session5_grocery.json
+
 from pychoco.model import Model
 
 
@@ -18,33 +21,30 @@ def prime_factors(value):
     return factors
 
 
-def build(instance):
-    total_price = instance["total_price"]  # total price in cents
-    num_items = instance["num_items"]
+def create_model(instance):
+    """A kid buys some items. The cashier multiplies the prices instead of adding them,
+    and the product, read in dollars, comes to the same total as the sum. Find the price
+    of each item, in cents."""
+    total_price = instance["total_price"]  # the total price, in cents
+    num_items = instance["num_items"]      # the number of items bought
 
     model = Model()
 
-    # prices[i] = price of item i in cents, between 1 and the total price
+    # prices[i] is the price of item i, in cents
     prices = [model.intvar(1, total_price, name=f"prices_{i}") for i in range(num_items)]
 
-    # the sum of the prices in cents is the total price
+    # The prices add up to the total.
     model.sum(prices, "=", total_price).post()
 
-    # The product of the prices in cents is the total price scaled to cents^num_items,
-    # i.e. total_price * 100^(num_items - 1). That number is large (7.11e8 for the
-    # example), and a chain of `times` constraints over it reports no solution, so the
-    # product is stated through prime factors instead: every price divides the product,
-    # and the product of the prices is the target exactly when, for each prime p, the
-    # exponents of p in the prices add up to its exponent in the target. Only small
-    # numbers are involved.
-    product_target = total_price * 100 ** (num_items - 1)
-    target_factors = prime_factors(product_target)
-    primes = sorted(target_factors)
+    # Read in cents, the product of the prices is the total times 100^(num_items - 1).
+    product = total_price * 100 ** (num_items - 1)
+    product_factors = prime_factors(product)  # exponent of each prime in the product
+    primes = sorted(product_factors)
 
-    # the possible prices: divisors of the target, each with the exponent of every prime
-    tuples = []
+    # The possible prices are the divisors of the product, each with its exponent for every prime.
+    divisor_rows = []
     for price in range(1, total_price + 1):
-        if product_target % price == 0:
+        if product % price == 0:
             exponents = []
             rest = price
             for p in primes:
@@ -53,16 +53,42 @@ def build(instance):
                     rest //= p
                     e += 1
                 exponents.append(e)
-            tuples.append([price] + exponents)
+            divisor_rows.append([price] + exponents)
 
-    # exponents[i][k] = exponent of primes[k] in the price of item i, tied to the price by a table
-    exponents = [[model.intvar(0, target_factors[p], name=f"exponent_{i}_{p}") for p in primes]
+    # exponents[i][k] is the exponent of primes[k] in the price of item i
+    exponents = [[model.intvar(0, product_factors[p], name=f"exponent_{i}_{p}") for p in primes]
                  for i in range(num_items)]
+    # Each price is a divisor of the product, with the matching exponents.
     for i in range(num_items):
-        model.table([prices[i]] + exponents[i], tuples).post()
+        model.table([prices[i]] + exponents[i], divisor_rows).post()
 
-    # for each prime, the exponents over all items add up to its exponent in the target
+    # For each prime, the exponents over all items add up to its exponent in the product,
+    # so the prices multiply to the product.
     for k, p in enumerate(primes):
-        model.sum([exponents[i][k] for i in range(num_items)], "=", target_factors[p]).post()
+        model.sum([exponents[i][k] for i in range(num_items)], "=", product_factors[p]).post()
 
-    return model, {"prices": prices}
+    return model, {"prices": prices}, None
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

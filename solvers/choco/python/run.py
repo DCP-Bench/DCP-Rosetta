@@ -1,8 +1,12 @@
 """Runner protocol for the choco_python integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(model, outputs)`, or
-`(model, outputs, (direction, objective))` for an optimization problem where
-direction is "minimize" or "maximize" and objective is an IntVar of that model.
+A submission defines `create_model(instance)` (models retained before 2026-10-30 define
+`build(instance)`, still accepted) returning `(model, outputs, objective)`: objective is
+None for a satisfaction problem, and for an optimization problem the arguments of
+`find_optimal_solution`, `{"objective": var, "maximize": bool}`, where var is an IntVar
+of that model. Models retained earlier return `(model, outputs)` or
+`(model, outputs, (direction, var))` with direction "minimize" or "maximize"; both
+are still accepted.
 
 The runner owns solving. Two things about Choco shape how it does that.
 
@@ -42,7 +46,8 @@ EXHAUSTION_MARGIN = 0.5
 
 
 def load(instance):
-    """Import the submission afresh and normalise what it returned.
+    """Import the submission afresh and normalise what it returned. The file is loaded as
+    module "candidate", so its `if __name__ == "__main__":` run block never runs.
 
     The model is rebuilt rather than reused between the optimization pass and
     the enumeration pass, because a Choco solver cannot be rewound once its
@@ -52,16 +57,21 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) not in (2, 3):
-        raise ValueError("build(instance) must return (model, outputs) or "
-                         "(model, outputs, (direction, objective))")
+        raise ValueError("create_model(instance) must return (model, outputs, objective), "
+                         'objective None or {"objective": variable, "maximize": True or False}')
     model, outputs = returned[0], returned[1]
     if not hasattr(model, "get_solver"):
-        raise ValueError("build(instance) must return a pychoco Model as its first value")
+        raise ValueError("create_model(instance) must return a pychoco Model as its first value")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     objective = returned[2] if len(returned) == 3 else None
+    if isinstance(objective, dict):
+        if set(objective) != {"objective", "maximize"} or not isinstance(objective["maximize"], bool):
+            raise ValueError('The objective must be {"objective": variable, "maximize": True or False}')
+        objective = ("maximize" if objective["maximize"] else "minimize", objective["objective"])
     if objective is not None:
         if (not isinstance(objective, (tuple, list)) or len(objective) != 2
                 or objective[0] not in DIRECTIONS):

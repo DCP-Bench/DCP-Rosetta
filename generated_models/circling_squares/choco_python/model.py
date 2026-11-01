@@ -1,40 +1,56 @@
-# Circling the squares (Dudeney): place ten different numbers A..K round a circle so that for any
-# two adjacent numbers, the sum of their squares equals the sum of the squares of the two numbers
-# diametrically opposite. A=16, B=2, F=8 and G=14 are given.
+# circling_squares: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python circling_squares.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data. The four given numbers are its statement, and "no number need
-# contain more than two figures" bounds every number by 1..99.
-N = 10
-GIVEN = {"A": 16, "B": 2, "F": 8, "G": 14}
-NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K"]
 
-
-def build(instance):
-    del instance  # the puzzle carries no instance data
+def create_model(instance):
+    """Circling the squares: place a different number in each of ten squares on a circle, so that
+    for any two adjacent squares the sum of their squares equals the sum of the squares of the two
+    squares opposite them. Four of the numbers are given."""
+    names = "ABCDEFGHIK"                        # the squares, in order round the circle
+    given = {"A": 16, "B": 2, "F": 8, "G": 14}  # the numbers placed as examples
+    n = len(names)                              # the number of squares
 
     model = Model()
 
-    # x[k] = the number in square NAMES[k], going round the circle
-    x = [model.intvar(1, 99, name=name) for name in NAMES]
-    # sq[k] = the square of x[k]
-    sq = [model.intvar(1, 99 * 99, name=f"sq_{name}") for name in NAMES]
-    for v, s in zip(x, sq):
-        model.square(s, v).post()
+    # numbers[k] is the number in square names[k]; no number needs more than two figures
+    numbers = [model.intvar(given.get(name, 1), given.get(name, 99), name=name) for name in names]
+    # squares[k] is the square of numbers[k]
+    squares = [model.intvar(1, 99 * 99, name=f"square_{name}") for name in names]
+    for number, square in zip(numbers, squares):
+        model.square(square, number).post()
 
     # Every square holds a different number.
-    model.all_different(x).post()
+    model.all_different(numbers).post()
 
-    # The four numbers placed as examples stay as they are.
-    for name, value in GIVEN.items():
-        model.arithm(x[NAMES.index(name)], "=", value).post()
+    # Two adjacent squares have the same sum of squares as the two squares opposite them.
+    for k in range(n // 2):
+        opposite = (k + n // 2) % n
+        model.scalar(
+            [squares[k], squares[k + 1], squares[opposite], squares[(opposite + 1) % n]],
+            [1, 1, -1, -1], "=", 0,
+        ).post()
 
-    # Adjacent pair k, k+1 and the diametrically opposite pair k+5, k+6 have equal sums of
-    # squares: A,B with F,G; B,C with G,H; C,D with H,I; D,E with I,K; E,F with K,A.
-    half = N // 2
-    for k in range(half):
-        p, q = k, k + 1
-        r, s = (k + half) % N, (k + half + 1) % N
-        model.scalar([sq[p], sq[q], sq[r], sq[s]], [1, 1, -1, -1], "=", 0).post()
+    return model, {name: number for name, number in zip(names, numbers)}, None
 
-    return model, {name: v for name, v in zip(NAMES, x)}
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

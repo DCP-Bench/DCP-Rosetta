@@ -1,31 +1,52 @@
-# Contracting costs: from what the contractor pays to pairs of tradesmen, find what each one
-# charges.
+# contracting_costs: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/contracting_costs.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python contracting_costs.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data; the pairwise payments are its statement. Each charge is at
-# least $1 and at most the largest pairwise payment ($5,300), as in the reference.
-TRADES = ["paper_hanger", "painter", "plumber", "electrician", "carpenter", "mason"]
-PAYMENTS = [
-    ("paper_hanger", "painter", 1100),
-    ("painter", "plumber", 1700),
-    ("plumber", "electrician", 1100),
-    ("electrician", "carpenter", 3300),
-    ("carpenter", "mason", 5300),
-    ("mason", "painter", 3200),
-]
 
-
-def build(instance):
-    del instance  # the puzzle carries no instance data
+def create_model(instance):
+    """A contractor planning the construction of a house has to pay six pairs of tradesmen a known sum for each pair. What does each man charge for his services?"""
+    # The sum paid for each pair of tradesmen, in dollars.
+    bills = [
+        ("paper_hanger", "painter", 1100),
+        ("painter", "plumber", 1700),
+        ("plumber", "electrician", 1100),
+        ("electrician", "carpenter", 3300),
+        ("carpenter", "mason", 5300),
+        ("mason", "painter", 3200),
+    ]
+    # The largest bill; no man charges more than this.
+    largest = max(amount for _, _, amount in bills)
 
     model = Model()
 
-    top = max(amount for _, _, amount in PAYMENTS)
-    # charge[t] = what tradesman t charges, in dollars
-    charge = {t: model.intvar(1, top, name=t) for t in TRADES}
+    # The six tradesmen, with what each charges in dollars; each charges at least $1.
+    men = ["paper_hanger", "painter", "plumber", "electrician", "carpenter", "mason"]
+    charge = {man: model.intvar(1, largest, name=man) for man in men}
 
-    # Each pair of tradesmen together is paid the stated amount.
-    for first, second, amount in PAYMENTS:
+    # Each pair's two charges add up to the sum paid for that pair.
+    for first, second, amount in bills:
         model.arithm(charge[first], "+", charge[second], "=", amount).post()
 
-    return model, charge
+    return model, charge, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

@@ -1,6 +1,9 @@
-# Multi-commodity transportation: ship products from origins to destinations, within each
-# origin's supply and the limit on each origin-destination route, so that every demand is
-# met at the lowest total shipping cost.
+# multi: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `multi.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/multi.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python multi.py multi.json
+
 from pychoco.model import Model
 
 
@@ -24,35 +27,39 @@ def delivery_plans(units, caps, unit_costs):
     return plans
 
 
-def build(instance):
-    supply = instance["supply"]  # supply[i][p] = supply of product p at origin i
-    demand = instance["demand"]  # demand[j][p] = demand of product p at destination j
-    limit = instance["limit"]  # limit[i][j] = most that can be shipped from origin i to destination j
-    cost = instance["cost"]  # cost[i][j][p] = cost of shipping one unit of product p from i to j
+def create_model(instance):
+    """Multi-commodity transportation: ship products from origins to destinations so
+    that every destination gets its demand of each product, no origin ships more of a
+    product than its supply, and no route carries more than its limit, at the lowest
+    total shipping cost."""
+    supply = instance["supply"]  # supply[i][p]: units of product p available at origin i
+    demand = instance["demand"]  # demand[j][p]: units of product p needed at destination j
+    limit = instance["limit"]    # limit[i][j]: most units that can go from origin i to destination j
+    cost = instance["cost"]      # cost[i][j][p]: cost of shipping one unit of product p from origin i to destination j
     n_origins = len(supply)
     n_destinations = len(demand)
     n_products = len(supply[0])
+
+    # The most the whole supply could cost, at the dearest unit price.
     max_total_cost = sum(sum(row) for row in supply) * max(max(row) for matrix in cost for row in matrix)
 
-    # A shipping cost is a price per unit, so it is not negative. Shipping more than a
-    # destination demands then never lowers the cost, and removing the excess keeps every
-    # supply and route limit satisfied: some optimal plan delivers exactly the demand.
+    # Shipping costs are not negative, so an optimal plan delivers exactly each demand.
     assert min(c for matrix in cost for row in matrix for c in row) >= 0, "shipping costs must not be negative"
 
     model = Model()
 
-    # x[i][j][p] = units of product p shipped from origin i to destination j. It cannot exceed
-    # the origin's supply of p, the route limit, or what the destination demands.
+    # most[i][j][p]: the most units of product p that can go from origin i to destination j
     most = [[[min(supply[i][p], limit[i][j], demand[j][p]) for p in range(n_products)]
              for j in range(n_destinations)] for i in range(n_origins)]
+    # x[i][j][p]: units of product p shipped from origin i to destination j
     x = [[[model.intvar(0, most[i][j][p], name=f"x_{i}_{j}_{p}") for p in range(n_products)]
           for j in range(n_destinations)] for i in range(n_origins)]
 
-    # Every destination receives its demand of each product, at a delivery cost that depends on
-    # which origins it comes from. The table lists every split of the demand among the origins
-    # with the cost of that split, so the cost of a delivery is bounded below by its cheapest
-    # split before any shipment is fixed. A plain sum of unit cost times shipment, as in an
-    # earlier version of this model, did not finish the larger instances within the time limit.
+    # Each destination gets exactly its demand of each product. The shipments for a
+    # destination and product must follow one way of splitting that demand among the
+    # origins, and the cost of the split is the delivery cost. Listing the splits up
+    # front gives the search a tight bound on each delivery cost.
+    # delivery_cost: the delivery cost of each destination and product
     delivery_cost = []
     for j in range(n_destinations):
         for p in range(n_products):
@@ -64,34 +71,62 @@ def build(instance):
             model.table(shipments + [cost_jp], plans).post()
             delivery_cost.append(cost_jp)
 
-    # an origin cannot ship more of a product than its supply
+    # An origin ships no more of a product than its supply.
     for i in range(n_origins):
         for p in range(n_products):
             model.sum([x[i][j][p] for j in range(n_destinations)], "<=", supply[i][p]).post()
 
-    # the total shipped on each route (origin to destination) is within its limit
+    # The units of all products on each route from an origin to a destination stay within its limit.
     for i in range(n_origins):
         for j in range(n_destinations):
             model.sum(x[i][j], "<=", limit[i][j]).post()
 
-    # total shipping cost, the quantity to minimise
+    # total_cost: the total shipping cost of all deliveries, to be reported
     total_cost = model.intvar(0, max_total_cost, name="total_cost")
     model.sum(delivery_cost, "=", total_cost).post()
 
-    # Tie-break between plans of equal cost. Only the cost is declared, but Choco enumerates
-    # every optimal plan, and plans of equal cost made that enumeration run out of time on the
-    # larger instances. The objective variable therefore ranks plans first by cost, then by a
-    # weighted sum of the shipments (weight k + 1 for the k-th shipment). The weighted sum stays
-    # below `cost_weight`, so the cheapest plan still has the minimal total_cost, the declared
-    # output.
+    # Plans of equal cost are told apart by their shipments, so the search does not
+    # have to list every cheapest plan. flat_x and flat_most list the shipments and
+    # their largest amounts in one row.
     flat_x = [x[i][j][p] for i in range(n_origins) for j in range(n_destinations) for p in range(n_products)]
-    tie_weights = [k + 1 for k in range(len(flat_x))]
     flat_most = [most[i][j][p] for i in range(n_origins) for j in range(n_destinations) for p in range(n_products)]
+    # tie_weights[k] is the weight of the k-th shipment in the tie-break, counting from 1
+    tie_weights = [k + 1 for k in range(len(flat_x))]
+    # tie_break_max: the largest possible weighted sum of the shipments
     tie_break_max = sum(w * m for w, m in zip(tie_weights, flat_most))
+    # tie_break: the weighted sum of the shipments
     tie_break = model.intvar(0, tie_break_max, name="tie_break")
     model.scalar(flat_x, tie_weights, "=", tie_break).post()
+
+    # ranked_cost ranks plans by total cost first and by the tie-break second. The
+    # tie-break never reaches one unit of total cost, so the lowest ranked plan also
+    # has the lowest total cost.
     cost_weight = tie_break_max + 1
     ranked_cost = model.intvar(0, cost_weight * max_total_cost + tie_break_max, name="ranked_cost")
     model.scalar([total_cost, tie_break], [cost_weight, 1], "=", ranked_cost).post()
 
-    return model, {"total_cost": total_cost}, ("minimize", ranked_cost)
+    return model, {"total_cost": total_cost}, {"objective": ranked_cost, "maximize": False}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

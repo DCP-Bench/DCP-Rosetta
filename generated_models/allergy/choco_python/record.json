@@ -2,7 +2,11 @@
   "attempt": {
     "agent": "claude-opus-5 / model-generator campaign (100 models, five thinnest integrations, solution_limit 10)",
     "attempt_id": "attempt-001",
-    "created_at": 1789557683.414711,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/choco/python/CONTRACT.md": "fe481dbed51dc280c641fb39f92bea76c23f3ca1063da02ffc250ac77bbb2707"
+    },
+    "created_at": 1793553916.3097265,
     "problem_id": "allergy",
     "profile": {
       "compilation_timeout": 120,
@@ -11,33 +15,54 @@
       "instance_count": 99,
       "memory_mb": 2048,
       "reference_timeout": 180,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1acfef95033884b8159aabd22c73311f5062b20ff854819b0e2ede8b11f5ab2b",
-    "run_id": "20260916T112106-8a52",
-    "schema": 2,
-    "skill_bundle_hash": "28a7884d8e6aff92bc4a2687d6e2cc8a8517236e2cd851d073a0fc60e975551e",
-    "skill_source": "solvers\\choco_python\\skills\\choco-python",
+    "readiness_hash": "467cbc7fa40d970b2844eea4e5521824c092f0f0e9403c62df3e6a5bb142992b",
+    "run_id": "choco-objective-dict",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "a77338d8897acfa3a39a9cf376cca26c9c544dc0",
+      "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
       "modified": false,
-      "path": "solvers/choco_python/skills/choco-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e303cc8342a940509a9be5b14f01f4715d876fdca79964cc2237f33a2ec92321",
+        "source": "solvers/choco/skills/dcp-choco",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": true,
+          "path": "solvers/choco/skills/dcp-choco"
+        }
+      }
+    ],
     "solver_id": "choco_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:aea1da6f5800787ebd155a6b47b21473010c3573266e899b5dccb76141fdd519",
+      "id": "sha256:e4fa63b1e42cd2a7d06482e5d38da0be01001e180f536b8af43cac19ccdcd20a",
+      "recipe": "sha256:622ff1475738df50af0895e22c63efafc4f26d105dd9e3c1b32b4eed63efcfa2",
       "tag": "dcp-eval/choco_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.003661300055682659,
-        "execution_wall_seconds": 2.340281800017692,
+        "checking_seconds": 0.0020557219395413995,
+        "execution_wall_seconds": 0.39413786702789366,
         "first_solution": {
           "baxter": 3,
           "eggs": 3,
@@ -51,6 +76,7 @@
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "eggs",
@@ -63,9 +89,12 @@
           "fleet"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7574732000939548,
+        "reference_setup_seconds": 0.31199654599186033,
         "runner_status": {
+          "build_seconds": 0.0007371370447799563,
           "detail": "",
+          "main_seconds": 0.0011219779262319207,
+          "read_seconds": 0.00010333489626646042,
           "status": "complete",
           "type": "status"
         },
@@ -83,26 +112,26 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "05a22b225beb9f61c97a50376abd0d9bc42e133a3c6055ad0b3b26ef85da14e8",
+    "model_hash": "8aa048e4a592a0c12f974d139badddb5e59498a7f06dc48592ef2d5a7c6733a5",
     "problem_id": "allergy",
     "reason": "accepted",
     "reference_hash": "29265e5c0af511db0700470c7ee942c8d6d1f744453265d58569624c52f46ce9",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
       "instance_ids": null,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "choco_python",
-    "total_wall_seconds": 4.618961500003934,
+    "total_wall_seconds": 0.799235619022511,
     "unperformed_instances": []
   },
   "generated_by": {

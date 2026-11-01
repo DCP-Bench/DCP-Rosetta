@@ -1,18 +1,15 @@
-# Age changing (Enigma 1224): starting from my age and applying +2, /8, -3 and *7 in some order
-# gives my husband's age; starting from his age and applying the same four operations in a
-# different order gives my age. What are our two ages?
-from pychoco.model import Model
+# age_changing: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python age_changing.py
 
-# The puzzle has no instance data: the operations, the age range 16..120 and the range 1..1000 of
-# intermediate values are the bounds the puzzle statement and its reference fix.
-N_OPS = 4  # operation 0 = +2, 1 = /8, 2 = -3, 3 = *7
-AGE_LOW, AGE_HIGH = 16, 120
-VALUE_LOW, VALUE_HIGH = 1, 1000
+from pychoco.model import Model
 
 
 def apply(op, old):
-    """The value after applying operation op to old, or None when it is not a whole value.
-    Division by 8 only applies to multiples of 8."""
+    """The value after applying operation op to old, or None when the division by 8
+    does not give a whole number. Operations are numbered 0 for +2, 1 for /8, 2 for -3
+    and 3 for *7."""
     if op == 0:
         return old + 2
     if op == 1:
@@ -22,46 +19,78 @@ def apply(op, old):
     return old * 7
 
 
-def build(instance):
-    del instance  # the puzzle carries no instance data
-
+def create_model(instance):
+    """Start with my age and apply the operations +2, /8, -3 and *7, each once and in
+    some order: the result is my husband's age. Starting from his age and applying the
+    same four operations in a different order gives my age. Find both ages."""
     model = Model()
 
-    m = model.intvar(AGE_LOW, AGE_HIGH, name="m")  # my age
-    h = model.intvar(AGE_LOW, AGE_HIGH, name="h")  # my husband's age
+    # The four operations.
+    n_ops = 4
+    # Adult ages are whole years from 16 to 120.
+    age_low, age_high = 16, 120
+    # Values along the way are whole numbers from 1 to 1000.
+    value_low, value_high = 1, 1000
 
-    # perm1[i] / perm2[i] = the operation applied at step i on the way from my age to his, and
-    # from his age to mine
-    perm1 = [model.intvar(0, N_OPS - 1, name=f"perm1_{i}") for i in range(N_OPS)]
-    perm2 = [model.intvar(0, N_OPS - 1, name=f"perm2_{i}") for i in range(N_OPS)]
-    # hlist[i] / mlist[i] = the intermediate values along each chain
-    hlist = [model.intvar(VALUE_LOW, VALUE_HIGH, name=f"hlist_{i}") for i in range(N_OPS + 1)]
-    mlist = [model.intvar(VALUE_LOW, VALUE_HIGH, name=f"mlist_{i}") for i in range(N_OPS + 1)]
+    # My age.
+    m = model.intvar(age_low, age_high, name="m")
+    # My husband's age.
+    h = model.intvar(age_low, age_high, name="h")
 
-    # Each chain applies all four operations, each once.
+    # perm1[i] is the operation at step i going from my age to his, and perm2[i] the
+    # operation at step i going from his age to mine.
+    perm1 = [model.intvar(0, n_ops - 1, name=f"perm1_{i}") for i in range(n_ops)]
+    perm2 = [model.intvar(0, n_ops - 1, name=f"perm2_{i}") for i in range(n_ops)]
+    # hlist[i] is the value after i steps from my age, and mlist[i] the value after i
+    # steps from his age.
+    hlist = [model.intvar(value_low, value_high, name=f"hlist_{i}") for i in range(n_ops + 1)]
+    mlist = [model.intvar(value_low, value_high, name=f"mlist_{i}") for i in range(n_ops + 1)]
+
+    # Each order uses all four operations, once each.
     model.all_different(perm1).post()
     model.all_different(perm2).post()
 
-    # The two orders are different: they differ in at least one position.
-    differs = [model.arithm(perm1[i], "!=", perm2[i]).reify() for i in range(N_OPS)]
+    # differs[i] is true when the two orders use different operations at step i.
+    differs = [model.arithm(perm1[i], "!=", perm2[i]).reify() for i in range(n_ops)]
+    # The two orders differ at some step.
     model.sum(differs, ">=", 1).post()
 
-    # Starting from my age, the operations end at my husband's age, and the other way round.
+    # The chain from my age ends at my husband's age.
     model.arithm(hlist[0], "=", m).post()
-    model.arithm(hlist[N_OPS], "=", h).post()
+    model.arithm(hlist[n_ops], "=", h).post()
+    # The chain from his age ends at my age.
     model.arithm(mlist[0], "=", h).post()
-    model.arithm(mlist[N_OPS], "=", m).post()
+    model.arithm(mlist[n_ops], "=", m).post()
 
-    # Each step applies its operation: (operation, value before, value after) must be a row of
-    # this table, which lists every operation on every value whose result stays in range.
+    # The steps allowed: an operation applied to a value, with a result in range.
     steps = []
-    for op in range(N_OPS):
-        for old in range(VALUE_LOW, VALUE_HIGH + 1):
+    for op in range(n_ops):
+        for old in range(value_low, value_high + 1):
             new = apply(op, old)
-            if new is not None and VALUE_LOW <= new <= VALUE_HIGH:
+            if new is not None and value_low <= new <= value_high:
                 steps.append((op, old, new))
-    for i in range(N_OPS):
+    # Each step of each chain is one of the allowed steps.
+    for i in range(n_ops):
         model.table([perm1[i], hlist[i], hlist[i + 1]], steps).post()
         model.table([perm2[i], mlist[i], mlist[i + 1]], steps).post()
 
-    return model, {"m": m, "h": h}
+    return model, {"m": m, "h": h}, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

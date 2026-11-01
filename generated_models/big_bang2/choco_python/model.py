@@ -1,42 +1,66 @@
-# Nontransitive dice (Rock-Paper-Scissors-Lizard-Spock): five six-faced dice with faces 1..12
-# such that each die beats exactly the dice its choice beats in the game, where die A beats die B
-# when A shows the larger face in more than half of all face pairs.
+# big_bang2: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python big_bang2.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data; the dice, faces and the game's ten 'beats' relations are its
-# statement.
-ROCK, PAPER, SCISSORS, LIZARD, SPOCK = range(5)
-N_DICE = 5
-N_FACES = 6
-MAX_FACE = 12
-BEATS = [
-    (ROCK, SCISSORS),      # Rock crushes Scissors
-    (ROCK, LIZARD),        # Rock crushes Lizard
-    (PAPER, ROCK),         # Paper covers Rock
-    (PAPER, SPOCK),        # Paper disproves Spock
-    (SCISSORS, PAPER),     # Scissors cuts Paper
-    (SCISSORS, LIZARD),    # Scissors decapitates Lizard
-    (LIZARD, PAPER),       # Lizard eats Paper
-    (LIZARD, SPOCK),       # Lizard poisons Spock
-    (SPOCK, ROCK),         # Spock vaporizes Rock
-    (SPOCK, SCISSORS),     # Spock smashes Scissors
-]
 
+def create_model(instance):
+    """Nontransitive dice: design five dice with six faces each, one die for each of Rock,
+    Paper, Scissors, Lizard and Spock, so that the dice beat each other in the same pattern
+    as these choices beat each other. A die beats another when it shows a strictly larger
+    face in more than half of all pairs of faces."""
+    # The five choices, each with its own die.
+    ROCK, PAPER, SCISSORS, LIZARD, SPOCK = range(5)
+    n_dice = 5       # one die per choice
+    n_faces = 6      # each die has six faces
+    max_face = 12    # each face shows a value from 1 to 12; values may repeat
 
-def build(instance):
-    del instance  # the puzzle carries no instance data
+    # (winner, loser): the ten rules of the game. Each choice beats two others.
+    beats = [
+        (ROCK, SCISSORS),     # rock crushes scissors
+        (ROCK, LIZARD),       # rock crushes lizard
+        (PAPER, ROCK),        # paper covers rock
+        (PAPER, SPOCK),       # paper disproves Spock
+        (SCISSORS, PAPER),    # scissors cut paper
+        (SCISSORS, LIZARD),   # scissors decapitate lizard
+        (LIZARD, PAPER),      # lizard eats paper
+        (LIZARD, SPOCK),      # lizard poisons Spock
+        (SPOCK, ROCK),        # Spock vaporizes rock
+        (SPOCK, SCISSORS),    # Spock smashes scissors
+    ]
 
     model = Model()
 
-    # dice[i][j] = value of face j of die i; values may repeat within and across dice
-    dice = [[model.intvar(1, MAX_FACE, name=f"dice_{i}_{j}") for j in range(N_FACES)]
-            for i in range(N_DICE)]
+    # dice[d][f] is the value on face f of die d
+    dice = [[model.intvar(1, max_face, name=f"dice_{d}_{f}") for f in range(n_faces)]
+            for d in range(n_dice)]
 
-    # For every 'beats' relation, the winner's face is strictly larger than the loser's face in
-    # more than half of the N_FACES * N_FACES face pairs.
-    for winner, loser in BEATS:
+    # Each rule: the winning die shows a larger face in more than half of the pairs of faces.
+    for winner, loser in beats:
+        # one flag per pair of faces, true when the winner's face is the larger one
         wins = [model.arithm(dice[winner][a], ">", dice[loser][b]).reify()
-                for a in range(N_FACES) for b in range(N_FACES)]
-        model.sum(wins, ">", (N_FACES * N_FACES) // 2).post()
+                for a in range(n_faces) for b in range(n_faces)]
+        model.sum(wins, ">", n_faces * n_faces // 2).post()
 
-    return model, {"dice": dice}
+    return model, {"dice": dice}, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

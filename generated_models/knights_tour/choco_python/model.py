@@ -1,40 +1,68 @@
-# Knight's tour: number the squares of an n x n chessboard 0..n*n-1 so that the knight can
-# go from each square to the next number by a knight's move, visiting every square once.
-# The tour does not have to return to the start.
+# knights_tour: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `knights_tour.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knights_tour.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python knights_tour.py knights_tour.json
+
 from pychoco.model import Model
 
-# the eight knight moves as (row change, column change)
-KNIGHT_MOVES = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
 
-
-def build(instance):
-    n = instance["n"]  # side of the board
-    size = n * n
+def create_model(instance):
+    """A knight visits every square of an n by n chessboard exactly once, without
+    returning to the starting square. The tour numbers the squares by move, from 0."""
+    n = instance["n"]  # the board is n by n
+    size = n * n       # the number of squares, which is also the number of moves
 
     model = Model()
 
-    # Square (i, j) is square i * n + j.
-    # x_flat[square] = the move number of the knight on that square
+    # The move at which the knight visits each square, with the squares numbered row by row.
     x_flat = [model.intvar(0, size - 1, name=f"x_{s}") for s in range(size)]
-    # where[k] = the square the knight stands on at move number k. It is the inverse of
-    # x_flat and lets "the knight moves from move k to move k + 1" be a rule on pairs of squares.
+    # where[k] is the square the knight visits at move k, the reverse of x_flat.
     where = [model.intvar(0, size - 1, name=f"where_{k}") for k in range(size)]
 
-    # each square is visited exactly once (the move numbers are a permutation of 0..n*n-1)
+    # Each square is visited at a different move, and the two lists describe the same tour.
     model.all_different(x_flat).post()
     model.inverse_channeling(x_flat, where).post()
 
-    # pairs of squares that are a knight's move apart
+    # The eight knight moves as (row change, column change).
+    knight_moves = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
+
+    # Pairs of squares on the board that a knight's move apart.
     knight_moves_apart = []
     for i in range(n):
         for j in range(n):
-            for di, dj in KNIGHT_MOVES:
+            for di, dj in knight_moves:
                 if 0 <= i + di < n and 0 <= j + dj < n:
                     knight_moves_apart.append([i * n + j, (i + di) * n + (j + dj)])
 
-    # the square of move k + 1 is a knight's move away from the square of move k
+    # The square of move k + 1 is a knight's move away from the square of move k.
     for k in range(size - 1):
         model.table([where[k], where[k + 1]], knight_moves_apart).post()
 
+    # The same move numbers as an n by n grid, x[i][j] for the square (i, j).
     x = [[x_flat[i * n + j] for j in range(n)] for i in range(n)]
-    return model, {"x": x}
+    return model, {"x": x}, None
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

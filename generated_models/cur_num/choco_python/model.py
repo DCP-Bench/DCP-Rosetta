@@ -1,35 +1,59 @@
-# Curious number: 48 plus 1 is a square, and half of 48 plus 1 is a square too. Find another number
-# between 1 and 10000 with this peculiarity.
+# cur_num: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python cur_num.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data; 48 and the range 1..10000 are its statement.
-KNOWN = 48
-TOP = 10000
 
-
-def build(instance):
-    del instance  # the puzzle carries no instance data
-
+def create_model(instance):
+    """The number 48 is peculiar: adding 1 to it gives a square number, and adding 1
+    to its half gives a square number too. Find another number between 1 and 10000
+    with this peculiarity."""
     model = Model()
 
-    def var(name):
-        return model.intvar(1, TOP, name=name, bounded_domain=True)
+    # The peculiar number, between 1 and 10000.
+    peculiar = model.intvar(1, 10000, name="peculiar")
+    # peculiar + 1, which is a square number
+    plus_one = model.intvar(1, 10000, name="plus_one")
+    # the square root of plus_one
+    root_plus_one = model.intvar(1, 10000, name="root_plus_one")
+    # half of peculiar
+    half = model.intvar(1, 10000, name="half")
+    # half + 1, which is a square number
+    half_plus_one = model.intvar(1, 10000, name="half_plus_one")
+    # the square root of half_plus_one
+    root_half_plus_one = model.intvar(1, 10000, name="root_half_plus_one")
 
-    peculiar = var("peculiar")
-    a = var("a")      # the number plus 1
-    b = var("b")      # its square root
-    c = var("c")      # half the number
-    d = var("d")      # half the number plus 1
-    e = var("e")      # its square root
+    # The known example 48 does not count.
+    model.arithm(peculiar, "!=", 48).post()
 
-    # 48 is already known, so look for another number.
-    model.arithm(peculiar, "!=", KNOWN).post()
-    # Adding 1 to the number gives a square.
-    model.scalar([peculiar, a], [1, -1], "=", -1).post()
-    model.square(a, b).post()
-    # The number is even, and adding 1 to its half also gives a square.
-    model.scalar([peculiar, c], [1, -2], "=", 0).post()
-    model.scalar([c, d], [1, -1], "=", -1).post()
-    model.square(d, e).post()
+    # Adding 1 to the peculiar number gives a square number.
+    model.scalar([peculiar, plus_one], [1, -1], "=", -1).post()
+    model.square(plus_one, root_plus_one).post()
 
-    return model, {"peculiar": peculiar}
+    # Half of the peculiar number, plus 1, gives a square number too.
+    model.scalar([peculiar, half], [1, -2], "=", 0).post()
+    model.scalar([half, half_plus_one], [1, -1], "=", -1).post()
+    model.square(half_plus_one, root_half_plus_one).post()
+
+    return model, {"peculiar": peculiar}, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

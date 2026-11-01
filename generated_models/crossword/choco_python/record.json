@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
     "attempt_id": "attempt-001",
-    "created_at": 1790673745.6288688,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/choco/python/CONTRACT.md": "fe481dbed51dc280c641fb39f92bea76c23f3ca1063da02ffc250ac77bbb2707"
+    },
+    "created_at": 1793553953.2986019,
     "problem_id": "crossword",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "e595fd6735e3313488a7c8992e36a7124c2b5083c485d58266670990c8436816",
-    "run_id": "20260929T0836Z-cpsat-choco-5d1c",
-    "schema": 2,
-    "skill_bundle_hash": "28a7884d8e6aff92bc4a2687d6e2cc8a8517236e2cd851d073a0fc60e975551e",
-    "skill_source": "solvers\\choco_python\\skills\\choco-python",
+    "readiness_hash": "467cbc7fa40d970b2844eea4e5521824c092f0f0e9403c62df3e6a5bb142992b",
+    "run_id": "choco-objective-dict",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "dd9e4a061172b318d760d877d17c2948cd0f2cd4",
+      "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
       "modified": false,
-      "path": "solvers/choco_python/skills/choco-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e303cc8342a940509a9be5b14f01f4715d876fdca79964cc2237f33a2ec92321",
+        "source": "solvers/choco/skills/dcp-choco",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": true,
+          "path": "solvers/choco/skills/dcp-choco"
+        }
+      }
+    ],
     "solver_id": "choco_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:aea1da6f5800787ebd155a6b47b21473010c3573266e899b5dccb76141fdd519",
+      "id": "sha256:e4fa63b1e42cd2a7d06482e5d38da0be01001e180f536b8af43cac19ccdcd20a",
+      "recipe": "sha256:622ff1475738df50af0895e22c63efafc4f26d105dd9e3c1b32b4eed63efcfa2",
       "tag": "dcp-eval/choco_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.015415000030770898,
-        "execution_wall_seconds": 2.0137115999823436,
+        "checking_seconds": 0.010201704106293619,
+        "execution_wall_seconds": 0.39910706994123757,
         "first_solution": {
           "E": [
             0,
@@ -59,9 +84,12 @@
           "E"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5087664000457153,
+        "reference_setup_seconds": 0.5724814549321309,
         "runner_status": {
+          "build_seconds": 0.0019319129642099142,
           "detail": "",
+          "main_seconds": 0.002678680932149291,
+          "read_seconds": 0.00018871098291128874,
           "status": "complete",
           "type": "status"
         },
@@ -73,21 +101,21 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "5146b362682a81f4fec412698c73b01766fa96db2e47e3ed1eccb778a90b488e",
+    "model_hash": "3566d383bae6edc79be2f9772fc6a87bb2835aa8a16dd0d5e538574900626a48",
     "problem_id": "crossword",
     "reason": "accepted",
     "reference_hash": "0ac0f61a0880c08ece2294643d19351febdb3f31f986122f7c8bdfe50e4c0744",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -98,7 +126,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "choco_python",
-    "total_wall_seconds": 4.168457000050694,
+    "total_wall_seconds": 1.117452824022621,
     "unperformed_instances": []
   },
   "generated_by": {

@@ -2,7 +2,11 @@
   "attempt": {
     "agent": "claude-opus-5 / model-generator campaign (50 models, five integrations incl. one new, solution_limit 10)",
     "attempt_id": "attempt-001",
-    "created_at": 1789550715.926559,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/choco/python/CONTRACT.md": "fe481dbed51dc280c641fb39f92bea76c23f3ca1063da02ffc250ac77bbb2707"
+    },
+    "created_at": 1793554448.2653058,
     "problem_id": "discrete_tomography",
     "profile": {
       "compilation_timeout": 120,
@@ -11,33 +15,54 @@
       "instance_count": 99,
       "memory_mb": 2048,
       "reference_timeout": 180,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1acfef95033884b8159aabd22c73311f5062b20ff854819b0e2ede8b11f5ab2b",
-    "run_id": "20260916T091550-4d71",
-    "schema": 2,
-    "skill_bundle_hash": "28a7884d8e6aff92bc4a2687d6e2cc8a8517236e2cd851d073a0fc60e975551e",
-    "skill_source": "solvers\\choco_python\\skills\\choco-python",
+    "readiness_hash": "467cbc7fa40d970b2844eea4e5521824c092f0f0e9403c62df3e6a5bb142992b",
+    "run_id": "choco-objective-dict",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "56e7db6dd71c8c5a46e1a8b5a47937958fc2d40f",
+      "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
       "modified": false,
-      "path": "solvers/choco_python/skills/choco-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e303cc8342a940509a9be5b14f01f4715d876fdca79964cc2237f33a2ec92321",
+        "source": "solvers/choco/skills/dcp-choco",
+        "version": {
+          "commit": "bb380bb388e3e772ccb50b8535b76f29bbb6e6bf",
+          "modified": true,
+          "path": "solvers/choco/skills/dcp-choco"
+        }
+      }
+    ],
     "solver_id": "choco_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:aea1da6f5800787ebd155a6b47b21473010c3573266e899b5dccb76141fdd519",
+      "id": "sha256:e4fa63b1e42cd2a7d06482e5d38da0be01001e180f536b8af43cac19ccdcd20a",
+      "recipe": "sha256:622ff1475738df50af0895e22c63efafc4f26d105dd9e3c1b32b4eed63efcfa2",
       "tag": "dcp-eval/choco_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.018836500006727874,
-        "execution_wall_seconds": 1.6691353999776766,
+        "checking_seconds": 0.005239863065071404,
+        "execution_wall_seconds": 0.3484780890867114,
         "first_solution": {
           "matrix": [
             [
@@ -199,24 +224,542 @@
         "id": "example",
         "instance_hash": "0162f5466513888ae60e521a44520141e3d1517b92d35080feece866a4eebbe1",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3778190000448376,
+        "reference_setup_seconds": 0.5650024089263752,
         "runner_status": {
+          "build_seconds": 0.0015986330108717084,
           "detail": "",
+          "main_seconds": 0.0024166268995031714,
+          "read_seconds": 0.00015192897990345955,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
         "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.005246152984909713,
+        "execution_wall_seconds": 0.4071156729478389,
+        "first_solution": {
+          "matrix": [
+            [
+              1,
+              1,
+              1,
+              0,
+              1,
+              0,
+              1,
+              1,
+              1,
+              0,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              1,
+              1,
+              1,
+              0,
+              1,
+              0,
+              1,
+              1,
+              1,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              0,
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              1,
+              1,
+              1,
+              0,
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ]
+          ]
+        },
+        "id": "json:1",
+        "instance_hash": "0dd46b10d1d5e1fc60f88d8a55948323a7dfc54dc696c00e7b3f38fc126089ac",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "matrix"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4812151410151273,
+        "runner_status": {
+          "build_seconds": 0.0018194159492850304,
+          "detail": "",
+          "main_seconds": 0.002792502986267209,
+          "read_seconds": 0.00021627801470458508,
+          "status": "complete",
+          "type": "status"
+        },
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.007401301991194487,
+        "execution_wall_seconds": 0.3484591420274228,
+        "first_solution": {
+          "matrix": [
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0
+            ]
+          ]
+        },
+        "id": "json:2",
+        "instance_hash": "f8aee9e9367df3e3cfb26891f4a84e4a50315750dc5acac11ca94329d8736a74",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "matrix"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5449513699859381,
+        "runner_status": {
+          "build_seconds": 0.0012383370194584131,
+          "detail": "",
+          "main_seconds": 0.0019916760502383113,
+          "read_seconds": 0.0001772070536389947,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.009399089962244034,
+        "execution_wall_seconds": 0.4062908550258726,
+        "first_solution": {
+          "matrix": [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ]
+        },
+        "id": "json:3",
+        "instance_hash": "594e9fcda3c62b8fe596cb0f63ed3bcb7f1521f7e921fc82cda90c0c754bde20",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "matrix"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5319976999890059,
+        "runner_status": {
+          "build_seconds": 0.001801001955755055,
+          "detail": "",
+          "main_seconds": 0.0029066980350762606,
+          "read_seconds": 0.00017879996448755264,
+          "status": "complete",
+          "type": "status"
+        },
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.007884181919507682,
+        "execution_wall_seconds": 0.40376709296833724,
+        "first_solution": {
+          "matrix": [
+            [
+              1,
+              0,
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              0,
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              0,
+              0,
+              1
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              0,
+              0,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              0,
+              1,
+              0,
+              0,
+              1
+            ]
+          ]
+        },
+        "id": "json:4",
+        "instance_hash": "62d470c65737347ae9cd3877116c834dda65c4639108f59c36d6caabe981a01b",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "matrix"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5483320800121874,
+        "runner_status": {
+          "build_seconds": 0.0011528159957379103,
+          "detail": "",
+          "main_seconds": 0.001842383062466979,
+          "read_seconds": 0.00015354703646153212,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
       }
     ],
-    "instances_available": 1,
-    "instances_checked": 1,
+    "instances_available": 5,
+    "instances_checked": 5,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -224,26 +767,26 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "2578a27bcfda3c46cd28db6d59bea5af794073602195709b097ed237fab6f097",
+    "model_hash": "bf3c5ed101ae86f81619b846020cd7a028d2a9706cddcdcf45ce41d0d83bceb1",
     "problem_id": "discrete_tomography",
     "reason": "accepted",
     "reference_hash": "dce050ae7f87cb658b8199813b23e09440805f4d63e79552fe6a819cdca37641",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
       "instance_ids": null,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 1,
+    "solutions_checked": 7,
     "solver_id": "choco_python",
-    "total_wall_seconds": 3.599262799951248,
+    "total_wall_seconds": 4.943650224944577,
     "unperformed_instances": []
   },
   "generated_by": {

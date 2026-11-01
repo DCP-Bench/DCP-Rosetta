@@ -1,32 +1,57 @@
-# General store: in the sign's addition, sixteen words add up to ALL WOOL; each letter stands for a
-# different digit. Find the digits.
+# general_store: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python general_store.py
+
 from pychoco.model import Model
 
-# The puzzle has no instance data; the words of the sign are its statement.
-LETTERS = "CHESABOWPL"
-ADDENDS = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS", "HOPS",
-           "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
-TOTAL = "ALLWOOL"
 
-
-def build(instance):
-    del instance  # the puzzle carries no instance data
+def create_model(instance):
+    """The owner of a general store has put up a sign: sixteen words that add up to
+    'ALL WOOL'. Each different letter stands for a different digit; find the digit
+    of every letter."""
+    # The sixteen words above the line.
+    words = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
+             "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
+    total = "ALLWOOL"  # the total below the line
 
     model = Model()
 
-    # digit[L] = the digit letter L stands for
-    digit = {L: model.intvar(0, 9, name=L) for L in LETTERS}
+    # The letters on the sign, each once.
+    letters = sorted(set("".join(words + [total])))
+    # digit[c] is the digit that letter c stands for
+    digit = {c: model.intvar(0, 9, name=c) for c in letters}
 
     # Different letters stand for different digits.
     model.all_different(list(digit.values())).post()
 
-    # The words above the line add up to ALL WOOL. Each letter's place values are collected into
-    # one coefficient (positive in the addends, negative in the total), so the whole sum is one
-    # linear equation equal to zero.
-    coefficient = {L: 0 for L in LETTERS}
-    for word, sign in [(w, 1) for w in ADDENDS] + [(TOTAL, -1)]:
-        for pos, L in enumerate(reversed(word)):
-            coefficient[L] += sign * 10 ** pos
-    model.scalar([digit[L] for L in LETTERS], [coefficient[L] for L in LETTERS], "=", 0).post()
+    # weight[c] is the place value of letter c summed over the words above the line,
+    # minus its place value in the total.
+    weight = {c: 0 for c in letters}
+    for word, sign in [(w, 1) for w in words] + [(total, -1)]:
+        for place, c in enumerate(reversed(word)):
+            weight[c] += sign * 10 ** place
 
-    return model, {L: digit[L] for L in LETTERS}
+    # The words above the line add up to the total.
+    model.scalar([digit[c] for c in letters], [weight[c] for c in letters], "=", 0).post()
+
+    return model, {c: digit[c] for c in letters}, None
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

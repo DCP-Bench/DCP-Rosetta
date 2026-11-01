@@ -1,5 +1,9 @@
-# CMO 2012 problem: find positive integers a >= b with a - b a prime and a * b a
-# perfect square n^2, taking the smallest a that is no less than a given minimum.
+# cmo_2012: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `cmo_2012.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python cmo_2012.py cmo_2012.json
+
 from pychoco.model import Model
 
 
@@ -12,28 +16,60 @@ def primes_below(limit):
     return result
 
 
-def build(instance):
-    min_a = instance["min_a"]  # a must be at least this
-    max_val = instance["max_val"]  # upper bound on every variable
+def create_model(instance):
+    """Given two positive integers a and b, where a - b is a prime number and a * b is a
+    perfect square n^2, find the smallest value of a no less than a given minimum. Also,
+    b should be larger than 0."""
+    min_a = instance["min_a"]      # the smallest value a may take
+    max_val = instance["max_val"]  # the largest value any of the numbers may take
+
+    primes = primes_below(max_val)  # the primes below max_val
 
     model = Model()
 
-    # a, b and n have wide ranges and only bounds reasoning is useful for them, so
-    # they get bounded domains (cheaper to propagate than a value-by-value domain)
+    # a is the larger number
     a = model.intvar(min_a, max_val, name="a", bounded_domain=True)
-    b = model.intvar(1, max_val, name="b", bounded_domain=True)  # b is larger than 0
+    # b is the smaller number
+    b = model.intvar(1, max_val, name="b", bounded_domain=True)
+    # n is the square root of a * b
     n = model.intvar(0, max_val, name="n", bounded_domain=True)
-    # p = a - b, which has to be a prime: its domain is the list of primes below max_val
-    p = model.intvar(primes_below(max_val), name="p")
+    # p is the prime a - b
+    p = model.intvar(primes, name="p")
 
-    # a is not smaller than b
+    # a is not smaller than b.
     model.arithm(a, ">=", b).post()
-    # the prime p is the difference of a and b
+    # a - b is the prime p.
     model.arithm(a, "-", b, "=", p).post()
-    # the product a * b is a perfect square, n^2
+
+    # the product a * b
     product = model.intvar(0, max_val * max_val, name="product", bounded_domain=True)
+    # a * b is a perfect square.
     model.times(a, b, product).post()
     model.square(product, n).post()
 
-    # the smallest possible a (a is itself a variable, as Choco requires)
-    return model, {"a": a, "b": b, "n": n, "p": p}, ("minimize", a)
+    # Minimise a.
+    return model, {"a": a, "b": b, "n": n, "p": p}, {"objective": a, "maximize": False}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")

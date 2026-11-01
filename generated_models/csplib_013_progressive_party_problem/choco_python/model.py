@@ -1,66 +1,93 @@
-# Progressive party: choose the fewest host boats so that, in every period, each
-# guest crew visits one host, no host is over capacity, and no two crews meet twice.
+# csplib_013_progressive_party_problem: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `csplib_013_progressive_party_problem.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_013_progressive_party_problem.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python csplib_013_progressive_party_problem.py csplib_013_progressive_party_problem.json
+
 from pychoco.model import Model
 
 
-def build(instance):
-    n_boats = instance["n_boats"]
-    n_periods = instance["n_periods"]
-    capacity = instance["capacity"]  # capacity[h] = most people allowed aboard boat h
-    crew_size = instance["crew_size"]  # crew_size[b] = number of people in the crew of boat b
+def create_model(instance):
+    """Timetable a party at a yacht club: some boats are hosts, and the crews of the other
+    boats visit host boats in successive periods, without exceeding any boat's capacity,
+    revisiting a host or meeting another crew twice. Use as few host boats as possible."""
+    n_boats = instance["n_boats"]      # the number of boats
+    n_periods = instance["n_periods"]  # the number of half-hour periods
+    capacity = instance["capacity"]    # capacity[b]: the most people boat b can hold
+    crew_size = instance["crew_size"]  # crew_size[b]: the number of people in the crew of boat b
 
     model = Model()
 
-    # is_host[b] = 1 if boat b is a host boat
+    # is_host[b] is true when boat b is a host boat
     is_host = [model.boolvar(name=f"is_host_{b}") for b in range(n_boats)]
-    # visits[p][b] = the boat that the crew of boat b is aboard in period p
+    # visits[p][b] is the boat that the crew of boat b is on in period p (b itself for a host)
     visits = [[model.intvar(0, n_boats - 1, name=f"visits_{p}_{b}") for b in range(n_boats)]
               for p in range(n_periods)]
-    # at[p][b][h] = 1 if the crew of boat b is aboard boat h in period p
+    # at[p][b][h] is true when the crew of boat b is on boat h in period p
     at = [[[model.arithm(visits[p][b], "=", h).reify() for h in range(n_boats)]
            for b in range(n_boats)] for p in range(n_periods)]
 
-    # crews of host boats stay on their own boat in every period
+    # The crew of a host boat stays on its own boat in every period.
     for b in range(n_boats):
         for p in range(n_periods):
             model.arithm(is_host[b], "<=", at[p][b][b]).post()
 
-    # the number of people aboard a boat can never exceed its capacity: in each period
-    # the boats' crews are packed into the boats they are aboard (bin packing, which
-    # prunes more than a plain sum per boat)
+    # The people aboard a boat, host crew included, do not exceed its capacity in any period.
     for p in range(n_periods):
+        # load[h] is the number of people aboard boat h in period p
         load = [model.intvar(0, capacity[h], name=f"load_{p}_{h}") for h in range(n_boats)]
         model.bin_packing(visits[p], crew_size, load).post()
 
-    # non-host boats cannot be visited: nobody is aboard boat h unless h is a host
+    # Nobody is aboard a boat that is not a host.
     for p in range(n_periods):
         for b in range(n_boats):
             for h in range(n_boats):
                 model.arithm(at[p][b][h], "<=", is_host[h]).post()
 
-    # a guest crew cannot visit the same boat twice. A guest never stays on its
-    # own boat, so this is: for each other boat h, crew b is aboard h in at most
-    # one period (a host crew never leaves its boat, so it satisfies this too).
+    # A guest crew never visits the same boat in two periods.
     for b in range(n_boats):
         for h in range(n_boats):
             if h != b:
                 model.sum([at[p][b][h] for p in range(n_periods)], "<=", 1).post()
 
-    # two crews cannot meet more than once: they share a boat in at most one period
+    # Two crews meet in at most one period, so they share a boat in at most one period.
     for c1 in range(n_boats):
         for c2 in range(c1 + 1, n_boats):
+            # meet[p] is true when crews c1 and c2 are on the same boat in period p
             meet = [model.arithm(visits[p][c1], "=", visits[p][c2]).reify() for p in range(n_periods)]
             model.sum(meet, "<=", 1).post()
 
-    # Implied constraints that help the solver bound the number of hosts:
-    # (1) in every period all crews are aboard hosts, so the hosts' capacities must
-    #     hold the people of all boats;
+    # In each period everyone is aboard a host, so the host boats together hold all the people.
     model.scalar(is_host, capacity, ">=", sum(crew_size)).post()
-    # (2) a guest crew visits a different host in every period, so with any guest
-    #     there are at least n_periods hosts; with no guest every boat is a host.
-    n_hosts = model.intvar(min(n_periods, n_boats), n_boats, name="n_hosts")
 
-    # minimise the number of host boats (Choco optimises a single variable)
+    # n_hosts is the number of host boats. A guest crew visits a different host in every
+    # period, so there are at least n_periods hosts, unless every boat is a host.
+    n_hosts = model.intvar(min(n_periods, n_boats), n_boats, name="n_hosts")
     model.sum(is_host, "=", n_hosts).post()
 
-    return model, {"visits": visits, "is_host": is_host}, ("minimize", n_hosts)
+    # Use as few host boats as possible.
+    return model, {"visits": visits, "is_host": is_host}, {"objective": n_hosts, "maximize": False}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")
