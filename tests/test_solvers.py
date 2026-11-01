@@ -239,8 +239,8 @@ class MetadataTests(unittest.TestCase):
             module = metadata["framework"]
             pattern = re.compile(rf"^\s*(?:import\s+{re.escape(module)}\b"
                                  rf"|from\s+{re.escape(module)}[\s.])", re.MULTILINE)
-            for model in sorted((ROOT / "generated_models").glob(f"*/{solver}/*/model.py")):
-                with self.subTest(solver=solver, model=model.parent.name):
+            for model in sorted((ROOT / "generated_models").glob(f"*/{solver}/model.py")):
+                with self.subTest(solver=solver, problem=model.parent.parent.name):
                     source = model.read_text(encoding="utf-8")
                     self.assertRegex(
                         source, pattern,

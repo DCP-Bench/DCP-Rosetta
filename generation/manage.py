@@ -423,6 +423,20 @@ def retained_record(record: dict[str, Any], evaluation: dict[str, Any], model_fi
     }
 
 
+def _clear_flags(folder: Path) -> None:
+    """Drop generation/flags.json entries for a model folder whose model was replaced."""
+    path = REPO_ROOT / "generation" / "flags.json"
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    model = folder.relative_to(REPO_ROOT).as_posix()
+    kept = [item for item in document.get("flags") or [] if item.get("model") != model]
+    if len(kept) != len(document.get("flags") or []):
+        document["flags"] = kept
+        path.write_text(json.dumps(document, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+
+
 def retain(attempt_path: str) -> Path:
     folder, run_folder, record, run = _attempt(attempt_path)
     evaluation = _read(folder / "evaluation.json")
@@ -490,10 +504,10 @@ def retain(attempt_path: str) -> Path:
         raise ManagementError("Evaluator total solution coverage is inconsistent")
     if candidate_info.get("sha256") != actual_hash:
         raise ManagementError("Preserved candidate bytes changed after evaluation")
-    destination = GENERATED_ROOT / record["problem_id"] / record["solver_id"] / f"{record['run_id']}-{record['attempt_id']}"
+    # One model per pair: a newly retained model replaces the one before it, whose
+    # bytes stay in git history and whose run and attempt its record.json names.
+    destination = GENERATED_ROOT / record["problem_id"] / record["solver_id"]
     _inside(destination, GENERATED_ROOT, "retention destination")
-    if destination.exists():
-        raise ManagementError(f"Refusing to overwrite retained model: {destination}")
     staging = destination.parent / f".{destination.name}.staging-{uuid.uuid4().hex}"
     staging.mkdir(parents=True)
     model_file = f"model{candidate.suffix}"
@@ -502,11 +516,18 @@ def retain(attempt_path: str) -> Path:
         shutil.rmtree(staging, ignore_errors=True)
         raise ManagementError("Staged model hash verification failed")
     _write_new(staging / "record.json", retained_record(record, evaluation, model_file))
+    replaced = destination.parent / f".{destination.name}.replaced-{uuid.uuid4().hex}"
     try:
+        if destination.exists():
+            os.rename(destination, replaced)
         os.rename(staging, destination)
     except OSError as error:
+        if replaced.exists() and not destination.exists():
+            os.rename(replaced, destination)
         shutil.rmtree(staging, ignore_errors=True)
         raise ManagementError(f"Could not atomically retain model: {error}") from error
+    shutil.rmtree(replaced, ignore_errors=True)
+    _clear_flags(destination)
     _write_new(folder / "retained.json", {"destination": str(destination.relative_to(REPO_ROOT)), "time": time.time()})
     _append_event(run_folder, "model_retained", {"attempt": str(folder.relative_to(run_folder)),
                                                    "destination": str(destination.relative_to(REPO_ROOT))})
