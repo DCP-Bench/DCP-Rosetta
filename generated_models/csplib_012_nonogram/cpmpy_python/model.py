@@ -1,12 +1,14 @@
-# Nonogram: shade cells of a grid so that in every row and column the blocks of
-# consecutive shaded cells have exactly the lengths listed in its rule, in
-# order, separated by at least one empty cell. A rule padded with 0s ignores the
-# 0 entries.
+# csplib_012_nonogram: a CPMpy model from DCP Rosetta.
+# Download the `csplib_012_nonogram.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_012_nonogram.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python csplib_012_nonogram.py csplib_012_nonogram.json
+
 import cpmpy as cp
 
 
 def line_automaton(rule):
-    """Automaton that accepts exactly the lines (0 = empty, 1 = shaded) matching the rule.
+    """Automaton that accepts exactly the lines (0 = empty, 1 = shaded) matching a rule.
 
     The state counts how much of the rule has been read: inside a block it advances by
     one per shaded cell, and after a block one empty cell is required before the next.
@@ -29,24 +31,41 @@ def line_automaton(rule):
     return transitions, accepting
 
 
-def build(instance):
-    row_rules = instance["row_rules"]
-    col_rules = instance["col_rules"]
+def create_model(instance):
+    """Shade squares in a grid so that in every row and column the blocks of consecutive
+    shaded squares have the lengths given by its rule, in order, with at least one
+    unshaded square between blocks."""
+    row_rules = instance["row_rules"]  # row_rules[r]: the block lengths of row r, in order (0 is padding)
+    col_rules = instance["col_rules"]  # col_rules[c]: the block lengths of column c, in order (0 is padding)
     n_rows, n_cols = len(row_rules), len(col_rules)
 
-    # board[r, c] = 1 when the cell is shaded, 0 when it is empty
+    # board[r, c] is 1 when the square in row r and column c is shaded, 0 when it is not
     board = cp.intvar(0, 1, shape=(n_rows, n_cols), name="board")
 
     model = cp.Model()
-
-    # Each row shows its shaded blocks in the order and lengths its rule lists.
+    # Each row shows the shaded blocks its rule lists, in that order.
     for r, rule in enumerate(row_rules):
         transitions, accepting = line_automaton(rule)
-        model += cp.Regular(list(board[r, :]), transitions, 0, accepting)
+        model.add(cp.Regular(board[r, :], transitions, 0, accepting))
 
-    # Each column shows its shaded blocks in the order and lengths its rule lists.
+    # Each column shows the shaded blocks its rule lists, in that order.
     for c, rule in enumerate(col_rules):
         transitions, accepting = line_automaton(rule)
-        model += cp.Regular(list(board[:, c]), transitions, 0, accepting)
+        model.add(cp.Regular(board[:, c], transitions, 0, accepting))
 
     return model, {"board": board}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

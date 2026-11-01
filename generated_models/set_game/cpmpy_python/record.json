@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790873009.548257,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/cpmpy/python/CONTRACT.md": "aa261b8e0e6406b4e387d9a09eba1a8018357af782b63abaeb2601a5c567119a"
+    },
+    "created_at": 1793539295.5097525,
     "problem_id": "set_game",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,35 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "da2baf194c0717575da95809643d4a309b8743e0b108da08bad3c03d913a29e9",
-    "run_id": "20261001T1218Z-cpmpy-4018",
-    "schema": 2,
-    "skill_bundle_hash": "5eb44eb71fc69d2470b883f6239d66666651ff2c019445b42e3525ebe2b44d92",
-    "skill_source": "solvers\\cpmpy_python\\skills\\cpmpy-python",
+    "readiness_hash": "589278e59e6a032713c8eafef5b8c8639e497cc62de893405db80328ac813f7a",
+    "run_id": "cpmpy-model-add",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "1c8f60ef2b095d9d1e80dd0a22d106c26dec2c16",
+      "commit": "795272ab088749cf481ac77287adaf8420d61966",
       "modified": false,
-      "path": "solvers/cpmpy_python/skills/cpmpy-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "795272ab088749cf481ac77287adaf8420d61966",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "75e7a16d9dda902e4b92963a1c97e04c312834f8841a7f747c59b93acf5de2ec",
+        "source": "solvers/cpmpy/skills/dcp-cpmpy",
+        "version": {
+          "commit": "795272ab088749cf481ac77287adaf8420d61966",
+          "modified": true,
+          "path": "solvers/cpmpy/skills/dcp-cpmpy"
+        }
+      }
+    ],
     "solver_id": "cpmpy_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:56b5c29db4d9d5f135c1f3cbd1a38819e383ea2840464ae9dbf88f74baf52664",
+      "id": "sha256:1aa73cb896a335b9d047a21c5722100e6ed4b7dceeef8d9cc391fcf955c54bef",
+      "recipe": "sha256:80808965de65de127912da475bcdfdff401e17fab4c9d17e078a553b2232f104",
       "tag": "dcp-eval/cpmpy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.13682839996181428,
-        "execution_wall_seconds": 2.9462266000919044,
+        "checking_seconds": 0.08009106502868235,
+        "execution_wall_seconds": 1.1683262700680643,
         "first_solution": {
           "winning_cards": [
-            8,
-            3,
-            7
+            5,
+            6,
+            2
           ]
         },
         "id": "example",
@@ -54,10 +79,10 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8655197999905795,
+        "reference_setup_seconds": 0.48386572499293834,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.18725479299973813,
+          "solve_seconds": 0.08317736396566033,
           "status": "limit",
           "type": "status"
         },
@@ -67,13 +92,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.14320349995978177,
-        "execution_wall_seconds": 3.091835700208321,
+        "checking_seconds": 0.07170963403768837,
+        "execution_wall_seconds": 1.2057553719496354,
         "first_solution": {
           "winning_cards": [
             8,
-            7,
-            11
+            11,
+            7
           ]
         },
         "id": "json:1",
@@ -85,10 +110,10 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0310728000476956,
+        "reference_setup_seconds": 0.4601135770790279,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.15463632099999813,
+          "solve_seconds": 0.07763494085520506,
           "status": "limit",
           "type": "status"
         },
@@ -98,13 +123,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.1260293999221176,
-        "execution_wall_seconds": 2.9801602999214083,
+        "checking_seconds": 0.052520705037750304,
+        "execution_wall_seconds": 1.154590314021334,
         "first_solution": {
           "winning_cards": [
-            1,
+            0,
             4,
-            0
+            1
           ]
         },
         "id": "json:2",
@@ -116,10 +141,10 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.060259100049734,
+        "reference_setup_seconds": 0.5078825820237398,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.1828640739995535,
+          "solve_seconds": 0.08421753207221627,
           "status": "limit",
           "type": "status"
         },
@@ -129,13 +154,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.15227039996534586,
-        "execution_wall_seconds": 2.893926599994302,
+        "checking_seconds": 0.07098035304807127,
+        "execution_wall_seconds": 1.1031663779867813,
         "first_solution": {
           "winning_cards": [
-            5,
+            6,
             9,
-            13
+            1
           ]
         },
         "id": "json:3",
@@ -147,10 +172,10 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9896261999383569,
+        "reference_setup_seconds": 0.5109052580082789,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.1954732399999557,
+          "solve_seconds": 0.10187399096321315,
           "status": "limit",
           "type": "status"
         },
@@ -160,13 +185,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.08519969996996224,
-        "execution_wall_seconds": 3.0384812001138926,
+        "checking_seconds": 0.033485881984233856,
+        "execution_wall_seconds": 1.1525019309483469,
         "first_solution": {
           "winning_cards": [
-            2,
             1,
-            0
+            0,
+            2
           ]
         },
         "id": "json:4",
@@ -178,10 +203,10 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8693804999347776,
+        "reference_setup_seconds": 0.46186838194262236,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.11502805299960528,
+          "solve_seconds": 0.04830273904372007,
           "status": "limit",
           "type": "status"
         },
@@ -193,21 +218,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "4d1bbd581d71004cd2bdf7b4c4221dca6ae5bf0f1a957cfb98c0da7b1d0f58f9",
+    "model_hash": "601a893c0d7917e303161a9d1dde8e77e8312c9309f0bf550f2122449d14ebf8",
     "problem_id": "set_game",
     "reason": "accepted",
     "reference_hash": "1440ef9dbee8c999ae6d7bf4fa0f20e88827460b09b3e0b2e8aba595f1f1a962",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -218,11 +243,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "cpmpy_python",
-    "total_wall_seconds": 27.625784899806604,
+    "total_wall_seconds": 8.83887462306302,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

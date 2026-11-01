@@ -1,25 +1,41 @@
+# cur_num: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install cpmpy`) with:
+#   python cur_num.py
+
 import cpmpy as cp
 
 
-def build(instance):
-    """Curious number: one more than it is a square, and one more than its
-    half is a square too - and it is not 48, which is the known example.
+def create_model(instance):
+    """The number 48 is peculiar: adding 1 to it gives a square number, and adding 1
+    to its half gives a square number too. Find another number between 1 and 10000
+    with this peculiarity."""
+    # The puzzle states all its numbers, so the instance holds no data.
 
-    The puzzle fixes its own range, so `instance` is unused.
-    """
-    del instance
+    # The peculiar number
+    peculiar = cp.intvar(1, 10000, name="peculiar")
+    # The square roots of peculiar + 1 and of half of peculiar, plus 1
+    root_whole = cp.intvar(1, 10000, name="root_whole")
+    root_half = cp.intvar(1, 10000, name="root_half")
+    # Half of the peculiar number
+    half = cp.intvar(1, 10000, name="half")
 
-    peculiar, a, b, c, d, e = cp.intvar(1, 10000, shape=6, name="x")
-
-    model = cp.Model(
-        peculiar != 48,
-        # Add one and you get a square.
-        peculiar + 1 == a,
-        a == b * b,
-        # Halve it, add one, and you get a square again.
-        peculiar == 2 * c,
-        c + 1 == d,
-        d == e * e,
-    )
+    model = cp.Model()
+    # It is not 48, the known example.
+    model.add(peculiar != 48)
+    # Adding 1 to it gives a square number.
+    model.add(peculiar + 1 == root_whole * root_whole)
+    # Adding 1 to its half gives a square number too.
+    model.add(peculiar == 2 * half)
+    model.add(half + 1 == root_half * root_half)
 
     return model, {"peculiar": peculiar}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

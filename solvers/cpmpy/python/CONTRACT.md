@@ -12,11 +12,13 @@ no other file of yours is staged.
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[cp.Model, dict]:
+def create_model(instance) -> tuple[cp.Model, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return a 2-tuple
-`(model, outputs)`. Anything the module prints goes to stderr, not to the result.
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+It must return a 2-tuple `(model, outputs)`. Anything the module prints goes to stderr,
+not to the result. Models retained before 2026-10-30 name it `build(instance)`, which the
+runner still accepts; write `create_model`.
 
 ## Instance
 
@@ -25,9 +27,10 @@ nested `list`s, 0-based. Convert to NumPy yourself where that helps (`np.array(.
 
 ## Outputs
 
-`outputs` is a non-empty `dict` mapping each declared output name to a CPMpy variable,
-expression, Python/NumPy integer or Boolean, or a nested list/NumPy array of these with the
-declared shape. The runner reads `.value()` from each leaf; a leaf whose value is not an
+`outputs` is a non-empty `dict` mapping each declared output name to a CPMpy variable or
+a CPMpy array of variables with the declared shape (`cp.intvar(..., shape=...)`, a slice of
+one, or `cp.cpm_array([...])` for an output assembled from a list). The runner also accepts
+expressions, constants and plain lists, but the run block's `.value()` fails on a list. The runner reads `.value()` from each leaf; a leaf whose value is not an
 integer or Boolean makes the runner raise, which the evaluator reports as
 `execution_error`.
 
@@ -39,8 +42,9 @@ expression. No objective for a satisfaction problem.
 ## Solving
 
 - Every solve is `model.solve(solver="ortools", time_limit=<seconds left>,
-  num_search_workers=1, keep_all_feasible_solutions_in_presolve=True)`; the submission
-  cannot change these.
+  num_search_workers=1)`, plus `keep_all_feasible_solutions_in_presolve=True` while the
+  model has an objective (the OR-Tools CP-SAT bug https://github.com/google/or-tools/issues/5552;
+  the later enumeration solves have none); the submission cannot change these.
 - Status: a solution is reported only when CPMpy's exit status is `OPTIMAL` (optimisation)
   or a solution was found (satisfaction). `UNSATISFIABLE` gives `unsat` on the first solve
   and `complete` after; anything else (a time limit, `FEASIBLE` with an objective) gives
@@ -74,24 +78,80 @@ dcp-eval/cpmpy_python:v1 -c '...'`.
 
 - Output variables that appear in no constraint are still registered by the runner, so an
   unconstrained output is enumerated over its whole domain: give every output a domain that
-  matches the problem.
+  matches the problem. The standalone run does not register them, and prints `None` for
+  such a variable.
 - A float anywhere in an expression raises at build time (`TypeError: Multiplication does
   not support float constants`), which surfaces as `execution_error`. Scale to integers.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_cpmpy.py](../../../tests/fixtures/model_cpmpy.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission:
 
 ```python
+# knapsack: a CPMpy model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python knapsack.py knapsack.json
+
 import cpmpy as cp
 
 
-def build(instance):
-    n = instance["n"]
-    x, y = cp.intvar(0, n, shape=2)
-    model = cp.Model(x + y >= n if instance["optimize"] else x + y == n)
-    if instance["optimize"]:
-        model.minimize(x + y)
-    return model, {"x": x, "y": y}
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    # x[i] is true when the hiker packs item i
+    x = cp.boolvar(shape=len(values), name="x")
+
+    model = cp.Model()
+    # The packed items weigh no more than the backpack can carry.
+    model.add(cp.sum(x * weights) <= capacity)
+    # Pack the most valuable selection.
+    model.maximize(cp.sum(x * values))
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())
+```
+
+## Standalone run
+
+Every model starts with the header and ends with the run block of the example, with
+`knapsack` replaced by the problem id. The runner loads the file as module `candidate`, so
+the block never runs during evaluation.
+
+For a problem whose instance file is `[]`, the header and run block are:
+
+```python
+# abbots_puzzle: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install cpmpy`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())
 ```

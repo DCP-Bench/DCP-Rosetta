@@ -1,11 +1,18 @@
-# CSPLib prob023, magic hexagon: place the numbers 1..19 (each once) in the cells of a hexagon with
-# rows of 3, 4, 5, 4 and 3 cells so that every straight line of cells sums to the magic constant.
+# csplib_023_magic_hexagon: a CPMpy model from DCP Rosetta.
+# Download the `csplib_023_magic_hexagon.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python csplib_023_magic_hexagon.py csplib_023_magic_hexagon.json
+
 import cpmpy as cp
 
 
-def build(instance):
-    num_cells = instance["NUM_CELLS"]
-    magic_sum = instance["MAGIC_SUM"]
+def create_model(instance):
+    """Place the numbers 1 to NUM_CELLS, each once, in the cells of a hexagon (rows of 3, 4, 5, 4
+    and 3 cells for 19 cells) so that every straight line of cells (rows and both diagonal
+    directions) sums to the magic constant."""
+    num_cells = instance["NUM_CELLS"]  # the number of cells of the hexagon, 3k(k-1)+1 for side k
+    magic_sum = instance["MAGIC_SUM"]  # the sum every straight line of cells has to reach
 
     # The hexagon has side k when it has 3k(k-1)+1 cells (k = 3 gives the 19 cells of the problem).
     k = 1
@@ -33,17 +40,31 @@ def build(instance):
             cell += 1
     lines = list(rows.values()) + list(down_left.values()) + list(down_right.values())
 
-    # LD[c] = number placed in cell c
-    LD = cp.intvar(1, num_cells, shape=(num_cells,), name="LD")
+    # LD[c] is the number placed in cell c
+    LD = cp.intvar(1, num_cells, shape=num_cells, name="LD")
 
     model = cp.Model()
 
     # Every number from 1 to NUM_CELLS is used exactly once.
-    model += cp.AllDifferent(LD)
+    model.add(cp.AllDifferent(LD))
 
-    # The numbers along each straight line of cells (rows and both diagonal directions) add up to
-    # the magic constant.
+    # The numbers along each straight line of cells add up to the magic constant.
     for line in lines:
-        model += cp.sum([LD[c] for c in line]) == magic_sum
+        model.add(cp.sum(LD[line]) == magic_sum)
 
     return model, {"LD": LD}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

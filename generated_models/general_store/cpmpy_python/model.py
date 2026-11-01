@@ -1,40 +1,42 @@
+# general_store: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+# Run it (after `pip install cpmpy`) with:
+#   python general_store.py
+
 import cpmpy as cp
 
+# The sixteen words above the line, which add up to the total below it.
+WORDS = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
+         "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
+TOTAL = "ALLWOOL"
 
-def build(instance):
-    """General store: a sixteen-line alphametic whose total is ALL WOOL.
 
-    The puzzle states its own sign, so `instance` is unused.  Each of the ten
-    letters stands for a different digit.
-    """
-    del instance
+def create_model(instance):
+    """The owner of a general store has put up a sign: sixteen words that add up to
+    'ALL WOOL'. Each different letter stands for a different digit; find the digit
+    of every letter. The sign fixes all the data, so the instance is not used."""
+    # x[k] is the digit that the k-th letter stands for; digit[c] looks it up by letter
+    letters = "CHESABOWPL"
+    x = cp.intvar(0, 9, shape=len(letters), name="x")
+    digit = dict(zip(letters, x))
 
-    n = 10
-    x = cp.intvar(0, 9, shape=n, name="x")
-    C, H, E, S, A, B, O, W, P, L = x
+    def value(word):
+        # The number a word spells: its last letter counts for 1, the one before for 10, and so on.
+        return cp.sum([10 ** k * digit[c] for k, c in enumerate(reversed(word))])
 
-    model = cp.Model(
-        cp.AllDifferent(x),
-        10000 * C + 1000 * H + 100 * E + 10 * S + S
-        + 1000 * C + 100 * A + 10 * S + H
-        + 100000 * B + 10000 * O + 1000 * W + 100 * W + 10 * O + W
-        + 10000 * C + 1000 * H + 100 * O + 10 * P + S
-        + 100000 * A + 10000 * L + 1000 * S + 100 * O + 10 * P + S
-        + 1000000 * P + 100000 * A + 10000 * L + 1000 * E + 100 * A + 10 * L + E
-        + 1000 * C + 100 * O + 10 * O + L
-        + 1000 * B + 100 * A + 10 * S + S
-        + 1000 * H + 100 * O + 10 * P + S
-        + 1000 * A + 100 * L + 10 * E + S
-        + 1000 * H + 100 * O + 10 * E + S
-        + 100000 * A + 10000 * P + 1000 * P + 100 * L + 10 * E + S
-        + 1000 * C + 100 * O + 10 * W + S
-        + 100000 * C + 10000 * H + 1000 * E + 100 * E + 10 * S + E
-        + 100000 * C + 10000 * H + 1000 * S + 100 * O + 10 * A + P
-        + 10000 * S + 1000 * H + 100 * E + 10 * E + P
-        == 1000000 * A + 100000 * L + 10000 * L + 1000 * W + 100 * O + 10 * O + L,
-    )
+    model = cp.Model()
+    # Different letters stand for different digits.
+    model.add(cp.AllDifferent(x))
+    # The sixteen words add up to the total.
+    model.add(cp.sum([value(word) for word in WORDS]) == value(TOTAL))
 
-    return model, {
-        "C": C, "H": H, "E": E, "S": S, "A": A,
-        "B": B, "O": O, "W": W, "P": P, "L": L,
-    }
+    return model, digit
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

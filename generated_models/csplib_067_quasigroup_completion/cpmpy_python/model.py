@@ -1,12 +1,19 @@
-# Quasigroup completion: complete a partially filled N-by-N table so that every row and
-# every column contains each of 1..N exactly once (a Latin square).
+# csplib_067_quasigroup_completion: a CPMpy model from DCP Rosetta.
+# Download the `csplib_067_quasigroup_completion.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_067_quasigroup_completion.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python csplib_067_quasigroup_completion.py csplib_067_quasigroup_completion.json
+
 import cpmpy as cp
 
 
-def build(instance):
-    N = instance["N"]            # order of the quasigroup
-    start = instance["start"]    # start[i][j] is the given value, or 0 for an empty cell
+def create_model(instance):
+    """Complete a partially filled N-by-N table so that each of the numbers 1 to N
+    occurs exactly once in every row and every column (a quasigroup, or Latin square)."""
+    N = instance["N"]          # order of the quasigroup
+    start = instance["start"]  # start[i][j]: the given value of cell (i, j), or 0 if it is empty
 
+    # puzzle[i][j] is the number in the cell at row i, column j
     puzzle = cp.intvar(1, N, shape=(N, N), name="puzzle")
 
     model = cp.Model()
@@ -15,14 +22,29 @@ def build(instance):
     for i in range(N):
         for j in range(N):
             if start[i][j] != 0:
-                model += puzzle[i, j] == start[i][j]
+                model.add(puzzle[i, j] == start[i][j])
 
-    # Each row contains every value exactly once.
+    # Each row holds every number once.
     for i in range(N):
-        model += cp.AllDifferent(puzzle[i, :])
+        model.add(cp.AllDifferent(puzzle[i, :]))
 
-    # Each column contains every value exactly once.
+    # Each column holds every number once.
     for j in range(N):
-        model += cp.AllDifferent(puzzle[:, j])
+        model.add(cp.AllDifferent(puzzle[:, j]))
 
     return model, {"puzzle": puzzle}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

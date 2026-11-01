@@ -1,37 +1,45 @@
+# allergy: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/allergy.html
+# Run it (after `pip install cpmpy`) with:
+#   python allergy.py
+
 import cpmpy as cp
 
 
-def build(instance):
-    """Allergy logic puzzle: match each friend to a surname and an allergy.
+def create_model(instance):
+    """Four friends are each allergic to something different (eggs, mold, nuts,
+    ragweed) and have a different surname (Baxter, Lemon, Malone, Fleet). Match
+    each allergy and each surname to a friend, given the clues. The puzzle fixes
+    its own data, so instance is not used."""
+    # Friends are numbered Debra = 0, Janet = 1, Hugh = 2, Rick = 3
+    debra, janet, hugh, rick = range(4)
 
-    The puzzle states its own four friends and clues, so `instance` is unused.
-    Friends are numbered Debra 0, Janet 1, Hugh 2, Rick 3, as the reference
-    declares and as the declared outputs are read.
-    """
-    del instance
-
-    n = 4
-    debra, janet, hugh, rick = range(n)
-
-    # foods[i] is the friend allergic to the ith food.
-    foods = cp.intvar(0, n - 1, shape=n, name="foods")
+    # foods[k] is the friend allergic to food k (eggs, mold, nuts, ragweed)
+    foods = cp.intvar(0, 3, shape=4, name="foods")
     eggs, mold, nuts, ragweed = foods
-    # surnames[i] is the friend carrying the ith surname.
-    surnames = cp.intvar(0, n - 1, shape=n, name="surnames")
+    # surnames[k] is the friend with surname k (Baxter, Lemon, Malone, Fleet)
+    surnames = cp.intvar(0, 3, shape=4, name="surnames")
     baxter, lemon, malone, fleet = surnames
 
-    model = cp.Model(
-        cp.AllDifferent(foods),
-        cp.AllDifferent(surnames),
-        mold != rick,
-        eggs == baxter,
-        lemon != hugh,
-        fleet != hugh,
-        ragweed == debra,
-        lemon != janet,
-        eggs != janet,
-        mold != janet,
-    )
+    model = cp.Model()
+
+    # Each friend has a different allergy and a different surname.
+    model.add(cp.AllDifferent(foods))
+    model.add(cp.AllDifferent(surnames))
+
+    # Rick is not allergic to mold.
+    model.add(mold != rick)
+    # Baxter is allergic to eggs.
+    model.add(eggs == baxter)
+    # Hugh is neither surnamed Lemon nor Fleet.
+    model.add(lemon != hugh)
+    model.add(fleet != hugh)
+    # Debra is allergic to ragweed.
+    model.add(ragweed == debra)
+    # Janet is not Lemon, and is allergic to neither eggs nor mold.
+    model.add(lemon != janet)
+    model.add(eggs != janet)
+    model.add(mold != janet)
 
     return model, {
         "eggs": eggs,
@@ -43,3 +51,12 @@ def build(instance):
         "malone": malone,
         "fleet": fleet,
     }
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

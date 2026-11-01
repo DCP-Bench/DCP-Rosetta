@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790872195.5912733,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/cpmpy/python/CONTRACT.md": "aa261b8e0e6406b4e387d9a09eba1a8018357af782b63abaeb2601a5c567119a"
+    },
+    "created_at": 1793539145.7787418,
     "problem_id": "csplib_084_hadamard_matrix",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,49 +18,70 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "da2baf194c0717575da95809643d4a309b8743e0b108da08bad3c03d913a29e9",
-    "run_id": "20261001T1218Z-cpmpy-4018",
-    "schema": 2,
-    "skill_bundle_hash": "5eb44eb71fc69d2470b883f6239d66666651ff2c019445b42e3525ebe2b44d92",
-    "skill_source": "solvers\\cpmpy_python\\skills\\cpmpy-python",
+    "readiness_hash": "589278e59e6a032713c8eafef5b8c8639e497cc62de893405db80328ac813f7a",
+    "run_id": "cpmpy-model-add",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "ffe4df4e622ebedc9eae8b247ccc0897493f7b88",
+      "commit": "795272ab088749cf481ac77287adaf8420d61966",
       "modified": false,
-      "path": "solvers/cpmpy_python/skills/cpmpy-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "795272ab088749cf481ac77287adaf8420d61966",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "75e7a16d9dda902e4b92963a1c97e04c312834f8841a7f747c59b93acf5de2ec",
+        "source": "solvers/cpmpy/skills/dcp-cpmpy",
+        "version": {
+          "commit": "795272ab088749cf481ac77287adaf8420d61966",
+          "modified": true,
+          "path": "solvers/cpmpy/skills/dcp-cpmpy"
+        }
+      }
+    ],
     "solver_id": "cpmpy_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:56b5c29db4d9d5f135c1f3cbd1a38819e383ea2840464ae9dbf88f74baf52664",
+      "id": "sha256:1aa73cb896a335b9d047a21c5722100e6ed4b7dceeef8d9cc391fcf955c54bef",
+      "recipe": "sha256:80808965de65de127912da475bcdfdff401e17fab4c9d17e078a553b2232f104",
       "tag": "dcp-eval/cpmpy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.02400690014474094,
-        "execution_wall_seconds": 2.6985663999803364,
+        "checking_seconds": 0.009720996953547001,
+        "execution_wall_seconds": 1.100374334026128,
         "first_solution": {
           "a": [
-            -1,
             1,
             -1,
             -1,
+            -1,
             1,
             1,
             1,
-            1,
-            -1
+            -1,
+            1
           ],
           "b": [
             1,
             -1,
             1,
+            1,
+            1,
             -1,
-            1,
-            1,
             1,
             -1,
             -1
@@ -72,10 +97,10 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.388031200040132,
+        "reference_setup_seconds": 0.6426327000372112,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.05807675500000187,
+          "solve_seconds": 0.03720658703241497,
           "status": "limit",
           "type": "status"
         },
@@ -85,34 +110,34 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.030200700042769313,
-        "execution_wall_seconds": 2.6023676998447627,
+        "checking_seconds": 0.013528235023841262,
+        "execution_wall_seconds": 1.2547907650005072,
         "first_solution": {
           "a": [
-            -1,
-            -1,
-            1,
-            1,
-            1,
             1,
             -1,
             -1,
             1,
+            1,
             -1,
-            1
+            1,
+            1,
+            -1,
+            1,
+            -1
           ],
           "b": [
             1,
             -1,
             -1,
             -1,
-            1,
-            1,
             -1,
             1,
             1,
             1,
-            -1
+            -1,
+            1,
+            1
           ]
         },
         "id": "json:1",
@@ -125,10 +150,10 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.044761599972844,
+        "reference_setup_seconds": 0.6116016539745033,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.09395460399991862,
+          "solve_seconds": 0.061592073063366115,
           "status": "limit",
           "type": "status"
         },
@@ -138,38 +163,38 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.040817599976435304,
-        "execution_wall_seconds": 2.9154093000106514,
+        "checking_seconds": 0.023270882084034383,
+        "execution_wall_seconds": 1.2813270669430494,
         "first_solution": {
           "a": [
             -1,
+            -1,
+            -1,
+            -1,
             1,
             1,
+            -1,
             1,
             1,
             -1,
             1,
             1,
-            -1,
-            -1,
-            1,
-            -1,
-            -1
+            1
           ],
           "b": [
-            1,
+            -1,
+            -1,
             -1,
             1,
             -1,
             1,
             -1,
-            -1,
-            1,
-            1,
             1,
             1,
             -1,
-            -1
+            1,
+            1,
+            1
           ]
         },
         "id": "json:2",
@@ -182,10 +207,10 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.126296899979934,
+        "reference_setup_seconds": 0.6069168449612334,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.16219924400002128,
+          "solve_seconds": 0.09742109512444586,
           "status": "limit",
           "type": "status"
         },
@@ -195,27 +220,29 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.049005999928340316,
-        "execution_wall_seconds": 2.984182999935001,
+        "checking_seconds": 0.03309380600694567,
+        "execution_wall_seconds": 1.3066553469980136,
         "first_solution": {
           "a": [
-            1,
             -1,
             -1,
-            1,
             1,
             -1,
             1,
             1,
             1,
             -1,
-            -1,
+            1,
+            1,
             -1,
             1,
             1,
+            -1,
             -1
           ],
           "b": [
+            -1,
+            1,
             1,
             1,
             1,
@@ -223,13 +250,11 @@
             -1,
             -1,
             1,
+            1,
             -1,
             -1,
             1,
             -1,
-            1,
-            -1,
-            1,
             1
           ]
         },
@@ -243,10 +268,10 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0241189999505877,
+        "reference_setup_seconds": 0.6129123449791223,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.4157845380002527,
+          "solve_seconds": 0.15336389001458883,
           "status": "limit",
           "type": "status"
         },
@@ -256,35 +281,33 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.05297739990055561,
-        "execution_wall_seconds": 6.037015400128439,
+        "checking_seconds": 0.036773725994862616,
+        "execution_wall_seconds": 2.4447410870343447,
         "first_solution": {
           "a": [
             -1,
             -1,
             1,
             -1,
-            -1,
-            -1,
             1,
             1,
             -1,
             -1,
             1,
+            1,
+            1,
+            1,
+            1,
             -1,
             1,
-            1,
-            1,
-            1,
-            1
+            -1,
+            -1
           ],
           "b": [
             -1,
             1,
-            -1,
-            -1,
             1,
-            1,
+            -1,
             1,
             1,
             -1,
@@ -295,7 +318,9 @@
             -1,
             -1,
             1,
-            1
+            1,
+            1,
+            -1
           ]
         },
         "id": "json:4",
@@ -308,10 +333,10 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 5.584048700053245,
+        "reference_setup_seconds": 1.2845889059826732,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 3.1205320419999225,
+          "solve_seconds": 1.2248847919981927,
           "status": "limit",
           "type": "status"
         },
@@ -323,21 +348,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "14de7130b140c9bc8ccfa04f928d760348cda371a09b12ec1a68918b4b3d150b",
+    "model_hash": "1db9ffa4a656a0951f84b4ce91f6f29e1d8c0bec006308ce1d0d4767be828060",
     "problem_id": "csplib_084_hadamard_matrix",
     "reason": "accepted",
     "reference_hash": "63b004e92106207f3f3f41fb14ec888ae8a498631d2476578a30a0f6b5a377f2",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -348,11 +373,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "cpmpy_python",
-    "total_wall_seconds": 33.78675860003568,
+    "total_wall_seconds": 11.623374158050865,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

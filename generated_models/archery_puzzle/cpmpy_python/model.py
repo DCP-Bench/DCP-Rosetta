@@ -1,22 +1,39 @@
+# archery_puzzle: a CPMpy model from DCP Rosetta.
+# Download the `archery_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/archery_puzzle.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python archery_puzzle.py archery_puzzle.json
+
 import cpmpy as cp
 
 
-def build(instance):
-    """Archery puzzle: fire as many arrows as you like at the given targets and
-    land as close to the target score as possible.
-    """
-    targets = instance["targets"]
-    target_score = instance["target_score"]
-    n = len(targets)
+def create_model(instance):
+    """A young archer fires as many arrows as she pleases at targets of different
+    values: she wants a total score as close as possible to a target score."""
+    targets = instance["targets"]            # targets[i]: the score for one hit on target i
+    target_score = instance["target_score"]  # the total score she aims for
 
-    hits = cp.intvar(0, target_score, shape=n, name="hits")
-    score = cp.intvar(0, target_score * 2, name="score")
-    deviation = cp.intvar(0, target_score * 2, name="deviation")
+    # hits[i] is the number of arrows that hit target i; every target is worth at
+    # least 1 point, so more than target_score hits on one target overshoots anyway
+    hits = cp.intvar(0, target_score, shape=len(targets), name="hits")
 
-    model = cp.Model(
-        score == cp.sum(hits * cp.cpm_array(targets)),
-        deviation == cp.abs(target_score - score),
-    )
-    model.minimize(deviation)
+    model = cp.Model()
+    # Come as close as possible to the target score.
+    model.minimize(cp.abs(target_score - cp.sum(hits * targets)))
 
     return model, {"hits": hits}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

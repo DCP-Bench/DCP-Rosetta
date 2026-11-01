@@ -1,36 +1,47 @@
+# circling_squares: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+# Run it (after `pip install cpmpy`) with:
+#   python circling_squares.py
+
 import cpmpy as cp
 
 
-def build(instance):
-    """Circling the squares: ten different numbers around a circle where any
-    two adjacent squares sum to the same as the two diametrically opposite.
+def create_model(instance):
+    """Circling the squares: place a different number in each of the ten squares
+    of a circle so that the sum of the squares of any two adjacent numbers equals
+    the sum of the squares of the two numbers diametrically opposite them."""
+    n = 10  # squares in the circle, named A, B, C, D, E, F, G, H, I, K in order
 
-    The puzzle states its own four given numbers, so `instance` is unused.
-    """
-    del instance
-
-    n = 10
+    # x[j] is the number placed in square j; the puzzle says no number needs more than two figures
     x = cp.intvar(1, 99, shape=n, name="x")
-    a, b, c, d, e, f, g, h, i, k = x
+    A, B, C, D, E, F, G, H, I, K = x
 
-    def balanced(first, second, third, fourth):
-        return first * first + second * second == third * third + fourth * fourth
+    model = cp.Model()
 
-    model = cp.Model(
-        cp.AllDifferent(x),
-        # The four numbers given as examples.
-        a == 16,
-        b == 2,
-        f == 8,
-        g == 14,
-        balanced(a, b, f, g),
-        balanced(b, c, g, h),
-        balanced(c, d, h, i),
-        balanced(d, e, i, k),
-        balanced(e, f, k, a),
-    )
+    # Each square holds a different number.
+    model.add(cp.AllDifferent(x))
 
-    return model, {
-        "A": a, "B": b, "C": c, "D": d, "E": e,
-        "F": f, "G": g, "H": h, "I": i, "K": k,
-    }
+    # The four numbers given as examples stand as they are.
+    model.add(A == 16)
+    model.add(B == 2)
+    model.add(F == 8)
+    model.add(G == 14)
+
+    # Two adjacent squares have the same sum of squares as the two squares opposite them.
+    model.add(A**2 + B**2 == F**2 + G**2)
+    model.add(B**2 + C**2 == G**2 + H**2)
+    model.add(C**2 + D**2 == H**2 + I**2)
+    model.add(D**2 + E**2 == I**2 + K**2)
+    model.add(E**2 + F**2 == K**2 + A**2)
+
+    return model, {"A": A, "B": B, "C": C, "D": D, "E": E,
+                   "F": F, "G": G, "H": H, "I": I, "K": K}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

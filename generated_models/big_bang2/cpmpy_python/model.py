@@ -1,17 +1,21 @@
-# Non-transitive dice for Rock-Paper-Scissors-Lizard-Spock: design five six-sided dice with
-# faces 1..12 so that each die beats exactly the two dice it beats in the game. Die A beats die B
-# when, over all 36 pairs of faces, A shows the strictly larger value in more than half of them.
+# big_bang2: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install cpmpy`) with:
+#   python big_bang2.py
+
 import cpmpy as cp
 
 
-def build(instance):
-    # The instance carries no data: the game and the dice are fixed by the problem itself.
-    rock, paper, scissors, lizard, spock = 0, 1, 2, 3, 4
-    n_dice = 5       # one die per choice (problem constant)
-    n_faces = 6      # faces per die (problem constant)
-    max_face = 12    # faces carry values 1..12 (problem constant)
+def create_model(instance):
+    """Design five six-sided dice, one for each of Rock, Paper, Scissors, Lizard and Spock,
+    so that each die beats exactly the two dice that its choice beats in the game. Die A beats
+    die B when A shows a strictly larger value than B in more than half of all pairs of faces."""
+    # The problem statement fixes all the data.
+    rock, paper, scissors, lizard, spock = range(5)
+    n_faces = 6      # each die has six faces
+    max_face = 12    # face values go from 1 to 12
 
-    # (winner, loser) for the ten relationships of the game (problem constants)
+    # (winner, loser): the ten 'beats' relationships of the game
     beats = [
         (rock, scissors),      # rock crushes scissors
         (rock, lizard),        # rock crushes lizard
@@ -25,16 +29,24 @@ def build(instance):
         (spock, scissors),     # Spock smashes scissors
     ]
 
-    # dice[i, j] = value on face j of die i (row 0 rock, 1 paper, 2 scissors, 3 lizard, 4 Spock);
-    # values may repeat within a die and across dice
-    dice = cp.intvar(1, max_face, shape=(n_dice, n_faces), name="dice")
+    # dice[d, f] is the value on face f of die d (row 0 Rock, 1 Paper, 2 Scissors, 3 Lizard, 4 Spock);
+    # face values may repeat within a die and across dice
+    dice = cp.intvar(1, max_face, shape=(5, n_faces), name="dice")
 
     model = cp.Model()
-
-    # A winning die beats the losing die: among all n_faces * n_faces pairs of faces, the winner
-    # shows the strictly larger value in more than half of the pairs.
+    # The winning die beats the losing die: in more than half of the n_faces * n_faces pairs of
+    # faces, the winner shows the strictly larger value.
     for winner, loser in beats:
-        wins = [dice[winner, x] > dice[loser, y] for x in range(n_faces) for y in range(n_faces)]
-        model += cp.sum(wins) > (n_faces * n_faces) // 2
+        pairs_won = [a > b for a in dice[winner] for b in dice[loser]]
+        model.add(cp.sum(pairs_won) > (n_faces * n_faces) // 2)
 
     return model, {"dice": dice}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

@@ -42,9 +42,33 @@ full list: [API catalogue](references/python/api.md) and the
 [model and variable reference](https://cpmpy.readthedocs.io/en/latest/api/model.html).
 Integer only: a float coefficient anywhere fails.
 
-**Readable models.** Open the program with a comment that states the problem, and start
-each block of constraints with a comment in the words of the problem statement, not the
-API call.
+**Readable models.** Write for a student reading the model for the first time, in the words
+of the problem statement, not of the API:
+
+- a docstring or opening comment that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it: array arithmetic such as `cp.sum(x * weights)` over
+  index loops, and variables kept as CPMpy arrays rather than rebuilt as lists;
+- constraints added with `model.add(...)`, not `model += ...`.
+
+For example:
+
+```python
+values = instance["values"]      # values[i]: the value of item i
+weights = instance["weights"]    # weights[i]: the weight of item i
+capacity = instance["capacity"]  # the most weight the backpack can carry
+
+# x[i] is true when the hiker packs item i
+x = cp.boolvar(shape=len(values), name="x")
+
+model = cp.Model()
+# The packed items weigh no more than the backpack can carry.
+model.add(cp.sum(x * weights) <= capacity)
+# Pack the most valuable selection.
+model.maximize(cp.sum(x * values))
+```
 
 ## Solving
 

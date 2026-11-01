@@ -1,42 +1,45 @@
+# ages_of_the_sons: a CPMpy model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+# Run it (after `pip install cpmpy`) with:
+#   python ages_of_the_sons.py
+
 import cpmpy as cp
 
 
-def build(instance):
-    """Ages of the sons: the product is 36, the sum is ambiguous, and there is
-    a unique oldest.
+def create_model(instance):
+    """An old man says the product of his three sons' ages is 36. Knowing the sum
+    of the ages is still not enough for a mathematician to find them, but once
+    told that the oldest son has blue eyes (so there is a unique oldest) he can.
+    What are the ages of the three sons?"""
+    # The puzzle states its own product, so the instance holds no data.
 
-    The puzzle states its own product, so `instance` is unused.  The second
-    triple B is what makes the sum ambiguous: it is a different factorisation
-    of 36 with the same sum, which is why the mathematician needed the extra
-    clue about the oldest son.
-    """
-    del instance
+    # a[0], a[1], a[2] are the ages of the sons, oldest first
+    a = cp.intvar(0, 36, shape=3, name="A")
+    # b is another possible triple of ages, also oldest first. It shows why the
+    # sum alone was not enough: b has the same product and sum but another oldest.
+    b = cp.intvar(0, 36, shape=3, name="B")
 
-    a1 = cp.intvar(0, 36, name="A1")
-    a2 = cp.intvar(0, 36, name="A2")
-    a3 = cp.intvar(0, 36, name="A3")
+    model = cp.Model()
+    # The ages are ordered, and the oldest son is strictly older than the next.
+    model.add(a[0] > a[1])
+    model.add(a[1] >= a[2])
+    # The product of the ages is 36.
+    model.add(a[0] * a[1] * a[2] == 36)
+    # The other triple is ordered too, has the same product and the same sum
+    # as the sons' ages, and a different oldest age.
+    model.add(b[0] >= b[1])
+    model.add(b[1] >= b[2])
+    model.add(b[0] * b[1] * b[2] == 36)
+    model.add(cp.sum(b) == cp.sum(a))
+    model.add(b[0] != a[0])
 
-    b1 = cp.intvar(0, 36, name="B1")
-    b2 = cp.intvar(0, 36, name="B2")
-    b3 = cp.intvar(0, 36, name="B3")
+    return model, {"A1": a[0], "A2": a[1], "A3": a[2]}
 
-    a_sum = cp.intvar(0, 1000, name="AS")
-    b_sum = cp.intvar(0, 1000, name="BS")
 
-    model = cp.Model(
-        # A has a strictly oldest son.
-        a1 > a2,
-        a2 >= a3,
-        36 == a1 * a2 * a3,
-        # B is another triple with the same product and the same sum, and a
-        # different eldest, so the sum alone could not decide between them.
-        b1 >= b2,
-        b2 >= b3,
-        a1 != b1,
-        36 == b1 * b2 * b3,
-        a_sum == a1 + a2 + a3,
-        b_sum == b1 + b2 + b3,
-        a_sum == b_sum,
-    )
-
-    return model, {"A1": a1, "A2": a2, "A3": a3}
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())

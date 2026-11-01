@@ -1,34 +1,55 @@
-# Coins: choose how many coins of each denomination to carry, as few as
-# possible in total, so that every amount from 1 up to (but not including) the
-# maximum can be paid exactly.
+# coin3_application: a CPMpy model from DCP Rosetta.
+# Download the `coin3_application.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+# Then run it on the first instance (after `pip install cpmpy`):
+#   python coin3_application.py coin3_application.json
+
 import cpmpy as cp
 
 
-def build(instance):
-    denominations = instance["denominations"]   # coin values in cents
-    max_amount = instance["max_amount_to_pay"]  # largest amount to pay is max_amount - 1
+def create_model(instance):
+    """Find the minimum number of coins that allows one to pay exactly any amount
+    smaller than a given maximum amount, using a given set of denominations."""
+    denominations = instance["denominations"]   # denominations[i]: the value of a coin of type i
+    max_amount = instance["max_amount_to_pay"]  # every amount below this must be payable
     n = len(denominations)
 
-    # x[i] = number of coins of denomination i that are carried. No amount below max_amount
-    # can use more than max_amount coins of one kind, so max_amount bounds every count.
+    # x[i] is the number of coins of type i that are carried; no payment below
+    # max_amount can use more than max_amount coins of one type, so that bounds each count
     x = cp.intvar(0, max_amount, shape=n, name="x")
-    # Total number of coins carried, to be minimised.
+    # the total number of coins carried
     num_coins = cp.intvar(0, max_amount, name="num_coins")
 
     model = cp.Model()
 
-    # The total number of coins is the sum over the denominations.
-    model += num_coins == cp.sum(x)
+    # The total is the sum over the coin types.
+    model.add(num_coins == cp.sum(x))
 
-    # Every amount from 1 to max_amount - 1 can be paid with the coins carried: a payment uses
-    # no more coins of a kind than are carried, and its coin values add up to the amount.
+    # Every amount from 1 to max_amount - 1 can be paid exactly from the coins carried.
     for amount in range(1, max_amount):
+        # used[i] is the number of coins of type i in the payment of this amount
         used = cp.intvar(0, max_amount, shape=n, name=f"used_{amount}")
-        model += cp.sum([denominations[i] * used[i] for i in range(n)]) == amount
-        for i in range(n):
-            model += used[i] <= x[i]
+        # The coins used add up to the amount.
+        model.add(cp.sum(used * denominations) == amount)
+        # A payment uses no more coins of a type than are carried.
+        model.add(used <= x)
 
     # Carry as few coins as possible.
     model.minimize(num_coins)
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    if model.solve():
+        for name, variables in outputs.items():
+            print(name, "=", variables.value())
+    else:
+        print("No solution:", model.status())
