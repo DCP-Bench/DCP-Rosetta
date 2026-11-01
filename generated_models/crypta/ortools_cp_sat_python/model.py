@@ -1,49 +1,60 @@
+# crypta: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+# Run it (after `pip install ortools`) with:
+#   python crypta.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """Crypta: a twenty-letter cryptarithmetic addition over ten distinct
-    digits.
+def create_model(instance):
+    """Cryptarithmetic puzzle: each of the letters A to J stands for a different digit
+    from 0 to 9, no number starts with a zero, and the addition of the two twenty-letter
+    numbers must give the third."""
 
-    The puzzle states its own sum, so `instance` is unused.  The addition is
-    checked seven digits at a time, with Sr1 and Sr2 carrying between blocks,
-    exactly as the reference splits it.
-    """
-    del instance
+    def number(digits):
+        """The number written by a list of digits, most significant digit first."""
+        return sum(digit * 10 ** k for k, digit in enumerate(reversed(digits)))
 
     model = cp_model.CpModel()
-    letters = [model.new_int_var(0, 9, name) for name in "ABCDEFGHIJ"]
-    a, b, c, d, e, f, g, h, i, j = letters
-    carry1 = model.new_int_var(0, 1, "Sr1")
-    carry2 = model.new_int_var(0, 1, "Sr2")
 
+    # The digit of each letter A to J. The first letters B, D and G of the three numbers are not zero.
+    letters = [model.new_int_var(1 if name in "BDG" else 0, 9, name) for name in "ABCDEFGHIJ"]
+    A, B, C, D, E, F, G, H, I, J = letters
+    # carry1 is 1 when the lowest seven digits carry into the middle seven digits, and
+    # carry2 is 1 when the middle seven digits carry into the top six digits
+    carry1 = model.new_int_var(0, 1, "carry1")
+    carry2 = model.new_int_var(0, 1, "carry2")
+
+    # All letters stand for different digits.
     model.add_all_different(letters)
-    # No number may start with a zero.
-    model.add(b >= 1)
-    model.add(d >= 1)
-    model.add(g >= 1)
 
-    model.add(
-        a + 10 * e + 100 * j + 1000 * b + 10000 * b + 100000 * e
-        + 1000000 * f + e + 10 * j + 100 * e + 1000 * f + 10000 * g
-        + 100000 * a + 1000000 * f
-        == f + 10 * e + 100 * e + 1000 * h + 10000 * i + 100000 * f
-        + 1000000 * b + 10000000 * carry1
-    )
-    model.add(
-        c + 10 * f + 100 * h + 1000 * a + 10000 * i + 100000 * i
-        + 1000000 * j + f + 10 * i + 100 * b + 1000 * d + 10000 * i
-        + 100000 * d + 1000000 * c + carry1
-        == j + 10 * f + 100 * a + 1000 * f + 10000 * h + 100000 * d
-        + 1000000 * d + 10000000 * carry2
-    )
-    model.add(
-        a + 10 * j + 100 * j + 1000 * i + 10000 * a + 100000 * b + b
-        + 10 * a + 100 * g + 1000 * f + 10000 * h + 100000 * d + carry2
-        == c + 10 * a + 100 * g + 1000 * e + 10000 * j + 100000 * g
-    )
+    # The lowest seven digits of the two numbers add up to the lowest seven digits of the
+    # result, plus the carry into the middle block.
+    model.add(number([F, E, B, B, J, E, A]) + number([F, A, G, F, E, J, E])
+              == number([B, F, I, H, E, E, F]) + 10 ** 7 * carry1)
+    # The middle seven digits, plus the carry from the lowest block, add up to the middle
+    # seven digits of the result, plus the carry into the top block.
+    model.add(number([J, I, I, A, H, F, C]) + number([C, D, I, D, B, I, F]) + carry1
+              == number([D, D, H, F, A, F, J]) + 10 ** 7 * carry2)
+    # The top six digits, plus the carry from the middle block, give the top six digits of
+    # the result with no carry out.
+    model.add(number([B, A, I, J, J, A]) + number([D, H, F, G, A, B]) + carry2
+              == number([G, J, E, G, A, C]))
 
-    return model, {
-        "A": a, "B": b, "C": c, "D": d, "E": e,
-        "F": f, "G": g, "H": h, "I": i, "J": j,
-    }
+    return model, {"A": A, "B": B, "C": C, "D": D, "E": E,
+                   "F": F, "G": G, "H": H, "I": I, "J": J}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

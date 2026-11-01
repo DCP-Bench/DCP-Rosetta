@@ -1,25 +1,48 @@
+# birthday_coins: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/birthday_coins.html
+# Run it (after `pip install ortools`) with:
+#   python birthday_coins.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """Birthday coins: fifteen old British coins worth one pound five and six.
-
-    The puzzle states its own coinage, so `instance` is unused.  Working in
-    pence: a half-crown is 30, a shilling 12, a sixpence 6, and the total is
-    240 + 5 * 12 + 6.
-    """
-    del instance
-
-    coin_types = 3
-    values = [30, 12, 6]
-    total_value = 240 + 5 * 12 + 6
-    total_coins = 15
+def create_model(instance):
+    """Tommy was given 15 old British coins (half-crowns, shillings and sixpences). Together
+    they make one pound, five shillings and six pence. How many half-crowns was he given?"""
+    # Money is counted in pence.
+    shilling = 12          # pence in a shilling
+    pound = 20 * shilling  # pence in a pound
+    sixpence = 6           # pence in a sixpence
+    # pence of a half-crown, a shilling and a sixpence
+    values = [2 * shilling + sixpence, shilling, sixpence]
+    total_value = pound + 5 * shilling + sixpence  # the total worth of the coins, in pence
+    n_coins = 15                                   # the number of coins Tommy was given
 
     model = cp_model.CpModel()
-    coins = [model.new_int_var(0, 15, f"coins{i}") for i in range(coin_types)]
+
+    # coins[c] is the number of coins of kind c that Tommy was given
+    coins = [model.new_int_var(0, n_coins, f"coins_{c}") for c in range(len(values))]
+    # The half-crowns are the first kind of coin.
     half_crowns = coins[0]
 
-    model.add(sum(values[i] * coins[i] for i in range(coin_types)) == total_value)
-    model.add(sum(coins) == total_coins)
+    # The coins add up to the total worth.
+    model.add(sum(v * n for v, n in zip(values, coins)) == total_value)
+    # The coin counts add up to the number of coins.
+    model.add(sum(coins) == n_coins)
 
     return model, {"half_crowns": half_crowns}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

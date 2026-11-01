@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790672568.5638778,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/ortools_cp_sat/python/CONTRACT.md": "d7947e9ea9cc2b227997554f028c7efa7c26a246516204fbd4c3eea9cbebda50"
+    },
+    "created_at": 1793548338.8634515,
     "problem_id": "jobshop",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "5492972de0fb1dacf864041a13624194190752365425a3ee45ebcff6399d5aa1",
-    "run_id": "20260929T0836Z-cpsat-choco-5d1c",
-    "schema": 2,
-    "skill_bundle_hash": "e8d5fd0d6e24f2547ed37f8b11269ae01542c3c874c595568a1636f9d44cfbe6",
-    "skill_source": "solvers\\ortools_cp_sat_python\\skills\\ortools-cp-sat-python",
+    "readiness_hash": "4874eb826fd79054658c95b5f5b6aa78ec126a0ff06e7dc96f0fd2acd322aa58",
+    "run_id": "ortools-solver-value2",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b5b55a9097aab9552585b0861da0098beffadea6",
+      "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
       "modified": false,
-      "path": "solvers/ortools_cp_sat_python/skills/ortools-cp-sat-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "31d7e07916f15cfbcb488bbdbe86dee9207552a916131c325d6cdcaddd5fd727",
+        "source": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat"
+        }
+      }
+    ],
     "solver_id": "ortools_cp_sat_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:1a2a0e77fd0d8a82d514f1ed26c9eb43a29f5e4d0f0c17afec107b8329fdbd9b",
+      "id": "sha256:253210e766f86038bb55993898a53229ba44e5ef6c6454c0c341bd19f63f80ca",
+      "recipe": "sha256:61f7a542f99ac2783491b0cec0be4162a5e03a45c87584f48492045598e0650f",
       "tag": "dcp-eval/ortools_cp_sat_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.016085300012491643,
-        "execution_wall_seconds": 2.0675310998922214,
+        "checking_seconds": 0.013867703964933753,
+        "execution_wall_seconds": 0.953193339984864,
         "first_solution": {
           "makespan": 11
         },
@@ -50,10 +75,10 @@
           "makespan"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9448321999516338,
+        "reference_setup_seconds": 0.43745826999656856,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.0057858220000071015,
+          "solve_seconds": 0.0033821220276877284,
           "status": "complete",
           "type": "status"
         },
@@ -63,8 +88,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.08418150001671165,
-        "execution_wall_seconds": 3.52153420005925,
+        "checking_seconds": 0.06057283002883196,
+        "execution_wall_seconds": 0.9491791819455102,
         "first_solution": {
           "makespan": 55
         },
@@ -77,10 +102,10 @@
           "makespan"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2594275999581441,
+        "reference_setup_seconds": 0.5276297269156203,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.010922147999849585,
+          "solve_seconds": 0.012571920990012586,
           "status": "complete",
           "type": "status"
         },
@@ -90,8 +115,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.24281860003247857,
-        "execution_wall_seconds": 1.7198596999514848,
+        "checking_seconds": 0.2145795290125534,
+        "execution_wall_seconds": 1.0033254340523854,
         "first_solution": {
           "makespan": 666
         },
@@ -104,10 +129,10 @@
           "makespan"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.501314099994488,
+        "reference_setup_seconds": 0.8033732241019607,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.04800192000016068,
+          "solve_seconds": 0.04558737587649375,
           "status": "complete",
           "type": "status"
         },
@@ -117,8 +142,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008180400007404387,
-        "execution_wall_seconds": 1.7489298000000417,
+        "checking_seconds": 0.00726284203119576,
+        "execution_wall_seconds": 1.1631292080273852,
         "first_solution": {
           "makespan": 32
         },
@@ -131,10 +156,10 @@
           "makespan"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1215960000408813,
+        "reference_setup_seconds": 0.47258604096714407,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.003883124000026328,
+          "solve_seconds": 0.004149633925408125,
           "status": "complete",
           "type": "status"
         },
@@ -144,8 +169,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.052896899986080825,
-        "execution_wall_seconds": 1.8794819000177085,
+        "checking_seconds": 0.047936080023646355,
+        "execution_wall_seconds": 1.0070516429841518,
         "first_solution": {
           "makespan": 35
         },
@@ -158,10 +183,10 @@
           "makespan"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1093055999372154,
+        "reference_setup_seconds": 0.5955820099916309,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.007380358000091292,
+          "solve_seconds": 0.004126179963350296,
           "status": "complete",
           "type": "status"
         },
@@ -173,21 +198,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a2ad93fb3b6025878b128be52616e4f519ef7c8315da503b8b240296a54387bc",
+    "model_hash": "7f6598104b0e68741ef1c16f85e15a386967b0fbdaa870be4fa978df15a6388b",
     "problem_id": "jobshop",
     "reason": "accepted",
     "reference_hash": "87577b47146ae93ccea69b6a67d0e3e881c91dd84e885c0b66bcaa7eedfaf11e",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -198,11 +223,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "ortools_cp_sat_python",
-    "total_wall_seconds": 19.015036300057545,
+    "total_wall_seconds": 8.646189875085838,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

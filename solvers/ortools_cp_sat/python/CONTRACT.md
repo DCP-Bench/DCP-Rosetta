@@ -13,12 +13,13 @@ is staged.
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[cp_model.CpModel, dict]:
+def create_model(instance) -> tuple[cp_model.CpModel, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return a 2-tuple
-`(model, outputs)` with `model` a `cp_model.CpModel`. Anything the module prints goes to
-stderr, not to the result.
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+It must return a 2-tuple `(model, outputs)` with `model` a `cp_model.CpModel`. Anything the
+module prints goes to stderr, not to the result. Models retained before 2026-10-30 name it
+`build(instance)`, which the runner still accepts; write `create_model`.
 
 ## Instance
 
@@ -90,19 +91,88 @@ dcp-eval/ortools_cp_sat_python:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_cp_sat.py](../../../tests/fixtures/model_cp_sat.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
+# knapsack: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install ortools`):
+#   python knapsack.py knapsack.json
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
     model = cp_model.CpModel()
-    x, y = model.new_int_var(0, n, "x"), model.new_int_var(0, n, "y")
-    model.add(x + y >= n if instance["optimize"] else x + y == n)
-    if instance["optimize"]:
-        model.minimize(x + y)
-    return model, {"x": x, "y": y}
+
+    # x[i] is true when the hiker packs item i
+    x = [model.new_bool_var(f"x_{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model.add(sum(w * xi for w, xi in zip(weights, x)) <= capacity)
+    # Pack the most valuable selection.
+    model.maximize(sum(v * xi for v, xi in zip(values, x)))
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))
+```
+
+## Standalone run
+
+Every model carries the header and the run block of the example, with `knapsack` replaced
+by the problem id, so a reader can copy it from the catalogue and run it with OR-Tools
+alone. Nothing else goes in either: the header is the first lines of the file, the run block
+the last, and the model sits between them. The runner loads the file as module `candidate`,
+so the block never runs during evaluation.
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install ortools`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))
 ```

@@ -1,34 +1,35 @@
+# circling_squares: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+# Run it (after `pip install ortools`) with:
+#   python circling_squares.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """Circling the squares: ten different numbers around a circle where any
-    two adjacent squares sum to the same as the two diametrically opposite.
-
-    The puzzle states its own four given numbers, so `instance` is unused.
-    """
-    del instance
-
-    n = 10
+def create_model(instance):
+    """Circling the squares: place a different number in each of the ten squares of a circle,
+    so that two adjacent squares have the same sum of squares as the two squares
+    diametrically opposite them."""
     model = cp_model.CpModel()
+
+    # the squares in order around the circle
     names = "ABCDEFGHIK"
-    x = [model.new_int_var(1, 99, name) for name in names]
-    a, b, c, d, e, f, g, h, i, k = x
+    # the numbers given in the puzzle, by square
+    given = {"A": 16, "B": 2, "F": 8, "G": 14}
+    # x[j] is the number in square j; each number has at most two figures, so it is from 1 to 99
+    x = [model.new_int_var(given.get(name, 1), given.get(name, 99), name) for name in names]
 
+    # Each square holds a different number.
     model.add_all_different(x)
-    # The four numbers given as examples.
-    model.add(a == 16)
-    model.add(b == 2)
-    model.add(f == 8)
-    model.add(g == 14)
 
-    # One squared variable per position, reused across the five equations.
+    # squares[name] is the square of the number in that square.
     squares = {}
     for value, name in zip(x, names):
         square = model.new_int_var(1, 99 * 99, f"{name}_squared")
         model.add_multiplication_equality(square, [value, value])
         squares[name] = square
 
+    # The five pairs of adjacent squares, each against the two squares opposite them.
     for first, second, third, fourth in (
         ("A", "B", "F", "G"),
         ("B", "C", "G", "H"),
@@ -41,3 +42,18 @@ def build(instance):
         )
 
     return model, {name: var for name, var in zip(names, x)}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

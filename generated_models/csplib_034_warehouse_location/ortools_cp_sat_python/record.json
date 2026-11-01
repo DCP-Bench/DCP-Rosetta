@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790671714.956661,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/ortools_cp_sat/python/CONTRACT.md": "d7947e9ea9cc2b227997554f028c7efa7c26a246516204fbd4c3eea9cbebda50"
+    },
+    "created_at": 1793548238.2189977,
     "problem_id": "csplib_034_warehouse_location",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "5492972de0fb1dacf864041a13624194190752365425a3ee45ebcff6399d5aa1",
-    "run_id": "20260929T0836Z-cpsat-choco-5d1c",
-    "schema": 2,
-    "skill_bundle_hash": "e8d5fd0d6e24f2547ed37f8b11269ae01542c3c874c595568a1636f9d44cfbe6",
-    "skill_source": "solvers\\ortools_cp_sat_python\\skills\\ortools-cp-sat-python",
+    "readiness_hash": "4874eb826fd79054658c95b5f5b6aa78ec126a0ff06e7dc96f0fd2acd322aa58",
+    "run_id": "ortools-solver-value2",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b30332a0d8f39dda427f41a9d8c585a888b06d0e",
+      "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
       "modified": false,
-      "path": "solvers/ortools_cp_sat_python/skills/ortools-cp-sat-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "31d7e07916f15cfbcb488bbdbe86dee9207552a916131c325d6cdcaddd5fd727",
+        "source": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat"
+        }
+      }
+    ],
     "solver_id": "ortools_cp_sat_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:1a2a0e77fd0d8a82d514f1ed26c9eb43a29f5e4d0f0c17afec107b8329fdbd9b",
+      "id": "sha256:253210e766f86038bb55993898a53229ba44e5ef6c6454c0c341bd19f63f80ca",
+      "recipe": "sha256:61f7a542f99ac2783491b0cec0be4162a5e03a45c87584f48492045598e0650f",
       "tag": "dcp-eval/ortools_cp_sat_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.02843469998333603,
-        "execution_wall_seconds": 2.498572399956174,
+        "checking_seconds": 0.024164617992937565,
+        "execution_wall_seconds": 1.100948394043371,
         "first_solution": {
           "open_warehouses": [
             true,
@@ -71,10 +96,10 @@
           "supplier_assignment"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.016640599933453,
+        "reference_setup_seconds": 0.5565631450153887,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.054748775000000194,
+          "solve_seconds": 0.03223514498677105,
           "status": "complete",
           "type": "status"
         },
@@ -84,8 +109,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0169952999567613,
-        "execution_wall_seconds": 2.0581607999047264,
+        "checking_seconds": 0.014853780041448772,
+        "execution_wall_seconds": 1.0057151820510626,
         "first_solution": {
           "open_warehouses": [
             true,
@@ -113,10 +138,10 @@
           "supplier_assignment"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0368422000901774,
+        "reference_setup_seconds": 0.43701413297094405,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.024054846999987944,
+          "solve_seconds": 0.02201243012677878,
           "status": "complete",
           "type": "status"
         },
@@ -126,8 +151,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03783600009046495,
-        "execution_wall_seconds": 1.729055899893865,
+        "checking_seconds": 0.03201584599446505,
+        "execution_wall_seconds": 1.0633718399330974,
         "first_solution": {
           "open_warehouses": [
             false,
@@ -164,10 +189,10 @@
           "supplier_assignment"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0799550999654457,
+        "reference_setup_seconds": 0.6042145359097049,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.04308543200001225,
+          "solve_seconds": 0.06399241997860372,
           "status": "complete",
           "type": "status"
         },
@@ -177,8 +202,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04514019994530827,
-        "execution_wall_seconds": 1.7407892999472097,
+        "checking_seconds": 0.05915759003255516,
+        "execution_wall_seconds": 1.1092445269459859,
         "first_solution": {
           "open_warehouses": [
             true,
@@ -220,10 +245,10 @@
           "supplier_assignment"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0603367000585422,
+        "reference_setup_seconds": 0.534210160956718,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.05323551600000087,
+          "solve_seconds": 0.052355885854922235,
           "status": "complete",
           "type": "status"
         },
@@ -233,8 +258,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.024969000020064414,
-        "execution_wall_seconds": 1.999811099958606,
+        "checking_seconds": 0.02228192100301385,
+        "execution_wall_seconds": 1.0525939740473405,
         "first_solution": {
           "open_warehouses": [
             true,
@@ -266,10 +291,10 @@
           "supplier_assignment"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1457419999642298,
+        "reference_setup_seconds": 0.5142705530161038,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.044086979999988785,
+          "solve_seconds": 0.03382466395851225,
           "status": "complete",
           "type": "status"
         },
@@ -281,21 +306,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "51a52d67742576cd187aa985ac5753f37d6784f4d8bf9fd35c2e5ab3207049be",
+    "model_hash": "175e39f0e0e71d687c3eba730298adc6bb09f5cfc3e6c3ce79a082ba27426f45",
     "problem_id": "csplib_034_warehouse_location",
     "reason": "accepted",
     "reference_hash": "eacc30e8553b65def84c13c1a874828c9a09aa7ff64b8ae39c7db1f25f053124",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -306,11 +331,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "ortools_cp_sat_python",
-    "total_wall_seconds": 17.236131399986334,
+    "total_wall_seconds": 8.614488084916957,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

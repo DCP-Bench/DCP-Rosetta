@@ -1,44 +1,69 @@
-# Football squad: buy players for as close to GBP 30 million as possible without
-# going over, taking the required number from each position and at least eleven
-# players in total. The output is the total price in GBP thousands.
+# football: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/football.html
+# Run it (after `pip install ortools`) with:
+#   python football.py
+
 from ortools.sat.python import cp_model
 
-BUDGET = 30000  # GBP thousands
-# The players on offer are fixed by the problem, so their prices (in GBP
-# thousands) are mirrored here, one list per position, with the fewest and most
-# players that must be bought at that position.
-POSITIONS = [
-    # goalkeepers: exactly 1
-    ((1, 1), [730, 1280, 3880]),
-    # defenders: 2 or more
-    ((2, None), [920, 1310, 1620, 2410, 2790, 3280, 3910, 4570]),
-    # midfielders: 3 or more
-    ((3, None), [1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130]),
-    # strikers: 2 or more
-    ((2, None), [4460, 6470, 7780, 8390, 9500]),
-]
-MIN_PLAYERS = 11  # at least this many players in all
 
+def create_model(instance):
+    """Buy football players from four groups (goalkeepers, defenders, midfielders and strikers)
+    so that the total price is as close as possible to the GBP 30 million limit without going
+    over it. At least the required number of players is bought from each group, and at least
+    eleven players in total."""
+    budget = 30000  # the most that may be spent, in GBP thousands
 
-def build(instance):
+    # prices[g][p]: the price of player p of group g
+    prices = [
+        [730, 1280, 3880],                                             # goalkeepers
+        [920, 1310, 1620, 2410, 2790, 3280, 3910, 4570],               # defenders
+        [1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130],  # midfielders
+        [4460, 6470, 7780, 8390, 9500],                                # strikers
+    ]
+    # n_fewest[g] and n_most[g]: the fewest and the most players to buy from group g. Goalkeepers
+    # are exactly 1; the most for the other groups is the size of the group.
+    n_fewest = [1, 2, 3, 2]
+    n_most = [1] + [len(group) for group in prices[1:]]
+    n_min_players = 11  # the fewest players in the squad
+
     model = cp_model.CpModel()
 
-    # buy[k][j] is true when player j of position k is bought
-    buy = [[model.new_bool_var(f"buy_{k}_{j}") for j in range(len(prices))] for k, (_, prices) in enumerate(POSITIONS)]
+    # buy[g][p] is true when player p of group g is bought
+    buy = [[model.new_bool_var(f"buy_{g}_{p}") for p in range(len(group))]
+           for g, group in enumerate(prices)]
 
-    # the number of players bought at each position lies within its limits
-    for k, ((lowest, highest), prices) in enumerate(POSITIONS):
-        model.add(sum(buy[k]) >= lowest)
-        model.add(sum(buy[k]) <= (highest if highest is not None else len(prices)))
+    # z is the total price of the players bought, in GBP thousands; it stays within the budget
+    z = model.new_int_var(0, budget, "z")
 
-    # at least eleven players in total
-    model.add(sum(sum(row) for row in buy) >= MIN_PLAYERS)
+    # Each group supplies between its fewest and its most players.
+    for g in range(len(prices)):
+        model.add(sum(buy[g]) >= n_fewest[g])
+        model.add(sum(buy[g]) <= n_most[g])
 
-    # z = total price paid, and it stays within the budget
-    z = model.new_int_var(0, BUDGET, "z")
-    model.add(z == sum(price * buy[k][j] for k, (_, prices) in enumerate(POSITIONS) for j, price in enumerate(prices)))
+    # The squad has at least that many players in total.
+    model.add(sum(sum(group) for group in buy) >= n_min_players)
 
-    # spend as much as possible
+    # Each bought player adds their price to z.
+    model.add(z == sum(price * bought
+                       for group_prices, group_buy in zip(prices, buy)
+                       for price, bought in zip(group_prices, group_buy)))
+
+    # Spend as much as possible.
     model.maximize(z)
 
     return model, {"z": z}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5, interactive session, coordinator and modeller",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1789472097.8852305,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/ortools_cp_sat/python/CONTRACT.md": "d7947e9ea9cc2b227997554f028c7efa7c26a246516204fbd4c3eea9cbebda50"
+    },
+    "created_at": 1793548262.8882604,
     "problem_id": "csplib_056_sonet",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "ee4a0514fcf21381e07b87e6c440f607b72687e4e543c3c1545a236f1e2a2621",
-    "run_id": "breadth2-20260915",
-    "schema": 2,
-    "skill_bundle_hash": "e8d5fd0d6e24f2547ed37f8b11269ae01542c3c874c595568a1636f9d44cfbe6",
-    "skill_source": "solvers\\ortools_cp_sat_python\\skills\\ortools-cp-sat-python",
+    "readiness_hash": "4874eb826fd79054658c95b5f5b6aa78ec126a0ff06e7dc96f0fd2acd322aa58",
+    "run_id": "ortools-solver-value2",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "3219d857768dc945861eaafd02f5f8371d1293ef",
+      "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
       "modified": false,
-      "path": "solvers/ortools_cp_sat_python/skills/ortools-cp-sat-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "31d7e07916f15cfbcb488bbdbe86dee9207552a916131c325d6cdcaddd5fd727",
+        "source": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat"
+        }
+      }
+    ],
     "solver_id": "ortools_cp_sat_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:664e76b4e0016a5c93f4310c63e8b799e3d1048a77307b74c398a07e3d774177",
+      "id": "sha256:253210e766f86038bb55993898a53229ba44e5ef6c6454c0c341bd19f63f80ca",
+      "recipe": "sha256:61f7a542f99ac2783491b0cec0be4162a5e03a45c87584f48492045598e0650f",
       "tag": "dcp-eval/ortools_cp_sat_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.03482170001370832,
-        "execution_wall_seconds": 2.19258799997624,
+        "checking_seconds": 0.026925259036943316,
+        "execution_wall_seconds": 1.9542862509842962,
         "first_solution": {
           "ring_config": [
             [
@@ -53,18 +78,6 @@
               false
             ],
             [
-              false,
-              false,
-              false,
-              true,
-              true,
-              true,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
               true,
               true,
               true,
@@ -86,6 +99,18 @@
               true,
               true,
               true,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              true,
               true
             ]
           ],
@@ -94,16 +119,281 @@
         "id": "example",
         "instance_hash": "1dc618b1592a89580771944dd3f1b2dbd364bf4a190d278fead8715a1857e957",
         "is_optimization": true,
+        "oom_killed": false,
         "optimum": 14,
         "outputs": [
           "ring_config",
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.388848299975507,
+        "reference_setup_seconds": 1.1976654259487987,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.6917054609998559,
+          "solve_seconds": 0.9446674539940432,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.02057259203866124,
+        "execution_wall_seconds": 1.057258173939772,
+        "first_solution": {
+          "ring_config": [
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              true,
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              true
+            ]
+          ],
+          "total_adms": 8
+        },
+        "id": "json:1",
+        "instance_hash": "832103f37c45d165e7497f4b071eac51226bb49ad55e717b9d3d405246a1e1ac",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 8,
+        "outputs": [
+          "ring_config",
+          "total_adms"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4546931259101257,
+        "runner_status": {
+          "detail": "",
+          "solve_seconds": 0.03345265192911029,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.016706674941815436,
+        "execution_wall_seconds": 1.2046991819515824,
+        "first_solution": {
+          "ring_config": [
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              true
+            ],
+            [
+              false,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false
+            ]
+          ],
+          "total_adms": 9
+        },
+        "id": "json:2",
+        "instance_hash": "41668951cfc7774dc247dd2ffaa9ec83622fe4fb909454510f4891ff46cd02fb",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 9,
+        "outputs": [
+          "ring_config",
+          "total_adms"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4649199520936236,
+        "runner_status": {
+          "detail": "",
+          "solve_seconds": 0.08550747507251799,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.013912019087001681,
+        "execution_wall_seconds": 1.1560774290701374,
+        "first_solution": {
+          "ring_config": [
+            [
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
+              true
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false
+            ],
+            [
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          ],
+          "total_adms": 10
+        },
+        "id": "json:3",
+        "instance_hash": "1e673eaaa2fa0b71f5dbab8de8b8df08990af772765eff7927fe149674f11566",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 10,
+        "outputs": [
+          "ring_config",
+          "total_adms"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.48787390999495983,
+        "runner_status": {
+          "detail": "",
+          "solve_seconds": 0.10167144995648414,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.02049303101375699,
+        "execution_wall_seconds": 1.153232812997885,
+        "first_solution": {
+          "ring_config": [
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            [
+              true,
+              true,
+              false,
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          ],
+          "total_adms": 10
+        },
+        "id": "json:4",
+        "instance_hash": "72681923fdbddc22ecc14618bd244d2847cf13af2fedf355dbe597fc8859375e",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 10,
+        "outputs": [
+          "ring_config",
+          "total_adms"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5147228930145502,
+        "runner_status": {
+          "detail": "",
+          "solve_seconds": 0.07970431202556938,
           "status": "limit",
           "type": "status"
         },
@@ -112,8 +402,8 @@
         "stderr": ""
       }
     ],
-    "instances_available": 1,
-    "instances_checked": 1,
+    "instances_available": 5,
+    "instances_checked": 5,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -121,15 +411,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a967f2dbc74d7708d923c89ac1af2859baa660b73255715823df0dbd27456882",
+    "model_hash": "3d07aa6be8511f4bb545ce2d7a03fb5250bbb7372761dc2e039f6a1730ce4aa7",
     "problem_id": "csplib_056_sonet",
     "reason": "accepted",
     "reference_hash": "69346fb9abd091e290f5139e5b63f976eb3d677dd9ffb8b4d0adfee5c63c256c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -138,13 +428,13 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 2,
+    "solutions_checked": 10,
     "solver_id": "ortools_cp_sat_python",
-    "total_wall_seconds": 4.030421500036027,
+    "total_wall_seconds": 10.050518666044809,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5, interactive session, coordinator and modeller"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

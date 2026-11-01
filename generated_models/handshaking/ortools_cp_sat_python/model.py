@@ -1,38 +1,67 @@
-import math
+# handshaking: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+# Download the `handshaking.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+# Then run it on the first instance (after `pip install ortools`):
+#   python handshaking.py handshaking.json
 
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """Handshaking: at a dinner of couples, nobody shakes their own or their
-    spouse's hand, and everybody but Hilary reports a different count.
-    """
-    num_couples = instance["num_couples"]
-    # Hilary and Jocelyn plus the invited couples, laid out as
-    # Pair1a, Pair1b, Pair2a, Pair2b, ... with Hilary at 0 and Jocelyn at 1.
-    n = 2 + num_couples * 2
+def create_model(instance):
+    """Hilary and Jocelyn are married and invite some couples for dinner. Everybody
+    shakes hands with some of the others, but nobody shakes hands with themselves
+    or with their spouse. Jocelyn asks how many hands each person has shaken and
+    all the answers are different. How many hands has Hilary shaken?"""
+    num_couples = instance["num_couples"]  # the number of couples invited
+
+    # The people are Hilary (person 0), Jocelyn (person 1) and then each invited
+    # couple in turn: persons 2 and 3, persons 4 and 5, and so on. Person 2k and
+    # person 2k+1 are spouses.
+    n_people = 2 + num_couples * 2
 
     model = cp_model.CpModel()
-    x = [model.new_int_var(0, n - 2, f"x{i}") for i in range(n)]
-    hil = x[0]
-    y = [[model.new_bool_var(f"y{i}_{j}") for j in range(n)] for i in range(n)]
 
-    # Every count except Hilary's is different.
-    model.add_all_different(x[1:])
+    # hands[i] is the number of hands person i has shaken, from 0 up to n_people - 2,
+    # since nobody shakes their own or their spouse's hand
+    hands = [model.new_int_var(0, n_people - 2, f"hands_{i}") for i in range(n_people)]
+    # hil is the number of hands Hilary has shaken
+    hil = hands[0]
+    # shaken[i][j] is true when person i and person j shake hands. Pairs inside one
+    # couple, including a person with themselves, are fixed at 0.
+    shaken = [[model.new_int_var(0, 0, f"shaken_{i}_{j}") if i // 2 == j // 2
+               else model.new_bool_var(f"shaken_{i}_{j}")
+               for j in range(n_people)] for i in range(n_people)]
 
-    for i in range(math.ceil(n / 2)):
-        # Nobody shakes hands with their spouse.
-        model.add(y[2 * i][2 * i + 1] == 0)
-        model.add(y[2 * i + 1][2 * i] == 0)
+    # Shaking hands is mutual.
+    for i in range(n_people):
+        for j in range(n_people):
+            model.add(shaken[i][j] == shaken[j][i])
 
-    for i in range(n):
-        # Nobody shakes their own hand, and x counts the hands they shook.
-        model.add(y[i][i] == 0)
-        model.add(x[i] == sum(y[i]))
+    # Count the handshakes of each person.
+    for i in range(n_people):
+        model.add(hands[i] == sum(shaken[i]))
 
-    for i in range(n):
-        for j in range(n):
-            # Handshaking is mutual.
-            model.add(y[i][j] == y[j][i])
+    # Everybody except Hilary gave a different answer.
+    model.add_all_different(hands[1:])
 
     return model, {"hil": hil}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

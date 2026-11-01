@@ -83,6 +83,16 @@ ISOLATED = ("import os, socket\n"
             "    model.add(x + y == n)\n"
             "    return model, {'x': x, 'y': y}\n")
 
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    print(outputs)\n")
+
 
 def main():
     results = {}
@@ -110,6 +120,7 @@ def main():
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
+        check("standalone_block", STANDALONE)
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})

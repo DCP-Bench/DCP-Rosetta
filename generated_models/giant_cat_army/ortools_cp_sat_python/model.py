@@ -1,48 +1,63 @@
-# Giant cat army riddle: start from [0] and extend the list by adding 5, adding
-# 7 or taking a square root, so that all numbers are different integers of at
-# most 60, the list contains 2, then 10, then 14 (in that order), and it ends
-# with 14 after exactly 24 numbers.
+# giant_cat_army: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/giant_cat_army.html
+# Run it (after `pip install ortools`) with:
+#   python giant_cat_army.py
+
 from ortools.sat.python import cp_model
 
-# The riddle fixes these numbers, so they are mirrored here.
-MAX_VALUE = 60  # largest number allowed in the list
-LENGTH = 24  # number of entries in the list
-GOAL = 14  # the last entry
 
+def create_model(instance):
+    """Build a list that starts with [0], where each next element is the previous one
+    plus 5, plus 7, or its square root. The elements are distinct integers of at most
+    60, the list has 24 elements, ends with 14, and has 2 before 10."""
+    max_value = 60   # the largest value an element may take
+    n_elements = 24  # the number of elements in the list
 
-def build(instance):
     model = cp_model.CpModel()
 
-    # x[i] = the i-th number of the list
-    x = [model.new_int_var(0, MAX_VALUE, f"x_{i}") for i in range(LENGTH)]
+    # x[i] is the i-th element of the list. The list starts with 0 and ends with 14.
+    x = ([model.new_int_var(0, 0, "x_0")]
+         + [model.new_int_var(0, max_value, f"x_{i}") for i in range(1, n_elements - 1)]
+         + [model.new_int_var(14, 14, f"x_{n_elements - 1}")])
 
-    # all numbers are different
+    # All elements are distinct.
     model.add_all_different(x)
 
-    # the list starts with 0 and ends with 14
-    model.add(x[0] == 0)
-    model.add(x[LENGTH - 1] == GOAL)
+    # steps holds the allowed pairs (a, b) for a step from a to b: b = a + 5, b = a + 7,
+    # or a = b * b (b is the square root of a).
+    steps = set()
+    for v in range(max_value + 1):
+        if v + 5 <= max_value:
+            steps.add((v, v + 5))
+        if v + 7 <= max_value:
+            steps.add((v, v + 7))
+        if v * v <= max_value:
+            steps.add((v * v, v))
 
-    # each number follows the previous one by adding 5, adding 7, or taking the
-    # square root (the previous number x[i] is the square of the next x[i+1]).
-    # All three moves are listed as allowed pairs (x[i], x[i+1]).
-    moves = set()
-    for v in range(MAX_VALUE + 1):
-        if v + 5 <= MAX_VALUE:
-            moves.add((v, v + 5))
-        if v + 7 <= MAX_VALUE:
-            moves.add((v, v + 7))
-        if v * v <= MAX_VALUE:
-            moves.add((v * v, v))
-    moves = sorted(moves)
-    for i in range(LENGTH - 1):
-        model.add_allowed_assignments([x[i], x[i + 1]], moves)
+    # Each element takes an allowed step to the next one.
+    for i in range(n_elements - 1):
+        model.add_allowed_assignments([x[i], x[i + 1]], sorted(steps))
 
-    # the list contains 2 and later 10 (and, as it ends with it, 14 after both)
-    index_of_2 = model.new_int_var(1, LENGTH - 1, "index_of_2")
-    index_of_10 = model.new_int_var(1, LENGTH - 1, "index_of_10")
-    model.add_element(index_of_2, x, 2)
-    model.add_element(index_of_10, x, 10)
-    model.add(index_of_2 < index_of_10)
+    # index2 and index10 are the positions of 2 and 10 in the list; 2 comes before 10.
+    index2 = model.new_int_var(1, n_elements - 1, "index2")
+    index10 = model.new_int_var(1, n_elements - 1, "index10")
+    model.add_element(index2, x, 2)
+    model.add_element(index10, x, 10)
+    model.add(index2 < index10)
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

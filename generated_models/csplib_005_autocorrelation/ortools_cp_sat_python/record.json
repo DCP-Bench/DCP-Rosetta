@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790672790.2007449,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/ortools_cp_sat/python/CONTRACT.md": "d7947e9ea9cc2b227997554f028c7efa7c26a246516204fbd4c3eea9cbebda50"
+    },
+    "created_at": 1793548162.2957132,
     "problem_id": "csplib_005_autocorrelation",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "5492972de0fb1dacf864041a13624194190752365425a3ee45ebcff6399d5aa1",
-    "run_id": "20260929T0836Z-cpsat-choco-5d1c",
-    "schema": 2,
-    "skill_bundle_hash": "e8d5fd0d6e24f2547ed37f8b11269ae01542c3c874c595568a1636f9d44cfbe6",
-    "skill_source": "solvers\\ortools_cp_sat_python\\skills\\ortools-cp-sat-python",
+    "readiness_hash": "4874eb826fd79054658c95b5f5b6aa78ec126a0ff06e7dc96f0fd2acd322aa58",
+    "run_id": "ortools-solver-value2",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b5b55a9097aab9552585b0861da0098beffadea6",
+      "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
       "modified": false,
-      "path": "solvers/ortools_cp_sat_python/skills/ortools-cp-sat-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "31d7e07916f15cfbcb488bbdbe86dee9207552a916131c325d6cdcaddd5fd727",
+        "source": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat",
+        "version": {
+          "commit": "0750650feb7cb9e9b028b5938a0884f6093bc15e",
+          "modified": false,
+          "path": "solvers/ortools_cp_sat/skills/dcp-ortools-cp-sat"
+        }
+      }
+    ],
     "solver_id": "ortools_cp_sat_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:1a2a0e77fd0d8a82d514f1ed26c9eb43a29f5e4d0f0c17afec107b8329fdbd9b",
+      "id": "sha256:253210e766f86038bb55993898a53229ba44e5ef6c6454c0c341bd19f63f80ca",
+      "recipe": "sha256:61f7a542f99ac2783491b0cec0be4162a5e03a45c87584f48492045598e0650f",
       "tag": "dcp-eval/ortools_cp_sat_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.03332429996225983,
-        "execution_wall_seconds": 2.227728100027889,
+        "checking_seconds": 0.019586261943913996,
+        "execution_wall_seconds": 1.1640544750262052,
         "first_solution": {
           "sequence": [
             1,
@@ -61,10 +86,10 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.380311599932611,
+        "reference_setup_seconds": 0.5537556000053883,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.040895685999885245,
+          "solve_seconds": 0.030910174013115466,
           "status": "limit",
           "type": "status"
         },
@@ -74,8 +99,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04287170001771301,
-        "execution_wall_seconds": 2.2388886000262573,
+        "checking_seconds": 0.025110015994869173,
+        "execution_wall_seconds": 1.0897147009382024,
         "first_solution": {
           "sequence": [
             -1,
@@ -102,10 +127,10 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4384724999545142,
+        "reference_setup_seconds": 0.5224922749912366,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.03194469000004574,
+          "solve_seconds": 0.02306811197195202,
           "status": "limit",
           "type": "status"
         },
@@ -115,8 +140,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.053851300035603344,
-        "execution_wall_seconds": 4.1282221000874415,
+        "checking_seconds": 0.02759294700808823,
+        "execution_wall_seconds": 3.1198952390113845,
         "first_solution": {
           "sequence": [
             -1,
@@ -146,10 +171,10 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 6.6049333000555634,
+        "reference_setup_seconds": 3.056549982051365,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 2.196332282999947,
+          "solve_seconds": 2.0439345228951424,
           "status": "limit",
           "type": "status"
         },
@@ -159,8 +184,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.018058800022117794,
-        "execution_wall_seconds": 1.8435459000756964,
+        "checking_seconds": 0.01175781199708581,
+        "execution_wall_seconds": 1.0500611590687186,
         "first_solution": {
           "sequence": [
             -1,
@@ -181,10 +206,10 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2477663999889046,
+        "reference_setup_seconds": 0.5111662129638717,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.007855883999809521,
+          "solve_seconds": 0.0077754020458087325,
           "status": "limit",
           "type": "status"
         },
@@ -194,8 +219,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.020448600058443844,
-        "execution_wall_seconds": 1.5740051000611857,
+        "checking_seconds": 0.019371774047613144,
+        "execution_wall_seconds": 1.0503829079680145,
         "first_solution": {
           "sequence": [
             1,
@@ -221,10 +246,10 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0753646999364719,
+        "reference_setup_seconds": 0.6458923979662359,
         "runner_status": {
           "detail": "",
-          "solve_seconds": 0.04407352499993067,
+          "solve_seconds": 0.05726759205572307,
           "status": "limit",
           "type": "status"
         },
@@ -236,21 +261,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b93c34ebaa74da5be21280b0cd52410534e126037fa93a490f9ebde9bdb1c7f7",
+    "model_hash": "75ff1a2f424c25c1ae870f13bf6267e3af2bd472e7098b4ccb9ef4e344aa0b7e",
     "problem_id": "csplib_005_autocorrelation",
     "reason": "accepted",
-    "reference_hash": "c889244dc0f05218ab78c78d985115f3538c1eca557a7ea04c0bc513abeeb073",
+    "reference_hash": "f3644262109bcb50ba9ddc515c1bb1e63a9789db7d0e9ee0d443b4c3b9de610c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -261,11 +286,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "ortools_cp_sat_python",
-    "total_wall_seconds": 25.79157150001265,
+    "total_wall_seconds": 13.20409469504375,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

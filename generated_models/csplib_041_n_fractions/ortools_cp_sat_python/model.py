@@ -1,40 +1,60 @@
-# Fractions puzzle: find nine different non-zero digits A..I such that
-# A/BC + D/EF + G/HI = 1, where BC, EF and HI are two-digit numbers.
+# csplib_041_n_fractions: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_041_n_fractions.html
+# Run it (after `pip install ortools`) with:
+#   python csplib_041_n_fractions.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    # The puzzle has no data.
+def create_model(instance):
+    """Find distinct non-zero digits A to I such that A / BC + D / EF + G / HI = 1, where BC, EF
+    and HI are the two-digit numbers formed by B and C, E and F, and H and I."""
     model = cp_model.CpModel()
 
-    # the nine digits, all different and non-zero
-    A, B, C, D, E, F, G, H, I = digits = [model.new_int_var(1, 9, name) for name in "ABCDEFGHI"]
-    model.add_all_different(digits)
-
-    # the three denominators BC, EF, HI as two-digit numbers
-    D1 = model.new_int_var(11, 99, "D1")
-    D2 = model.new_int_var(11, 99, "D2")
-    D3 = model.new_int_var(11, 99, "D3")
-    model.add(D1 == 10 * B + C)
-    model.add(D2 == 10 * E + F)
-    model.add(D3 == 10 * H + I)
-
-    def product(x, y, hi, name):
-        """A new variable equal to x * y."""
-        p = model.new_int_var(0, hi, name)
+    def times(x, y, upper, name):
+        """A new variable equal to x * y, with the given upper bound."""
+        p = model.new_int_var(0, upper, name)
         model.add_multiplication_equality(p, [x, y])
         return p
 
-    # Multiplying the equation A/D1 + D/D2 + G/D3 = 1 through by D1*D2*D3 gives
-    # A*D2*D3 + D*D1*D3 + G*D1*D2 = D1*D2*D3, which avoids fractions. CP-SAT
-    # multiplies two variables at a time, so the products are built stepwise.
-    D1D2 = product(D1, D2, 99 * 99, "D1D2")
-    D1D3 = product(D1, D3, 99 * 99, "D1D3")
-    D2D3 = product(D2, D3, 99 * 99, "D2D3")
-    all_three = product(D1D2, D3, 99 * 99 * 99, "D1D2D3")
-    term_a = product(A, D2D3, 9 * 99 * 99, "A_D2D3")
-    term_d = product(D, D1D3, 9 * 99 * 99, "D_D1D3")
-    term_g = product(G, D1D2, 9 * 99 * 99, "G_D1D2")
-    model.add(term_a + term_d + term_g == all_three)
+    # The nine digits A to I, each from 1 to 9.
+    A, B, C, D, E, F, G, H, I = digits = [model.new_int_var(1, 9, name) for name in "ABCDEFGHI"]
+    # All nine digits are different.
+    model.add_all_different(digits)
+
+    # BC, EF and HI are the two-digit numbers with tens digit B, E, H and units digit C, F, I.
+    BC = model.new_int_var(11, 99, "BC")
+    EF = model.new_int_var(11, 99, "EF")
+    HI = model.new_int_var(11, 99, "HI")
+    model.add(BC == 10 * B + C)
+    model.add(EF == 10 * E + F)
+    model.add(HI == 10 * H + I)
+
+    # A / BC + D / EF + G / HI = 1, multiplied through by BC * EF * HI, gives
+    # A * EF * HI + D * BC * HI + G * BC * EF = BC * EF * HI.
+    # The products are built two factors at a time.
+    BC_EF = times(BC, EF, 99 * 99, "BC_EF")
+    BC_HI = times(BC, HI, 99 * 99, "BC_HI")
+    EF_HI = times(EF, HI, 99 * 99, "EF_HI")
+    BC_EF_HI = times(BC_EF, HI, 99 * 99 * 99, "BC_EF_HI")
+    A_EF_HI = times(A, EF_HI, 9 * 99 * 99, "A_EF_HI")
+    D_BC_HI = times(D, BC_HI, 9 * 99 * 99, "D_BC_HI")
+    G_BC_EF = times(G, BC_EF, 9 * 99 * 99, "G_BC_EF")
+    model.add(A_EF_HI + D_BC_HI + G_BC_EF == BC_EF_HI)
 
     return model, {"A": A, "B": B, "C": C, "D": D, "E": E, "F": F, "G": G, "H": H, "I": I}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

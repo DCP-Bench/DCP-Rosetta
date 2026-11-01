@@ -1,40 +1,50 @@
+# general_store: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+# Run it (after `pip install ortools`) with:
+#   python general_store.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """General store: a sixteen-line alphametic whose total is ALL WOOL.
-
-    The puzzle states its own sign, so `instance` is unused.  Each of the ten
-    letters stands for a different digit.
-    """
-    del instance
+def create_model(instance):
+    """The owner of a general store has put up a sign: sixteen words that add up to
+    'ALL WOOL'. Each different letter stands for a different digit; find the digit
+    of every letter."""
+    # The words that are added.
+    words = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
+             "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
+    total = "ALLWOOL"  # the total the words make
 
     model = cp_model.CpModel()
-    x = [model.new_int_var(0, 9, name) for name in "CHESABOWPL"]
-    C, H, E, S, A, B, O, W, P, L = x
 
-    model.add_all_different(x)
-    model.add(
-        10000 * C + 1000 * H + 100 * E + 10 * S + S
-        + 1000 * C + 100 * A + 10 * S + H
-        + 100000 * B + 10000 * O + 1000 * W + 100 * W + 10 * O + W
-        + 10000 * C + 1000 * H + 100 * O + 10 * P + S
-        + 100000 * A + 10000 * L + 1000 * S + 100 * O + 10 * P + S
-        + 1000000 * P + 100000 * A + 10000 * L + 1000 * E + 100 * A + 10 * L + E
-        + 1000 * C + 100 * O + 10 * O + L
-        + 1000 * B + 100 * A + 10 * S + S
-        + 1000 * H + 100 * O + 10 * P + S
-        + 1000 * A + 100 * L + 10 * E + S
-        + 1000 * H + 100 * O + 10 * E + S
-        + 100000 * A + 10000 * P + 1000 * P + 100 * L + 10 * E + S
-        + 1000 * C + 100 * O + 10 * W + S
-        + 100000 * C + 10000 * H + 1000 * E + 100 * E + 10 * S + E
-        + 100000 * C + 10000 * H + 1000 * S + 100 * O + 10 * A + P
-        + 10000 * S + 1000 * H + 100 * E + 10 * E + P
-        == 1000000 * A + 100000 * L + 10000 * L + 1000 * W + 100 * O + 10 * O + L
-    )
+    # The letters of the words and the total, each once.
+    letters = list(dict.fromkeys("".join(words + [total])))
+    # digit[c] is the digit that letter c stands for
+    digit = {c: model.new_int_var(0, 9, c) for c in letters}
 
-    return model, {
-        "C": C, "H": H, "E": E, "S": S, "A": A,
-        "B": B, "O": O, "W": W, "P": P, "L": L,
-    }
+    def value(word):
+        # The number a word spells: its last letter is the units digit, the one before it the tens, and so on.
+        return sum(10 ** k * digit[c] for k, c in enumerate(reversed(word)))
+
+    # Different letters stand for different digits.
+    model.add_all_different([digit[c] for c in letters])
+
+    # The words add up to the total.
+    model.add(sum(value(word) for word in words) == value(total))
+
+    return model, {c: digit[c] for c in letters}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

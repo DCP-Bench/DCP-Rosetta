@@ -1,44 +1,50 @@
+# ages_of_the_sons: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+# Run it (after `pip install ortools`) with:
+#   python ages_of_the_sons.py
+
 from ortools.sat.python import cp_model
 
 
-def build(instance):
-    """Ages of the sons: the product is 36, the sum is ambiguous, and there is
-    a unique oldest.
-
-    The puzzle states its own product, so `instance` is unused.  The second
-    triple B is what makes the sum ambiguous: it is a different factorisation
-    of 36 with the same sum, which is why the mathematician needed the extra
-    clue about the oldest son.
-    """
-    del instance
-
+def create_model(instance):
+    """An old man says the product of his three sons' ages is 36. Knowing the sum
+    of the ages is still not enough for a mathematician to find them, but once
+    told that the oldest son has blue eyes (so there is a unique oldest) he can.
+    What are the ages of the three sons?"""
     model = cp_model.CpModel()
-    a1 = model.new_int_var(0, 36, "A1")
-    a2 = model.new_int_var(0, 36, "A2")
-    a3 = model.new_int_var(0, 36, "A3")
-    b1 = model.new_int_var(0, 36, "B1")
-    b2 = model.new_int_var(0, 36, "B2")
-    b3 = model.new_int_var(0, 36, "B3")
 
-    # Triple products need chaining two factors at a time.
-    a12 = model.new_int_var(0, 36 * 36, "a12")
-    b12 = model.new_int_var(0, 36 * 36, "b12")
-    model.add_multiplication_equality(a12, [a1, a2])
-    model.add_multiplication_equality(b12, [b1, b2])
+    # a[i] is the age of the i-th son, oldest first.
+    a = [model.new_int_var(0, 36, f"A{i + 1}") for i in range(3)]
+    # b is another possible triple of ages, oldest first.
+    b = [model.new_int_var(0, 36, f"B{i + 1}") for i in range(3)]
 
-    model.add(a1 > a2)
-    model.add(a2 >= a3)
-    model.add_multiplication_equality(36, [a12, a3])
+    # The ages are ordered, and the oldest son is strictly older than the next.
+    model.add(a[0] > a[1])
+    model.add(a[1] >= a[2])
+    # The product of the ages is 36.
+    model.add_multiplication_equality(36, a)
 
-    model.add(b1 >= b2)
-    model.add(b2 >= b3)
-    model.add(a1 != b1)
-    model.add_multiplication_equality(36, [b12, b3])
+    # The other triple is ordered, with the same product and sum as the sons' ages.
+    model.add(b[0] >= b[1])
+    model.add(b[1] >= b[2])
+    model.add_multiplication_equality(36, b)
+    model.add(sum(b) == sum(a))
+    # Its oldest son is a different age from the sons' oldest.
+    model.add(b[0] != a[0])
 
-    a_sum = model.new_int_var(0, 1000, "AS")
-    b_sum = model.new_int_var(0, 1000, "BS")
-    model.add(a_sum == a1 + a2 + a3)
-    model.add(b_sum == b1 + b2 + b3)
-    model.add(a_sum == b_sum)
+    return model, {"A1": a[0], "A2": a[1], "A3": a[2]}
 
-    return model, {"A1": a1, "A2": a2, "A3": a3}
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))

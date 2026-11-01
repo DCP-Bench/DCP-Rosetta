@@ -1,45 +1,68 @@
-# Big Bang nontransitive dice: build five dice (Rock, Paper, Scissors, Lizard,
-# Spock), each with six faces of value 1..12, so that the "beats" relation
-# between the dice is exactly that of the game Rock-Paper-Scissors-Lizard-Spock.
-# Die A beats die B when A shows the larger face in more than half of all pairs of faces.
+# big_bang2: an OR-Tools CP-SAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install ortools`) with:
+#   python big_bang2.py
+
 from ortools.sat.python import cp_model
 
-# The instance has no data: the game itself fixes these constants.
-ROCK, PAPER, SCISSORS, LIZARD, SPOCK = range(5)
-N_DICE = 5
-N_FACES = 6
-MAX_FACE = 12
-# (winner, loser) for the ten rules of the game
-BEATS = [
-    (ROCK, SCISSORS),  # rock crushes scissors
-    (ROCK, LIZARD),  # rock crushes lizard
-    (PAPER, ROCK),  # paper covers rock
-    (PAPER, SPOCK),  # paper disproves Spock
-    (SCISSORS, PAPER),  # scissors cut paper
-    (SCISSORS, LIZARD),  # scissors decapitate lizard
-    (LIZARD, PAPER),  # lizard eats paper
-    (LIZARD, SPOCK),  # lizard poisons Spock
-    (SPOCK, ROCK),  # Spock vaporizes rock
-    (SPOCK, SCISSORS),  # Spock smashes scissors
-]
 
+def create_model(instance):
+    """Nontransitive dice: design five dice with six faces each, one die for each of Rock,
+    Paper, Scissors, Lizard and Spock, so that the dice beat each other in the same pattern
+    as these choices beat each other. A die beats another when it shows a strictly larger
+    face in more than half of all pairs of faces."""
+    # The five choices, each with its own die.
+    ROCK, PAPER, SCISSORS, LIZARD, SPOCK = range(5)
+    n_dice = 5       # one die per choice
+    n_faces = 6      # each die has six faces
+    max_face = 12    # each face shows a value from 1 to 12; values may repeat
 
-def build(instance):
+    # (winner, loser): the ten rules of the game. Each choice beats two others.
+    BEATS = [
+        (ROCK, SCISSORS),     # rock crushes scissors
+        (ROCK, LIZARD),       # rock crushes lizard
+        (PAPER, ROCK),        # paper covers rock
+        (PAPER, SPOCK),       # paper disproves Spock
+        (SCISSORS, PAPER),    # scissors cut paper
+        (SCISSORS, LIZARD),   # scissors decapitate lizard
+        (LIZARD, PAPER),      # lizard eats paper
+        (LIZARD, SPOCK),      # lizard poisons Spock
+        (SPOCK, ROCK),        # Spock vaporizes rock
+        (SPOCK, SCISSORS),    # Spock smashes scissors
+    ]
+
     model = cp_model.CpModel()
 
-    # dice[i][j] = the value on the j-th face of die i
-    dice = [[model.new_int_var(1, MAX_FACE, f"dice_{i}_{j}") for j in range(N_FACES)] for i in range(N_DICE)]
+    # dice[d][f] is the value on face f of die d
+    dice = [[model.new_int_var(1, max_face, f"dice_{d}_{f}") for f in range(n_faces)]
+            for d in range(n_dice)]
 
+    # Each rule: the winning die shows a larger face in more than half of the pairs of faces.
     for winner, loser in BEATS:
-        # count the face pairs (x, y) where the winner's face is larger than the loser's
+        # one flag per pair of faces: true when the winner's face is larger
         wins = []
-        for x in range(N_FACES):
-            for y in range(N_FACES):
-                bigger = model.new_bool_var(f"bigger_{winner}_{x}_{loser}_{y}")
-                model.add(dice[winner][x] > dice[loser][y]).only_enforce_if(bigger)
-                model.add(dice[winner][x] <= dice[loser][y]).only_enforce_if(bigger.negated())
-                wins.append(bigger)
-        # the winner must win in more than half of all face pairs
-        model.add(sum(wins) > (N_FACES * N_FACES) // 2)
+        for a in dice[winner]:
+            for b in dice[loser]:
+                larger = model.new_bool_var(f"larger_{winner}_{loser}_{len(wins)}")
+                model.add(a > b).only_enforce_if(larger)
+                model.add(a <= b).only_enforce_if(~larger)
+                wins.append(larger)
+        model.add(sum(wins) > n_faces * n_faces // 2)
 
+    # Any dice that follow the rules are an answer.
     return model, {"dice": dice}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    solver = cp_model.CpSolver()
+    solver_value = np.vectorize(solver.value)  # make it work on nested variables
+
+    status = solver.solve(model)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for name, output in outputs.items():
+            print(name, "=", solver_value(output))
+    else:
+        print("No solution:", solver.status_name(status))
