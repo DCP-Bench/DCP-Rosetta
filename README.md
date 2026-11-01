@@ -95,7 +95,7 @@ skill works outside this repository; a skill in `skills/` works only inside it.
 | --- | --- |
 | `skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework and writes its standalone solver skill, `instance-curator` adds instances to the problems in `bench/`. |
 | `solvers/<solver>/skills/dcp-<name>/` | The public, Rosetta-independent solver skills, mirrored to [DCP-Bench/DCP-skills](https://github.com/DCP-Bench/DCP-skills). |
-| `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
+| `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, each campaign's local ledger. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
 
 
 ## Evaluation framework
@@ -141,8 +141,9 @@ example cannot survive a second instance), writes a model from the reference,
 and submits it to the evaluator. A model is kept only when the evaluator
 accepts it.
 
-Every campaign leaves a ledger under `generation/runs/`: what was attempted,
+Every campaign keeps a local ledger under `generation/runs/`: what was attempted,
 what the evaluator said, and what was kept, including the attempts that failed.
+The repository keeps only the accepted models, each with its verdict in `record.json`.
 
 ## How to Contribute
 
