@@ -55,10 +55,21 @@ but say so in a comment where it appears.
 ## The model has to be readable
 
 A model in this corpus is read by people comparing how frameworks say the same
-thing. One that is merely correct fails at that job, so **before retaining,
-confirm every constraint group carries a comment saying what it means in the
-problem's own words**, and that the file opens with a line stating what the
-problem is.
+thing, many of them students. One that is merely correct fails at that job, so
+**before retaining, confirm the model carries**:
+
+- a line or docstring stating what the problem is;
+- a comment on each instance field it reads, saying what the field holds;
+- a comment on each decision variable, saying what it means in the problem;
+- a comment on each constraint group and on the objective, in the problem's own
+  words;
+- the plainest expression of each, without index loops or rebuilt lists where
+  the framework has a direct form.
+
+Where the integration's `CONTRACT.md` has a `## Standalone run` section, the
+model also carries its header and run block exactly as given there, with the
+problem id filled in: the header as the first lines, the run block as the last,
+the model between them and nothing else around it.
 
 Use the vocabulary of the problem statement, not of the encoding. The reference
 models do this and are the standard to match. `capital_budget`'s reference says:

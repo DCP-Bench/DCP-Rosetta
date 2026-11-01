@@ -195,7 +195,7 @@ class FlaggedModelTests(unittest.TestCase):
     def test_a_flagged_model_is_marked_and_names_what_disproved_it(self):
         rendered = generate_site.generated_model_html(self.entry([self.FLAG]))
         self.assertIn("fails a later instance", rendered)
-        self.assertIn("Instance 7 (invalid_solution, rechecked 2026-09-23)", rendered)
+        self.assertIn("Instance 6 (invalid_solution, rechecked 2026-09-23)", rendered)
         self.assertNotIn("fails a later instance", generate_site.generated_model_html(self.entry([])))
 
     def test_a_flagged_model_does_not_count_and_loses_to_an_unflagged_one(self):

@@ -571,10 +571,10 @@ def row_positions(problem: str) -> dict:
 def instance_label(identifier, problem: str = "", instance_hash: str | None = None) -> tuple:
     """Name an evaluator instance the way the Instances section above does.
 
-    That section numbers the problem's JSON rows from 1 and calls the first one
-    the example; the corpus guarantees row 0 is exactly the embedded example. The
+    That section numbers the problem's JSON rows from 0, as their index in the
+    file, and the corpus guarantees row 0 is exactly the embedded example. The
     evaluator identifies rows by their index at evaluation time, so json:k is
-    Instance k+1 unless rows were removed since; the recorded hash then finds the
+    Instance k unless rows were removed since; the recorded hash then finds the
     row where it is now, or shows that it is gone. Rows that duplicate an earlier
     one are skipped entirely. Returns the label plus the raw identifier, which is
     worth a tooltip rather than space on the page: it only matters when replaying
@@ -582,7 +582,7 @@ def instance_label(identifier, problem: str = "", instance_hash: str | None = No
     """
     text = str(identifier)
     if identifier == "example":
-        return "Instance 1", text
+        return "Instance 0", text
     if text.startswith("json:"):
         try:
             index = int(text.split(':', 1)[1])
@@ -591,9 +591,9 @@ def instance_label(identifier, problem: str = "", instance_hash: str | None = No
         if instance_hash and problem:
             now = row_positions(problem).get(instance_hash)
             if now is None:
-                return f"Instance {index + 1} (since removed)", text
+                return f"Instance {index} (since removed)", text
             index = now
-        return f"Instance {index + 1}", text
+        return f"Instance {index}", text
     return text, ""
 
 
@@ -702,6 +702,9 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
         )
     if metrics.get("solver"):
         rows.append(f'<dt>Solver</dt><dd>{solver_link(metrics["solver"], "../")}</dd>')
+        skill = skill_button(metrics["solver"]) if metrics["solver"] in INTEGRATIONS else ""
+        if skill:
+            rows.append(f"<dt>Skill</dt><dd>{skill}</dd>")
     chips = paradigm_chips(metrics.get("solver"), "../")
     if chips:
         rows.append(f"<dt>Paradigm</dt><dd>{chips}</dd>")
@@ -1322,12 +1325,12 @@ def problem_instances(p: dict) -> list:
 
 
 def instance_pane_html(inst, i: int, idx: int, active: bool, example_solution, decision_vars: list) -> str:
-    """One instance's data, plus the example solution for instance 1."""
+    """One instance's data, plus the example solution for instance 0."""
     pretty = compact_json(inst)
     data_pane = code_block(pretty, "json", copy_id=f"inst-{idx}-{i}", head_label=f"Instance {i} · JSON")
     buttons = '<button class="tab-btn active" type="button" data-tab="data">Data</button>'
     panes = f'<div class="tab-pane active" data-pane="data">{data_pane}</div>'
-    if i == 1 and example_solution:
+    if i == 0 and example_solution:
         sol_code = compact_json(example_solution)
         buttons += '<button class="tab-btn" type="button" data-tab="solution">Solution</button>'
         panes += (
@@ -1345,31 +1348,33 @@ def instance_pane_html(inst, i: int, idx: int, active: bool, example_solution, d
 def instances_section_html(p: dict, idx: int) -> str:
     """A numbered picker over the instances, and the chosen one's data.
 
-    The corpus guarantees instance 1 is the data the reference model has
+    The corpus guarantees instance 0 is the data the reference model has
     written into it, which is why only that one comes with a solution.
+    Instances are numbered by their index in the problem's JSON file.
     """
     insts = problem_instances(p)
     if not insts:
         return ""
     solution, variables = p["example_solution"], p["decision_variables"]
-    note = ('<p class="desc picker-note">Instance 1 is the data written into the reference model'
-            + (", and the one shown with a solution." if solution else ".") + "</p>")
+    download = (f'<p class="desc instances-download">Download all instances: '
+                f'<a href="{esc(p["id"])}.json" download><strong>{esc(p["id"])}.json</strong></a></p>'
+                if p["instances"] else "")
     if len(insts) == 1:
-        body = note + instance_pane_html(insts[0], 1, idx, None, solution, variables)
+        body = instance_pane_html(insts[0], 0, idx, None, solution, variables)
     else:
         picks = "".join(
-            f'<button class="tab-btn pick{" active" if i == 1 else ""}" type="button" '
+            f'<button class="tab-btn pick{" active" if i == 0 else ""}" type="button" '
             f'data-tab="inst-{i}" aria-label="Instance {i}">{i}</button>'
-            for i in range(1, len(insts) + 1)
+            for i in range(len(insts))
         )
-        panes = "".join(instance_pane_html(inst, i, idx, i == 1, solution, variables)
-                        for i, inst in enumerate(insts, 1))
+        panes = "".join(instance_pane_html(inst, i, idx, i == 0, solution, variables)
+                        for i, inst in enumerate(insts))
         body = (f'<div class="tab-group picker-group"><div class="tab-bar picker" aria-label="Instances">'
-                f'{picks}</div>{note}{panes}</div>')
+                f'{picks}</div>{panes}</div>')
     return (
         f'<details class="card-box instances-box">'
         f'<summary><h3>Instances <span class="count-note">({len(insts)})</span></h3></summary>'
-        f'{body}</details>'
+        f'{download}{body}</details>'
     )
 
 
@@ -1475,10 +1480,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
     )
 
     instances_html = instances_section_html(p, idx)
-    # A puzzle whose numbers are all fixed carries no instances, so the footer
-    # line must not claim there are some.
-    shown_above = ("The reference model and the instances are"
-                   if instances_html else "The reference model is")
 
     gen_for_problem = generated.get(pid, {})
 
@@ -1499,9 +1500,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
 
     {models_section_html(p, meta, idx, gen_for_problem)}
 
-    <p class="desc" style="margin-top:26px">{shown_above} shown above;
-      the files live in
-      <a href="{BENCH_URL}/tree/main/dataset/{pid}" target="_blank" rel="noopener">dataset/{pid}</a>.</p>
     {prev_next}
     """
 
@@ -1515,6 +1513,9 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
         rendered_page,
         encoding="utf-8",
     )
+    # The instance file a standalone model reads, served beside its page.
+    if p["instances"]:
+        shutil.copyfile(Path("bench") / "dataset" / pid / f"{pid}.json", OUTPUT_DIR / "problems" / f"{pid}.json")
 
 
 # Metadata that is not a source of the problem: the collection shows in the
