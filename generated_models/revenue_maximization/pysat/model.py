@@ -1,67 +1,71 @@
-# Airline revenue management: decide how many units of each itinerary package
-# to sell, within each package's demand and each flight leg's seats, so that
-# the total revenue is as large as possible.
+# revenue_maximization: a PySAT (Python) model from DCP Rosetta.
+# Download the `revenue_maximization.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/revenue_maximization.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python revenue_maximization.py revenue_maximization.json
+
 from math import isqrt
 
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    available_seats = instance["available_seats"]
-    demand = instance["demand"]
-    revenue = instance["revenue"]
-    delta = instance["delta"]          # delta[i][j] = 1 if package i uses leg j
-    num_packages = len(demand)
-    num_legs = len(available_seats)
-    packages = range(num_packages)
+def create_model(instance):
+    """Flight legs have a limited number of seats, and each package of itineraries sells at a
+    fixed price, with an estimated demand. Choose how many units of each package to sell so that
+    the total revenue is as large as possible, without reserving more seats on a leg than it has."""
+    available_seats = instance["available_seats"]  # available_seats[j]: passenger seats on flight leg j
+    demand = instance["demand"]                    # demand[i]: the estimated demand for package i
+    revenue = instance["revenue"]                  # revenue[i]: the price of one unit of package i
+    delta = instance["delta"]                      # delta[i][j]: seats on leg j that one unit of package i uses
+    n_packages = len(demand)  # the number of packages
+    n_legs = len(available_seats)  # the number of flight legs
+    packages = range(n_packages)
 
-    # The most units of package i an optimal plan sells: its demand, and the
-    # seats on every leg it uses. A package earning nothing per unit is never
-    # needed, so an optimal plan exists that sells none of it.
-    cap = []
+    # limit[i]: the most units of package i an optimal plan sells. That is its demand, cut to what
+    # the seats of each leg it uses allow. A package that earns nothing per unit is never needed,
+    # so its limit is 0.
+    limit = []
     for i in packages:
-        c = demand[i] if revenue[i] > 0 else 0
-        for j in range(num_legs):
+        most = demand[i] if revenue[i] > 0 else 0
+        for j in range(n_legs):
             if delta[i][j] > 0:
-                c = min(c, available_seats[j] // delta[i][j])
-        cap.append(max(c, 0))
+                most = min(most, available_seats[j] // delta[i][j])
+        limit.append(max(most, 0))
 
-    # Bounds on the best revenue. Selling packages greedily, highest revenue
-    # first, each as far as seats and demand allow, is a feasible plan, so the
-    # optimum earns at least that much (lower); it earns at most every package
-    # sold up to its cap (upper). max_revenue's domain is this range, which
-    # holds every optimal value.
-    seats = list(available_seats)
+    # Bounds on the best revenue. A greedy plan sells the packages highest revenue first, each as far
+    # as the seats and demand allow. It is a feasible plan, so the best revenue is at least lower.
+    # Selling every package up to its limit earns at least as much as any plan, so upper bounds the
+    # best revenue from above.
+    left = list(available_seats)  # left[j]: seats on leg j not yet taken by the greedy plan
     lower = 0
     for i in sorted(packages, key=lambda i: -revenue[i]):
-        if cap[i] == 0:
+        if limit[i] == 0:
             continue
-        units = cap[i]
-        for j in range(num_legs):
+        units = limit[i]
+        for j in range(n_legs):
             if delta[i][j] > 0:
-                units = min(units, seats[j] // delta[i][j])
-        for j in range(num_legs):
-            seats[j] -= delta[i][j] * units
+                units = min(units, left[j] // delta[i][j])
+        for j in range(n_legs):
+            left[j] -= delta[i][j] * units
         lower += revenue[i] * units
-    upper = max(sum(revenue[i] * cap[i] for i in packages), lower + 1)
+    upper = max(sum(revenue[i] * limit[i] for i in packages), lower + 1)
 
+    # The largest demand bounds the units of each package. It is at least 1 so the range is never empty.
+    top_units = max(max(demand), 1)
+
+    # Every variable of the model comes from this pool.
     pool = IDPool()
-    # packages_to_sell[i] is the number of units of package i sold, in
-    # 0..max(demand) as in the reference. Coupled encoding: the order half
-    # gives the seat sums, the direct half the "== u" literals used below
-    # and by the runner.
-    top = max(max(demand), 1)
-    packages_to_sell = [Integer(f"packages_to_sell{i}", 0, top, encoding="coupled",
-                                vpool=pool) for i in packages]
-    # max_revenue is the total revenue of the units sold. Coupled encoding:
-    # the objective pays on its thresholds, the running sum below fixes its
-    # value literals.
+    # packages_to_sell[i]: the units of package i sold, from 0 up to top_units
+    packages_to_sell = [Integer(f"packages_to_sell{i}", 0, top_units, encoding="coupled", vpool=pool)
+                        for i in packages]
+    # max_revenue: the total revenue of the units sold, from lower to upper
     max_revenue = Integer("max_revenue", lower, upper, encoding="coupled", vpool=pool)
+    # The whole-number variables above, which the constraints below are added to.
     engine = IntegerEngine(vars=packages_to_sell + [max_revenue], vpool=pool)
 
-    # The units sold on each flight leg fit in its available seats.
-    for j in range(num_legs):
+    # On each flight leg, the seats used by the units sold fit in the seats available.
+    for j in range(n_legs):
         terms = [delta[i][j] * packages_to_sell[i] for i in packages if delta[i][j] != 0]
         if terms:
             engine.add_linear(sum(terms) <= available_seats[j])
@@ -70,30 +74,35 @@ def build(instance):
     for i in packages:
         engine.add_linear(packages_to_sell[i] <= demand[i])
 
+    # The model. Its whole-number variables take values in their ranges, and the constraints above hold.
     formula = WCNF()
     formula.extend(engine.clausify().clauses)
 
-    # Units beyond a package's cap are never part of an optimal plan (see above).
+    # Selling more units of a package than its limit is never part of an optimal plan.
     for i in packages:
-        for u in range(cap[i] + 1, top + 1):
+        for u in range(limit[i] + 1, top_units + 1):
             formula.append([-packages_to_sell[i].equals(u)])
 
-    # max_revenue is the revenue of the units sold, tied to the sales by a
-    # running sum over the packages: partial[s] is true when the packages
-    # taken so far earn s. Partial sums above upper, or too small to reach
-    # lower with everything that is left, are dropped, which is what keeps
-    # this small; the running sum fixes max_revenue by unit propagation once
-    # the sales are fixed, where a linear constraint over max_revenue's
-    # thousands of values would not.
-    order = sorted(packages, key=lambda i: -revenue[i] * cap[i])
-    rest = [sum(revenue[i] * cap[i] for i in order[k:]) for k in range(num_packages + 1)]
+    # max_revenue is the revenue of the units sold, built up one package at a time: partial[s] is
+    # true when the packages taken so far earn s. A partial revenue above upper, or too small to
+    # reach lower with the packages still to come, cannot lead to an optimal plan and is dropped.
+    # This keeps the model small, and once the sales are fixed the revenue is fixed too.
+
+    # The packages, the largest possible revenue first.
+    order = sorted(packages, key=lambda i: -revenue[i] * limit[i])
+    # rest[k]: the most revenue the packages from position k in order can earn
+    rest = [sum(revenue[i] * limit[i] for i in order[k:]) for k in range(n_packages + 1)]
+    # No package taken yet, so the partial revenue is 0.
     start = pool.id(("partial", 0, 0))
     formula.append([start])
+    # partial[s]: the packages taken so far earn s
     partial = {0: start}
+    # Take the packages in order. Each number of units sold moves a partial revenue to a new one.
     for k, i in enumerate(order):
+        # the partial revenues after package i
         nxt = {}
         for s, lit in partial.items():
-            for u in range(cap[i] + 1):
+            for u in range(limit[i] + 1):
                 w = s + revenue[i] * u
                 if w > upper or w + rest[k + 1] < lower:
                     # selling u here cannot lead to an optimal plan
@@ -103,20 +112,45 @@ def build(instance):
                     nxt[w] = pool.id(("partial", k + 1, w))
                 formula.append([-lit, -packages_to_sell[i].equals(u), nxt[w]])
         partial = nxt
+    # max_revenue is the partial revenue once all packages are taken.
     for s, lit in partial.items():
         formula.append([-lit, max_revenue.equals(s)])
+    # max_revenue cannot take a revenue that no plan earns.
     for v in range(lower, upper + 1):
         if v not in partial:
             formula.append([-max_revenue.equals(v)])
 
-    # Maximise the revenue: failing to reach threshold v pays a weight that
-    # grows as v falls, so the total paid strictly falls as max_revenue
-    # rises and the best revenue is the cheapest. The weights come in about
-    # sqrt(N) groups rather than one per value, so stratified RC2 settles a
-    # group at a time instead of raising its bound one unit per core.
+    # Revenue objective. Each level v above lower that max_revenue does not reach costs a penalty.
+    # Lower levels cost more, so the cheapest plan has the highest revenue. The penalties are equal
+    # over blocks of about the square root of the range, so the search settles a block at a time
+    # rather than one level at a time.
+    # span: the number of levels above lower
     span = upper - lower
+    # group: the number of levels that share one penalty step
     group = isqrt(span) + 1
     for v in range(lower + 1, upper + 1):
         formula.append([max_revenue.ge(v)], weight=1 + (upper - v) // group)
 
     return formula, {"packages_to_sell": packages_to_sell, "max_revenue": max_revenue}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

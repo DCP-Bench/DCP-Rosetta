@@ -1,119 +1,124 @@
-# Water bucket problem (CSPLib 018): starting from the initial amounts in
-# three buckets, pour water from one bucket into another (until the source is
-# empty or the target is full) to reach the goal amounts in as few transfers
-# as possible. The plan is a sequence of MAX_STEPS states; after the goal is
-# reached the rest of the sequence holds padding states.
+# csplib_018_water_bucket: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_018_water_bucket.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_018_water_bucket.py csplib_018_water_bucket.json
+
+import itertools
+
 from pysat.card import CardEnc, EncType
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer
 
 
-def build(instance):
-    capacities = instance["capacities"]
-    initial_state = instance["initial_state"]
-    goal_state = instance["goal_state"]
-    max_steps = instance["MAX_STEPS"]
-    pad = instance["PADDING_VALUE"]
-    total_water = max(initial_state)
+def create_model(instance):
+    """Water is poured between buckets, each pour stopping when the source is empty or the
+    target is full, until the buckets hold the goal amounts. The fewest transfers reach it."""
+    capacities = instance["capacities"]        # capacities[b]: how much water bucket b holds when full
+    initial_state = instance["initial_state"]  # initial_state[b]: the water in bucket b at the start
+    goal_state = instance["goal_state"]        # goal_state[b]: the water bucket b must hold at the end
+    max_steps = instance["MAX_STEPS"]          # the number of states in the reported sequence
+    pad = instance["PADDING_VALUE"]            # the value that fills the states after the goal is reached
+    n_buckets = len(capacities)
 
-    # The states the buckets can be in, as the reference derives them: the
-    # third bucket holds whatever the first two leave of capacities[0]. A
-    # state that is not padding also conserves the water and respects every
-    # capacity. The initial state is a state of the plan too.
-    states = []
-    for i in range(capacities[0] + 1):
-        for j in range(capacities[1] + 1):
-            k = capacities[0] - i - j
-            if 0 <= k <= capacities[2]:
-                states.append((i, j, k))
-    if tuple(initial_state) not in states:
-        states.append(tuple(initial_state))
-    states = [s for s in states
-              if sum(s) == total_water and all(0 <= s[b] <= capacities[b] for b in range(3))]
-    index = {s: q for q, s in enumerate(states)}
+    # The water is never created or lost, so the buckets always hold this much together.
+    total_water = sum(initial_state)
 
-    # One transfer: pour from bucket a into bucket b until a is empty or b is
-    # full; only pours that move some water count.
-    moves = {q: set() for q in range(len(states))}
-    for s in states:
-        for a in range(3):
-            for b in range(3):
-                if a == b:
-                    continue
-                amount = min(s[a], capacities[b] - s[b])
-                if amount > 0:
-                    nxt = list(s)
-                    nxt[a] -= amount
-                    nxt[b] += amount
-                    if tuple(nxt) in index:
-                        moves[index[s]].add(index[tuple(nxt)])
-    goal = index.get(tuple(goal_state))
+    # states: how much water each bucket holds, within its capacity, with all the water in the buckets.
+    states = [s for s in itertools.product(*(range(c + 1) for c in capacities)) if sum(s) == total_water]
+    n_states = len(states)
+    index = {s: q for q, s in enumerate(states)}  # index[s]: the number of the state s
+
+    # moves[q]: the states one pour away from state q. A pour moves the smaller of the water in
+    # the source and the free room in the target, so it stops when the source is empty or the
+    # target is full. A pour that moves no water is not a transfer.
+    moves = {q: set() for q in range(n_states)}
+    for q, state in enumerate(states):
+        for a in range(n_buckets):
+            for b in range(n_buckets):
+                amount = min(state[a], capacities[b] - state[b])
+                if a != b and amount > 0:
+                    after = list(state)
+                    after[a] -= amount
+                    after[b] += amount
+                    moves[q].add(index[tuple(after)])
+
+    start = index[tuple(initial_state)]
+    goal = index[tuple(goal_state)]
 
     pool = IDPool()
     formula = WCNF()
 
-    # at[t][q] is true when step t is in state q; padded[t] when step t is a
-    # padding step. Each step is exactly one of these.
-    at = [[pool.id(("at", t, q)) for q in range(len(states))] for t in range(max_steps)]
+    # at[t][q] is true when the buckets hold state q after t transfers. padded[t] is true when
+    # the t-th state of the sequence is padding.
+    at = [[pool.id(("at", t, q)) for q in range(n_states)] for t in range(max_steps)]
     padded = [pool.id(("padded", t)) for t in range(max_steps)]
+
+    # Each state of the sequence is exactly one state of the buckets, or padding.
     for t in range(max_steps):
         formula.extend(CardEnc.equals(lits=at[t] + [padded[t]], bound=1, vpool=pool,
                                       encoding=EncType.seqcounter).clauses)
 
     # The sequence starts in the initial state.
-    start = index.get(tuple(initial_state))
-    if start is None:
-        formula.append([padded[0]])
-        formula.append([-padded[0]])
-    else:
-        formula.append([at[0][start]])
+    formula.append([at[0][start]])
+
+    # The goal is reached at some point in the sequence.
+    formula.append([at[t][goal] for t in range(max_steps)])
 
     for t in range(max_steps - 1):
-        # After the goal, and after padding, comes padding.
-        if goal is not None:
-            formula.append([-at[t][goal], padded[t + 1]])
+        # After the goal is reached, and after padding, only padding follows.
+        formula.append([-at[t][goal], padded[t + 1]])
         formula.append([-padded[t], padded[t + 1]])
-        # Any other state is followed by the result of one transfer.
-        for q in range(len(states)):
+        # Any other state is followed by one of its pours.
+        for q in range(n_states):
             if q != goal:
                 formula.append([-at[t][q]] + [at[t + 1][r] for r in sorted(moves[q])])
 
-    # The goal is reached at some step (impossible if it is not a state).
-    if goal is not None:
-        formula.append([at[t][goal] for t in range(max_steps)])
-    else:
-        formula.append([padded[0]])
-        formula.append([-padded[0]])
-
-    # sequence[t][b], the declared output: the amount in bucket b at step t,
-    # or the padding value on a padding step. Direct encoding over the
-    # reference's domain PADDING_VALUE..total water.
+    # sequence[t][b] is the water in bucket b after t transfers, or the padding value once the
+    # goal is reached. The amounts range from the padding value up to all the water.
     low, high = min(pad, 0), max(total_water, pad)
-    sequence = [[Integer(f"sequence_{t}_{b}", low, high, vpool=pool) for b in range(3)]
+    sequence = [[Integer(f"sequence_{t}_{b}", low, high, vpool=pool) for b in range(n_buckets)]
                 for t in range(max_steps)]
     for t in range(max_steps):
-        for b in range(3):
+        for b in range(n_buckets):
             var = sequence[t][b]
             formula.extend(var.domain_clauses())
             for q, s in enumerate(states):
                 formula.append([-at[t][q], var.equals(s[b])])
             formula.append([-padded[t], var.equals(pad)])
 
-    # cost, the declared output: the number of transfers, which is the number
-    # of steps before the padding starts, minus one. Padding runs to the end
-    # once it starts, so cost >= t exactly when step t is not padding.
-    cost = Integer("cost", 0, max(max_steps - 1, 1), encoding="coupled", vpool=pool)
+    # cost is the number of transfers: the states that are not padding, minus the initial state.
+    # Padding fills every state after the goal, so the states that are not padding come first.
+    cost = Integer("cost", 0, max_steps - 1, encoding="coupled", vpool=pool)
     formula.extend(cost.domain_clauses())
-    for t in range(1, cost.ub + 1):
-        if t < max_steps:
-            formula.append([-cost.ge(t), -padded[t]])
-            formula.append([cost.ge(t), padded[t]])
-        else:
-            formula.append([-cost.ge(t)])
+    for t in range(1, max_steps):
+        formula.append([-cost.ge(t), -padded[t]])
+        formula.append([cost.ge(t), padded[t]])
 
-    # Minimise the transfers: every step after the first that is not padding
-    # pays 1.
+    # Minimise the transfers: each state after the initial one that is not padding is one transfer.
     for t in range(1, max_steps):
         formula.append([padded[t]], weight=1)
 
     return formula, {"cost": cost, "sequence": sequence}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

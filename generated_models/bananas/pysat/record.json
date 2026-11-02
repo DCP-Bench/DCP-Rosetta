@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-opus-5-5)",
-    "attempt_id": "attempt-003",
-    "created_at": 1791121891.52075,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/pysat/python/CONTRACT.md": "c7f513bf8c8b5f7c2bc93b43dbf8e9d51477a9877227606c099fb4471b89effa"
+    },
+    "created_at": 1793650388.2239368,
     "problem_id": "bananas",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fb10bba1c8c9a50becb25c2a0060521042c49c29799a5d97d0c5ba573ae6bf93",
-    "run_id": "20261004T1250Z-pysat-rc2-2963",
-    "schema": 2,
-    "skill_bundle_hash": "c603002f85e54ffd8989ad1889c87a8485fa52b8efa5bb6e67f17ed6b14f27f3",
-    "skill_source": "solvers\\pysat\\skills\\pysat",
+    "readiness_hash": "c40067a035bc7bcbf6b0d5b9f4a19836fb5b94944b7824d314e5e69a86cd4e81",
+    "run_id": "pysat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "584a37199caab74ffb205b35ecc886c3d7602130",
+      "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
       "modified": false,
-      "path": "solvers/pysat/skills/pysat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "cb23b9ae16db1fc8d9edcf84e9d69034fec7cf109212274edd71af03bdd28b55",
+        "source": "solvers/pysat/skills/dcp-pysat",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "solvers/pysat/skills/dcp-pysat"
+        }
+      }
+    ],
     "solver_id": "pysat"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:2957a473257a188f9d4bfca1ce33bc5697befd70015c6297c6c8db0b56fd1031",
+      "id": "sha256:d56146145e99e004d72489e7e7e1f091598c39be39e204c4937b32579b1f772e",
+      "recipe": "sha256:55a9de8482e7530cfba9ec8d81512fa02ec670737c3d79132228e9affa1a2247",
       "tag": "dcp-eval/pysat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005841800011694431,
-        "execution_wall_seconds": 2.6693604000029154,
+        "checking_seconds": 0.0034752649953588843,
+        "execution_wall_seconds": 0.75084401096683,
         "first_solution": {
           "apples": 11,
           "bananas": 5,
@@ -56,10 +81,13 @@
           "apples"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4945924000057857,
+        "reference_setup_seconds": 0.3927193529671058,
         "runner_status": {
+          "build_seconds": 0.3358194020111114,
           "detail": "",
-          "solve_seconds": 1.4882612609999342,
+          "main_seconds": 0.4348115579923615,
+          "read_seconds": 0.00012627197429537773,
+          "solve_seconds": 0.43465836404357105,
           "status": "complete",
           "type": "status"
         },
@@ -71,21 +99,21 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "9021f6b0e7914896d1b1d27db76891da642c0e981b5350eb0cc36a569c2aab94",
+    "model_hash": "bdd262e32bf0c70e784cfc661c7ec7d87076f4feabce58ecb8d4aabda7e93a66",
     "problem_id": "bananas",
     "reason": "accepted",
     "reference_hash": "b4f6de5471ad8d9605ce1aed241f5307d6a48179188555f5e8c5ea7414b16174",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -96,7 +124,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "pysat",
-    "total_wall_seconds": 4.93506139999954,
+    "total_wall_seconds": 1.3868914709892124,
     "unperformed_instances": []
   },
   "generated_by": {

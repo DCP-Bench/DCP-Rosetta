@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-opus-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791121095.558343,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/pysat/python/CONTRACT.md": "c7f513bf8c8b5f7c2bc93b43dbf8e9d51477a9877227606c099fb4471b89effa"
+    },
+    "created_at": 1793650375.691514,
     "problem_id": "aircraft_landing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fb10bba1c8c9a50becb25c2a0060521042c49c29799a5d97d0c5ba573ae6bf93",
-    "run_id": "20261004T1250Z-pysat-rc2-c-8cbd",
-    "schema": 2,
-    "skill_bundle_hash": "c603002f85e54ffd8989ad1889c87a8485fa52b8efa5bb6e67f17ed6b14f27f3",
-    "skill_source": "solvers\\pysat\\skills\\pysat",
+    "readiness_hash": "c40067a035bc7bcbf6b0d5b9f4a19836fb5b94944b7824d314e5e69a86cd4e81",
+    "run_id": "pysat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "584a37199caab74ffb205b35ecc886c3d7602130",
+      "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
       "modified": false,
-      "path": "solvers/pysat/skills/pysat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "cb23b9ae16db1fc8d9edcf84e9d69034fec7cf109212274edd71af03bdd28b55",
+        "source": "solvers/pysat/skills/dcp-pysat",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "solvers/pysat/skills/dcp-pysat"
+        }
+      }
+    ],
     "solver_id": "pysat"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:2957a473257a188f9d4bfca1ce33bc5697befd70015c6297c6c8db0b56fd1031",
+      "id": "sha256:d56146145e99e004d72489e7e7e1f091598c39be39e204c4937b32579b1f772e",
+      "recipe": "sha256:55a9de8482e7530cfba9ec8d81512fa02ec670737c3d79132228e9affa1a2247",
       "tag": "dcp-eval/pysat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.006733299989718944,
-        "execution_wall_seconds": 0.9155889000103343,
+        "checking_seconds": 0.002820362919010222,
+        "execution_wall_seconds": 0.40165229502599686,
         "first_solution": {
           "landing_times": [
             1,
@@ -56,10 +81,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.009753600024851,
+        "reference_setup_seconds": 0.3135628540767357,
         "runner_status": {
+          "build_seconds": 0.017003262997604907,
           "detail": "",
-          "solve_seconds": 0.04689771000005294,
+          "main_seconds": 0.02055153204128146,
+          "read_seconds": 0.00024931097868829966,
+          "solve_seconds": 0.02024321397766471,
           "status": "complete",
           "type": "status"
         },
@@ -69,8 +97,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0177970000077039,
-        "execution_wall_seconds": 3.914495699980762,
+        "checking_seconds": 0.009628572966903448,
+        "execution_wall_seconds": 2.5278906170278788,
         "first_solution": {
           "landing_times": [
             98,
@@ -96,10 +124,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3364532999985386,
+        "reference_setup_seconds": 0.3281556870788336,
         "runner_status": {
+          "build_seconds": 2.106555811013095,
           "detail": "",
-          "solve_seconds": 2.7880783719999727,
+          "main_seconds": 2.167625810019672,
+          "read_seconds": 0.00018187204841524363,
+          "solve_seconds": 2.1674093690235168,
           "status": "complete",
           "type": "status"
         },
@@ -109,8 +140,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.056448499992256984,
-        "execution_wall_seconds": 6.519878299994161,
+        "checking_seconds": 0.02888950996566564,
+        "execution_wall_seconds": 4.222922030952759,
         "first_solution": {
           "landing_times": [
             90,
@@ -141,10 +172,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9881126999971457,
+        "reference_setup_seconds": 0.5010658398969099,
         "runner_status": {
+          "build_seconds": 3.709014847059734,
           "detail": "",
-          "solve_seconds": 5.379134292999993,
+          "main_seconds": 3.82733342400752,
+          "read_seconds": 0.00016851001419126987,
+          "solve_seconds": 3.827138322056271,
           "status": "limit",
           "type": "status"
         },
@@ -154,8 +188,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.06007409997982904,
-        "execution_wall_seconds": 6.3700182999891695,
+        "checking_seconds": 0.04294699500314891,
+        "execution_wall_seconds": 4.631584946997464,
         "first_solution": {
           "landing_times": [
             82,
@@ -191,10 +225,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2056773999938741,
+        "reference_setup_seconds": 0.4721801989944652,
         "runner_status": {
+          "build_seconds": 3.9919039960950613,
           "detail": "",
-          "solve_seconds": 5.287699521000036,
+          "main_seconds": 4.1229679740499705,
+          "read_seconds": 0.0001682490110397339,
+          "solve_seconds": 4.122770603047684,
           "status": "limit",
           "type": "status"
         },
@@ -204,8 +241,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015517199994064867,
-        "execution_wall_seconds": 1.2379377000033855,
+        "checking_seconds": 0.007868541986681521,
+        "execution_wall_seconds": 0.4491591560654342,
         "first_solution": {
           "landing_times": [
             11,
@@ -227,10 +264,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0134722999937367,
+        "reference_setup_seconds": 0.40236937208101153,
         "runner_status": {
+          "build_seconds": 0.06048275902867317,
           "detail": "",
-          "solve_seconds": 0.1211498190000384,
+          "main_seconds": 0.06379547296091914,
+          "read_seconds": 0.0001725590554997325,
+          "solve_seconds": 0.06358599802479148,
           "status": "complete",
           "type": "status"
         },
@@ -242,21 +282,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "4d53fbefe0faa29834a72b58c1f13427c0eca8e001cc5293796a9a5bc1a00b8a",
+    "model_hash": "5c87be7b09af3b632aa85a2f3362a85641b33b22635baddc2c102d032b90b6a2",
     "problem_id": "aircraft_landing",
     "reason": "accepted",
     "reference_hash": "132d764d185fc7616ee154307a99c5c1edeae9a97d595cf5527c1e4ede973f1d",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -267,7 +307,7 @@
     "skipped_instances": [],
     "solutions_checked": 7,
     "solver_id": "pysat",
-    "total_wall_seconds": 28.402442899998277,
+    "total_wall_seconds": 14.707852185936645,
     "unperformed_instances": []
   },
   "generated_by": {

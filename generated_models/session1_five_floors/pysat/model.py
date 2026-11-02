@@ -1,42 +1,71 @@
-# Five floors: Baker, Cooper, Fletcher, Miller and Smith live on different floors
-# of a five-floor house; the clues rule out some floors and some neighbours.
+# session1_five_floors: a PySAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_five_floors.html
+# Run it (after `pip install "python-sat[pblib]" numpy`) with:
+#   python session1_five_floors.py
+
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    # The puzzle is fixed by the problem; the instance carries no data.
-    pool = IDPool()
-    # floor[name] = the floor, 1 to 5, where that person lives; the letters are the
-    # initials of Baker, Cooper, Fletcher, Miller and Smith
-    floor = {name: Integer(name, 1, 5, vpool=pool) for name in "BCFMS"}
-    B, C, F, M, S = (floor[name] for name in "BCFMS")
-    engine = IntegerEngine(vars=list(floor.values()), vpool=pool)
+def not_next_to(p, q):
+    """Clauses that forbid p and q from living on neighbouring floors."""
+    clauses = []
+    for v in range(1, 5):
+        for a, b in ((p, q), (q, p)):
+            if a.lb <= v <= a.ub and b.lb <= v + 1 <= b.ub:
+                clauses.append([-a.equals(v), -b.equals(v + 1)])
+    return clauses
 
-    # they all live on different floors
-    engine.add_alldifferent(list(floor.values()))
+
+def create_model(instance):
+    """Baker, Cooper, Fletcher, Miller and Smith live on different floors of a
+    five-floor apartment house. Find the floor where each of them lives."""
+    pool = IDPool()
+
+    # The floor where Baker lives, not the fifth floor
+    B = Integer("B", 1, 4, vpool=pool)
+    # The floor where Cooper lives, not the first floor
+    C = Integer("C", 2, 5, vpool=pool)
+    # The floor where Fletcher lives, neither the first nor the fifth floor
+    F = Integer("F", 2, 4, vpool=pool)
+    # The floor where Miller lives
+    M = Integer("M", 1, 5, vpool=pool)
+    # The floor where Smith lives
+    S = Integer("S", 1, 5, vpool=pool)
+    floor = [B, C, F, M, S]
+    engine = IntegerEngine(vars=floor, vpool=pool)
+
+    # The five people live on different floors.
+    engine.add_alldifferent(floor)
     cnf = engine.clausify()
 
-    # Baker does not live on the fifth floor
-    cnf.append([-B.equals(5)])
-    # Cooper does not live on the first floor
-    cnf.append([-C.equals(1)])
-    # Fletcher lives neither on the fifth nor on the first floor
-    cnf.append([-F.equals(5)])
-    cnf.append([-F.equals(1)])
-    # Miller lives on a higher floor than Cooper: no pair with Miller on or below Cooper
-    for c in range(1, 6):
-        for mi in range(1, c + 1):
-            cnf.append([-C.equals(c), -M.equals(mi)])
+    # Miller lives on a higher floor than Cooper.
+    for c in range(C.lb, C.ub + 1):
+        for m in range(M.lb, c + 1):
+            cnf.append([-C.equals(c), -M.equals(m)])
 
-    def not_adjacent(p, q):
-        # p and q do not live on neighbouring floors
-        for v in range(1, 5):
-            cnf.append([-p.equals(v), -q.equals(v + 1)])
-            cnf.append([-q.equals(v), -p.equals(v + 1)])
+    # Smith does not live on a floor next to Fletcher's.
+    cnf.extend(not_next_to(S, F))
 
-    # Smith does not live on a floor adjacent to Fletcher's, and Fletcher not adjacent to Cooper's
-    not_adjacent(S, F)
-    not_adjacent(F, C)
+    # Fletcher does not live on a floor next to Cooper's.
+    cnf.extend(not_next_to(F, C))
 
-    return cnf, floor
+    return cnf, {"B": B, "C": C, "F": F, "M": M, "S": S}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from pysat.solvers import Solver
+
+    formula, outputs = create_model({})
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

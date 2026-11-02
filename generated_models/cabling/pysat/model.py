@@ -1,71 +1,96 @@
-# Cabling: place 1U devices in distinct rack slots so that the total length
-# of the cables between them (cable count times slot distance, per pair) is
-# as short as possible.
+# cabling: a PySAT (Python) model from DCP Rosetta.
+# Download the `cabling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python cabling.py cabling.json
+
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    n = instance["n"]
-    devices = instance["devices"]
-    index = {name: i for i, name in enumerate(devices)}
-    cables = [(index[a], index[b], num) for a, b, num in instance["cable_struct"]]
-    slots = range(n)
+def create_model(instance):
+    """Devices are placed one above another in a rack, one per slot, and some are joined by
+    one or several cables. Order the devices so that the sum of all cable lengths is as short
+    as possible."""
+    n = instance["n"]                  # the number of devices, and of rack slots
+    devices = instance["devices"]      # the names of the devices
+    cables = instance["cable_struct"]  # for each pair of devices, the number of cables joining them
+
+    # Cables name devices by name; pairs[c] gives the positions of the two devices joined by
+    # cable group c, and the number of cables in it.
+    pairs = [(devices.index(a), devices.index(b), count) for a, b, count in cables]
+    slots = range(n)  # the rack slots, 0 to n - 1
 
     pool = IDPool()
-    # x[d] is the rack slot of device d, 0..n-1. Direct encoding: the
-    # distance rules below are stated per pair of slots.
+    # x[d] is the rack slot of device d
     x = [Integer(f"x_{d}", 0, n - 1, vpool=pool) for d in range(n)]
-    # dist[c] is the slot distance spanned by cable group c, 0..n-1. Order
-    # encoding, so the length paid is a run of threshold literals.
-    dist = [Integer(f"dist_{c}", 0, n - 1, encoding="order", vpool=pool)
-            for c in range(len(cables))]
-    # The sum of all cable lengths; at most (n - 1) times the total cable
-    # count, since no two slots are further apart than n - 1. Coupled
-    # encoding: the runner blocks a reported answer through the value
-    # literals, which the order encoding alone does not have.
-    total_cables = sum(num for _, _, num in cables)
-    final_sum = Integer("final_sum", 0, (n - 1) * total_cables,
-                        encoding="coupled", vpool=pool)
+    # dist[c] is the number of slots between the two devices of cable group c
+    dist = [Integer(f"dist_{c}", 0, n - 1, encoding="order", vpool=pool) for c in range(len(pairs))]
+    # final_sum is the total length of all cables. No cable spans more than n - 1 slots, so each
+    # cable adds at most n - 1 to the total.
+    n_cables = sum(count for _, _, count in pairs)
+    final_sum = Integer("final_sum", 0, (n - 1) * n_cables, encoding="coupled", vpool=pool)
     engine = IntegerEngine(vars=x + dist + [final_sum], vpool=pool)
 
-    # All devices have distinct positions in the rack.
+    # Devices take different slots in the rack.
     engine.add_alldifferent(x)
 
-    # The total length is the sum over cable groups of count times distance.
-    engine.add_linear(sum(num * dist[c] for c, (_, _, num) in enumerate(cables))
-                      - final_sum == 0)
+    # The total length is the cables of each group times their distance, added up over all groups.
+    engine.add_linear(sum(count * dist[c] for c, (_, _, count) in enumerate(pairs)) - final_sum == 0)
 
     formula = WCNF()
     formula.extend(engine.clausify().clauses)
 
-    # Each cable group spans |x[a] - x[b]| slots: for every pair of slots the
-    # two devices could occupy, the distance is pinned to that gap.
-    for c, (a, b, _) in enumerate(cables):
+    # The cables of a group span the slots between their two devices: if device a is in slot k
+    # and device b in slot m, the distance is exactly the gap between k and m.
+    for c, (a, b, _) in enumerate(pairs):
         for k in slots:
             for m in slots:
                 if k == m:
                     continue
                 gap = abs(k - m)
-                at = [-x[a].equals(k), -x[b].equals(m)]
-                formula.append(at + [dist[c].ge(gap)])
+                # Each of these holds unless device a is in slot k and device b in slot m.
+                elsewhere = [-x[a].equals(k), -x[b].equals(m)]
+                formula.append(elsewhere + [dist[c].ge(gap)])
+                # The distance cannot exceed n - 1, so the upper bound is only needed below that.
                 if gap + 1 <= n - 1:
-                    formula.append(at + [-dist[c].ge(gap + 1)])
+                    formula.append(elsewhere + [-dist[c].ge(gap + 1)])
 
-    # Symmetry breaking (own derivation): reversing the rack keeps every
-    # distance and hence final_sum, the only declared output, so device 0 may
-    # be required to sit above device 1.
+    # Reversing the rack keeps every cable length, so device 0 is required to sit in a lower slot
+    # than device 1.
     if n >= 2:
         for k in slots:
             for m in slots:
                 if k >= m:
                     formula.append([-x[0].equals(k), -x[1].equals(m)])
 
-    # Minimise the total cable length: cable group c pays its count for every
-    # slot of distance it spans.
-    for c, (_, _, num) in enumerate(cables):
-        if num > 0:
+    # A group of count cables pays count for every slot its distance reaches, so the total cost is
+    # the sum of all cable lengths.
+    for c, (_, _, count) in enumerate(pairs):
+        if count > 0:
             for v in range(1, n):
-                formula.append([-dist[c].ge(v)], weight=num)
+                formula.append([-dist[c].ge(v)], weight=count)
 
     return formula, {"final_sum": final_sum}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

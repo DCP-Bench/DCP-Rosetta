@@ -1,32 +1,60 @@
-# Climbing stairs: climb a stair of n steps in moves of m1 to m2 steps each. steps[i] is the
-# number of steps taken in move i; once the top is reached the remaining moves are 0.
+# session5_climbing_stairs: a PySAT (Python) model from DCP Rosetta.
+# Download the `session5_climbing_stairs.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_climbing_stairs.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python session5_climbing_stairs.py session5_climbing_stairs.json
+
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    n = instance["n"]    # steps in the stair; also the largest number of moves (all of one step)
-    m1 = instance["m1"]  # fewest steps in one move
-    m2 = instance["m2"]  # most steps in one move
+def create_model(instance):
+    """Climb a stair of n steps, taking between m1 and m2 steps at each move.
+    Find the number of steps taken at each move, or 0 once the top is reached."""
+    n = instance["n"]    # the number of steps in the stair; each move climbs at least one, so there are at most n moves
+    m1 = instance["m1"]  # the fewest steps taken at one move
+    m2 = instance["m2"]  # the most steps taken at one move
 
     pool = IDPool()
-    # steps[i] = steps taken in move i: 0 (no move) or m1..m2
+    # steps[i] is the number of steps taken at move i, 0 if no move is made
     steps = [Integer(f"steps{i}", 0, m2, vpool=pool) for i in range(n)]
     engine = IntegerEngine(vars=steps, vpool=pool)
 
-    # the moves add up to the whole stair
+    # The moves add up to the whole stair.
     engine.add_linear(sum(steps) == n)
 
     cnf = engine.clausify()
 
-    # a move takes between m1 and m2 steps, or 0 if no move is made: the values 1..m1-1 are excluded
-    for move in steps:
+    # A move takes between m1 and m2 steps, or none at all.
+    for step in steps:
         for value in range(1, m1):
-            cnf.append([-move.equals(value)])
+            cnf.append([-step.equals(value)])
 
-    # once a move is 0 all later moves are 0 (trailing zeros): a 0 is followed by a 0, which makes
-    # every move after the first 0 equal to 0
+    # Once a move takes no steps, the top is reached and every later move takes none too.
     for i in range(1, n):
         cnf.append([-steps[i - 1].equals(0), steps[i].equals(0)])
 
     return cnf, {"steps": steps}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

@@ -1,44 +1,76 @@
-# Hidato: fill a grid with the numbers 1..(rows * columns), each once, so that the given
-# numbers stay in place and every number k + 1 lies in a cell touching the cell of k
-# horizontally, vertically or diagonally.
+# hidato: a PySAT (Python) model from DCP Rosetta.
+# Download the `hidato.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python hidato.py hidato.json
+
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    puzzle = instance["puzzle"]  # 0 = empty cell, otherwise the number already placed there
-    rows, cols = len(puzzle), len(puzzle[0])
-    last = rows * cols           # the numbers run from 1 to last
-
-    pool = IDPool()
-    # x[r][c] = the number in row r, column c
-    x = [[Integer(f"x_{r}_{c}", 1, last, vpool=pool) for c in range(cols)] for r in range(rows)]
-    engine = IntegerEngine(vars=[cell for row in x for cell in row], vpool=pool)
-
-    # every number is used once
-    engine.add_alldifferent([cell for row in x for cell in row])
-    cnf = engine.clausify()
-
-    # the given numbers
-    for r in range(rows):
-        for c in range(cols):
-            if puzzle[r][c] > 0:
-                cnf.append([x[r][c].equals(puzzle[r][c])])
+def create_model(instance):
+    """Hidato: fill a grid with the numbers 1 to rows * columns, each once, so that every
+    number sits in a cell that touches the cell of the number before it, horizontally,
+    vertically or diagonally. The numbers already on the grid stay where they are."""
+    puzzle = instance["puzzle"]  # puzzle[r][c] is the number given in row r, column c; 0 marks an empty cell
+    rows, cols = len(puzzle), len(puzzle[0])  # the size of the grid
+    last = rows * cols                         # the largest number, which is also the number of cells
 
     def touching(r, c):
         """The cells that touch (r, c) horizontally, vertically or diagonally."""
         return [(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)
                 if (dr, dc) != (0, 0) and 0 <= r + dr < rows and 0 <= c + dc < cols]
 
-    # consecutive numbers touch: if k is in a cell, k + 1 is in one of the cells touching it
-    # (the cell itself is excluded, and the numbers are all different, so k + 1 is elsewhere)
+    pool = IDPool()
+
+    # x[r][c] is the number in row r, column c
+    x = [[Integer(f"x_{r}_{c}", 1, last, vpool=pool) for c in range(cols)] for r in range(rows)]
+    cells = [cell for row in x for cell in row]
+    engine = IntegerEngine(vars=cells, vpool=pool)
+
+    # Every number is used once.
+    engine.add_alldifferent(cells)
+    formula = engine.clausify()
+
+    # The numbers already on the grid stay in their cells.
+    for r in range(rows):
+        for c in range(cols):
+            if puzzle[r][c] > 0:
+                formula.append([x[r][c].equals(puzzle[r][c])])
+
+    # If the number k is in a cell, the number k+1 is in a cell that touches it.
     for r in range(rows):
         for c in range(cols):
             for k in range(1, last):
-                cnf.append([-x[r][c].equals(k)] + [x[nr][nc].equals(k + 1) for nr, nc in touching(r, c)])
-            # Redundant, stated to help the solver: the same chain read backwards, so if k + 1
-            # is in a cell then k is in a cell touching it.
-            for k in range(2, last + 1):
-                cnf.append([-x[r][c].equals(k)] + [x[nr][nc].equals(k - 1) for nr, nc in touching(r, c)])
+                formula.append([-x[r][c].equals(k)] + [x[nr][nc].equals(k + 1) for nr, nc in touching(r, c)])
 
-    return cnf, {"x": x}
+    # Read backwards: if the number k is in a cell, the number k-1 is in a cell that touches it.
+    for r in range(rows):
+        for c in range(cols):
+            for k in range(2, last + 1):
+                formula.append([-x[r][c].equals(k)] + [x[nr][nc].equals(k - 1) for nr, nc in touching(r, c)])
+
+    return formula, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

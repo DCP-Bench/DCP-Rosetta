@@ -1,26 +1,30 @@
-# Maximum density still life (CSPLib 032): fill an n x m grid of Game of
-# Life cells, everything outside it dead, so that the pattern never changes,
-# with as many live cells as possible.
+# csplib_032_max_density_still_life: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_032_max_density_still_life.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_032_max_density_still_life.py csplib_032_max_density_still_life.json
+
 from itertools import product
 
 from pysat.formula import IDPool, WCNF
 
 
-def build(instance):
-    n = instance["n"]
-    m = instance["m"]
+def create_model(instance):
+    """In an n x m window of Conway's Game of Life, place as many live cells as possible so that
+    the pattern does not change from one generation to the next. The board is infinite; cells
+    outside the window are dead."""
+    n = instance["n"]  # the number of rows of the window
+    m = instance["m"]  # the number of columns of the window
 
     pool = IDPool()
     formula = WCNF()
 
-    # grid[i][j] is true when the cell in row i, column j is alive.
+    # grid[i][j] is true when the cell in row i, column j of the window is alive
     grid = [[pool.id(("grid", i, j)) for j in range(m)] for i in range(n)]
 
-    # Inside the grid: a live cell has exactly 2 or 3 live neighbours, and a
-    # dead cell does not have exactly 3 (or it would be born). A cell and its
-    # at most 8 neighbours take at most 512 joint values, so every
-    # combination that breaks the rule is forbidden by its own clause; unit
-    # propagation then enforces the rule completely.
+    # A live cell has 2 or 3 live neighbours and survives. A dead cell does not have exactly
+    # 3 live neighbours, or it would come alive. Each combination of a cell and its neighbours
+    # that breaks this rule is ruled out.
     for i in range(n):
         for j in range(m):
             neighbours = [grid[a][b]
@@ -35,9 +39,10 @@ def build(instance):
                         clause += [-lit if v else lit for lit, v in zip(neighbours, values)]
                         formula.append(clause)
 
-    # Just outside the grid: a dead cell beside the border sees the (up to 3)
-    # border cells next to it, and must not see exactly 3 live ones.
-    border = []
+    # Cells just outside the window must not come alive either. A dead cell beside an edge
+    # sees the (up to three) window cells next to it along that edge, and must not see
+    # exactly three live ones. Cells diagonal to a corner see at most one window cell.
+    border = []  # the window cells that one outside cell sees along an edge
     for j in range(m):
         cols = range(max(0, j - 1), min(m, j + 2))
         border.append([grid[0][b] for b in cols])
@@ -50,9 +55,32 @@ def build(instance):
         if len(cells) == 3:
             formula.append([-lit for lit in cells])
 
-    # Maximise the number of live cells: every dead cell pays 1.
+    # Each dead cell in the window costs 1, so the cheapest pattern has the most live cells.
     for row in grid:
         for lit in row:
             formula.append([lit], weight=1)
 
     return formula, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        # a literal is true when it is in the model
+        value = np.vectorize(lambda lit: lit in model)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

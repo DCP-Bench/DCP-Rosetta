@@ -1,41 +1,55 @@
-# Solitaire battleships: fill a grid so that every cell is water, a submarine or a part of
-# a longer ship (left, right, top, bottom or middle). Ships lie horizontally or vertically,
-# no two ships touch, even diagonally, the row and column counts of ship cells are given,
-# the fleet has the listed number of ships of each size, and some cells are given as hints.
+# csplib_014_solitaire_battleships: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_014_solitaire_battleships.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_014_solitaire_battleships.py csplib_014_solitaire_battleships.json
+
 from pysat.card import CardEnc, EncType
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    rows, cols = instance["rows"], instance["cols"]
-    rowsum, colsum = instance["rowsum"], instance["colsum"]  # ship cells per row / per column
-    fleet = {size: count for size, count in instance["fleet_counts"]}  # ship size -> number of ships
-    hints = instance["hints"]                                 # [row, col, cell code], 0-based
-    WATER, CIRCLE, LEFT, RIGHT = instance["WATER"], instance["CIRCLE"], instance["LEFT"], instance["RIGHT"]
-    TOP, BOTTOM, MIDDLE = instance["TOP"], instance["BOTTOM"], instance["MIDDLE"]  # CIRCLE = submarine
-    codes = [WATER, instance["_SHIP"], CIRCLE, LEFT, RIGHT, TOP, BOTTOM, MIDDLE]
+def create_model(instance):
+    """Fill a battleships grid: every cell is water, a submarine or a part of a ship. The ships
+    are straight, have the fleet's sizes and never touch, not even diagonally. Each row and
+    column has the given number of ship cells, and the revealed cells keep their content."""
+    rows = instance["rows"]        # the number of rows
+    cols = instance["cols"]        # the number of columns
+    rowsum = instance["rowsum"]    # rowsum[r]: the number of ship cells in row r
+    colsum = instance["colsum"]    # colsum[c]: the number of ship cells in column c
+    fleet = dict(instance["fleet_counts"])  # fleet[size]: the number of ships that are size cells long
+    hints = instance["hints"]      # the cells the puzzle reveals, with their content
+    WATER = instance["WATER"]      # the code of a water cell
+    _SHIP = instance["_SHIP"]      # the code of a ship cell whose part is not stated
+    CIRCLE = instance["CIRCLE"]    # the code of a submarine
+    LEFT = instance["LEFT"]        # the code of the left part of a ship
+    RIGHT = instance["RIGHT"]      # the code of the right part of a ship
+    TOP = instance["TOP"]          # the code of the top part of a ship
+    BOTTOM = instance["BOTTOM"]    # the code of the bottom part of a ship
+    MIDDLE = instance["MIDDLE"]    # the code of a middle part of a ship
+    codes = [WATER, _SHIP, CIRCLE, LEFT, RIGHT, TOP, BOTTOM, MIDDLE]  # every code a cell can show
 
     pool = IDPool()
-    # grid[r][c] holds one of the cell codes. The direct encoding gives the literal
-    # grid[r][c].equals(code) for "this cell has that code", which the rules below are written in.
+
+    # grid[r][c] is the content of the cell in row r, column c
     grid = [[Integer(f"grid_{r}_{c}", min(codes), max(codes), vpool=pool) for c in range(cols)]
             for r in range(rows)]
     engine = IntegerEngine(vars=[cell for row in grid for cell in row], vpool=pool)
     cnf = engine.clausify()
 
-    def is_(r, c, *wanted):
-        """Literals for "cell (r, c) has one of the wanted codes". Outside the grid there is only
-        water: the result is the constant True for WATER and the constant False otherwise."""
+    def shows(r, c, *wanted):
+        """The condition that the cell at (r, c) shows one of the wanted codes. The cells outside
+        the grid are water."""
         if not (0 <= r < rows and 0 <= c < cols):
             return [True] if WATER in wanted else []
         return [grid[r][c].equals(code) for code in wanted]
 
-    def add_clause(*lits):
-        """Add the disjunction of lits, each an int literal or a list of them, or the constants True and False."""
+    def add_clause(*conditions):
+        """Require that at least one of the conditions holds. Each condition is a list of
+        alternatives from shows, or True or False."""
         clause = []
-        for lit in lits:
-            for item in (lit if isinstance(lit, list) else [lit]):
+        for condition in conditions:
+            for item in (condition if isinstance(condition, list) else [condition]):
                 if item is True:
                     return
                 if item is not False:
@@ -43,16 +57,18 @@ def build(instance):
         cnf.append(clause)
 
     def implies(antecedent, *requirements):
-        """antecedent -> every requirement, each requirement being a list of alternative literals."""
+        """If the antecedent holds, every requirement holds. Each requirement is a list of
+        alternatives from shows."""
         for requirement in requirements:
             add_clause(-antecedent, requirement)
 
-    # the cells given as hints
+    # The cells the puzzle reveals keep their content.
     for r, c, code in hints:
-        cnf.append(is_(r, c, code))
+        cnf.append(shows(r, c, code))
 
-    # row and column counts: the number of non-water cells in each row and column
+    # non_water[r][c] is true when the cell at (r, c) holds a ship cell or a submarine
     non_water = [[-grid[r][c].equals(WATER) for c in range(cols)] for r in range(rows)]
+    # Each row and each column has the given number of ship cells.
     for r in range(rows):
         cnf.extend(CardEnc.equals(lits=non_water[r], bound=rowsum[r], vpool=pool,
                                   encoding=EncType.seqcounter).clauses)
@@ -63,50 +79,53 @@ def build(instance):
     for r in range(rows):
         for c in range(cols):
             ship = non_water[r][c]
-            above, below = (r - 1, c), (r + 1, c)
-            beside_l, beside_r = (r, c - 1), (r, c + 1)
+            up, down = (r - 1, c), (r + 1, c)
+            left, right = (r, c - 1), (r, c + 1)
 
-            # ships do not touch diagonally: a ship cell has water on its four diagonal corners
+            # Ships do not touch diagonally: a ship cell has water in its four diagonal corners.
             for dr in (-1, 1):
                 for dc in (-1, 1):
-                    implies(ship, is_(r + dr, c + dc, WATER))
+                    implies(ship, shows(r + dr, c + dc, WATER))
 
-            # a submarine is surrounded by water on its four sides
-            for nr, nc in (above, below, beside_l, beside_r):
-                implies(grid[r][c].equals(CIRCLE), is_(nr, nc, WATER))
+            # A submarine has water on all four sides.
+            for nr, nc in (up, down, left, right):
+                implies(grid[r][c].equals(CIRCLE), shows(nr, nc, WATER))
 
-            # the left end of a ship has the middle or the right end next to it on the right,
-            # and water on its other three sides
-            implies(grid[r][c].equals(LEFT), is_(*beside_r, MIDDLE, RIGHT), is_(*beside_l, WATER),
-                    is_(*above, WATER), is_(*below, WATER))
-            # the right end: middle or left end on the left, water on the other sides
-            implies(grid[r][c].equals(RIGHT), is_(*beside_l, MIDDLE, LEFT), is_(*beside_r, WATER),
-                    is_(*above, WATER), is_(*below, WATER))
-            # the top end: middle or bottom end below, water on the other sides
-            implies(grid[r][c].equals(TOP), is_(*below, MIDDLE, BOTTOM), is_(*above, WATER),
-                    is_(*beside_l, WATER), is_(*beside_r, WATER))
-            # the bottom end: middle or top end above, water on the other sides
-            implies(grid[r][c].equals(BOTTOM), is_(*above, MIDDLE, TOP), is_(*below, WATER),
-                    is_(*beside_l, WATER), is_(*beside_r, WATER))
+            # A left part has a middle or right part on its right, and water on its other sides.
+            implies(grid[r][c].equals(LEFT), shows(*right, MIDDLE, RIGHT), shows(*left, WATER),
+                    shows(*up, WATER), shows(*down, WATER))
+            # A right part has a middle or left part on its left, and water on its other sides.
+            implies(grid[r][c].equals(RIGHT), shows(*left, MIDDLE, LEFT), shows(*right, WATER),
+                    shows(*up, WATER), shows(*down, WATER))
+            # A top part has a middle or bottom part below it, and water on its other sides.
+            implies(grid[r][c].equals(TOP), shows(*down, MIDDLE, BOTTOM), shows(*up, WATER),
+                    shows(*left, WATER), shows(*right, WATER))
+            # A bottom part has a middle or top part above it, and water on its other sides.
+            implies(grid[r][c].equals(BOTTOM), shows(*up, MIDDLE, TOP), shows(*down, WATER),
+                    shows(*left, WATER), shows(*right, WATER))
 
-            # a middle part sits inside a horizontal ship (left part or middle on its left, middle or
-            # right part on its right, water above and below) or inside a vertical one
-            horizontal, vertical = pool.id(("horizontal", r, c)), pool.id(("vertical", r, c))
+            # A middle part lies across a horizontal ship (horizontal) or a vertical ship (vertical).
+            # A horizontal ship has water above and below the middle part, and a vertical one has
+            # water on both sides.
+            horizontal = pool.id(("horizontal", r, c))
+            vertical = pool.id(("vertical", r, c))
             cnf.append([-grid[r][c].equals(MIDDLE), horizontal, vertical])
-            implies(horizontal, is_(*beside_l, LEFT, MIDDLE), is_(*beside_r, RIGHT, MIDDLE),
-                    is_(*above, WATER), is_(*below, WATER))
-            implies(vertical, is_(*above, TOP, MIDDLE), is_(*below, BOTTOM, MIDDLE),
-                    is_(*beside_l, WATER), is_(*beside_r, WATER))
+            implies(horizontal, shows(*left, LEFT, MIDDLE), shows(*right, RIGHT, MIDDLE),
+                    shows(*up, WATER), shows(*down, WATER))
+            implies(vertical, shows(*up, TOP, MIDDLE), shows(*down, BOTTOM, MIDDLE),
+                    shows(*left, WATER), shows(*right, WATER))
 
-    # the fleet: the listed number of submarines
+    # The fleet has the given number of submarines.
     cnf.extend(CardEnc.equals(lits=[grid[r][c].equals(CIRCLE) for r in range(rows) for c in range(cols)],
                               bound=fleet[1], vpool=pool, encoding=EncType.seqcounter).clauses)
 
-    # the fleet: a ship of size n is a left (top) end, n-2 middle parts and a right (bottom) end in
-    # a line. ship_here is true exactly when such a ship starts at that cell, so the count is exact.
+    # A ship of a listed size starts at a cell and runs right or down: a left (top) part, the
+    # middle parts, and a right (bottom) part in a line. ship_here is true exactly when that
+    # ship is there.
     for size, count in fleet.items():
         if size < 2:
             continue
+        # starts: the ship_here selectors of the ships of this size, one per place they can start
         starts = []
         for r in range(rows):
             for c in range(cols):
@@ -121,12 +140,37 @@ def build(instance):
                         cnf.append([-ship_here, part])
                     cnf.append([ship_here] + [-part for part in parts])
                     starts.append(ship_here)
+        # The fleet has the given number of ships of this size.
         cnf.extend(CardEnc.equals(lits=starts, bound=count, vpool=pool, encoding=EncType.seqcounter).clauses)
 
-    # no ship of a size the fleet does not list: every left or top end starts one of the ships counted
-    # above, so the number of left and top ends equals the number of ships longer than one cell
+    # ends: the cells that hold a left or top part
     ends = [grid[r][c].equals(code) for r in range(rows) for c in range(cols) for code in (LEFT, TOP)]
+    # Every ship longer than one cell has exactly one left or top part, so there are as many
+    # such parts as those ships, and no ship of another size is placed.
     cnf.extend(CardEnc.equals(lits=ends, bound=sum(count for size, count in fleet.items() if size > 1),
                               vpool=pool, encoding=EncType.seqcounter).clauses)
 
     return cnf, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

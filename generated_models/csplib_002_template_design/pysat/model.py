@@ -1,78 +1,67 @@
-# Template design (CSPLib 2): fill the slots of each printing template with
-# copies of the design variations and choose how many sheets to print from
-# each template, so that every variation's demand is met with as few printed
-# sheets as possible.
+# csplib_002_template_design: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_002_template_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_002_template_design.py csplib_002_template_design.json
+
 from math import isqrt
 
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
-from pysat.pb import PBEnc
-from pysat.pb import EncType as PBType
+from pysat.pb import EncType, PBEnc
 
 
-def build(instance):
-    n_slots = instance["n_slots"]
-    n_templates = instance["n_templates"]
-    n_var = instance["n_var"]
-    demand = instance["demand"]
-    templates = range(n_templates)
-    variations = range(n_var)
-    # Copies of a variation on a template lie in 0..n_var and sheets per
-    # template in 1..max(demand), the domains the reference declares.
+def create_model(instance):
+    """Template design: choose which variations each template holds and how many sheets
+    to print from it, so that every variation reaches its demand with as few printed
+    sheets as possible."""
+    n_slots = instance["n_slots"]          # the number of slots on each template
+    n_templates = instance["n_templates"]  # the number of templates
+    n_var = instance["n_var"]              # the number of variations
+    demand = instance["demand"]            # demand[v]: the number of copies of variation v wanted
 
-    # Bounds on the fewest sheets. Lower: every sheet carries n_slots copies,
-    # so at least sum(demand) / n_slots sheets are printed (the reference's
-    # implied constraint). Upper: a feasible plan. One template whose slots
-    # go one per variation and then, one at a time, to the variation needing
-    # the most sheets per copy, printed until every demand is met, with every
-    # other template printed once; failing that, the reference's domain.
+    templates = range(n_templates)  # template numbers, from 0
+    variations = range(n_var)       # variation numbers, from 0
+
+    # lower: each sheet carries n_slots copies, so the demand needs at least
+    # sum(demand) / n_slots sheets, and each template is printed at least once.
     lower = max(-(-sum(demand) // n_slots), n_templates)
+    # upper: n_templates * max(demand) sheets at most.
     upper = n_templates * max(demand)
-    # (The other templates need some layout: possible when n_slots <= n_var * n_var.)
-    if n_var <= n_slots <= n_var * n_var and n_templates >= 1:
-        copies = [1] * n_var
+    # A plan that gives one slot to each variation, then gives each further slot to the
+    # variation needing the most sheets per copy, with no variation above n_var slots.
+    # Printing that template sheets times and each other template once takes
+    # sheets + n_templates - 1 sheets.
+    if n_var <= n_slots <= n_var * n_var:
+        copies = [1] * n_var  # copies[v]: the slots the plan gives variation v
         for _ in range(n_slots - n_var):
             v = max(variations, key=lambda v: (-(-demand[v] // copies[v])
                                                if copies[v] < n_var else -1))
             copies[v] += 1
-        if sum(copies) == n_slots and max(copies) <= n_var:
-            sheets = max([1] + [-(-demand[v] // copies[v]) for v in variations])
-            if sheets <= max(demand):
-                upper = min(upper, sheets + n_templates - 1)
+        sheets = max([1] + [-(-demand[v] // copies[v]) for v in variations])
+        if sheets <= max(demand):
+            upper = min(upper, sheets + n_templates - 1)
     lower = min(lower, upper)
-    # No template prints more than what the other templates leave of the
-    # upper bound, each of them printing at least once.
+    # p_max: the most sheets printed from one template, leaving every other template
+    # at least one sheet, and never more than the largest demand.
     p_max = max(min(max(demand), upper - (n_templates - 1)), 1)
-    ub = max(p_max, 2)   # widened to 2 values at least, see below
 
     pool = IDPool()
-    # production[t] is the number of sheets printed from template t.
-    production = [Integer(f"production{t}", 1, ub, vpool=pool) for t in templates]
-    # layout[t][v] is the number of copies of variation v on template t.
-    layout = [[Integer(f"layout_{t}_{v}", 0, max(n_var, 1), vpool=pool) for v in variations]
+    # production[t]: the number of sheets printed from template t
+    production = [Integer(f"production{t}", 1, p_max, vpool=pool) for t in templates]
+    # layout[t][v]: the number of slots of template t that hold variation v
+    layout = [[Integer(f"layout_{t}_{v}", 0, n_var, vpool=pool) for v in variations]
               for t in templates]
     engine = IntegerEngine(vars=production + [x for row in layout for x in row], vpool=pool)
 
-    # All slots are populated in a template.
+    # Every slot of every template holds a variation.
     for t in templates:
         engine.add_linear(sum(layout[t]) == n_slots)
 
     formula = WCNF()
     formula.extend(engine.clausify().clauses)
-    # The domains are widened by one value where they would hold a single
-    # value; that value is ruled out here.
-    for t in templates:
-        for v in range(p_max + 1, ub + 1):
-            formula.append([-production[t].equals(v)])
-        if n_var < 1:
-            for v in variations:
-                formula.append([-layout[t][v].equals(1)])
 
-    # The products production[t] * layout[t][v] are not linear, so both
-    # factors are spelled out in binary digits, value by value, and each
-    # product is a weighted sum of digit pairs: the digit pair (b, c) is
-    # worth 2^(b + c) sheets' worth of copies. pair[t][v][b][c] is true
-    # exactly when both digits are 1, so the sum below sees the exact product.
+    # bits[k] is true exactly when bit k of x is 1, for every value x takes from lo to hi.
     def digits(x, lo, hi, name):
         n = max(hi, 1).bit_length()
         bits = [pool.id((name, k)) for k in range(n)]
@@ -81,15 +70,14 @@ def build(instance):
                 formula.append([-x.equals(val), bits[k] if (val >> k) & 1 else -bits[k]])
         return bits
 
-    prod_bits = [digits(production[t], 1, ub, ("production bit", t)) for t in templates]
-    layout_bits = [[digits(layout[t][v], 0, max(n_var, 1), ("layout bit", t, v))
+    prod_bits = [digits(production[t], 1, p_max, ("production bit", t)) for t in templates]
+    layout_bits = [[digits(layout[t][v], 0, n_var, ("layout bit", t, v))
                     for v in variations] for t in templates]
 
-    # Meet demand: the copies of variation v printed over all templates,
-    # sum over t of production[t] * layout[t][v], reach its demand. BDD
-    # encoding: it propagates every consequence of the sum, which the more
-    # compact adder does not; with the bound at most max(demand) the
-    # diagram stays small.
+    # pair[t][v][b][c] is true exactly when bit b of the sheets printed from template t and
+    # bit c of the copies of variation v on that template are both 1. Such a pair is worth
+    # 2^(b+c) copies, so the sheets times the copies is the sum of the pairs.
+    # coverage[v]: the pairs for variation v and their worth
     coverage = []
     for v in variations:
         lits, weights = [], []
@@ -102,52 +90,68 @@ def build(instance):
                     formula.append([pair, -pb, -lb])
                     lits.append(pair)
                     weights.append(1 << (b + c))
+        # The copies of variation v, over all templates, reach its demand.
         formula.extend(PBEnc.geq(lits=lits, weights=weights, bound=demand[v], vpool=pool,
-                                 encoding=PBType.bdd).clauses)
+                                 encoding=EncType.bdd).clauses)
         coverage.append((lits, weights))
 
-    # Implied (stated in the reference): every template fills all its slots,
-    # so the sheets cover the total demand.
+    # Implied: every template fills all its slots, so the sheets together carry at least
+    # the total demand.
     formula.extend(PBEnc.geq(lits=[pb for t in templates for pb in prod_bits[t]],
                              weights=[n_slots << b for t in templates
                                       for b in range(len(prod_bits[t]))],
-                             bound=sum(demand), vpool=pool, encoding=PBType.adder).clauses)
+                             bound=sum(demand), vpool=pool, encoding=EncType.adder).clauses)
 
-    # total is the number of sheets printed, within the bounds above. It is
-    # stated as at least the sum of the templates' sheets; being minimised,
-    # it equals that sum at the optimum. Adder encoding over the digits.
-    total = Integer("total", lower, max(upper, lower + 1), encoding="order", vpool=pool)
+    # total: the number of sheets printed, between lower and upper. It is at least the
+    # sheets printed from all the templates together.
+    total = Integer("total", lower, upper, encoding="order", vpool=pool)
     formula.extend(IntegerEngine(vars=[total], vpool=pool).clausify().clauses)
-    if upper == lower:
-        formula.append([-total.ge(upper + 1)])   # the widened value
-    thresholds = [total.ge(v) for v in range(lower + 1, max(upper, lower + 1) + 1)]
+    thresholds = [total.ge(v) for v in range(lower + 1, upper + 1)]
     formula.extend(PBEnc.leq(lits=[pb for t in templates for pb in prod_bits[t]] + thresholds,
                              weights=[1 << b for t in templates
                                       for b in range(len(prod_bits[t]))]
                              + [-1] * len(thresholds),
-                             bound=lower, vpool=pool, encoding=PBType.adder).clauses)
+                             bound=lower, vpool=pool, encoding=EncType.adder).clauses)
 
-    # Implied upper bound on each variation's copies. The copies of all
-    # variations add up to n_slots per sheet, so at most n_slots * total, and
-    # every other variation takes at least its demand; what is left bounds
-    # the copies of v. This tells the solver how little slack a small total
-    # leaves. (copies of v) - n_slots * (total - lower) <= n_slots * lower -
-    # (demand of the others), stated only when that bound is not negative,
-    # as PBEnc refuses a negative bound. Adder encoding.
+    # Copies of variation v are at most n_slots * total less the demand of the other
+    # variations, since every sheet carries n_slots copies. Only when that bound is not
+    # negative.
     for v in variations:
         lits, weights = coverage[v]
         rest = n_slots * lower - (sum(demand) - demand[v])
         if rest >= 0:
             formula.extend(PBEnc.leq(lits=lits + thresholds,
                                      weights=weights + [-n_slots] * len(thresholds),
-                                     bound=rest, vpool=pool, encoding=PBType.adder).clauses)
+                                     bound=rest, vpool=pool, encoding=EncType.adder).clauses)
 
-    # Minimise the number of printed sheets: reaching total >= v pays a
-    # weight that grows with v, so what is paid strictly rises with the
-    # sheets printed. The weights come in about sqrt(N) groups, so stratified
-    # RC2 settles a group at a time instead of one sheet per core.
+    # group: the number of sheet counts that share one weight, about the square root of
+    # the range of sheet counts.
     group = isqrt(max(upper - lower, 1)) + 1
+    # Reaching total >= v costs a weight that rises by one every group sheets, so the cost
+    # of a plan rises with the sheets it prints and the cheapest plan prints the fewest.
     for v in range(lower + 1, upper + 1):
         formula.append([-total.ge(v)], weight=1 + (v - lower - 1) // group)
 
     return formula, {"production": production, "layout": layout}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

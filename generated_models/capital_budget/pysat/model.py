@@ -1,6 +1,9 @@
-# Capital budgeting (Winston): choose which investments to make so that their
-# cash outflow stays within the budget and their total net present value
-# (NPV) is as large as possible.
+# capital_budget: a PySAT (Python) model from DCP Rosetta.
+# Download the `capital_budget.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/capital_budget.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python capital_budget.py capital_budget.json
+
 from math import gcd
 
 from pysat.formula import IDPool, WCNF
@@ -8,48 +11,46 @@ from pysat.integer import Integer
 from pysat.pb import EncType, PBEnc
 
 
-def build(instance):
-    budget = instance["budget"]
-    npv = instance["npv"]
-    cash_flow = instance["cash_flow"]
-    n = len(npv)
+def create_model(instance):
+    """A company considers a number of investments, each with a net present value (NPV) and a cash
+    outflow now. Choose the investments that maximise the total NPV, with the cash outflow of the
+    chosen investments within the budget."""
+    budget = instance["budget"]        # the total budget available for investment
+    npv = instance["npv"]              # npv[i]: the net present value of investment i
+    cash_flow = instance["cash_flow"]  # cash_flow[i]: the cash outflow investment i needs now
+    n = len(npv)                       # the number of investments
 
     pool = IDPool()
     formula = WCNF()
 
-    # x[i] is true when investment i is chosen.
+    # x[i] is true when investment i is chosen
     x = [pool.id(("x", i)) for i in range(n)]
 
-    # The cash outflow of the chosen investments must not exceed the budget.
-    formula.extend(PBEnc.leq(lits=x, weights=cash_flow, bound=budget,
-                             vpool=pool).clauses)
+    # The cash outflow of the chosen investments stays within the budget.
+    formula.extend(PBEnc.leq(lits=x, weights=cash_flow, bound=budget, vpool=pool).clauses)
 
-    # z, the total NPV, is a declared output, so it is an Integer tied to the
-    # NPV of the chosen investments. Its range 0..sum(npv) is the reference's.
-    # Every total is a multiple of the common divisor of the NPVs, so the sum
-    # is stated over "units" of that divisor: units = sum of npv[i]/unit over
-    # the chosen investments, a narrow integer (a few hundred values on the
-    # instances here) where a sum over the raw values would need hundreds of
-    # thousands of literals.
+    # The common divisor of the NPVs (1 when they are all zero). Every total NPV is a multiple of it,
+    # so the total is counted in units of it.
     unit = 0
     for v in npv:
         unit = gcd(unit, v)
     unit = unit or 1
+    # steps[i]: the NPV of investment i in units
     steps = [v // unit for v in npv]
-    top = sum(steps)
+    top = sum(steps)  # the largest total NPV in units
+
+    # units is the total NPV of the chosen investments, in units.
     units = Integer("npv_units", 0, max(top, 1), encoding="coupled", vpool=pool)
     formula.extend(units.domain_clauses())
-    # units equals the chosen investments' NPV in units: on its order literals
-    # units = sum over k of [units >= k], so the equation is pseudo-Boolean.
+    # order[k - 1] is true when units is at least k. Counting these thresholds gives units.
     order = [units.ge(k) for k in range(1, max(top, 1) + 1)]
+    # units is the sum of the steps of the chosen investments.
     formula.extend(PBEnc.equals(lits=x + order,
                                 weights=steps + [-1] * len(order), bound=0,
                                 vpool=pool, encoding=EncType.bdd).clauses)
 
-    # z takes the value unit * units. Its value literals are channelled to
-    # those of units, and a value that is not a multiple of the unit is
-    # impossible; together these leave exactly one value true, so z needs no
-    # exactly-one constraint of its own.
+    # z is the total NPV, which is unit times units. Its values that are not a multiple of unit are
+    # ruled out, and the others agree with units.
     z = Integer("z", 0, unit * max(top, 1), vpool=pool)
     for v in range(0, unit * max(top, 1) + 1):
         if v % unit == 0:
@@ -58,10 +59,32 @@ def build(instance):
         else:
             formula.append([-z.equals(v)])
 
-    # Maximise the NPV: leaving investment i out pays npv[i], so RC2 minimises
-    # the shortfall from the NPV of choosing every investment.
+    # Leaving an investment out costs its NPV, so the chosen investments have the largest total NPV.
     for i in range(n):
         if npv[i] > 0:
             formula.append([x[i]], weight=npv[i])
 
     return formula, {"x": x, "z": z}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        # an Integer decodes its value from the model, a literal is true when it is in the model
+        value = np.vectorize(lambda v: v.decode(model) if isinstance(v, Integer) else v in model)
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

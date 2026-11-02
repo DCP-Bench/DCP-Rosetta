@@ -1,48 +1,76 @@
-# Curious set of integers (Martin Gardner): the integers 1, 3, 8 and 120 have the property that
-# the product of any two of them is one less than a perfect square. Find a fifth number, at
-# least 0, that can be added to the set without destroying this property.
+# curious_set_of_integers: a PySAT (Python) model from DCP Rosetta.
+# Download the `curious_set_of_integers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/curious_set_of_integers.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python curious_set_of_integers.py curious_set_of_integers.json
+
 from pysat.card import CardEnc, EncType
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    n = instance["n"]              # size of the set once the new number is added
-    max_val = instance["max_val"]  # every number, and every square root below, lies in 0..max_val
-    members = [1, 3, 8, 120]       # the integers of the set, given by the problem statement
-    assert n == len(members) + 1, "the problem adds exactly one number to the four given ones"
+def create_model(instance):
+    """The integers 1, 3, 8 and 120 form a set in which the product of any two
+    integers is one less than a perfect square. Find a fifth number (at least 0)
+    that can be added to the set without destroying this property."""
+    n_integers = instance["n"]     # the number of integers in the set, the four given ones and the one to find
+    max_val = instance["max_val"]  # the largest value any integer in the set may take
+    members = [1, 3, 8, 120]       # the four given integers
+    assert n_integers == len(members) + 1, "the problem adds exactly one number to the four given ones"
 
     pool = IDPool()
-    # number = the new member of the set
+
+    # The number to add to the set
     number = Integer("number", 0, max_val, vpool=pool)
-    # root[member] = the square root p, with p * p == member * number + 1
+    # root[member] is the square root of member times the number, plus 1
     root = {member: Integer(f"root{member}", 0, max_val, vpool=pool) for member in members}
     engine = IntegerEngine(vars=[number] + list(root.values()), vpool=pool)
-    cnf = engine.clausify()
+    formula = engine.clausify()
 
-    # the new number is different from the numbers already in the set
+    # The new number differs from the four given integers.
     for member in members:
         if member <= max_val:
-            cnf.append([-number.equals(member)])
+            formula.append([-number.equals(member)])
 
-    # The product of the new number with each member, plus one, is a perfect square p * p, with
-    # p in 0..max_val. (The products of two given members are not repeated here: they are
-    # fixed numbers, and the problem states that they have the property.)
-    # PySAT cannot multiply two variables, so both sides are tabulated. value_is[v] stands for
-    # "the common value is v": every value of p forces the literal of p * p, every value of the
-    # new number forces the literal of member * number + 1, and at most one literal may hold, so
-    # the two have to agree.
+    # For each given integer, its product with the new number is one less than a perfect
+    # square. PySAT cannot multiply two variables, so both sides are listed by value: a flag
+    # for each value, set when the square or the product takes that value. At most one flag
+    # is set, so both sides take the same value.
     for member in members:
+        # value_is[v] is the flag of the value v
         value_is = {}
         for p in range(max_val + 1):
             if p * p not in value_is:
                 value_is[p * p] = pool.id(("value", member, p * p))
-            cnf.append([-root[member].equals(p), value_is[p * p]])
+            formula.append([-root[member].equals(p), value_is[p * p]])
         for w in range(max_val + 1):
             if member * w + 1 not in value_is:
                 value_is[member * w + 1] = pool.id(("value", member, member * w + 1))
-            cnf.append([-number.equals(w), value_is[member * w + 1]])
-        cnf.extend(CardEnc.atmost(lits=list(value_is.values()), bound=1, vpool=pool,
-                                  encoding=EncType.seqcounter).clauses)
+            formula.append([-number.equals(w), value_is[member * w + 1]])
+        formula.extend(CardEnc.atmost(lits=list(value_is.values()), bound=1, vpool=pool,
+                                      encoding=EncType.seqcounter).clauses)
 
-    return cnf, {"number": number}
+    return formula, {"number": number}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

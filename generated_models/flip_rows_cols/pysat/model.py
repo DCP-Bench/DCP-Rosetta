@@ -1,31 +1,36 @@
-# Flip rows and columns (Einav's puzzle): choose a sign for every row and
-# column of a matrix so that, after multiplying each entry by its row and
-# column sign, every row and column sums to zero or more, and the overall sum
-# is as small as possible.
+# flip_rows_cols: a PySAT (Python) model from DCP Rosetta.
+# Download the `flip_rows_cols.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python flip_rows_cols.py flip_rows_cols.json
+
 from math import isqrt
 
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
 from pysat.pb import EncType, PBEnc
 
-TOTAL_MAX = 1000  # domain of total_sum in the reference
-LINE_MAX = 300    # domain of row_sums and col_sums in the reference
+TOTAL_MAX = 1000  # the overall sum is at most 1000
+LINE_MAX = 300    # every row sum and column sum is at most 300
 
 
-def build(instance):
-    matrix = instance["input_matrix"]
-    rows = len(matrix)
-    cols = len(matrix[0])
+def create_model(instance):
+    """Flip the sign of whole rows and columns of a matrix of numbers, as many as you like,
+    so that every row and every column sums to zero or more. Among these flips, make the
+    overall sum of the flipped matrix as small as possible."""
+    matrix = instance["input_matrix"]  # matrix[i][j]: the number in row i and column j
+    n_rows = len(matrix)
+    n_cols = len(matrix[0])
 
     pool = IDPool()
-    # The signs, -1..1 as in the reference; 0 is excluded below. Direct
-    # encoding: a value literal for +1.
-    row_signs = [Integer(f"row_signs_{i}", -1, 1, vpool=pool) for i in range(rows)]
-    col_signs = [Integer(f"col_signs_{j}", -1, 1, vpool=pool) for j in range(cols)]
-    # total_sum, 0..1000 as in the reference. Order encoding: the objective
-    # pays per threshold reached.
-    total = Integer("total_sum", 0, TOTAL_MAX, encoding="order", vpool=pool)
-    engine = IntegerEngine(vars=row_signs + col_signs + [total], vpool=pool)
+
+    # row_signs[i] is -1 when row i is flipped and 1 when it is not.
+    row_signs = [Integer(f"row_signs_{i}", -1, 1, vpool=pool) for i in range(n_rows)]
+    # col_signs[j] is -1 when column j is flipped and 1 when it is not.
+    col_signs = [Integer(f"col_signs_{j}", -1, 1, vpool=pool) for j in range(n_cols)]
+    # The overall sum of the flipped matrix.
+    total_sum = Integer("total_sum", 0, TOTAL_MAX, encoding="order", vpool=pool)
+    engine = IntegerEngine(vars=row_signs + col_signs + [total_sum], vpool=pool)
 
     formula = WCNF()
     formula.extend(engine.clausify().clauses)
@@ -33,27 +38,23 @@ def build(instance):
     # A sign is -1 or 1, never 0.
     for s in row_signs + col_signs:
         formula.append([-s.equals(0)])
-    row_up = [s.equals(1) for s in row_signs]
-    col_up = [s.equals(1) for s in col_signs]
+    row_positive = [s.equals(1) for s in row_signs]
+    col_positive = [s.equals(1) for s in col_signs]
 
-    # keep[i][j] is true when entry (i, j) keeps its sign, i.e. its row and
-    # column signs agree; the flipped entry is then a[i][j], otherwise
-    # -a[i][j].
-    keep = [[pool.id(("keep", i, j)) for j in range(cols)] for i in range(rows)]
-    for i in range(rows):
-        for j in range(cols):
-            k, r, c = keep[i][j], row_up[i], col_up[j]
+    # keep[i][j] is true when entry (i, j) keeps its sign, that is when its row and its
+    # column have the same sign. The entry then stays as it is, and otherwise it is negated.
+    keep = [[pool.id(("keep", i, j)) for j in range(n_cols)] for i in range(n_rows)]
+    for i in range(n_rows):
+        for j in range(n_cols):
+            k, r, c = keep[i][j], row_positive[i], col_positive[j]
             formula.append([-k, -r, c])
             formula.append([-k, r, -c])
             formula.append([k, r, c])
             formula.append([k, -r, -c])
 
-    def positive(cells):
-        # The flipped entry is |a| when its literal holds and -|a| otherwise;
-        # the literal is keep for a positive entry and not keep for a
-        # negative one. So the sum over cells is sum(2 * |a| * lit) - mass,
-        # with mass = sum(|a|). Written this way every PBEnc bound is
-        # non-negative, which PBEnc requires ("Wrong bound" otherwise).
+    # Over the given cells, the flipped entries sum to 2|a| summed over the cells whose
+    # flipped entry is positive, minus mass, where mass is the sum of |a| over the cells.
+    def signed_sum(cells):
         lits, weights = [], []
         for i, j in cells:
             a = matrix[i][j]
@@ -62,9 +63,9 @@ def build(instance):
                 weights.append(2 * abs(a))
         return lits, weights, sum(weights) // 2
 
+    # low <= sum of the flipped entries in cells <= high.
     def within(cells, low, high):
-        # low <= sum of the flipped entries in cells <= high.
-        lits, weights, mass = positive(cells)
+        lits, weights, mass = signed_sum(cells)
         if low + mass > 0:
             formula.extend(PBEnc.geq(lits=lits, weights=weights,
                                      bound=low + mass, vpool=pool).clauses)
@@ -72,45 +73,58 @@ def build(instance):
             formula.extend(PBEnc.leq(lits=lits, weights=weights,
                                      bound=high + mass, vpool=pool).clauses)
 
-    # Every flipped entry lies in -100..100, the domain of x in the
-    # reference; flipping keeps the magnitude, so this is a check on the data.
+    # Each entry lies between -100 and 100, so a larger entry leaves no flip to find.
     if any(abs(v) > 100 for row in matrix for v in row):
         formula.append([])
 
-    # Every row sums to zero or more (row_sums has domain 0..300).
-    for i in range(rows):
-        within([(i, j) for j in range(cols)], 0, LINE_MAX)
-    # Every column sums to zero or more (col_sums has domain 0..300).
-    for j in range(cols):
-        within([(i, j) for i in range(rows)], 0, LINE_MAX)
+    # Every row of the flipped matrix sums to zero or more, and at most LINE_MAX.
+    for i in range(n_rows):
+        within([(i, j) for j in range(n_cols)], 0, LINE_MAX)
+    # Every column of the flipped matrix sums to zero or more, and at most LINE_MAX.
+    for j in range(n_cols):
+        within([(i, j) for i in range(n_rows)], 0, LINE_MAX)
 
-    # total_sum is at least the overall sum (and the overall sum at least
-    # 0): sum(2 * |a| * lit) - mass <= sum of total's thresholds reached,
-    # i.e. sum(2 * |a| * lit) + (thresholds not reached) <= mass + 1000.
-    # Its upper bound 1000 is the reference's bound on the overall sum.
-    # The adder encoding keeps this constraint over a thousand threshold
-    # literals small; PBEnc's default would build a BDD over them.
-    cells = [(i, j) for i in range(rows) for j in range(cols)]
-    lits, weights, mass = positive(cells)
+    # The overall sum is at least 0.
+    cells = [(i, j) for i in range(n_rows) for j in range(n_cols)]
+    lits, weights, mass = signed_sum(cells)
     if mass > 0:
-        formula.extend(PBEnc.geq(lits=lits, weights=weights, bound=mass,
-                                 vpool=pool).clauses)
-    steps = [-total.ge(v) for v in range(1, TOTAL_MAX + 1)]
-    formula.extend(PBEnc.leq(lits=lits + steps,
-                             weights=weights + [1] * len(steps),
+        formula.extend(PBEnc.geq(lits=lits, weights=weights, bound=mass, vpool=pool).clauses)
+
+    # steps[v - 1] is true when total_sum is less than v.
+    steps = [-total_sum.ge(v) for v in range(1, TOTAL_MAX + 1)]
+    # total_sum is at least the overall sum: the overall sum plus the true steps stays at
+    # most mass + TOTAL_MAX.
+    formula.extend(PBEnc.leq(lits=lits + steps, weights=weights + [1] * len(steps),
                              bound=mass + TOTAL_MAX, vpool=pool,
                              encoding=EncType.adder).clauses)
 
-    # Minimise the overall sum. Threshold v of total_sum, when reached, pays
-    # a weight that grows with v in blocks: the cost is then a strictly
-    # increasing function of total_sum, so it has the same minimisers as the
-    # sum itself. Blocks of about sqrt(1000) equal weights let stratified
-    # RC2 treat each block as its own level, highest first, so it closes in
-    # on the optimum from above with a few satisfiable calls. Weight 1 per
-    # unit of the sum instead raises the lower bound one core at a time,
-    # with optima in the hundreds, and ran out of time.
-    block = isqrt(TOTAL_MAX) + 1
+    # Minimise total_sum. Falsifying the soft clause for v in 1..TOTAL_MAX, which happens
+    # when total_sum reaches v, costs 1 + (v - 1) // block_size. The total cost rises
+    # strictly with total_sum, so minimising the cost minimises total_sum.
+    block_size = isqrt(TOTAL_MAX) + 1
     for v in range(1, TOTAL_MAX + 1):
-        formula.append([-total.ge(v)], weight=1 + (v - 1) // block)
+        formula.append([-total_sum.ge(v)], weight=1 + (v - 1) // block_size)
 
     return formula, {"row_signs": row_signs, "col_signs": col_signs}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

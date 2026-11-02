@@ -171,6 +171,53 @@ with Solver(name="glucose42", bootstrap_with=cnf.clauses) as solver:
 
 **All optimal solutions:** solve with RC2, keep each model while `rc2.cost` equals the first cost, block it with `rc2.add_clause(...)`, and stop at the first higher cost. Runnable versions: [assets/all-solutions](../../assets/python/all-solutions/README.md) and [assets/all-optimal](../../assets/python/all-optimal/README.md).
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the soft clauses that make up the objective;
+- the plainest encoding call that says it (`PBEnc.leq(lits=x, weights=weights, bound=capacity)`
+  over hand-written clauses), and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that returns the formula and the variables to print: a `CNF`
+for a satisfaction problem, a `WCNF` whose soft clauses are the objective otherwise. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    pool = IDPool()
+
+    # x[i] is true when the hiker packs item i
+    x = [pool.id(("x", i)) for i in range(len(values))]
+
+    formula = WCNF()
+
+    # The packed items weigh no more than the backpack can carry.
+    formula.extend(PBEnc.leq(lits=x, weights=weights, bound=capacity, vpool=pool).clauses)
+
+    # Pack the most valuable selection. RC2 minimises the weight of the soft clauses it
+    # falsifies, so leaving item i behind costs its value.
+    for xi, v in zip(x, values):
+        if v > 0:
+            formula.append([xi], weight=v)
+
+    return formula, {"x": x}
+```
+
+Solve a `CNF` with `Solver(bootstrap_with=formula)` and a `WCNF` with `RC2Stratified(formula).compute()`.
+Print an `Integer` with `var.decode(model)` and a literal with `lit in model`; `numpy.vectorize`
+applies either to a nested list in one call. `decode` reads the model by variable number, so an
+`Integer` printed this way must appear in the formula (pad the model as in the Quick start otherwise).
+
 ## Scheduling at realistic size
 
 Clause counts, horizon and start-domain rules for job-shop sized models: [scheduling.md](scheduling.md).
