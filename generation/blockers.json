@@ -345,6 +345,30 @@
       "detail": "Hexaly finds low-energy sequences at once but cannot prove the minimum of the periodic autocorrelation energy (a sum of squared sums of products of +1/-1 decisions) for n >= 16 within 180 s: json:1, json:2 and json:4 end FEASIBLE, which the runner reports as an unproven optimum. n = 10 and 13 are accepted. That is 2 of 5 instances, below the 80% a performance limit may cover.",
       "evidence": "generation/runs/hexaly-batch40-20261102t162134z-7991/attempts/csplib_005_autocorrelation/hexaly_python/attempt-001/evaluation.json",
       "recorded": "2026-11-02"
+    },
+    {
+      "problem": "frog_circle",
+      "solver": "hexaly_python",
+      "reason": "exhaustion_unproven",
+      "detail": "Hexaly finds an arrangement on every instance, but under the solution limit of 2 the runner must then find a second distinct arrangement or prove none exists; with the first card fixed the arrangements are few, and the soft no-good proof does not close within 180 s on 4 of 5 instances (execution_timeout with 1 solution). 1 of 5 checked.",
+      "evidence": "generation/runs/hexaly-batch40b-20261102t212634z-ea9c/attempts/frog_circle/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
+    },
+    {
+      "problem": "handshaking",
+      "solver": "hexaly_python",
+      "reason": "exhaustion_unproven",
+      "detail": "The only output is Hilary's handshake count, which every valid party shares, so a second solution requires proving no other count is possible; Hexaly does not within 180 s (json:1, json:4: 1 solution then timeout), and on the example it finds no party at all (INFEASIBLE). 2 of 5 checked. Adding the known answer as a constraint would embed it.",
+      "evidence": "generation/runs/hexaly-batch40b-20261102t212634z-ea9c/attempts/handshaking/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
+    },
+    {
+      "problem": "hidato",
+      "solver": "hexaly_python",
+      "reason": "exhaustion_unproven",
+      "detail": "Hidato puzzles have one solution: Hexaly finds it on json:1..3 but cannot prove it unique within 180 s under the solution limit of 2, and finds no path on the 12 x 12 example and json:4 (INFEASIBLE). No instance verified.",
+      "evidence": "generation/runs/hexaly-batch40b-20261102t212634z-ea9c/attempts/hidato/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
     }
   ]
 }
