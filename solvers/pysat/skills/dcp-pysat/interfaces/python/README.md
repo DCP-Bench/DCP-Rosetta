@@ -185,6 +185,7 @@ Clause counts, horizon and start-domain rules for job-shop sized models: [schedu
 | `AssertionError: Direct encoding is disabled` | `equals()` on an `order` Integer | Use `direct` or `coupled` |
 | `ValueError: NotEqual requires direct or coupled encoding on left` | `add_not_equal` with an `order` Integer | Use `direct` or `coupled` |
 | `AttributeError: 'LinearExpr' object has no attribute 'vpool'` | An expression passed to `add_alldifferent`, `add_equal` or `add_not_equal` | Put the expression through `add_linear` |
+| A list of Integers has extra entries (auxiliary Integers) after the model is built | `IntegerEngine(vars=xs)` keeps `xs`, and `engine.add_var(v)` appends to it | Pass a copy: `IntegerEngine(vars=list(xs), vpool=pool)` |
 | Integer values come out wrong after `compute()` | RC2 omits unused variables; `decode` indexes by variable number | Pad the model to `pool.top` (Quick start) |
 | RC2 is very slow with many distinct weights | Plain `RC2` | Use `RC2Stratified`, and prefer unit weights where the objective allows |
 | `rc2.compute()` returns `None` | Hard clauses unsatisfiable, or interrupted | Check `rc2.interrupted`; check the hard clauses |
