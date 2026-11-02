@@ -2,7 +2,11 @@
   "attempt": {
     "agent": "claude-opus-5, interactive session, coordinator and modeller",
     "attempt_id": "attempt-001",
-    "created_at": 1789472676.1498716,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793617144.4783785,
     "problem_id": "who_killed_agatha",
     "profile": {
       "compilation_timeout": 120,
@@ -14,44 +18,69 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "b48cb73f73484be4a0e2286eb42261aafc646e54adedb8dc31d2ba8692c06d0b",
-    "run_id": "breadth3-20260915",
-    "schema": 2,
-    "skill_bundle_hash": "9272081bfe9a8a31cf01fca6618b3e08c2cc94213b2480403569c064643f2c68",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "84fd10fce1b69c357d474ebd31783547aa065827",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005201299965847284,
-        "execution_wall_seconds": 3.056915700028185,
+        "checking_seconds": 0.0031234710477292538,
+        "execution_wall_seconds": 0.4492248350288719,
         "first_solution": {
           "killer": 0
         },
         "id": "example",
         "instance_hash": "73395f2420e967be57aa2782ac0a36707cc9a68b665e3837be234154e6a58d5f",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "killer"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9994906999636441,
+        "reference_setup_seconds": 0.46269045397639275,
         "runner_status": {
+          "build_seconds": 0.011754214996472001,
           "detail": "",
+          "main_seconds": 0.016972069977782667,
+          "read_seconds": 0.0001551980385556817,
           "status": "complete",
           "type": "status"
         },
@@ -69,15 +98,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "d5b6c61492e4df15e32c3af4cdb87fe613eadd7a421c4f6b3301f2a830998e35",
+    "model_hash": "8181f7e2ae29f52fd4f63ec02bbdeb2c3cabf365f57290881d43c073aa99cc1f",
     "problem_id": "who_killed_agatha",
     "reason": "accepted",
     "reference_hash": "20f11e0d10cce4c0f01b727ecafc4ee4ea447395947cf32cd1331705e7402379",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -88,7 +117,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "z3_python",
-    "total_wall_seconds": 5.680726199992932,
+    "total_wall_seconds": 1.0348773100413382,
     "unperformed_instances": []
   },
   "generated_by": {

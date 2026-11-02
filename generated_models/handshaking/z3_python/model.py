@@ -1,91 +1,108 @@
-# Handshaking: Hilary and Jocelyn, a married couple, invite some couples for dinner. People
-# shake hands, but nobody shakes hands with themselves or with their spouse. Jocelyn asks
-# everybody how many hands they shook and all the answers are different. How many hands
-# did Hilary shake?
+# handshaking: a Z3 (Python) model from DCP Rosetta.
+# Download the `handshaking.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python handshaking.py handshaking.json
+
 import z3
 
 
-def build(instance):
-    num_couples = instance["num_couples"]  # couples invited, not counting Hilary and Jocelyn
-    n = 2 + num_couples * 2                # people at the party
+def create_model(instance):
+    """Hilary and Jocelyn are married and invite some couples for dinner. Everybody
+    shakes hands with some of the others, but nobody shakes hands with themselves
+    or with their spouse. Jocelyn asks how many hands each person has shaken and
+    all the answers are different. How many hands has Hilary shaken?"""
+    num_couples = instance["num_couples"]  # the number of couples invited, not counting Hilary and Jocelyn
+    n_people = 2 + num_couples * 2         # everybody at the party
 
-    # Couples are placed side by side: person 2k and person 2k + 1 are married. Hilary is
-    # person 0 and Jocelyn is person 1.
+    # Hilary is person 0 and Jocelyn is person 1. Persons 2k and 2k + 1 are a married couple.
     def spouses(i, j):
         return i // 2 == j // 2
 
-    # shake[(i, j)] (for i < j) is true if persons i and j shook hands. Handshaking is
-    # symmetric (i shakes hands with j exactly when j shakes hands with i), so one Boolean
-    # per unordered pair serves both directions. Nobody shakes hands with themselves, and
-    # nobody with their spouse, so those pairs have no Boolean.
-    shake = {}
-    for i in range(n):
-        for j in range(i + 1, n):
+    # shook[(i, j)] for i < j is true when persons i and j shake hands. A handshake
+    # is shared by both people, so each pair has one variable. Nobody shakes hands
+    # with themselves or with their spouse, so those pairs have none.
+    shook = {}
+    for i in range(n_people):
+        for j in range(i + 1, n_people):
             if not spouses(i, j):
-                shake[(i, j)] = z3.Bool(f"shake_{i}_{j}")
+                shook[(i, j)] = z3.Bool(f"shook_{i}_{j}")
 
     def hands_of(i):
-        """The Booleans of the handshakes person i may have taken part in."""
-        return [shake[(min(i, j), max(i, j))] for j in range(n) if j != i and not spouses(i, j)]
+        # The handshakes person i may take part in.
+        return [shook[(min(i, j), max(i, j))]
+                for j in range(n_people) if j != i and not spouses(i, j)]
 
-    # hil is the number of hands Hilary (person 0) shook.
+    # has[i][v] is true when person i has shaken exactly v hands. Nobody shakes more
+    # than n_people - 2 hands: not their own, and not their spouse's.
+    has = [[z3.Bool(f"has_{i}_{v}") for v in range(n_people - 1)] for i in range(n_people)]
+    # The number of hands Hilary has shaken, which is the answer.
     hil = z3.Int("hil")
-
-    # has[i][v] is true if person i shook exactly v hands. A person shakes at most n - 2
-    # hands: nobody's hand twice, and not their own or their spouse's. Booleans are used
-    # for the "all answers are different" constraint because Z3 solves Distinct over sums
-    # of Booleans slowly; "each count 0..n-2 is given by exactly one person" is a
-    # pseudo-Boolean equality over these literals.
-    has = [[z3.Bool(f"has_{i}_{v}") for v in range(n - 1)] for i in range(n)]
 
     solver = z3.Solver()
 
-    # has[i][v] holds exactly when person i shook v hands.
-    for i in range(n):
-        lits = [(h, 1) for h in hands_of(i)]
-        for v in range(n - 1):
-            solver.add(has[i][v] == z3.PbEq(lits, v))
-        solver.add(z3.PbEq([(has[i][v], 1) for v in range(n - 1)], 1))
+    # Each person has shaken exactly one of the counts from 0 to n_people - 2, and
+    # has[i][v] says which one.
+    for i in range(n_people):
+        shakes = [(h, 1) for h in hands_of(i)]
+        for v in range(n_people - 1):
+            solver.add(has[i][v] == z3.PbEq(shakes, v))
+        solver.add(z3.PbEq([(has[i][v], 1) for v in range(n_people - 1)], 1))
 
-    # Hilary's count is the number of hands Hilary shook.
+    # Hilary's count is the number of handshakes Hilary takes part in.
     solver.add(hil == z3.Sum([z3.If(h, 1, 0) for h in hands_of(0)]))
-    solver.add(hil >= 0, hil <= n - 2)
+    solver.add(hil >= 0, hil <= n_people - 2)
 
-    # All the answers are different, except Hilary's (Hilary is the one who asks): the
-    # n - 1 other people give n - 1 different counts out of the n - 1 possible counts
-    # 0..n-2, so every count is given by exactly one of them.
-    for v in range(n - 1):
-        solver.add(z3.PbEq([(has[i][v], 1) for i in range(1, n)], 1))
+    # Jocelyn and the invited people all gave different answers, so each count from
+    # 0 to n_people - 2 is given by exactly one of them.
+    for v in range(n_people - 1):
+        solver.add(z3.PbEq([(has[i][v], 1) for i in range(1, n_people)], 1))
 
-    # Implied constraint, from this argument. The person with n - 2 handshakes shook every
-    # hand but their spouse's, so the person with 0 handshakes must be that spouse. Taking
-    # both away lowers every other count by 1 and leaves the same situation with 2 people
-    # fewer. So the couples are the pairs of people with counts v and n - 2 - v. (Hilary
-    # asks, so is not one of the people with a count; Jocelyn, whose spouse is Hilary, then has the
-    # middle count.)
-    for i in range(1, n):
+    # The person who shook n_people - 2 hands shook everybody except their spouse, so
+    # that spouse shook no hands. Removing the couple leaves the same party with two
+    # people fewer, so each other couple has counts v and n_people - 2 - v. Jocelyn's
+    # spouse is Hilary, who is not counted, so Jocelyn has the middle count.
+    for i in range(1, n_people):
         s = i + 1 if i % 2 == 0 else i - 1  # the spouse of person i
-        for v in range(n - 1):
-            if v == n - 2 - v:
+        for v in range(n_people - 1):
+            if v == n_people - 2 - v:
                 continue
             if s == 0:
                 solver.add(z3.Not(has[i][v]))
             else:
-                solver.add(z3.Implies(has[i][v], has[s][n - 2 - v]))
+                solver.add(z3.Implies(has[i][v], has[s][n_people - 2 - v]))
 
-    # Symmetry breaking (not part of the reference). The invited couples (persons 2..n-1)
-    # can be renamed freely: swapping the two spouses of a couple, or swapping two couples,
-    # gives another valid party with the same count for Hilary. So, with x[i] the count
-    # of person i, the spouse with the smaller count comes first in each couple, and the
-    # couples are ordered by the count of their first spouse. All the counts of persons
-    # 1..n-1 are different, so these are strict orders.
-    x = [z3.Int(f"x_{i}") for i in range(n)]
-    for i in range(1, n):
-        for v in range(n - 1):
+    # x[i] is the number of hands person i has shaken.
+    x = [z3.Int(f"x_{i}") for i in range(n_people)]
+    for i in range(1, n_people):
+        for v in range(n_people - 1):
             solver.add(z3.Implies(has[i][v], x[i] == v))
+
+    # The invited couples can be renamed freely, so their order is fixed: within each
+    # couple the spouse with the smaller count comes first, and the couples follow in
+    # the order of their first spouse's count.
     for k in range(1, num_couples + 1):
         solver.add(x[2 * k] < x[2 * k + 1])
         if k > 1:
             solver.add(x[2 * k - 2] < x[2 * k])
 
     return solver, {"hil": hil}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

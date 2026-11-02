@@ -1,79 +1,90 @@
-# Cabling: place the devices in the slots of a rack, one device per slot, so that
-# the total length of all the cables between devices is as short as possible.
+# cabling: a Z3 (Python) model from DCP Rosetta.
+# Download the `cabling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python cabling.py cabling.json
+
 import z3
 
 
-def build(instance):
-    n = instance["n"]                        # number of devices (and rack slots)
-    devices = instance["devices"]            # device names
-    cable_struct = instance["cable_struct"]  # [device, device, number of cables] rows
+def create_model(instance):
+    """Devices are placed one above another in a rack, one per slot, and some are joined by
+    one or several cables. Order the devices so that the sum of all cable lengths is as short
+    as possible."""
+    n = instance["n"]                        # the number of devices, and of rack slots
+    devices = instance["devices"]            # devices[i]: the name of device i
+    cable_struct = instance["cable_struct"]  # each entry [a, b, count]: count cables join devices a and b
 
-    # Turn the device names into indices.
-    device_map = {name: i for i, name in enumerate(devices)}
-    cables = [(device_map[a], device_map[b], num) for a, b, num in cable_struct]
+    # Cables name devices by their name; turn each into the index of the device.
+    links = [(devices.index(a), devices.index(b), count) for a, b, count in cable_struct]
 
-    # at[d][p] is true if device d is placed in rack slot p. Each device takes exactly
-    # one slot and each slot holds exactly one device (all devices have distinct
-    # positions). Booleans are used instead of an integer slot per device so that
-    # cable lengths can be counted without Abs, which Z3 solves slowly.
-    at = [[z3.Bool(f"at_{d}_{p}") for p in range(n)] for d in range(n)]
-    # before[d][k] is true if device d sits in one of the slots 0..k-1 (before the gap k).
-    before = [[z3.Bool(f"before_{d}_{k}") for k in range(n)] for d in range(n)]
-    # t[i] is the total length of the cables of row i.
-    t = [z3.Int(f"t_{i}") for i in range(len(cables))]
-    # final_sum is the total length of all cables.
+    # slot[d] is the rack slot of device d, counted from the bottom
+    slot = [z3.Int(f"slot_{d}") for d in range(n)]
+    # length[k] is the total length of the cables of link k
+    length = [z3.Int(f"length_{k}") for k in range(len(links))]
+    # final_sum is the sum of all cable lengths
     final_sum = z3.Int("final_sum")
 
-    solver = z3.Solver()
+    solver = z3.Optimize()
 
-    # Every device takes exactly one slot, every slot holds exactly one device.
-    for d in range(n):
-        solver.add(z3.PbEq([(at[d][p], 1) for p in range(n)], 1))
-    for p in range(n):
-        solver.add(z3.PbEq([(at[d][p], 1) for d in range(n)], 1))
+    # Each device sits in one of the n rack slots, and no two devices share a slot.
+    solver.add([z3.And(s >= 0, s <= n - 1) for s in slot])
+    solver.add(z3.Distinct(slot))
 
-    # before[d][k] says that the slot of d is below k.
-    for d in range(n):
-        for k in range(n):
-            solver.add(before[d][k] == z3.Or([at[d][p] for p in range(k)]))
-    # Implied: exactly k devices lie in the first k slots.
-    for k in range(n):
-        solver.add(z3.PbEq([(before[d][k], 1) for d in range(n)], k))
+    # below[d][g]: device d sits in a slot under gap g, where gap g lies between slots
+    # g - 1 and g. A cable crosses a gap when exactly one of its two devices is under it,
+    # so its length is the number of gaps it crosses, and the cables of a link have that
+    # length times their number.
+    below = [[slot[d] < g for g in range(n)] for d in range(n)]
+    for k, (a, b, count) in enumerate(links):
+        crossed = [z3.If(below[a][g] != below[b][g], count, 0) for g in range(1, n)]
+        solver.add(length[k] == z3.Sum(crossed))
 
-    # A cable between devices a and b is as long as the distance between their slots,
-    # which is the number of gaps k (between slot k - 1 and slot k) that separate them:
-    # exactly one of the two devices is before the gap. A row of `num` cables
-    # counts each separating gap `num` times.
-    for i, (a, b, num) in enumerate(cables):
-        gaps = [z3.If(before[a][k] != before[b][k], num, 0) for k in range(1, n)]
-        solver.add(t[i] == z3.Sum(gaps))
-        # The reference bounds each row's length between 1 and n * n.
-        solver.add(t[i] >= 1, t[i] <= n * n)
+    # Under gap g there are exactly g devices, since the n devices fill the n slots.
+    for g in range(1, n):
+        solver.add(z3.Sum([z3.If(below[d][g], 1, 0) for d in range(n)]) == g)
 
-    # The total is the sum of the lengths of all rows, with the reference's bounds.
-    solver.add(final_sum == z3.Sum(t))
-    solver.add(final_sum >= 0, final_sum <= n * n * sum(c[2] for c in cables))
+    # The sum of all cable lengths is the sum over all links.
+    solver.add(final_sum == z3.Sum(length))
 
-    # Mirror symmetry. The mirror image of an arrangement (slot p moved to n - 1 - p)
-    # has the same total length, so it is enough to look at arrangements where device 0
-    # is in the first half of the rack. The only declared output is the total length,
-    # which this does not change.
-    solver.add(z3.Or([at[0][p] for p in range((n + 1) // 2)]))
+    # Reversing the rack (slot p becomes slot n - 1 - p) keeps every cable length, so
+    # device 0 can be assumed to sit in one of the first (n + 1) // 2 slots.
+    solver.add(slot[0] < (n + 1) // 2)
 
-    # Implied constraint, a lower bound on the total length. The cables at one device
-    # go to distinct devices, which sit in distinct slots, so at best two neighbours
-    # are 1 slot away, two are 2 slots away, and so on; the neighbours with the most
-    # cables should be the closest. Summing this best case over all devices counts
-    # every cable twice (once from each end), so twice the total is at least that sum.
-    cables_between = {}
-    for a, b, num in cables:
+    # Cables between the same two devices count together. A device can have at most two
+    # neighbours one slot away, two neighbours two slots away, and so on, and its cables
+    # go to the nearest neighbours first. Each cable is counted from both of its ends,
+    # so twice the total length is at least the sum of these best cases.
+    pair_counts = {}
+    for a, b, count in links:
         key = (min(a, b), max(a, b))
-        cables_between[key] = cables_between.get(key, 0) + num
-    best_case_sum = 0
+        pair_counts[key] = pair_counts.get(key, 0) + count
+    best_case = 0
     for d in range(n):
-        weights = sorted((w for (a, b), w in cables_between.items() if d in (a, b)), reverse=True)
-        best_case_sum += sum(w * ((j + 2) // 2) for j, w in enumerate(weights))
-    solver.add(2 * final_sum >= best_case_sum)
+        counts = sorted((c for (a, b), c in pair_counts.items() if d in (a, b)), reverse=True)
+        best_case += sum(c * ((j + 2) // 2) for j, c in enumerate(counts))
+    solver.add(2 * final_sum >= best_case)
 
-    # Make the total cable length as short as possible.
-    return solver, {"final_sum": final_sum}, ("minimize", final_sum)
+    # Make the sum of all cable lengths as short as possible.
+    solver.minimize(final_sum)
+
+    return solver, {"final_sum": final_sum}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

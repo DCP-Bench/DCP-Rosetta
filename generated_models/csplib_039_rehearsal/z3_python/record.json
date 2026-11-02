@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
     "attempt_id": "attempt-001",
-    "created_at": 1790695527.4894063,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793616434.8544369,
     "problem_id": "csplib_039_rehearsal",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,41 +18,62 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20260929T1400Z-z3-mzn-swipl-7a2e",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "7be5c182a2568646e40c8f29d21f71572a6dc19e",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.7811022999230772,
-        "execution_wall_seconds": 119.52028689999133,
+        "checking_seconds": 0.32789835100993514,
+        "execution_wall_seconds": 23.660599795985036,
         "first_solution": {
           "rehearsal_order": [
-            8,
-            3,
+            2,
+            7,
+            1,
+            6,
+            0,
             5,
             4,
-            0,
-            6,
-            1,
-            7,
-            2
+            3,
+            8
           ]
         },
         "id": "example",
@@ -60,9 +85,12 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 5.937587399967015,
+        "reference_setup_seconds": 1.3788232419174165,
         "runner_status": {
+          "build_seconds": 0.13082537101581693,
           "detail": "",
+          "main_seconds": 23.200040863011964,
+          "read_seconds": 0.0002186389174312353,
           "status": "limit",
           "type": "status"
         },
@@ -72,8 +100,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.2633570999605581,
-        "execution_wall_seconds": 2.7122905999422073,
+        "checking_seconds": 0.09121629199944437,
+        "execution_wall_seconds": 0.5495702479965985,
         "first_solution": {
           "rehearsal_order": [
             2,
@@ -92,9 +120,12 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.711823599995114,
+        "reference_setup_seconds": 0.6164646400138736,
         "runner_status": {
+          "build_seconds": 0.027633816935122013,
           "detail": "",
+          "main_seconds": 0.08993116393685341,
+          "read_seconds": 0.00015328696463257074,
           "status": "limit",
           "type": "status"
         },
@@ -104,16 +135,16 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.37143709999509156,
-        "execution_wall_seconds": 3.209090800024569,
+        "checking_seconds": 0.17581448797136545,
+        "execution_wall_seconds": 0.8045141389593482,
         "first_solution": {
           "rehearsal_order": [
             2,
             0,
             1,
             4,
-            5,
-            3
+            3,
+            5
           ]
         },
         "id": "json:2",
@@ -125,9 +156,12 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.76874199998565,
+        "reference_setup_seconds": 0.6082553619053215,
         "runner_status": {
+          "build_seconds": 0.0431625519413501,
           "detail": "",
+          "main_seconds": 0.32287883292883635,
+          "read_seconds": 0.00015773100312799215,
           "status": "limit",
           "type": "status"
         },
@@ -137,18 +171,18 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.40960679994896054,
-        "execution_wall_seconds": 4.830342200002633,
+        "checking_seconds": 0.15849893307313323,
+        "execution_wall_seconds": 2.8546787910163403,
         "first_solution": {
           "rehearsal_order": [
-            1,
+            5,
+            0,
+            2,
+            6,
             4,
             3,
             7,
-            6,
-            2,
-            0,
-            5
+            1
           ]
         },
         "id": "json:3",
@@ -160,9 +194,12 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.543478299980052,
+        "reference_setup_seconds": 0.7301838889252394,
         "runner_status": {
+          "build_seconds": 0.05807875003665686,
           "detail": "",
+          "main_seconds": 2.3797943079844117,
+          "read_seconds": 0.00016945903189480305,
           "status": "limit",
           "type": "status"
         },
@@ -172,17 +209,17 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6124500000150874,
-        "execution_wall_seconds": 11.311315499944612,
+        "checking_seconds": 0.28397475206293166,
+        "execution_wall_seconds": 5.163879462983459,
         "first_solution": {
           "rehearsal_order": [
-            1,
-            5,
-            0,
-            6,
-            4,
+            2,
             3,
-            2
+            4,
+            6,
+            0,
+            5,
+            1
           ]
         },
         "id": "json:4",
@@ -194,9 +231,12 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.827143899980001,
+        "reference_setup_seconds": 0.7387750550406054,
         "runner_status": {
+          "build_seconds": 0.08991924102883786,
           "detail": "",
+          "main_seconds": 4.6926253660349175,
+          "read_seconds": 0.0001695690443739295,
           "status": "limit",
           "type": "status"
         },
@@ -208,21 +248,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "efdad38cb414f257bbb2135dc6b0bd25efe372818050bab5d57a3ac324389a0a",
+    "model_hash": "ceeae05ad99725ef5ad06481aaae6f69f19df3b77009062624c9fd028a6de061",
     "problem_id": "csplib_039_rehearsal",
     "reason": "accepted",
     "reference_hash": "6786341df2caae8f1180c2fbf2d77f729cec3a64991d81e0e1758cafa1a67147",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -233,7 +273,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "z3_python",
-    "total_wall_seconds": 163.7111299999524,
+    "total_wall_seconds": 38.47519442602061,
     "unperformed_instances": []
   },
   "generated_by": {

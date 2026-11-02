@@ -1,59 +1,81 @@
-# Mario's gold: Mario drives from his house to Luigi's house through some of the other houses,
-# collecting the gold in each house he visits, with a limited amount of fuel. The route is
-# written as the successor of each house; maximize the gold collected.
+# mario: a Z3 (Python) model from DCP Rosetta.
+# Download the `mario.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/mario.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python mario.py mario.json
+
 import z3
 
 
-def build(instance):
-    n = instance["nHouses"]
-    mario = instance["marioHouse"]       # 0-indexed
-    luigi = instance["luigiHouse"]       # 0-indexed
-    fuel_limit = instance["fuelLimit"]
-    arc_fuel = instance["arc_fuel"]      # arc_fuel[i][j] = fuel to drive from house i to j
-    gold_in_house = instance["goldInHouse"]
+def create_model(instance):
+    """Mario drives from his house to Luigi's house, through some of the other houses,
+    and collects the gold in every house he visits. The drive uses at most the fuel
+    limit. The route with the most gold is the answer."""
+    n_houses = instance["nHouses"]           # the number of houses, numbered 0 to n_houses - 1
+    mario = instance["marioHouse"]           # the house Mario starts from
+    luigi = instance["luigiHouse"]           # the house Mario drives to at the end
+    fuel_limit = instance["fuelLimit"]       # the most fuel the drive may use
+    arc_fuel = instance["arc_fuel"]          # arc_fuel[i][j]: the fuel to drive from house i to house j
+    gold_in_house = instance["goldInHouse"]  # gold_in_house[i]: the gold in house i
 
-    # s[i] is the house after house i on the route, and s[i] = i if house i is not on the
-    # route. Luigi's house is followed by Mario's house, which closes the route into a cycle.
-    s = [z3.Int(f"s_{i}") for i in range(n)]
-    # go[i][j] is true if s[i] = j. Used so that the fuel and the gold are plain sums.
-    go = [[s[i] == j for j in range(n)] for i in range(n)]
-    # order[i] is the rank of house i on the route from Mario's house (rank 1) to Luigi's.
-    order = [z3.Int(f"order_{i}") for i in range(n)]
+    # succ[i] is the house Mario drives to straight after house i. A house off the route is its own successor.
+    succ = [z3.Int(f"succ_{i}") for i in range(n_houses)]
 
-    solver = z3.Solver()
+    # drives[i][j] is true when the route goes straight from house i to house j.
+    drives = [[succ[i] == j for j in range(n_houses)] for i in range(n_houses)]
 
-    for i in range(n):
-        solver.add(s[i] >= 0, s[i] <= n - 1)
-        solver.add(order[i] >= 1, order[i] <= n)
+    # rank[i] is the place of house i on the route: Mario's house is first (rank 1), and the ranks count up along the route.
+    rank = [z3.Int(f"rank_{i}") for i in range(n_houses)]
 
-    # Every house is the successor of exactly one house, itself included (the successors are
-    # all different). This is a pseudo-Boolean equality per house, which Z3 handles better
-    # than Distinct.
-    for j in range(n):
-        solver.add(z3.PbEq([(go[i][j], 1) for i in range(n)], 1))
+    solver = z3.Optimize()
 
-    # The route starts at Mario's house, which has rank 1, and ends at Luigi's house, which
-    # is followed by Mario's house.
-    solver.add(order[mario] == 1)
-    solver.add(s[luigi] == mario)
+    # Every house number is a house, and every rank is between 1 and n_houses.
+    for i in range(n_houses):
+        solver.add(succ[i] >= 0, succ[i] <= n_houses - 1, rank[i] >= 1, rank[i] <= n_houses)
 
-    # Rank progression: for a house on the route, its successor has the next rank, except
-    # for the last arc from Luigi's house back to Mario's. The ranks increase along the
-    # route, so no separate cycle (subtour) can exist among the other houses. The reference
-    # also makes all ranks different and puts the ranks of the houses off the route
-    # after Luigi's rank; both can always be arranged for any route, so they are left out.
-    for i in range(n):
-        for j in range(n):
+    # Every house is driven to from exactly one house, itself included.
+    for j in range(n_houses):
+        solver.add(z3.PbEq([(drives[i][j], 1) for i in range(n_houses)], 1))
+
+    # The route starts at Mario's house, which has rank 1.
+    solver.add(rank[mario] == 1)
+
+    # The route ends at Luigi's house, which is followed by Mario's house.
+    solver.add(succ[luigi] == mario)
+
+    # Along the route the rank rises by one at each drive, except the drive back into Mario's house that closes the route.
+    # So the route cannot split into separate loops.
+    for i in range(n_houses):
+        for j in range(n_houses):
             if j != i and j != mario:
-                solver.add(z3.Implies(go[i][j], order[j] == order[i] + 1))
+                solver.add(z3.Implies(drives[i][j], rank[j] == rank[i] + 1))
 
-    # Fuel: the arcs of the route (the arc from each house to its successor, with a house
-    # off the route costing arc_fuel[i][i]) use at most the fuel limit.
-    fuel = z3.Sum([z3.If(go[i][j], arc_fuel[i][j], 0) for i in range(n) for j in range(n)])
-    solver.add(fuel <= fuel_limit)
+    # The fuel for the drive from each house to the next stays within the limit. A house off the route costs arc_fuel[i][i].
+    fuel_used = z3.Sum([z3.If(drives[i][j], arc_fuel[i][j], 0) for i in range(n_houses) for j in range(n_houses)])
+    solver.add(fuel_used <= fuel_limit)
 
-    # Gold collected: the gold of every house that is on the route (s[i] != i).
-    gold = z3.Sum([z3.If(go[i][i], 0, gold_in_house[i]) for i in range(n)])
+    # The gold collected in the houses on the route. A house off the route gives nothing.
+    total_gold = z3.Sum([z3.If(drives[i][i], 0, gold_in_house[i]) for i in range(n_houses)])
 
-    # Maximize the gold.
-    return solver, {"s": s}, ("maximize", gold)
+    solver.maximize(total_gold)
+
+    return solver, {"s": succ}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

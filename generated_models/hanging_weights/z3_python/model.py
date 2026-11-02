@@ -1,39 +1,56 @@
-# Hanging weights: thirteen weights A-M hang from a system of bars, each weight
-# an integer from 1 to 13. Find the weights for which every bar balances.
+# hanging_weights: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python hanging_weights.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own diagram
+def create_model(instance):
+    """Thirteen weights A to M, each an integer from 1 to 13, hang from a system of
+    bars. Find the weights that make every pivot balance, where the weights on either
+    side of a pivot are equal when weighted by their distance from the pivot."""
+    max_weight = 13  # the largest weight; the smallest is 1
 
-    N = 13
+    # a to m are the weights A to M.
     a, b, c, d, e, f, g, h, i, j, k, l, m = weights = z3.Ints("a b c d e f g h i j k l m")
 
     solver = z3.Solver()
 
-    # Each weight has an integer value between 1 and 13, and all weights differ.
-    for w in weights:
-        solver.add(w >= 1, w <= N)
+    # Each weight is an integer from 1 to 13, and no two weights are equal.
+    solver.add([z3.And(w >= 1, w <= max_weight) for w in weights])
     solver.add(z3.Distinct(weights))
 
-    # Bottom bars: on each, the weights on both sides of the pivot balance when
-    # multiplied by their distance from it.
-    solver.add(4 * a == b)
-    solver.add(5 * c == d)
-    solver.add(3 * e == 2 * f)
+    # Bottom bars: the weights on either side of the pivot balance when weighted by
+    # their distance from it.
+    solver.add(4 * a == b, 5 * c == d, 3 * e == 2 * f)
 
-    # A bar hanging beneath another counts as one weight equal to its total, so
-    # the bars above use the sums of the weights hanging below them.
-    # Bar of G, with the bar (C, D) hanging below it:
+    # A bar hanging under another bar counts as one weight equal to its total load.
+    # The bar holding G has the C-D bar hanging from it.
     solver.add(3 * g == 2 * (c + d))
-    # Bar of J and K, with the bars (A, B) and (G, C, D) hanging below it:
+    # The bar holding J and K has the A-B bar and the G bar (with C and D) hanging from it.
     solver.add(3 * (a + b) + 2 * j == k + 2 * (g + c + d))
-    # Bar of H and I, with the bar (E, F) hanging below it:
+    # The bar holding H and I has the E-F bar hanging from it.
     solver.add(3 * h == 2 * (e + f) + 3 * i)
-    # Bar of L and M, with the system (H, I, E, F) hanging from it:
-    solver.add((h + i + e + f) == l + 4 * m)
-    # Top bar: everything hanging on one side balances everything on the other.
+    # The bar holding L and M has the H-I bar (with E and F) hanging from it.
+    solver.add(h + i + e + f == l + 4 * m)
+
+    # The top bar balances the L-M side against the J-K side.
     solver.add(4 * (l + m + h + i + e + f) == 3 * (j + k + g + a + b + c + d))
 
     return solver, {"a": a, "b": b, "c": c, "d": d, "e": e, "f": f, "g": g,
                     "h": h, "i": i, "j": j, "k": k, "l": l, "m": m}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

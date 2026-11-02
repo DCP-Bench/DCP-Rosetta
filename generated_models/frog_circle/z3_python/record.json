@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790919507.283948,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793616849.3482862,
     "problem_id": "frog_circle",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,43 +18,64 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20261001T1218Z-z3-7692",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "c5305894482e34d2515260ed2adf66d50d68cd98",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.04901350010186434,
-        "execution_wall_seconds": 3.8030008000787348,
+        "checking_seconds": 0.029437314020469785,
+        "execution_wall_seconds": 1.2012721440987661,
         "first_solution": {
           "x": [
             1,
-            4,
             7,
             5,
-            10,
-            2,
-            12,
-            9,
             3,
-            6,
+            10,
+            4,
+            12,
             8,
+            9,
+            2,
+            6,
             11
           ]
         },
@@ -63,9 +88,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0394252999685705,
+        "reference_setup_seconds": 0.7336852489970624,
         "runner_status": {
+          "build_seconds": 0.25524257798679173,
           "detail": "",
+          "main_seconds": 0.6715341629460454,
+          "read_seconds": 0.00021316693164408207,
           "status": "limit",
           "type": "status"
         },
@@ -75,8 +103,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.00918749999254942,
-        "execution_wall_seconds": 1.7215256998315454,
+        "checking_seconds": 0.006593970931135118,
+        "execution_wall_seconds": 0.49931697302963585,
         "first_solution": {
           "x": [
             1,
@@ -94,9 +122,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.710115199908614,
+        "reference_setup_seconds": 0.5887772110290825,
         "runner_status": {
+          "build_seconds": 0.021472671069204807,
           "detail": "",
+          "main_seconds": 0.029968011076562107,
+          "read_seconds": 0.00017604604363441467,
           "status": "complete",
           "type": "status"
         },
@@ -106,8 +137,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03092869999818504,
-        "execution_wall_seconds": 1.6427744999527931,
+        "checking_seconds": 0.024037591996602714,
+        "execution_wall_seconds": 0.6000354840653017,
         "first_solution": {
           "x": [
             1,
@@ -129,9 +160,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.261956400005147,
+        "reference_setup_seconds": 0.6317557039437816,
         "runner_status": {
+          "build_seconds": 0.07575376704335213,
           "detail": "",
+          "main_seconds": 0.13138455606531352,
+          "read_seconds": 0.0001601900439709425,
           "status": "limit",
           "type": "status"
         },
@@ -141,20 +175,20 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03776469989679754,
-        "execution_wall_seconds": 2.0602341999765486,
+        "checking_seconds": 0.02283114893361926,
+        "execution_wall_seconds": 0.9009462510002777,
         "first_solution": {
           "x": [
             1,
-            2,
-            7,
+            6,
             3,
-            4,
-            10,
-            8,
             5,
             9,
-            6
+            10,
+            8,
+            2,
+            4,
+            7
           ]
         },
         "id": "json:3",
@@ -166,9 +200,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.374007700011134,
+        "reference_setup_seconds": 0.6273828870616853,
         "runner_status": {
+          "build_seconds": 0.14437508501578122,
           "detail": "",
+          "main_seconds": 0.3973107519559562,
+          "read_seconds": 0.00017160293646156788,
           "status": "limit",
           "type": "status"
         },
@@ -178,26 +215,26 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.06297919992357492,
-        "execution_wall_seconds": 11.399277499876916,
+        "checking_seconds": 0.04909208801109344,
+        "execution_wall_seconds": 6.901561924023554,
         "first_solution": {
           "x": [
             1,
-            3,
+            10,
             12,
-            9,
-            2,
+            7,
             5,
             13,
-            8,
-            16,
-            4,
-            14,
-            7,
+            9,
             15,
-            10,
+            16,
+            3,
+            14,
+            2,
             11,
-            6
+            8,
+            6,
+            4
           ]
         },
         "id": "json:4",
@@ -209,9 +246,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.213933600112796,
+        "reference_setup_seconds": 1.1295711499406025,
         "runner_status": {
+          "build_seconds": 0.5132439860608429,
           "detail": "",
+          "main_seconds": 6.357296878937632,
+          "read_seconds": 0.0001702259760349989,
           "status": "limit",
           "type": "status"
         },
@@ -223,21 +263,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "44a3d76a139246f6d558c04401faafcd1bf09f479d3d6c0eeffa3447f44b8f1d",
+    "model_hash": "a06b61178a716e9300dd4065f3b0441c9100629d26e51fcb11618d546b3e2f34",
     "problem_id": "frog_circle",
     "reason": "accepted",
     "reference_hash": "1af7d61a410c4564abaeb94abaca1c085bba1e4a5f044c185c4d07c56d88f905",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -248,7 +288,7 @@
     "skipped_instances": [],
     "solutions_checked": 9,
     "solver_id": "z3_python",
-    "total_wall_seconds": 36.14722299994901,
+    "total_wall_seconds": 14.353285211953335,
     "unperformed_instances": []
   },
   "generated_by": {

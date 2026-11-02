@@ -1,41 +1,58 @@
-# Best host: seat six guests around a round table so that every guest sits only
-# next to the two guests he or she is willing to sit beside, i.e. with no conflict.
+# best_host: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/best_host.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python best_host.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own guests and preferences
+def create_model(instance):
+    """Six guests sit around a round dinner table. Each guest will only sit next to
+    two particular guests. Find a seating order in which every guest sits between
+    two guests they will sit next to."""
+    n = 6  # the number of guests and seats
 
-    n = 6
-    Andrew, Betty, Cara, Dave, Erica, Frank = range(n)
+    # The guests are numbered 0 to 5: Andrew, Betty, Cara, Dave, Erica, Frank.
+    andrew, betty, cara, dave, erica, frank = range(n)
 
-    # Problem data (fixed by the puzzle text): prefs[g] lists the only two guests
-    # that guest g will sit next to.
+    # prefs[g] lists the two guests that guest g will sit next to.
     prefs = [
-        [Dave, Frank],   # Andrew
-        [Cara, Erica],   # Betty
-        [Betty, Frank],  # Cara
-        [Andrew, Erica],  # Dave
-        [Betty, Dave],   # Erica
-        [Andrew, Cara],  # Frank
+        [dave, frank],    # Andrew
+        [cara, erica],    # Betty
+        [betty, frank],   # Cara
+        [andrew, erica],  # Dave
+        [betty, dave],    # Erica
+        [andrew, cara],   # Frank
     ]
 
-    # x[i] = the guest sitting in seat i (0 Andrew, 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank).
-    x = z3.IntVector("x", n)
+    # x[i] is the guest in seat i. The table is round, so seat 0 is next to seat 5.
+    x = [z3.Int(f"x_{i}") for i in range(n)]
 
     solver = z3.Solver()
-    for seat in x:
-        solver.add(seat >= 0, seat <= n - 1)
 
-    # Every guest takes exactly one seat.
+    # Each seat holds one of the guests 0 to 5.
+    solver.add([z3.And(0 <= seat, seat <= n - 1) for seat in x])
+
+    # Each guest takes exactly one seat.
     solver.add(z3.Distinct(x))
 
-    # The guests in the two seats beside seat i (the table is round) must both be
-    # among the guests the person in seat i accepts as neighbours. Z3 has no Element
-    # constraint, so the lookup prefs[x[i]] is spelled out for each possible guest g.
-    for i in range(n):
-        for g in range(n):
-            for neighbour in (x[(i - 1) % n], x[(i + 1) % n]):
-                solver.add(z3.Implies(x[i] == g, z3.Or([neighbour == p for p in prefs[g]])))
+    # The two guests beside the guest in seat i are both on that guest's list.
+    solver.add([z3.Implies(x[i] == g, z3.Or([neighbour == p for p in prefs[g]]))
+                for i in range(n) for g in range(n)
+                for neighbour in (x[(i - 1) % n], x[(i + 1) % n])])
 
-    return solver, {"x": list(x)}
+    return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

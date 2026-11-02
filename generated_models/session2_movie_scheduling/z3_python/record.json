@@ -2,7 +2,11 @@
   "attempt": {
     "agent": "claude-opus-5, interactive session, coordinator and modeller",
     "attempt_id": "attempt-001",
-    "created_at": 1789473192.8404808,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793617062.1521668,
     "problem_id": "session2_movie_scheduling",
     "profile": {
       "compilation_timeout": 120,
@@ -14,54 +18,241 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "b48cb73f73484be4a0e2286eb42261aafc646e54adedb8dc31d2ba8692c06d0b",
-    "run_id": "breadth3-20260915",
-    "schema": 2,
-    "skill_bundle_hash": "9272081bfe9a8a31cf01fca6618b3e08c2cc94213b2480403569c064643f2c68",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "51c2a7919fac29305f6a209c39bbf6b1e2fe3dea",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.01472869998542592,
-        "execution_wall_seconds": 0.9704778000013903,
+        "checking_seconds": 0.010991880088113248,
+        "execution_wall_seconds": 0.4999815879855305,
         "first_solution": {
           "selected_movies": [
             false,
             false,
-            false,
+            true,
+            true,
             false,
             false,
             true,
-            true,
-            true,
+            false,
             true
           ]
         },
         "id": "example",
         "instance_hash": "c63f2604ca46c4ef39e0bce4b08278b51fffa7aab5afe5d606c067b304a4f65a",
         "is_optimization": true,
+        "oom_killed": false,
         "optimum": 4,
         "outputs": [
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0542256999760866,
+        "reference_setup_seconds": 0.5621194279519841,
         "runner_status": {
+          "build_seconds": 0.00917816604487598,
           "detail": "",
+          "main_seconds": 0.023098393925465643,
+          "read_seconds": 0.00016971095465123653,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.0052990110125392675,
+        "execution_wall_seconds": 0.4497475690441206,
+        "first_solution": {
+          "selected_movies": [
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true
+          ]
+        },
+        "id": "json:1",
+        "instance_hash": "04f1898508f4a50c2bfba57b91a7081ff3a825d00601067d19a9a0a4829ac98c",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 4,
+        "outputs": [
+          "selected_movies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5607990820426494,
+        "runner_status": {
+          "build_seconds": 0.007958150934427977,
+          "detail": "",
+          "main_seconds": 0.02029984991531819,
+          "read_seconds": 0.00015945499762892723,
+          "status": "complete",
+          "type": "status"
+        },
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.005596906994469464,
+        "execution_wall_seconds": 0.4990980419097468,
+        "first_solution": {
+          "selected_movies": [
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        },
+        "id": "json:2",
+        "instance_hash": "3f57efec9da8d38622fca9fb1650ea74b3d65af6a1f8b66fffac489d8cec2a52",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 6,
+        "outputs": [
+          "selected_movies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5642700220923871,
+        "runner_status": {
+          "build_seconds": 0.010223070974461734,
+          "detail": "",
+          "main_seconds": 0.02504174900241196,
+          "read_seconds": 0.00022342009469866753,
+          "status": "complete",
+          "type": "status"
+        },
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.010094605037011206,
+        "execution_wall_seconds": 0.49928036297205836,
+        "first_solution": {
+          "selected_movies": [
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            true,
+            false
+          ]
+        },
+        "id": "json:3",
+        "instance_hash": "c1e542bd06340d90a89e43c534ab976e60725b8b821afef32e862749d2849b42",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 4,
+        "outputs": [
+          "selected_movies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5002169840736315,
+        "runner_status": {
+          "build_seconds": 0.01021451991982758,
+          "detail": "",
+          "main_seconds": 0.024920044001191854,
+          "read_seconds": 0.00016876705922186375,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.015473098959773779,
+        "execution_wall_seconds": 0.44913517008535564,
+        "first_solution": {
+          "selected_movies": [
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false
+          ]
+        },
+        "id": "json:4",
+        "instance_hash": "570c4f9d69f17b80f741a52364dba8592aecac4cd8f38d4591fe99baa74382ee",
+        "is_optimization": true,
+        "oom_killed": false,
+        "optimum": 4,
+        "outputs": [
+          "selected_movies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.5518465890781954,
+        "runner_status": {
+          "build_seconds": 0.011913976981304586,
+          "detail": "",
+          "main_seconds": 0.027517847018316388,
+          "read_seconds": 0.0001703340094536543,
           "status": "limit",
           "type": "status"
         },
@@ -70,8 +261,8 @@
         "stderr": ""
       }
     ],
-    "instances_available": 1,
-    "instances_checked": 1,
+    "instances_available": 5,
+    "instances_checked": 5,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -79,15 +270,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "f9ab7acfc4f13979a073c4c4759db2b506f0e9a940ef1ce071d3bbaaa9c09f26",
+    "model_hash": "52b8cd2c51a70afba489266976cecffe98212901791f783273129109606b11e1",
     "problem_id": "session2_movie_scheduling",
     "reason": "accepted",
-    "reference_hash": "a0d21d9f32a015aed7ac3bf25831a7cbeb42e2704d40b01501dd1f4f83769261",
+    "reference_hash": "eb02bc105582c59cb4f25137b0b809721e386cbaab2b7b27be60dbe019e7022f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -96,9 +287,9 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 2,
+    "solutions_checked": 8,
     "solver_id": "z3_python",
-    "total_wall_seconds": 2.4719153000041842,
+    "total_wall_seconds": 5.504065323038958,
     "unperformed_instances": []
   },
   "generated_by": {

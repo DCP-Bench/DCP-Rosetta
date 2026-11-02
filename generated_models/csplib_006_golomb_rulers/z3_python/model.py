@@ -1,173 +1,113 @@
-# Golomb rulers (CSPLib 6): place `size` marks at integer positions 0 = a_1 < a_2 <
-# ... < a_m so that all differences a_j - a_i between two marks are distinct, and make
-# the ruler as short as possible (its length is the position of the last mark).
-#
-# The model is purely Boolean, so Z3 can minimise the length as MaxSAT over its SAT
-# core: each mark is order-encoded (ge[i][p] says mark i lies at position p or
-# beyond), and on[p] says some mark lies at position p. Over positions, "all
-# differences are distinct" becomes "no two pairs of marked positions lie the same
-# distance apart", a set of cardinality constraints with no arithmetic. With integer
-# marks and Distinct over the differences, Z3 does not prove the optimum for 8, 9 or
-# 10 marks within 180 s.
+# csplib_006_golomb_rulers: a Z3 (Python) model from DCP Rosetta.
+# Download the `csplib_006_golomb_rulers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python csplib_006_golomb_rulers.py csplib_006_golomb_rulers.json
+
 import z3
 
 
-def build(instance):
-    size = instance["size"]  # number of marks
+def create_model(instance):
+    """Place size marks on a ruler, the first at position 0, so that the differences between
+    all pairs of marks are distinct. Find the shortest such Golomb ruler."""
+    size = instance["size"]  # the number of marks on the ruler
 
-    # ---- Bounds computed before Z3 runs (plain Python) ----
-
-    class OutOfBudget(Exception):
-        pass
-
-    def ruler_within(marks_wanted, limit, least, budget=None):
-        """A Golomb ruler with marks_wanted marks and length <= limit, or None. least[k]
-        is a lower bound on the length of any k-mark ruler, used to prune. With a
-        budget (of candidate positions tried), None also means it ran out."""
-        marks, diffs, tried = [0], set(), [0]
-
-        def extend():
-            if len(marks) == marks_wanted:
-                return True
-            rest = marks_wanted - len(marks) - 1  # marks still to place after this one
-            # the marks so far plus this one form a ruler of len(marks) + 1 marks, and
-            # this one plus the rest form a ruler of rest + 1 marks
-            first = max(marks[-1] + 1, least[len(marks) + 1])
-            for p in range(first, limit - least[rest + 1] + 1):
-                tried[0] += 1
-                if budget is not None and tried[0] > budget:
-                    raise OutOfBudget
-                new = [p - m for m in marks]
-                if any(d in diffs for d in new):
-                    continue
-                diffs.update(new)
-                marks.append(p)
-                if extend():
-                    return True
-                marks.pop()
-                diffs.difference_update(new)
-            return False
-
-        try:
-            return list(marks) if extend() else None
-        except OutOfBudget:
-            return None
-
-    # least[k] is a lower bound on the length of any Golomb ruler with k marks:
-    #  - its k(k-1)/2 differences are distinct positive integers, so >= k(k-1)/2;
-    #  - removing its last mark leaves a ruler of k - 1 marks, so >= least[k-1] + 1;
-    #  - its first a marks and its last b marks (a + b = k + 1, sharing one mark) are
-    #    rulers whose lengths add up to its length, so >= least[a] + least[b].
-    # For small k (up to 7 marks, and never the instance's own size) the shortest
-    # length is found exactly by exhaustive search.
+    # least[k] is a lower bound on the length of a ruler with k marks. Its k(k-1)/2 differences
+    # are distinct positive numbers. Dropping its last mark leaves a ruler with k - 1 marks.
+    # Cutting it at any mark gives two rulers whose lengths add up to its length.
     least = [0] * (size + 1)
+    for k in range(2, size + 1):
+        least[k] = max([k * (k - 1) // 2, least[k - 1] + 1]
+                       + [least[a] + least[k + 1 - a] for a in range(2, k)])
 
-    def derived(k):
-        if k <= 1:
-            return 0
-        bound = max(k * (k - 1) // 2, least[k - 1] + 1)
-        for a in range(2, k):
-            bound = max(bound, least[a] + least[k + 1 - a])
-        return bound
+    # No mark lies beyond position last_position = size * size.
+    last_position = size * size
 
-    exact_up_to = min(size - 1, 7)
-    for k in range(1, size + 1):
-        least[k] = derived(k)
-        if k <= exact_up_to:
-            while ruler_within(k, least[k], least) is None:
-                least[k] += 1
-
-    # Upper bound on the length: any ruler with `size` marks is at least as long as
-    # the shortest one, so positions beyond the length of a known ruler are never
-    # needed. The first-fit ruler (each mark at the first position that repeats no
-    # difference) gives one; a depth-first search with a fixed budget of tried
-    # positions then looks for shorter ones.
-    def first_fit():
-        marks, diffs = [0], set()
-        while len(marks) < size:
-            p = marks[-1] + 1
-            while any(p - m in diffs for m in marks):
-                p += 1
-            diffs.update(p - m for m in marks)
-            marks.append(p)
-        return marks[-1]
-
-    upper = first_fit()
-    while upper > least[size]:
-        found = ruler_within(size, upper - 1, least, 100000)
-        if found is None:
-            break
-        upper = found[-1]
-    # never beyond the domain the problem itself states for the marks (0 .. size^2)
-    top = min(upper, size * size)
-
-    solver = z3.Solver()
-
-    # ge[i][p] is true when mark i lies at position p or beyond (p = 1 .. top). Mark 0
-    # is the first mark, at 0; no mark lies beyond top.
-    ge = [None] + [[None] + [z3.Bool(f"ge_{i}_{p}") for p in range(1, top + 1)]
+    # ge[i][p] is true when mark i lies at position p or beyond, for positions 1 to last_position.
+    # Mark 0 is at position 0, so it has no row.
+    ge = [None] + [[None] + [z3.Bool(f"ge_{i}_{p}") for p in range(1, last_position + 1)]
                    for i in range(1, size)]
 
     def at_least(i, p):
+        """True when mark i lies at position p or beyond."""
         if p <= 0:
             return z3.BoolVal(True)
-        if p > top or i == 0:
+        if p > last_position or i == 0:
             return z3.BoolVal(False)
         return ge[i][p]
 
+    solver = z3.Optimize()
+
+    # A mark at position p + 1 or beyond is also at position p or beyond.
     for i in range(1, size):
-        for p in range(1, top):
+        for p in range(1, last_position):
             solver.add(z3.Implies(ge[i][p + 1], ge[i][p]))
 
-    # The marks are increasing, and any marks i < j enclose a ruler of j - i + 1 marks,
-    # so mark j lies at least least[j - i + 1] beyond mark i (least[2] = 1 is the
-    # strict increase). Stated per position: mark i at p or beyond puts mark j at
-    # p + least[j - i + 1] or beyond.
+    # The marks are in increasing order. Marks i to j form a ruler with j - i + 1 marks, so they
+    # span at least least[j - i + 1]: mark j lies that far beyond mark i.
     for i in range(size):
         for j in range(i + 1, size):
             gap = least[j - i + 1]
-            for p in range(0, top + 1):
+            for p in range(0, last_position + 1):
                 solver.add(z3.Implies(at_least(i, p), at_least(j, p + gap)))
 
-    # on[p] is true when a mark lies at position p: mark i is at p when it is at p or
-    # beyond but not at p + 1 or beyond. The ruler has exactly `size` marks, so on[]
-    # holds exactly the marked positions.
-    on = [z3.Bool(f"on_{p}") for p in range(top + 1)]
+    # on[p] is true when a mark lies at position p. Mark i is at position p when it is at p or
+    # beyond and not at p + 1 or beyond.
+    on = [z3.Bool(f"on_{p}") for p in range(last_position + 1)]
     for i in range(size):
-        for p in range(top + 1):
+        for p in range(last_position + 1):
             solver.add(z3.Implies(z3.And(at_least(i, p), z3.Not(at_least(i, p + 1))), on[p]))
+
+    # The ruler has exactly size marks.
     solver.add(z3.PbEq([(b, 1) for b in on], size))
 
-    # All differences between two marks are distinct: no two pairs of marked
-    # positions (p, p + d) and (q, q + d) lie the same distance d apart.
-    for d in range(1, top + 1):
-        for p in range(top + 1 - d):
-            for q in range(p + 1, top + 1 - d):
-                solver.add(z3.Or(z3.Not(on[p]), z3.Not(on[p + d]), z3.Not(on[q]), z3.Not(on[q + d])))
+    # The distances between pairs of marks are all different: no two pairs of marked positions
+    # lie the same distance d apart.
+    for d in range(1, last_position + 1):
+        for p in range(last_position + 1 - d):
+            for q in range(p + 1, last_position + 1 - d):
+                solver.add(z3.Or(z3.Not(on[p]), z3.Not(on[p + d]),
+                                 z3.Not(on[q]), z3.Not(on[q + d])))
 
-    # Implied (stated for the solver): k marks span at least least[k], so any least[k]
-    # consecutive positions hold at most k - 1 marks.
+    # k marks span at least least[k], so a stretch of least[k] consecutive positions holds at
+    # most k - 1 marks.
     for k in range(3, size + 1):
         width = least[k]
-        for p in range(top + 2 - width):
+        for p in range(last_position + 2 - width):
             solver.add(z3.AtMost(*on[p:p + width], k - 1))
 
-    # marks[i] is the position of mark i, read off its order encoding as a chain
-    # "0 if not at 1 or beyond, else 1 if not at 2 or beyond, ...". Comparing such a
-    # chain with a number simplifies to a Boolean formula, so excluding a found
-    # solution (when several are asked for) needs no arithmetic.
-    def position(i):
-        value = z3.IntVal(top)
-        for p in range(top, 0, -1):
-            value = z3.If(z3.Not(at_least(i, p)), p - 1, value)
-        return value
+    # marks[i] is the position of mark i.
+    marks = []
+    for i in range(size):
+        position = z3.IntVal(last_position)
+        for p in range(last_position, 0, -1):
+            position = z3.If(z3.Not(at_least(i, p)), p - 1, position)
+        marks.append(position)
 
-    marks = [position(i) for i in range(size)]
+    # The length of the ruler is the position of its last mark.
     length = marks[size - 1]
 
-    # Minimise the length of the ruler, the position of the last mark. The same
-    # length, written as the number of positions p >= 1 the last mark lies at or
-    # beyond, is a sum of Boolean terms, which Z3 minimises as MaxSAT.
-    objective = z3.Sum([z3.IntVal(0)] + [z3.If(at_least(size - 1, p), 1, 0)
-                                         for p in range(1, top + 1)])
-    return solver, {"marks": marks, "length": length}, ("minimize", objective)
+    # Minimise the length, counted as the positions from 1 upward at or beyond which the last mark lies.
+    objective = z3.Sum([z3.If(at_least(size - 1, p), 1, 0) for p in range(1, last_position + 1)])
+    solver.minimize(objective)
+
+    return solver, {"marks": marks, "length": length}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

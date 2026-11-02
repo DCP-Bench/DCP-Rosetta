@@ -1,29 +1,48 @@
-# Added corners: enter the digits 1 to 8 in the circles and squares of a grid so that the
-# number in each square is the sum of the numbers in the two circles next to it:
-#   C F C
-#   F   F
-#   C F C
+# added_corners: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/added_corners.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python added_corners.py
+
 import z3
 
 
-def build(instance):
-    # Constants of the problem (the instance has no data): eight different digits 1..8, one
-    # per position in reading order (left to right, top to bottom).
-    n = 8
-    positions = [z3.Int(f"positions_{i}") for i in range(n)]
+def create_model(instance):
+    """Enter the digits 1 through 8 in the circles and squares of a ring such that
+    the number in each square is equal to the sum of the adjoining circles."""
+    # The puzzle states its own size and layout, so the instance holds no data.
+
+    # positions[i] is the digit in cell i, reading the ring like a book (left to right,
+    # top to bottom), skipping the empty middle:  C S C / S _ S / C S C
+    positions = [z3.Int(f"positions_{i}") for i in range(8)]
+    # Cells 0, 2, 5 and 7 are circles; cells 1, 3, 4 and 6 are squares.
     a, b, c, d, e, f, g, h = positions
-    # a, c, f, h are the corner circles, b, d, e, g are the squares in between.
 
     solver = z3.Solver()
 
-    for p in positions:
-        solver.add(p >= 1, p <= n)
+    # Each cell holds a digit from 1 to 8.
+    solver.add([z3.And(1 <= p, p <= 8) for p in positions])
 
-    # All the digits are different.
+    # Each digit is used once.
     solver.add(z3.Distinct(positions))
 
-    # Each square is the sum of the two circles next to it: top (b) is between the top corners
-    # a and c, left (d) between a and f, right (e) between c and h, bottom (g) between f and h.
-    solver.add(b == a + c, d == a + f, e == c + h, g == f + h)
+    # Each square is the sum of the two circles next to it.
+    solver.add(b == a + c)  # top square
+    solver.add(d == a + f)  # left square
+    solver.add(e == c + h)  # right square
+    solver.add(g == f + h)  # bottom square
 
     return solver, {"positions": positions}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

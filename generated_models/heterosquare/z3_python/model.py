@@ -1,51 +1,66 @@
-# Heterosquare: fill an n x n square with the distinct integers 1 to n^2 so that the sums of
-# the rows, of the columns and of the two diagonals are all different from each other.
+# heterosquare: a Z3 (Python) model from DCP Rosetta.
+# Download the `heterosquare.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python heterosquare.py heterosquare.json
+
 import z3
 
 
-def build(instance):
-    n = instance["n"]  # order of the square
+def create_model(instance):
+    """A heterosquare of order n is an n by n square of distinct whole numbers from 1 to n^2
+    whose row, column and diagonal sums are all different."""
+    n = instance["n"]  # the order of the square
 
-    # x[i][j] is the number in row i, column j; the numbers are 1..n^2.
+    # x[i][j] is the number in row i, column j
     x = [[z3.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
-    # Sums of the rows, of the columns and of the two diagonals. The reference lets each
-    # sum range over 1..n^3.
-    row_sums = [z3.Int(f"row_sums_{i}") for i in range(n)]
-    col_sums = [z3.Int(f"col_sums_{j}") for j in range(n)]
-    diag1 = z3.Int("diag1")
-    diag2 = z3.Int("diag2")
-    all_sums = row_sums + col_sums + [diag1, diag2]
+
+    # The sums of the rows, the columns and the two diagonals
+    row_sums = [z3.Int(f"row_sum_{i}") for i in range(n)]
+    col_sums = [z3.Int(f"col_sum_{j}") for j in range(n)]
+    diag_sum = z3.Int("diag_sum")  # top left to bottom right
+    anti_diag_sum = z3.Int("anti_diag_sum")  # top right to bottom left
+    all_sums = row_sums + col_sums + [diag_sum, anti_diag_sum]
 
     solver = z3.Solver()
 
-    for i in range(n):
-        for j in range(n):
-            solver.add(x[i][j] >= 1, x[i][j] <= n * n)
+    # Every number in the square is from 1 to n^2, and each of them is used in exactly one cell.
+    solver.add([z3.And(1 <= cell, cell <= n * n) for row in x for cell in row])
+    solver.add([z3.PbEq([(cell == v, 1) for row in x for cell in row], 1)
+                for v in range(1, n * n + 1)])
 
-    # All the entries of the square are different. As the n^2 entries take values among 1..n^2,
-    # this says that every value 1..n^2 is used by exactly one entry. It is stated as a
-    # pseudo-Boolean equality over "this entry holds this value" tests, which Z3 reasons about
-    # far better than n^4 pairwise inequalities between integers.
-    for v in range(1, n * n + 1):
-        solver.add(z3.PbEq([(x[i][j] == v, 1) for i in range(n) for j in range(n)], 1))
+    # Each sum adds up its cells.
+    solver.add([row_sums[i] == z3.Sum(x[i]) for i in range(n)])
+    solver.add([col_sums[j] == z3.Sum([x[i][j] for i in range(n)]) for j in range(n)])
+    solver.add(diag_sum == z3.Sum([x[i][i] for i in range(n)]))
+    solver.add(anti_diag_sum == z3.Sum([x[i][n - 1 - i] for i in range(n)]))
 
-    # Row sums, column sums and the sums of the main diagonal and the anti-diagonal.
-    for i in range(n):
-        solver.add(row_sums[i] == z3.Sum(x[i]))
-    for j in range(n):
-        solver.add(col_sums[j] == z3.Sum([x[i][j] for i in range(n)]))
-    solver.add(diag1 == z3.Sum([x[i][i] for i in range(n)]))
-    solver.add(diag2 == z3.Sum([x[i][n - i - 1] for i in range(n)]))
-
-    # The reference's domain for a sum is 1..n^3. Tighter bounds follow from the entries
-    # being different: n entries sum to at least 1 + ... + n and at most
-    # n^2 + (n^2 - 1) + ... + (n^2 - n + 1).
+    # Each sum adds n different numbers from 1 to n^2, so it lies between the sum of the
+    # n smallest and the sum of the n largest of them.
     low = n * (n + 1) // 2
-    high = n * n * n - n * (n - 1) // 2
-    for s in all_sums:
-        solver.add(s >= low, s <= high)
+    high = n ** 3 - n * (n - 1) // 2
+    solver.add([z3.And(low <= s, s <= high) for s in all_sums])
 
-    # All the sums are different.
+    # All the row, column and diagonal sums are different.
     solver.add(z3.Distinct(all_sums))
 
     return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

@@ -1,52 +1,65 @@
-# Calvin puzzle: fill an n x n grid with the numbers 1 to n*n, each used once, so that every
-# number k + 1 is placed three squares away from k horizontally or vertically (two squares
-# gap), or two squares away diagonally (one square gap).
+# calvin_puzzle: a Z3 (Python) model from DCP Rosetta.
+# Download the `calvin_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/calvin_puzzle.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python calvin_puzzle.py calvin_puzzle.json
+
 import z3
 
 
-def build(instance):
-    n = instance["n"]  # side of the grid
-    cells = [(i, j) for i in range(n) for j in range(n)]
-    total = n * n      # the numbers are 1..n*n
+def create_model(instance):
+    """Fill an n by n grid with the numbers 1 to n^2, each used once, so that every number
+    is placed exactly three squares away from the previous one horizontally or vertically,
+    or exactly two squares away diagonally."""
+    n = instance["n"]  # the grid has n rows and n columns
+    cells = n * n      # the number of squares, which is also the largest number
 
-    # x[i][j] is the number written in cell (i, j).
+    # The moves from one square to the next: three squares along a row or column, or two
+    # squares diagonally.
+    moves = [(3, 0), (-3, 0), (0, 3), (0, -3), (2, 2), (2, -2), (-2, 2), (-2, -2)]
+
+    # The squares one move away from square (i, j), staying on the grid.
+    def reach(i, j):
+        return [(i + di, j + dj) for di, dj in moves if 0 <= i + di < n and 0 <= j + dj < n]
+
+    # x[i][j] is the number written in row i, column j
     x = [[z3.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
+    # The numbers in the grid, row by row
+    flat = [x[i][j] for i in range(n) for j in range(n)]
 
-    # The possible steps from one number to the next: 3 squares horizontally or vertically,
-    # or 2 squares in both directions (diagonally).
-    steps = [(3, 0), (-3, 0), (0, 3), (0, -3), (2, 2), (2, -2), (-2, 2), (-2, -2)]
-
-    def reach(p):
-        return [(p[0] + di, p[1] + dj) for di, dj in steps
-                if 0 <= p[0] + di < n and 0 <= p[1] + dj < n]
-
-    # where[k][p] is true if number k is in cell p. This stands in for "x[p] == k"; the
-    # Boolean form lets Z3 use cardinality constraints for the all-different condition and
-    # clauses for the moves, instead of an element constraint for each number.
-    where = {k: {p: z3.Bool(f"where_{k}_{p[0]}_{p[1]}") for p in cells}
-             for k in range(1, total + 1)}
-
+    # The rules on the grid.
     solver = z3.Solver()
 
-    # x tells the number of each cell: it is the k whose literal is true there.
-    for (i, j) in cells:
-        solver.add(x[i][j] >= 1, x[i][j] <= total)
-    for k in range(1, total + 1):
-        for p in cells:
-            solver.add(z3.Implies(where[k][p], x[p[0]][p[1]] == k))
+    # Every square holds a number from 1 to n^2.
+    solver.add([z3.And(v >= 1, v <= cells) for v in flat])
 
-    # All the numbers are different: every number is in exactly one cell and every cell
-    # holds exactly one number.
-    for p in cells:
-        solver.add(z3.PbEq([(where[k][p], 1) for k in range(1, total + 1)], 1))
-    for k in range(1, total + 1):
-        solver.add(z3.PbEq([(where[k][p], 1) for p in cells], 1))
+    # The numbers are all different, so each number from 1 to n^2 is used exactly once.
+    solver.add(z3.Distinct(flat))
 
-    # Moves: if k is in cell p, then k + 1 is in a cell a step away from p, and if k + 1 is
-    # in cell p then k is in a cell a step away from p (steps can be taken backwards too).
-    for k in range(1, total):
-        for p in cells:
-            solver.add(z3.Implies(where[k][p], z3.Or([where[k + 1][q] for q in reach(p)])))
-            solver.add(z3.Implies(where[k + 1][p], z3.Or([where[k][q] for q in reach(p)])))
+    # The next number sits one move away from each square, and the previous number too.
+    for i in range(n):
+        for j in range(n):
+            nearby = [x[a][b] for a, b in reach(i, j)]
+            solver.add(z3.Implies(x[i][j] < cells, z3.Or([v == x[i][j] + 1 for v in nearby])))
+            solver.add(z3.Implies(x[i][j] > 1, z3.Or([v == x[i][j] - 1 for v in nearby])))
 
     return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

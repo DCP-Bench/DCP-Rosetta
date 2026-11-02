@@ -1,16 +1,20 @@
-# Contracting costs (Sam Loyd): from what the contractor pays six pairs of
-# tradesmen together, find what each of the six charges.
+# contracting_costs: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/contracting_costs.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python contracting_costs.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own payments
-
-    paper_hanger, painter, plumber, electrician, carpenter, mason = people = z3.Ints(
+def create_model(instance):
+    """A contractor planning the construction of a house has to pay six pairs of
+    tradesmen a known sum for each pair. What does each man charge for his services?"""
+    # Each man's charge for his services, in dollars.
+    paper_hanger, painter, plumber, electrician, carpenter, mason = men = z3.Ints(
         "paper_hanger painter plumber electrician carpenter mason")
 
-    # Problem data: (first person, second person, what the pair costs together).
-    pair_costs = [
+    # The two men of each pair, and the bill the contractor pays for that pair in dollars.
+    pair_bills = [
         (paper_hanger, painter, 1100),
         (painter, plumber, 1700),
         (plumber, electrician, 1100),
@@ -19,18 +23,34 @@ def build(instance):
         (mason, painter, 3200),
     ]
 
+    # No man charges less than 1 dollar or more than the largest bill.
+    largest = max(bill for _, _, bill in pair_bills)
     solver = z3.Solver()
 
-    # Each charge is a positive amount, and no charge can exceed the largest payment.
-    largest = max(cost for _, _, cost in pair_costs)
-    for p in people:
-        solver.add(p >= 1, p <= largest)
+    solver.add([z3.And(man >= 1, man <= largest) for man in men])
 
-    # What the contractor pays the two members of each pair adds up to the stated total.
-    for first, second, cost in pair_costs:
-        solver.add(first + second == cost)
+    # The two men of each pair together charge the bill for that pair.
+    solver.add([first + second == bill for first, second, bill in pair_bills])
 
     return solver, {
-        "paper_hanger": paper_hanger, "painter": painter, "plumber": plumber,
-        "electrician": electrician, "carpenter": carpenter, "mason": mason,
+        "paper_hanger": paper_hanger,
+        "painter": painter,
+        "plumber": plumber,
+        "electrician": electrician,
+        "carpenter": carpenter,
+        "mason": mason,
     }
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

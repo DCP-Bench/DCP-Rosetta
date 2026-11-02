@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
     "attempt_id": "attempt-001",
-    "created_at": 1790695105.3345444,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793617123.5160153,
     "problem_id": "set_game",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,35 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20260929T1400Z-z3-mzn-swipl-7a2e",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "3f7e121301e0ea4565e20d8ee0660e799686c194",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.14745189994573593,
-        "execution_wall_seconds": 3.096623499994166,
+        "checking_seconds": 0.07234807801432908,
+        "execution_wall_seconds": 0.4492368589853868,
         "first_solution": {
           "winning_cards": [
             7,
-            0,
-            1
+            3,
+            8
           ]
         },
         "id": "example",
@@ -54,9 +79,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9538981000659987,
+        "reference_setup_seconds": 0.6207257510395721,
         "runner_status": {
+          "build_seconds": 0.021068530972115695,
           "detail": "",
+          "main_seconds": 0.03850649599917233,
+          "read_seconds": 0.00014996400568634272,
           "status": "limit",
           "type": "status"
         },
@@ -66,13 +94,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.1336457000579685,
-        "execution_wall_seconds": 1.9913569999625906,
+        "checking_seconds": 0.08193374506663531,
+        "execution_wall_seconds": 0.4490209349896759,
         "first_solution": {
           "winning_cards": [
-            11,
+            8,
             7,
-            8
+            11
           ]
         },
         "id": "json:1",
@@ -84,9 +112,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.7297700000926852,
+        "reference_setup_seconds": 0.5883295059902593,
         "runner_status": {
+          "build_seconds": 0.020800687023438513,
           "detail": "",
+          "main_seconds": 0.04024848900735378,
+          "read_seconds": 0.00015016307588666677,
           "status": "limit",
           "type": "status"
         },
@@ -96,12 +127,12 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.13127800007350743,
-        "execution_wall_seconds": 1.3993840999901295,
+        "checking_seconds": 0.0702957829926163,
+        "execution_wall_seconds": 0.5023812219733372,
         "first_solution": {
           "winning_cards": [
-            0,
             1,
+            0,
             4
           ]
         },
@@ -114,9 +145,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8883495999034494,
+        "reference_setup_seconds": 0.6437891280511394,
         "runner_status": {
+          "build_seconds": 0.020894615910947323,
           "detail": "",
+          "main_seconds": 0.04013435903470963,
+          "read_seconds": 0.00019834004342556,
           "status": "limit",
           "type": "status"
         },
@@ -126,13 +160,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.13618979998864233,
-        "execution_wall_seconds": 1.5057503000134602,
+        "checking_seconds": 0.0805994221009314,
+        "execution_wall_seconds": 0.44885850697755814,
         "first_solution": {
           "winning_cards": [
-            6,
+            3,
             0,
-            3
+            6
           ]
         },
         "id": "json:3",
@@ -144,9 +178,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7207484000828117,
+        "reference_setup_seconds": 0.6246728530386463,
         "runner_status": {
+          "build_seconds": 0.023572095087729394,
           "detail": "",
+          "main_seconds": 0.041223912965506315,
+          "read_seconds": 0.00014967494644224644,
           "status": "limit",
           "type": "status"
         },
@@ -156,8 +193,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.08019929996225983,
-        "execution_wall_seconds": 1.4809748999541625,
+        "checking_seconds": 0.05221486103255302,
+        "execution_wall_seconds": 0.4522674159379676,
         "first_solution": {
           "winning_cards": [
             1,
@@ -174,9 +211,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6747499000048265,
+        "reference_setup_seconds": 0.5906359499786049,
         "runner_status": {
+          "build_seconds": 0.013275151024572551,
           "detail": "",
+          "main_seconds": 0.02348063699901104,
+          "read_seconds": 0.00018898991402238607,
           "status": "limit",
           "type": "status"
         },
@@ -188,21 +228,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "62e46b2c764bc2dda54ab43ea3f1b6c3c8ba4cbba7e30a78be0b7e69d708aedf",
+    "model_hash": "78a4a6c9a3d3d6021febf07ffa64c80e3f5150858fd21547a8435609b6665aa8",
     "problem_id": "set_game",
     "reason": "accepted",
     "reference_hash": "1440ef9dbee8c999ae6d7bf4fa0f20e88827460b09b3e0b2e8aba595f1f1a962",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -213,7 +253,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "z3_python",
-    "total_wall_seconds": 22.561503399978392,
+    "total_wall_seconds": 6.1011505130445585,
     "unperformed_instances": []
   },
   "generated_by": {

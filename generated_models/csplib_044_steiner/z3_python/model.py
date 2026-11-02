@@ -1,29 +1,51 @@
-# Ternary Steiner problem: find n * (n - 1) / 6 triples of distinct elements out of 1..n such
-# that any two triples have at most one element in common (n mod 6 is 1 or 3).
+# csplib_044_steiner: a Z3 (Python) model from DCP Rosetta.
+# Download the `csplib_044_steiner.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_044_steiner.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python csplib_044_steiner.py csplib_044_steiner.json
+
 import z3
 
 
-def build(instance):
-    n = instance["n"]                  # order of the Steiner triple system, n mod 6 in {1, 3}
-    n_sets = n * (n - 1) // 6          # number of triples, from the problem statement
+def create_model(instance):
+    """Find n * (n - 1) / 6 triples of distinct elements out of 1 to n such that any two
+    triples have at most one element in common (n is 1 or 3 modulo 6)."""
+    n = instance["n"]              # the number of elements; n modulo 6 is 1 or 3
+    n_triples = n * (n - 1) // 6   # the number of triples in the system
 
-    # sets[i][j] is true if element j is part of triple i.
-    sets = [[z3.Bool(f"sets_{i}_{j}") for j in range(n)] for i in range(n_sets)]
+    # triples[i][j] is true when element j is in triple i
+    triples = [[z3.Bool(f"triples_{i}_{j}") for j in range(n)] for i in range(n_triples)]
 
     solver = z3.Solver()
 
-    # Every triple has exactly three elements.
-    for s in sets:
-        solver.add(z3.PbEq([(b, 1) for b in s], 3))
+    # Each triple has exactly three elements.
+    solver.add([z3.PbEq([(x, 1) for x in triple], 3) for triple in triples])
 
-    # Any two triples have at most one element in common. This is stated per pair of elements:
-    # two triples sharing both elements a and b would have two elements in common, so every
-    # pair of elements lies together in at most one triple. The triples hold 3 pairs each,
-    # n_sets * 3 = n * (n - 1) / 2, which is all the pairs of elements, so each pair lies
-    # together in exactly one triple; stating the equality is stronger for Z3 than "at most".
+    # Any two elements lie together in exactly one triple. The triples hold three pairs each,
+    # which adds up to every pair of elements, so no pair can lie together in two triples.
     for a in range(n):
         for b in range(a + 1, n):
-            together = [(z3.And(sets[i][a], sets[i][b]), 1) for i in range(n_sets)]
+            # Each triple that contains both a and b counts once.
+            together = [(z3.And(triple[a], triple[b]), 1) for triple in triples]
             solver.add(z3.PbEq(together, 1))
 
-    return solver, {"sets": sets}
+    return solver, {"sets": triples}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

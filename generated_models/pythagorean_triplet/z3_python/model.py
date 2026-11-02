@@ -1,37 +1,42 @@
-# Pythagorean triplet (Project Euler 9): find natural numbers a, b, c with
-# a^2 + b^2 = c^2 and a + b + c = 1000.
+# pythagorean_triplet: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/pythagorean_triplet.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python pythagorean_triplet.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own sum
+def create_model(instance):
+    """Find three natural numbers a, b, c with a^2 + b^2 = c^2 whose sum is 1000.
+    Exactly one such triplet exists."""
+    total = 1000          # the sum of the three numbers
+    largest = total // 2  # no number reaches half the sum, so each is below 500
 
-    total = 1000        # the triplet sums to 1000
-    largest = total // 2  # no side of a triangle reaches half the perimeter
-
-    # Bit-vector encoding: squares are bit-blasted to SAT; Z3's nonlinear integer
-    # arithmetic did not finish proving that no further triplet exists.
-    bits = largest.bit_length()   # bits for a value up to 500
-    square_bits = 2 * bits + 1    # bits for a sum of two squares
-    sum_bits = bits + 2           # bits for a sum of three values
-
-    a, b, c = (z3.BitVec(name, bits) for name in "abc")
-
-    def square(v):
-        wide = z3.ZeroExt(square_bits - bits, v)
-        return wide * wide
+    # a, b and c are the three numbers of the triplet
+    a, b, c = z3.Ints("a b c")
 
     solver = z3.Solver()
 
-    # Natural numbers, none larger than half the sum.
-    for v in (a, b, c):
-        solver.add(z3.UGE(v, 1), z3.ULE(v, largest))
+    solver.add(
+        # Natural numbers, each at most 500.
+        *[z3.And(v >= 1, v <= largest) for v in (a, b, c)],
+        # The three numbers add up to 1000.
+        a + b + c == total,
+        # a and b are the legs and c the hypotenuse of a right triangle.
+        a * a + b * b == c * c,
+    )
+    return solver, {"a": a, "b": b, "c": c}
 
-    # The three numbers add up to 1000 (widened so the sum cannot wrap around).
-    solver.add(z3.ZeroExt(sum_bits - bits, a) + z3.ZeroExt(sum_bits - bits, b)
-               + z3.ZeroExt(sum_bits - bits, c) == total)
 
-    # They form a Pythagorean triplet.
-    solver.add(square(a) + square(b) == square(c))
+if __name__ == "__main__":
+    import numpy as np
 
-    return solver, {"a": z3.BV2Int(a), "b": z3.BV2Int(b), "c": z3.BV2Int(c)}
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

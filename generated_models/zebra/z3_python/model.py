@@ -1,15 +1,20 @@
+# zebra: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python zebra.py
+
 import z3
 
 
-def build(instance):
-    """The zebra puzzle: five houses, and five attributes per house.
-
-    Every variable holds a house number 0..4, so two variables sharing a number
-    means those two attributes belong to the same house.
-    """
-    del instance
-
+def create_model(instance):
+    """Five houses in a row, numbered 0 on the left to 4 on the right. Each house has a
+    color, an inhabitant of one nationality, a pet, a drink and a job, and no two houses
+    share one of these. Find the house of every color, nationality, job, pet and drink so
+    that all the clues hold."""
     n_houses = 5
+
+    # Each variable is the number of the house that has this color, nationality, job, pet or drink.
+    # Two variables with the same number belong to the same house.
     colors = z3.Ints("yellow green red white blue")
     yellow, green, red, white, blue = colors
     nations = z3.Ints("italy spain japan england norway")
@@ -22,32 +27,53 @@ def build(instance):
     milk, water, tea, coffee, juice = drinks
 
     solver = z3.Solver()
+
+    # Every item is in a house, and no two items of one kind share a house.
     for group in (colors, nations, jobs, pets, drinks):
-        for value in group:
-            solver.add(value >= 0, value <= n_houses - 1)
+        solver.add([z3.And(v >= 0, v <= n_houses - 1) for v in group])
         solver.add(z3.Distinct(group))
 
+    # The painter owns the horse.
     solver.add(painter == horse)
+    # The diplomat drinks coffee.
     solver.add(diplomat == coffee)
+    # The one who drinks milk lives in the white house.
     solver.add(white == milk)
+    # The Spaniard is a painter.
     solver.add(spain == painter)
+    # The Englishman lives in the red house.
     solver.add(england == red)
+    # The snails are owned by the sculptor.
     solver.add(snails == sculptor)
     # The green house is immediately left of the red one.
     solver.add(green + 1 == red)
-    # The Norwegian is immediately right of the blue house.
+    # The Norwegian lives immediately right of the blue house.
     solver.add(blue + 1 == norway)
+    # The doctor drinks milk.
     solver.add(doctor == milk)
+    # The diplomat is Japanese.
     solver.add(japan == diplomat)
+    # The Norwegian owns the zebra.
     solver.add(norway == zebra)
-    # The green house is next to the white one, either side.
+    # The green house is next to the white one, on either side.
     solver.add(z3.Abs(green - white) == 1)
-    # The horse belongs to a neighbour of the diplomat.
+    # The horse is owned by a neighbor of the diplomat.
     solver.add(z3.Or(horse == diplomat - 1, horse == diplomat + 1))
     # The Italian lives in the red, white or green house.
     solver.add(z3.Or(italy == red, italy == white, italy == green))
 
-    return solver, {
-        "colors": list(colors), "nations": list(nations), "jobs": list(jobs),
-        "pets": list(pets), "drinks": list(drinks),
-    }
+    return solver, {"colors": colors, "nations": nations, "jobs": jobs, "pets": pets, "drinks": drinks}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

@@ -1,36 +1,51 @@
-# Job shop: jobs are sequences of tasks, each task runs on a given machine for a given time.
-# The tasks of a job follow each other in order, a machine runs one task at a time, and a task
-# runs without interruption. Minimize the makespan, the time when all jobs are finished.
+# jobshop: a Z3 (Python) model from DCP Rosetta.
+# Download the `jobshop.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python jobshop.py jobshop.json
+
 import z3
 
 
-def build(instance):
-    jobs_data = instance["jobs_data"]  # jobs_data[job][task] = [machine, duration]
-    n_jobs = len(jobs_data)
-    machines = sorted({task[0] for job in jobs_data for task in job})
-    # Upper bound on every time: all the work done one piece after the other.
-    max_duration = sum(task[1] for job in jobs_data for task in job)
+def create_model(instance):
+    """Schedule the tasks of several jobs on machines. The tasks of a job run in order, a
+    machine works on one task at a time, and a task runs to completion once started.
+    Minimize the makespan, the time when all jobs are finished."""
+    jobs_data = instance["jobs_data"]  # jobs_data[j][t] = [machine, duration] of task t of job j
 
-    # Start and end time of every task of every job (jobs may have different numbers of tasks).
+    # The machines the tasks run on.
+    machines = sorted({task[0] for job in jobs_data for task in job})
+
+    # Running all the tasks one after another takes this long.
+    total_duration = sum(task[1] for job in jobs_data for task in job)
+
+    # start[j][t] is the time task t of job j starts, end[j][t] the time it ends.
     start = [[z3.Int(f"start_{j}_{t}") for t in range(len(job))] for j, job in enumerate(jobs_data)]
     end = [[z3.Int(f"end_{j}_{t}") for t in range(len(job))] for j, job in enumerate(jobs_data)]
+
+    # The time when the last task of all jobs ends.
     makespan = z3.Int("makespan")
 
-    solver = z3.Solver()
+    solver = z3.Optimize()
 
+    # Every start and end time lies between 0 and the total duration.
     for j, job in enumerate(jobs_data):
-        for t, (machine, duration) in enumerate(job):
-            # Times are between 0 and the total amount of work (the reference's bounds).
-            solver.add(start[j][t] >= 0, start[j][t] <= max_duration)
-            solver.add(end[j][t] >= 0, end[j][t] <= max_duration)
-            # A task runs to completion once started.
-            solver.add(end[j][t] == start[j][t] + duration)
-            # No task of a job can start before the previous task of that job has ended.
-            if t > 0:
-                solver.add(start[j][t] >= end[j][t - 1])
+        for t in range(len(job)):
+            solver.add(start[j][t] >= 0, start[j][t] <= total_duration)
+            solver.add(end[j][t] >= 0, end[j][t] <= total_duration)
 
-    # A machine can only work on one task at a time: for every two tasks on the same
-    # machine, one ends before the other starts.
+    # A task runs for its duration once it starts.
+    for j, job in enumerate(jobs_data):
+        for t, (_, duration) in enumerate(job):
+            solver.add(end[j][t] == start[j][t] + duration)
+
+    # A task starts only after the previous task of its job has ended.
+    for j, job in enumerate(jobs_data):
+        for t in range(1, len(job)):
+            solver.add(start[j][t] >= end[j][t - 1])
+
+    # A machine works on one task at a time: of any two tasks on the same machine,
+    # one ends before the other starts.
     for machine in machines:
         tasks = [(j, t) for j, job in enumerate(jobs_data) for t, task in enumerate(job)
                  if task[0] == machine]
@@ -39,18 +54,40 @@ def build(instance):
                 (j1, t1), (j2, t2) = tasks[a], tasks[b]
                 solver.add(z3.Or(start[j1][t1] >= end[j2][t2], start[j2][t2] >= end[j1][t1]))
 
-    # The makespan is the latest end time of all the tasks.
+    # The end time of the last task of each job.
     last_ends = [end[j][len(job) - 1] for j, job in enumerate(jobs_data)]
+
+    # The makespan is at least the end of every job, and equals the end of one of them.
     for e in last_ends:
         solver.add(makespan >= e)
     solver.add(z3.Or([makespan == e for e in last_ends]))
 
-    # Implied lower bounds on the makespan: a job needs the sum of its task times, and a
-    # machine needs the sum of the times of its tasks.
+    # The makespan is at least the total time of each job, and at least the total time
+    # of the tasks on each machine.
     for job in jobs_data:
         solver.add(makespan >= sum(task[1] for task in job))
     for machine in machines:
         solver.add(makespan >= sum(task[1] for job in jobs_data for task in job if task[0] == machine))
 
-    # Minimize the makespan.
-    return solver, {"makespan": makespan}, ("minimize", makespan)
+    solver.minimize(makespan)
+
+    return solver, {"makespan": makespan}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

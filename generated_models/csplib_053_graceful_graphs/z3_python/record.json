@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
     "attempt_id": "attempt-001",
-    "created_at": 1790693222.554386,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793616500.3914208,
     "problem_id": "csplib_053_graceful_graphs",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,58 +18,79 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20260929T1400Z-z3-mzn-swipl-7a2e",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "3f7e121301e0ea4565e20d8ee0660e799686c194",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.012512900051660836,
-        "execution_wall_seconds": 47.1448764000088,
+        "checking_seconds": 0.023396617034450173,
+        "execution_wall_seconds": 74.62544107704889,
         "first_solution": {
           "edges": [
-            5,
-            1,
-            14,
-            6,
-            9,
-            15,
-            8,
-            11,
-            2,
-            3,
-            10,
-            13,
-            4,
             7,
+            3,
+            9,
+            10,
+            2,
+            12,
+            5,
             16,
-            12
+            1,
+            11,
+            4,
+            15,
+            6,
+            8,
+            13,
+            14
           ],
           "nodes": [
-            1,
-            6,
-            0,
-            15,
-            5,
+            10,
+            3,
             13,
+            1,
             16,
-            3
+            11,
+            0,
+            15
           ]
         },
         "id": "example",
@@ -78,9 +103,12 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.83497670001816,
+        "reference_setup_seconds": 0.6189408949576318,
         "runner_status": {
+          "build_seconds": 0.014269246952608228,
           "detail": "",
+          "main_seconds": 74.15905539307278,
+          "read_seconds": 0.00016682501882314682,
           "status": "limit",
           "type": "status"
         },
@@ -90,21 +118,21 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006218300084583461,
-        "execution_wall_seconds": 0.9393451999640092,
+        "checking_seconds": 0.005849961075000465,
+        "execution_wall_seconds": 0.44838550908025354,
         "first_solution": {
           "edges": [
-            2,
-            5,
-            6,
+            1,
             3,
+            5,
             4,
-            1
+            6,
+            2
           ],
           "nodes": [
+            1,
             0,
-            2,
-            5,
+            4,
             6
           ]
         },
@@ -118,9 +146,12 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9588565999874845,
+        "reference_setup_seconds": 0.5520916819805279,
         "runner_status": {
+          "build_seconds": 0.01068005000706762,
           "detail": "",
+          "main_seconds": 0.024480000021867454,
+          "read_seconds": 0.00015182106290012598,
           "status": "limit",
           "type": "status"
         },
@@ -130,35 +161,35 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02047989994753152,
-        "execution_wall_seconds": 63.4183289000066,
+        "checking_seconds": 0.00815630389843136,
+        "execution_wall_seconds": 13.87984894006513,
         "first_solution": {
           "edges": [
             7,
-            3,
             4,
-            12,
-            1,
+            3,
+            2,
+            13,
             11,
+            5,
             10,
             15,
-            5,
-            13,
+            1,
             6,
-            9,
-            14,
             8,
-            2
+            9,
+            12,
+            14
           ],
           "nodes": [
-            14,
-            7,
-            11,
-            1,
-            13,
             2,
+            9,
+            6,
+            1,
+            3,
+            14,
+            10,
             15,
-            5,
             0
           ]
         },
@@ -172,9 +203,12 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0063928000163287,
+        "reference_setup_seconds": 0.6048514830181375,
         "runner_status": {
+          "build_seconds": 0.01516087306663394,
           "detail": "",
+          "main_seconds": 13.440553338965401,
+          "read_seconds": 0.00018991390243172646,
           "status": "limit",
           "type": "status"
         },
@@ -184,37 +218,37 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.011277700075879693,
-        "execution_wall_seconds": 93.90852099994663,
+        "checking_seconds": 0.011302168015390635,
+        "execution_wall_seconds": 100.04789131099824,
         "first_solution": {
           "edges": [
-            3,
-            4,
             6,
+            1,
+            3,
             2,
-            15,
-            12,
-            11,
-            5,
             8,
-            14,
+            12,
+            7,
+            4,
+            11,
             10,
             9,
-            1,
-            7,
-            13
+            14,
+            5,
+            13,
+            15
           ],
           "nodes": [
-            0,
-            3,
-            7,
             13,
-            15,
-            12,
-            14,
-            2,
+            7,
+            6,
+            3,
             5,
-            1
+            1,
+            0,
+            10,
+            14,
+            15
           ]
         },
         "id": "json:3",
@@ -227,9 +261,12 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2542084000306204,
+        "reference_setup_seconds": 0.5889690980548039,
         "runner_status": {
+          "build_seconds": 0.015251538017764688,
           "detail": "",
+          "main_seconds": 99.60934075491969,
+          "read_seconds": 0.00017967796884477139,
           "status": "limit",
           "type": "status"
         },
@@ -239,32 +276,32 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008382100029848516,
-        "execution_wall_seconds": 4.890044500003569,
+        "checking_seconds": 0.00952682108618319,
+        "execution_wall_seconds": 5.561979303951375,
         "first_solution": {
           "edges": [
-            7,
-            10,
-            6,
-            8,
-            5,
-            11,
-            1,
             12,
+            6,
             4,
+            11,
+            10,
+            5,
             3,
             9,
-            2
-          ],
-          "nodes": [
+            2,
             1,
             8,
-            11,
+            7
+          ],
+          "nodes": [
             0,
-            7,
+            12,
+            6,
+            1,
+            4,
+            2,
             3,
-            10,
-            12
+            10
           ]
         },
         "id": "json:4",
@@ -277,9 +314,12 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9126171000534669,
+        "reference_setup_seconds": 0.5263705590041354,
         "runner_status": {
+          "build_seconds": 0.013498779968358576,
           "detail": "",
+          "main_seconds": 5.086851118947379,
+          "read_seconds": 0.00015849201008677483,
           "status": "limit",
           "type": "status"
         },
@@ -291,21 +331,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "eb8d3cf878c5f1ce1c3eebac54d2228ce653fefbc5e9a1249e613cab4d69ae26",
+    "model_hash": "afe2b007cc56b68b8215141610247e9da5649698d84d8ae2a5ddd2e47f432263",
     "problem_id": "csplib_053_graceful_graphs",
     "reason": "accepted",
     "reference_hash": "a9c24d746350d14f4a6dd166f242d5bd55951e2d4fd896849ce161926d7ce236",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -316,7 +356,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "z3_python",
-    "total_wall_seconds": 219.15879520005547,
+    "total_wall_seconds": 197.86076817696448,
     "unperformed_instances": []
   },
   "generated_by": {

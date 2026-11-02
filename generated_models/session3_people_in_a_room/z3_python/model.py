@@ -1,28 +1,45 @@
-# People in a room: 13 people, 4 of them male, enter a room one at a time. Order
-# them so that, at every moment, the ratio of females to males in the room is
-# no greater than 7/3.
+# session3_people_in_a_room: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_people_in_a_room.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python session3_people_in_a_room.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own people and ratio
+def create_model(instance):
+    """13 people, 4 of them male, enter a room one at a time. Find an order of entry
+    such that the ratio of females to males in the room is never more than 7/3."""
+    total_people = 13  # the number of people
+    num_males = 4      # the number of males among them
 
-    total_people = 13
-    num_males = 4
-
-    # sequence[i] is True when the ith person to enter is female, False when male.
+    # sequence[i] is true when the i-th person to enter is female, and false when male.
     sequence = z3.BoolVector("sequence", total_people)
 
     solver = z3.Solver()
 
-    # Exactly 4 of the 13 are male, so 9 are female.
+    # Exactly num_males of the people are male, so the rest are female.
     solver.add(z3.PbEq([(s, 1) for s in sequence], total_people - num_males))
 
-    # After each of the first 12 entries, females : males <= 7 : 3, i.e.
-    # 3 * females <= 7 * males (cross-multiplied to stay in integers).
+    # After each entry the females are at most 7/3 of the males. The inequality is
+    # written as 3 * females <= 7 * males to avoid the fraction. With nobody in the
+    # room there is no ratio, so the check starts after the first entry.
     for i in range(1, total_people):
-        females_so_far = z3.Sum([z3.If(s, 1, 0) for s in sequence[:i]])
-        males_so_far = i - females_so_far
-        solver.add(3 * females_so_far <= 7 * males_so_far)
+        females = z3.Sum([z3.If(s, 1, 0) for s in sequence[:i]])  # females among the first i to enter
+        males = i - females                                       # males among the first i to enter
+        solver.add(3 * females <= 7 * males)
 
-    return solver, {"sequence": list(sequence)}
+    return solver, {"sequence": sequence}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

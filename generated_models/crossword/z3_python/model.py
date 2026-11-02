@@ -1,47 +1,65 @@
-# Crossword: pick 8 different words from a list of 15 to fill the 8 numbered
-# slots of a small crossword grid so that every place where two slots cross
-# holds the same letter in both words.
+# crossword: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python crossword.py
+
 import z3
 
-# The puzzle itself is fixed by the problem, so its data is mirrored here.
-# The words, sorted longest first and then alphabetically.
-WORDS = [
-    "HOSES", "LASER", "SAILS", "SHEET", "STEER",  # five letters
-    "HEEL", "HIKE", "KEEL", "KNOT", "LINE",  # four letters
-    "AFT", "ALE", "EEL", "LEE", "TIE",  # three letters
-]
-WORD_LEN = 5
-N_SLOTS = 8
-# each crossing is [slot a, letter position in a, slot b, letter position in b]
-CROSSINGS = [
-    [0, 2, 1, 0], [0, 4, 2, 0], [3, 1, 1, 2], [3, 2, 4, 0], [3, 3, 2, 2], [6, 0, 1, 3],
-    [6, 1, 4, 1], [6, 2, 2, 3], [7, 0, 5, 1], [7, 2, 1, 4], [7, 3, 4, 2], [7, 4, 2, 4],
-]
 
+def create_model(instance):
+    """Complete the crossword grid with 8 words chosen from a list, so that where two
+    words cross they share the same letter."""
+    # The 15 words, sorted longest first and then alphabetically: word 0 is HOSES and word 14 is TIE.
+    words = [
+        "HOSES", "LASER", "SAILS", "SHEET", "STEER",  # five letters
+        "HEEL", "HIKE", "KEEL", "KNOT", "LINE",  # four letters
+        "AFT", "ALE", "EEL", "LEE", "TIE",  # three letters
+    ]
+    n_words = len(words)
+    longest = max(len(word) for word in words)
+    # letters[w][p]: letter p of word w as a number (A=1 ... Z=26), 0 past the end of a shorter word
+    letters = [[ord(ch) - ord("A") + 1 for ch in word] + [0] * (longest - len(word)) for word in words]
 
-def build(instance):
-    # letters as numbers (a=1 .. z=26), padded with 0 to length 5
-    letters = [[ord(ch) - ord("A") + 1 for ch in word] + [0] * (WORD_LEN - len(word)) for word in WORDS]
-    n_words = len(WORDS)
+    # The 8 numbered slots of the grid are slots 0 to 7. A crossing is (slot a, letter position
+    # in a, slot b, letter position in b): the two letters are the same cell.
+    crossings = [
+        (0, 2, 1, 0), (0, 4, 2, 0), (3, 1, 1, 2), (3, 2, 4, 0), (3, 3, 2, 2), (6, 0, 1, 3),
+        (6, 1, 4, 1), (6, 2, 2, 3), (7, 0, 5, 1), (7, 2, 1, 4), (7, 3, 4, 2), (7, 4, 2, 4),
+    ]
 
-    solver = z3.Solver()
-
-    # E[s] = the word (index in the list) placed in slot s; all slots get different words
-    E = [z3.Int(f"E_{s}") for s in range(N_SLOTS)]
-    for word in E:
-        solver.add(word >= 0, word < n_words)
-    solver.add(z3.Distinct(E))
+    # E[s] is the number of the word placed in slot s.
+    E = [z3.Int(f"E_{s}") for s in range(8)]
 
     def letter_of(word, position):
-        """The letter at a position of the chosen word: an If chain over the
-        words, since Z3 has no element constraint."""
+        """The letter at this position of the word whose number is word."""
         value = letters[n_words - 1][position]
         for k in range(n_words - 2, -1, -1):
             value = z3.If(word == k, letters[k][position], value)
         return value
 
-    # where two slots cross, the two words show the same letter
-    for slot_a, pos_a, slot_b, pos_b in CROSSINGS:
-        solver.add(letter_of(E[slot_a], pos_a) == letter_of(E[slot_b], pos_b))
+    solver = z3.Solver()
+
+    # Each slot holds one of the words, so its number is at least 0 and below n_words.
+    solver.add([z3.And(word >= 0, word < n_words) for word in E])
+
+    # Each word fills at most one slot.
+    solver.add(z3.Distinct(E))
+
+    # Where two slots cross, their words have the same letter in the shared cell.
+    solver.add([letter_of(E[a], pos_a) == letter_of(E[b], pos_b) for a, pos_a, b, pos_b in crossings])
 
     return solver, {"E": E}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

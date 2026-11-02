@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
     "attempt_id": "attempt-001",
-    "created_at": 1790693217.5002553,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793615958.8281093,
     "problem_id": "aircraft_landing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20260929T1400Z-z3-mzn-swipl-7a2e",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "3f7e121301e0ea4565e20d8ee0660e799686c194",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.006859199958853424,
-        "execution_wall_seconds": 3.0576294999336824,
+        "checking_seconds": 0.0024624610086902976,
+        "execution_wall_seconds": 0.2809870969504118,
         "first_solution": {
           "landing_times": [
             1,
@@ -56,9 +81,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.609939300105907,
+        "reference_setup_seconds": 0.4079350739484653,
         "runner_status": {
+          "build_seconds": 0.005610279971733689,
           "detail": "",
+          "main_seconds": 0.01666757301427424,
+          "read_seconds": 9.613903239369392e-05,
           "status": "complete",
           "type": "status"
         },
@@ -68,8 +96,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02284770004916936,
-        "execution_wall_seconds": 2.3664669999852777,
+        "checking_seconds": 0.004866812960244715,
+        "execution_wall_seconds": 0.5081734779523686,
         "first_solution": {
           "landing_times": [
             98,
@@ -95,9 +123,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6560157000785694,
+        "reference_setup_seconds": 0.40953340695705265,
         "runner_status": {
+          "build_seconds": 0.00983497395645827,
           "detail": "",
+          "main_seconds": 0.020936153014190495,
+          "read_seconds": 0.00011235009878873825,
           "status": "complete",
           "type": "status"
         },
@@ -107,8 +138,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.06153250008355826,
-        "execution_wall_seconds": 1.983607800095342,
+        "checking_seconds": 0.016420325031504035,
+        "execution_wall_seconds": 0.45373831794131547,
         "first_solution": {
           "landing_times": [
             90,
@@ -124,8 +155,8 @@
             196,
             250,
             313,
-            341,
-            344
+            339,
+            342
           ],
           "total_penalty": 1480
         },
@@ -139,9 +170,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.725519199972041,
+        "reference_setup_seconds": 0.4194451819639653,
         "runner_status": {
+          "build_seconds": 0.018770460039377213,
           "detail": "",
+          "main_seconds": 0.04960318899247795,
+          "read_seconds": 0.0001987899886444211,
           "status": "limit",
           "type": "status"
         },
@@ -151,8 +185,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.11353679990861565,
-        "execution_wall_seconds": 2.146422400022857,
+        "checking_seconds": 0.045081579010002315,
+        "execution_wall_seconds": 0.4580065238988027,
         "first_solution": {
           "landing_times": [
             82,
@@ -188,9 +222,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7760934999678284,
+        "reference_setup_seconds": 0.4078381300205365,
         "runner_status": {
+          "build_seconds": 0.025320847984403372,
           "detail": "",
+          "main_seconds": 0.07497133803553879,
+          "read_seconds": 0.00014377199113368988,
           "status": "limit",
           "type": "status"
         },
@@ -200,8 +237,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.012719099991954863,
-        "execution_wall_seconds": 2.0187135000014678,
+        "checking_seconds": 0.006548720062710345,
+        "execution_wall_seconds": 0.40454602404497564,
         "first_solution": {
           "landing_times": [
             11,
@@ -223,9 +260,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0235957000404596,
+        "reference_setup_seconds": 0.372694717021659,
         "runner_status": {
+          "build_seconds": 0.008054494042880833,
           "detail": "",
+          "main_seconds": 0.08273194497451186,
+          "read_seconds": 0.00010794098488986492,
           "status": "complete",
           "type": "status"
         },
@@ -237,21 +277,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "e7970088b968036f301d30f21debbd6e5d75db66409318a8619f0c9fc65b6e93",
+    "model_hash": "0907ca00e45e14895b9f57b4023639b7b77a6e8a030cb80a3331eb4035ab2f5a",
     "problem_id": "aircraft_landing",
     "reason": "accepted",
     "reference_hash": "132d764d185fc7616ee154307a99c5c1edeae9a97d595cf5527c1e4ede973f1d",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -262,7 +302,7 @@
     "skipped_instances": [],
     "solutions_checked": 7,
     "solver_id": "z3_python",
-    "total_wall_seconds": 22.756531600025482,
+    "total_wall_seconds": 4.697236640029587,
     "unperformed_instances": []
   },
   "generated_by": {

@@ -1,68 +1,90 @@
-# Knight's tour: a knight visits every square of an n x n chessboard exactly once, moving as
-# a knight does, without having to return to its start. The squares are numbered with the
-# move number 0..n*n-1.
+# knights_tour: a Z3 (Python) model from DCP Rosetta.
+# Download the `knights_tour.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knights_tour.html
+# Then run it on the first instance (after `pip install z3-solver numpy`):
+#   python knights_tour.py knights_tour.json
+
 import z3
 
 
-def build(instance):
-    n = instance["n"]  # side of the chessboard
+def create_model(instance):
+    """A knight visits every square of an n by n chessboard exactly once, without
+    returning to the starting square. The tour numbers the squares by move, from 0."""
+    n = instance["n"]  # the board is n by n
+    last = n * n - 1   # the last move number
     cells = [(i, j) for i in range(n) for j in range(n)]
-    last = n * n - 1   # the move numbers are 0..last
 
-    # x[i][j] is the move number at which the knight visits square (i, j).
-    x = [[z3.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
-
-    # Knight's moves, and the squares a knight on (i, j) can jump to.
+    # The knight's moves as (row step, column step).
     knight_moves = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
 
+    # The squares a knight can reach from square (i, j) in one move.
     def jumps(i, j):
         return [(i + di, j + dj) for di, dj in knight_moves
                 if 0 <= i + di < n and 0 <= j + dj < n]
 
-    # visit[k][p] is true if the knight is on square p at move number k. This stands in for
-    # "x[p] == k"; the Boolean form lets Z3 use cardinality constraints for the permutation
-    # and clauses for the knight's jumps, instead of integer equalities.
+    # x[i][j] is the move at which the knight visits square (i, j).
+    x = [[z3.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
+
+    # visit[k][(i, j)] is true when the knight is on square (i, j) at move k.
     visit = [{p: z3.Bool(f"visit_{k}_{p[0]}_{p[1]}") for p in cells} for k in range(last + 1)]
-    # color0 is the color (parity of i + j) of the starting square. A knight's jump changes
-    # the color of the square, so move k is on a square of color color0 xor (k odd).
-    color0 = z3.Bool("color0")
+
+    # start_odd is true when the starting square has an odd sum of row and column.
+    start_odd = z3.Bool("start_odd")
 
     solver = z3.Solver()
 
-    # x tells the move number of each square: it is the k of the visit literal that is true.
-    for (i, j) in cells:
+    # Every square has a move number from 0 to n*n-1.
+    for i, j in cells:
         solver.add(x[i][j] >= 0, x[i][j] <= last)
+
+    # The move number of each square is the move at which the knight is on it.
     for k in range(last + 1):
         for p in cells:
             solver.add(z3.Implies(visit[k][p], x[p[0]][p[1]] == k))
 
-    # Every square is visited exactly once, and every move number is on exactly one square
-    # (all squares have different numbers, which are exactly 0..n*n-1).
+    # Each square is visited at exactly one move.
     for p in cells:
         solver.add(z3.PbEq([(visit[k][p], 1) for k in range(last + 1)], 1))
+
+    # Each move is made on exactly one square.
     for k in range(last + 1):
         solver.add(z3.PbEq([(visit[k][p], 1) for p in cells], 1))
 
-    # Knight's moves: the square after move k is a knight's jump away from the square of
-    # move k, and the square before it is a knight's jump away too. (The reference says
-    # that exactly one neighbouring square holds the next and the previous number; as
-    # the numbers are all different, "at least one" is the same.)
+    # The square after each move is a knight's move away from the square of that move.
     for k in range(last):
         for p in cells:
             solver.add(z3.Implies(visit[k][p], z3.Or([visit[k + 1][q] for q in jumps(*p)])))
+
+    # The square before each move is a knight's move away from the square of that move.
     for k in range(1, last + 1):
         for p in cells:
             solver.add(z3.Implies(visit[k][p], z3.Or([visit[k - 1][q] for q in jumps(*p)])))
 
-    # Implied by the jumps changing the square color each time: move k is on a square of
-    # color color0, flipped when k is odd.
+    # A knight changes square colour on every move. The square of move k has the colour of
+    # the starting square when k is even, and the other colour when k is odd.
     for k in range(last + 1):
         for p in cells:
-            on_color_1 = (p[0] + p[1]) % 2 == 1
-            same_color_as_start = z3.Not(color0) if on_color_1 else color0
-            if k % 2 == 0:
-                solver.add(z3.Implies(visit[k][p], same_color_as_start))
-            else:
-                solver.add(z3.Implies(visit[k][p], z3.Not(same_color_as_start)))
+            needed_odd = start_odd if k % 2 == 0 else z3.Not(start_odd)
+            on_odd_square = (p[0] + p[1]) % 2 == 1
+            solver.add(z3.Implies(visit[k][p], needed_odd if on_odd_square else z3.Not(needed_odd)))
 
     return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

@@ -1,46 +1,60 @@
-# Big Bang nontransitive dice: choose five six-faced dice (Rock, Paper, Scissors,
-# Lizard, Spock) so that each die beats exactly the two dice it beats in
-# Rock-Paper-Scissors-Lizard-Spock.
+# big_bang2: a Z3 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install z3-solver numpy`) with:
+#   python big_bang2.py
+
 import z3
 
 
-def build(instance):
-    del instance  # the puzzle states its own dice, faces and relations
+def create_model(instance):
+    """Design five six-sided dice, one for each of Rock, Paper, Scissors, Lizard and Spock,
+    so that each die beats exactly the two dice its choice beats in the game. Die A beats
+    die B when A shows a strictly larger value than B on more than half of all pairs of faces."""
+    # The five choices, numbered as the rows of dice
+    rock, paper, scissors, lizard, spock = choices = range(5)
+    n_faces = 6    # each die has six faces
+    max_face = 12  # face values go from 1 to 12
 
-    rock, paper, scissors, lizard, spock = range(5)
-
-    m = 5   # number of dice
-    n = 6   # faces on each die
-    f = 12  # largest face value
-
-    # Problem data: each pair (winner, loser) is one "beats" relationship of the game.
-    edge = [
-        (rock, scissors),   # Rock crushes Scissors
-        (rock, lizard),     # Rock crushes Lizard
-        (paper, rock),      # Paper covers Rock
-        (paper, spock),     # Paper disproves Spock
-        (scissors, paper),  # Scissors cuts Paper
-        (scissors, lizard),  # Scissors decapitates Lizard
-        (lizard, paper),    # Lizard eats Paper
-        (lizard, spock),    # Lizard poisons Spock
-        (spock, rock),      # Spock vaporizes Rock
-        (spock, scissors),  # Spock smashes Scissors
+    # (winner, loser): the ten beats relationships of the game
+    beats = [
+        (rock, scissors),     # rock crushes scissors
+        (rock, lizard),       # rock crushes lizard
+        (paper, rock),        # paper covers rock
+        (paper, spock),       # paper disproves Spock
+        (scissors, paper),    # scissors cuts paper
+        (scissors, lizard),   # scissors decapitate lizard
+        (lizard, paper),      # lizard eats paper
+        (lizard, spock),      # lizard poisons Spock
+        (spock, rock),        # Spock vaporizes rock
+        (spock, scissors),    # Spock smashes scissors
     ]
 
-    # dice[i][j] = value on face j of die i, between 1 and f (repeats are allowed).
-    dice = [[z3.Int(f"dice_{i}_{j}") for j in range(n)] for i in range(m)]
+    # dice[c][f] is the value on face f of the die for choice c; values may repeat within a die and across dice
+    dice = [[z3.Int(f"dice_{c}_{f}") for f in range(n_faces)] for c in choices]
 
     solver = z3.Solver()
-    for die in dice:
-        for face in die:
-            solver.add(face >= 1, face <= f)
 
-    # A beats B when A shows the strictly larger face in more than half of all
-    # n*n face pairs. A pseudo-Boolean "at least" constraint over the pair
-    # comparisons states this without integer sums.
-    needed = (n * n) // 2 + 1
-    for winner, loser in edge:
-        wins = [(dice[winner][x] > dice[loser][y], 1) for x in range(n) for y in range(n)]
-        solver.add(z3.PbGe(wins, needed))
+    # Every face shows a value from 1 to max_face.
+    solver.add([z3.And(1 <= face, face <= max_face) for die in dice for face in die])
+
+    # Each beats relationship holds between its two dice.
+    for winner, loser in beats:
+        # n_pairs_won: the number of pairs of faces where the winner's face is the larger one
+        n_pairs_won = z3.Sum([z3.If(a > b, 1, 0) for a in dice[winner] for b in dice[loser]])
+        solver.add(n_pairs_won > n_faces * n_faces // 2)
 
     return solver, {"dice": dice}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+
+    status = solver.check()
+    if status == z3.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output, model_completion=True))
+    else:
+        print("No solution:", status)

@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-002",
-    "created_at": 1790886846.9515774,
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/z3/python/CONTRACT.md": "43876eb65d562488e7ec1bfbe4db97680778ac0e6714aa784e8f332c726aa313"
+    },
+    "created_at": 1793616004.4060495,
     "problem_id": "csplib_001_car_sequencing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7b76b96925c0a4878f33ead5df754944f522e7fe32c849c2da60fb138a79922b",
-    "run_id": "20261001T1218Z-z3-7692",
-    "schema": 2,
-    "skill_bundle_hash": "058147bd9bb86df0b071dd15e24f74a6f03c06f4d7ad4c91eeb9da20e204ba31",
-    "skill_source": "solvers\\z3_python\\skills\\z3-python",
+    "readiness_hash": "8bf95d6452fb98db5626d4877a1c06628b7109f7833bac8074cf4c2963d18137",
+    "run_id": "z3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "7cf121b41495e4ac57c0bcd92db5591406ca7869",
+      "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
       "modified": false,
-      "path": "solvers/z3_python/skills/z3-python"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "42d0190ec66c5c5ce3960e31e0af7abbeb3d2606ce7f224d25c20ecba9f65fa5",
+        "source": "solvers/z3/skills/dcp-z3",
+        "version": {
+          "commit": "b3e30b7e163e04d3843571ef3919d46eaa1dd147",
+          "modified": true,
+          "path": "solvers/z3/skills/dcp-z3"
+        }
+      }
+    ],
     "solver_id": "z3_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a5853855f4cb803591e27691cde8888c0ef3541b524e2c78e58beeb5865eff22",
+      "id": "sha256:b510a1ed9e1baf45e665a8fcab9799c337daad843c3080e2ad746a39c1af4772",
+      "recipe": "sha256:911e1c25de103d83702f26d01a1db0c14a5a24b0c8140ac809b24ab369365c4c",
       "tag": "dcp-eval/z3_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.05099080014042556,
-        "execution_wall_seconds": 1.3420731998048723,
+        "checking_seconds": 0.021093089948408306,
+        "execution_wall_seconds": 0.5316890040412545,
         "first_solution": {
           "sequence": [
             0,
@@ -61,9 +86,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6692533001769334,
+        "reference_setup_seconds": 0.6081955020781606,
         "runner_status": {
+          "build_seconds": 0.03928664093837142,
           "detail": "",
+          "main_seconds": 0.060073771979659796,
+          "read_seconds": 0.0001702009467408061,
           "status": "limit",
           "type": "status"
         },
@@ -73,9 +101,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 1.100124791264534e-06,
+        "checking_seconds": 1.3080425560474396e-06,
         "detail": "",
-        "execution_wall_seconds": 181.3403231999837,
+        "execution_wall_seconds": 180.63450125802774,
         "id": "json:1",
         "instance_hash": "2d42fbcbb9447b0f856c71415e6e3e997bc1d636b0b9565273872feb49a21c31",
         "is_optimization": false,
@@ -85,9 +113,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 20.674810100113973,
+        "reference_setup_seconds": 12.32606253202539,
         "runner_status": {
+          "build_seconds": 3.400958937010728,
           "detail": "",
+          "main_seconds": 180.08772606495768,
+          "read_seconds": 0.00017667701467871666,
           "status": "timeout",
           "type": "status"
         },
@@ -98,9 +129,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 6.00004568696022e-07,
+        "checking_seconds": 1.150066964328289e-06,
         "detail": "",
-        "execution_wall_seconds": 181.46709419996478,
+        "execution_wall_seconds": 180.6272932679858,
         "id": "json:2",
         "instance_hash": "c01282b540eab8a0410a466571960ea9d16f8fadba019106b03566ff68f85e6f",
         "is_optimization": false,
@@ -110,9 +141,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 16.69168150005862,
+        "reference_setup_seconds": 6.818205242976546,
         "runner_status": {
+          "build_seconds": 3.358968018903397,
           "detail": "",
+          "main_seconds": 180.09277303598356,
+          "read_seconds": 0.0001877219183370471,
           "status": "timeout",
           "type": "status"
         },
@@ -123,9 +157,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 0.5955105999018997,
+        "checking_seconds": 0.3520967540098354,
         "detail": "",
-        "execution_wall_seconds": 181.0956196000334,
+        "execution_wall_seconds": 180.49761727591977,
         "first_solution": {
           "sequence": [
             14,
@@ -339,9 +373,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 14.207218100083992,
+        "reference_setup_seconds": 8.463096220977604,
         "runner_status": {
+          "build_seconds": 3.192553216009401,
           "detail": "",
+          "main_seconds": 180.00000686501153,
+          "read_seconds": 0.00018090009689331055,
           "status": "timeout",
           "type": "status"
         },
@@ -352,8 +389,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.2158198000397533,
-        "execution_wall_seconds": 12.36191330011934,
+        "checking_seconds": 0.8357242080383003,
+        "execution_wall_seconds": 10.32349585799966,
         "first_solution": {
           "sequence": [
             17,
@@ -567,9 +604,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 12.609360900009051,
+        "reference_setup_seconds": 9.909691227949224,
         "runner_status": {
+          "build_seconds": 2.5492210329975933,
           "detail": "",
+          "main_seconds": 9.900311929988675,
+          "read_seconds": 0.00013987603597342968,
           "status": "limit",
           "type": "status"
         },
@@ -579,9 +619,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 8.00006091594696e-07,
+        "checking_seconds": 9.74978320300579e-07,
         "detail": "",
-        "execution_wall_seconds": 181.14974440005608,
+        "execution_wall_seconds": 180.52466429700144,
         "id": "json:5",
         "instance_hash": "0602c63f019e6bb316d767f2de635b05c4f3e84e2f9206dbc83906fc7b70b215",
         "is_optimization": false,
@@ -591,9 +631,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 9.32482699980028,
+        "reference_setup_seconds": 8.857255018083379,
         "runner_status": {
+          "build_seconds": 2.510108681046404,
           "detail": "",
+          "main_seconds": 180.09179551398847,
+          "read_seconds": 0.0001391819678246975,
           "status": "timeout",
           "type": "status"
         },
@@ -604,8 +647,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.2286199999507517,
-        "execution_wall_seconds": 21.163505400065333,
+        "checking_seconds": 0.8062242509331554,
+        "execution_wall_seconds": 21.07648597296793,
         "first_solution": {
           "sequence": [
             2,
@@ -819,9 +862,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 11.016284099780023,
+        "reference_setup_seconds": 7.959589016973041,
         "runner_status": {
+          "build_seconds": 3.2999197179451585,
           "detail": "",
+          "main_seconds": 20.636398845002986,
+          "read_seconds": 0.00018908001948148012,
           "status": "limit",
           "type": "status"
         },
@@ -831,8 +877,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.46191559988074,
-        "execution_wall_seconds": 15.423806000035256,
+        "checking_seconds": 0.9153342630015686,
+        "execution_wall_seconds": 15.950940652983263,
         "first_solution": {
           "sequence": [
             7,
@@ -1046,9 +1092,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 6.663276100065559,
+        "reference_setup_seconds": 5.563833163003437,
         "runner_status": {
+          "build_seconds": 3.3578970809467137,
           "detail": "",
+          "main_seconds": 15.392043933039531,
+          "read_seconds": 0.00018513703253120184,
           "status": "limit",
           "type": "status"
         },
@@ -1058,8 +1107,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.220691499998793,
-        "execution_wall_seconds": 95.79007879993878,
+        "checking_seconds": 0.8822698460426182,
+        "execution_wall_seconds": 103.45570937800221,
         "first_solution": {
           "sequence": [
             12,
@@ -1273,9 +1322,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 13.798526600003242,
+        "reference_setup_seconds": 10.710444601951167,
         "runner_status": {
+          "build_seconds": 3.5929780630394816,
           "detail": "",
+          "main_seconds": 102.96829833299853,
+          "read_seconds": 0.00022536201868206263,
           "status": "limit",
           "type": "status"
         },
@@ -1285,9 +1337,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 0.6574358998332173,
+        "checking_seconds": 0.39647958206478506,
         "detail": "",
-        "execution_wall_seconds": 180.98419070011005,
+        "execution_wall_seconds": 180.56009690405335,
         "first_solution": {
           "sequence": [
             10,
@@ -1501,9 +1553,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 11.432062600040808,
+        "reference_setup_seconds": 12.421283968957141,
         "runner_status": {
+          "build_seconds": 3.435204281937331,
           "detail": "",
+          "main_seconds": 180.00064277404454,
+          "read_seconds": 0.00017911894246935844,
           "status": "timeout",
           "type": "status"
         },
@@ -1514,8 +1569,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.9567418000660837,
-        "execution_wall_seconds": 7.19754400011152,
+        "checking_seconds": 0.7363487180555239,
+        "execution_wall_seconds": 6.513764083967544,
         "first_solution": {
           "sequence": [
             19,
@@ -1729,9 +1784,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 6.5363157000392675,
+        "reference_setup_seconds": 6.334241474047303,
         "runner_status": {
+          "build_seconds": 3.1860306430608034,
           "detail": "",
+          "main_seconds": 6.044255326967686,
+          "read_seconds": 0.00017354299779981375,
           "status": "limit",
           "type": "status"
         },
@@ -1741,8 +1799,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.2418019000906497,
-        "execution_wall_seconds": 115.84278639988042,
+        "checking_seconds": 0.7943363740341738,
+        "execution_wall_seconds": 119.73412200307939,
         "first_solution": {
           "sequence": [
             5,
@@ -1956,9 +2014,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 12.293265900108963,
+        "reference_setup_seconds": 6.593541273963638,
         "runner_status": {
+          "build_seconds": 2.805589543073438,
           "detail": "",
+          "main_seconds": 119.28012203401886,
+          "read_seconds": 0.00015990901738405228,
           "status": "limit",
           "type": "status"
         },
@@ -1968,8 +2029,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.1251818998716772,
-        "execution_wall_seconds": 9.078718200093135,
+        "checking_seconds": 0.6008760220138356,
+        "execution_wall_seconds": 7.8168264440028,
         "first_solution": {
           "sequence": [
             17,
@@ -2183,9 +2244,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 10.858188999816775,
+        "reference_setup_seconds": 9.396630950970575,
         "runner_status": {
+          "build_seconds": 2.7352102959994227,
           "detail": "",
+          "main_seconds": 7.378832836984657,
+          "read_seconds": 0.00019274302758276463,
           "status": "limit",
           "type": "status"
         },
@@ -2195,8 +2259,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.1872250998858362,
-        "execution_wall_seconds": 6.96797230001539,
+        "checking_seconds": 0.5414457330480218,
+        "execution_wall_seconds": 5.310894089983776,
         "first_solution": {
           "sequence": [
             7,
@@ -2410,9 +2474,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 14.873862399952486,
+        "reference_setup_seconds": 4.436630844022147,
         "runner_status": {
+          "build_seconds": 2.417613856960088,
           "detail": "",
+          "main_seconds": 4.844520746963099,
+          "read_seconds": 0.00014003505930304527,
           "status": "limit",
           "type": "status"
         },
@@ -2422,8 +2489,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.0757617999333888,
-        "execution_wall_seconds": 174.6106106999796,
+        "checking_seconds": 0.5041226639878005,
+        "execution_wall_seconds": 151.48107711900957,
         "first_solution": {
           "sequence": [
             2,
@@ -2637,9 +2704,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 9.425684300018474,
+        "reference_setup_seconds": 8.581837981939316,
         "runner_status": {
+          "build_seconds": 2.3992731460602954,
           "detail": "",
+          "main_seconds": 151.09222539293114,
+          "read_seconds": 0.00012466299813240767,
           "status": "limit",
           "type": "status"
         },
@@ -2649,8 +2719,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.0050458000041544,
-        "execution_wall_seconds": 69.55422829999588,
+        "checking_seconds": 0.5211593379499391,
+        "execution_wall_seconds": 55.670099531067535,
         "first_solution": {
           "sequence": [
             17,
@@ -2864,9 +2934,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 12.523998300079256,
+        "reference_setup_seconds": 6.89026997203473,
         "runner_status": {
+          "build_seconds": 2.0252016989979893,
           "detail": "",
+          "main_seconds": 55.28720444801729,
+          "read_seconds": 0.00011781707871705294,
           "status": "limit",
           "type": "status"
         },
@@ -2876,9 +2949,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 4.00003045797348e-07,
+        "checking_seconds": 1.200241968035698e-07,
         "detail": "",
-        "execution_wall_seconds": 180.9798011998646,
+        "execution_wall_seconds": 180.4308173119789,
         "id": "json:16",
         "instance_hash": "6d1c710cbaf4dd5638eb3247afc9d506ffd410120d5a732c14be84e1fa5189f7",
         "is_optimization": false,
@@ -2888,9 +2961,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 11.117232500109822,
+        "reference_setup_seconds": 6.6304859860101715,
         "runner_status": {
+          "build_seconds": 1.974577022017911,
           "detail": "",
+          "main_seconds": 180.06833729392383,
+          "read_seconds": 0.00010122195817530155,
           "status": "timeout",
           "type": "status"
         },
@@ -2901,9 +2977,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 4.998873919248581e-07,
+        "checking_seconds": 2.4400651454925537e-07,
         "detail": "",
-        "execution_wall_seconds": 180.93976039998233,
+        "execution_wall_seconds": 180.33987660496496,
         "id": "json:17",
         "instance_hash": "6938001c4e651b231a55fdb940450233f82d47fa1d3c606435793f537cb736a3",
         "is_optimization": false,
@@ -2913,9 +2989,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 8.678327800007537,
+        "reference_setup_seconds": 18.333202179986984,
         "runner_status": {
+          "build_seconds": 2.034709458006546,
           "detail": "",
+          "main_seconds": 180.05820757697802,
+          "read_seconds": 9.116402361541986e-05,
           "status": "timeout",
           "type": "status"
         },
@@ -2926,9 +3005,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 2.00001522898674e-07,
+        "checking_seconds": 1.4796387404203415e-07,
         "detail": "",
-        "execution_wall_seconds": 180.94412560015917,
+        "execution_wall_seconds": 180.36634506704286,
         "id": "json:18",
         "instance_hash": "3f74acd76fd59970d9ebf653df5425ccd43fa43538232bf834bf67130d22182e",
         "is_optimization": false,
@@ -2938,9 +3017,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 6.7175876998808235,
+        "reference_setup_seconds": 30.307752961991355,
         "runner_status": {
+          "build_seconds": 1.8298253730172291,
           "detail": "",
+          "main_seconds": 180.05658435297664,
+          "read_seconds": 7.982493843883276e-05,
           "status": "timeout",
           "type": "status"
         },
@@ -2951,8 +3033,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.8233475999440998,
-        "execution_wall_seconds": 73.42010099999607,
+        "checking_seconds": 0.419888264965266,
+        "execution_wall_seconds": 51.83723130496219,
         "first_solution": {
           "sequence": [
             16,
@@ -3166,9 +3248,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 7.687368300044909,
+        "reference_setup_seconds": 10.788324430934153,
         "runner_status": {
+          "build_seconds": 1.7418529250426218,
           "detail": "",
+          "main_seconds": 51.557984961080365,
+          "read_seconds": 7.776904385536909e-05,
           "status": "limit",
           "type": "status"
         },
@@ -3178,8 +3263,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.8879358000122011,
-        "execution_wall_seconds": 45.27587949996814,
+        "checking_seconds": 0.4493137110257521,
+        "execution_wall_seconds": 32.71701029106043,
         "first_solution": {
           "sequence": [
             2,
@@ -3393,9 +3478,12 @@
           "sequence"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 8.424593500094488,
+        "reference_setup_seconds": 4.45526548998896,
         "runner_status": {
+          "build_seconds": 1.737074373057112,
           "detail": "",
+          "main_seconds": 32.33527883305214,
+          "read_seconds": 7.556600030511618e-05,
           "status": "limit",
           "type": "status"
         },
@@ -3405,9 +3493,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 4.00003045797348e-07,
+        "checking_seconds": 3.7101563066244125e-07,
         "detail": "",
-        "execution_wall_seconds": 180.97498909989372,
+        "execution_wall_seconds": 180.3684844870586,
         "id": "json:21",
         "instance_hash": "c21ff79776499e2d74a95fb42a6ba7bc4bb61f3c9eb0551b24fe14cfb24e0016",
         "is_optimization": false,
@@ -3417,9 +3505,12 @@
           "sequence"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 8.617372900014743,
+        "reference_setup_seconds": 8.200726786977611,
         "runner_status": {
+          "build_seconds": 1.9082450240384787,
           "detail": "",
+          "main_seconds": 180.05933702702168,
+          "read_seconds": 9.020499419420958e-05,
           "status": "timeout",
           "type": "status"
         },
@@ -3432,21 +3523,21 @@
     "instances_available": 22,
     "instances_checked": 13,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "3ec6b2ef2801b33f30cba5431c559c0d580d32852991d00944a6420133315ed5",
+    "model_hash": "3612f62a2f94865e05121d35c35a2acb0d35c01e5d3536684eaf94ba13b2fed1",
     "problem_id": "csplib_001_car_sequencing",
     "reason": "accepted",
     "reference_hash": "d0b3808ec688c61da11a7c499850741034946525935210278a97d13439d5bbc7",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -3467,7 +3558,7 @@
     ],
     "solutions_checked": 28,
     "solver_id": "z3_python",
-    "total_wall_seconds": 2534.8948182999156,
+    "total_wall_seconds": 2421.3785812150454,
     "unperformed_instances": []
   },
   "generated_by": {
