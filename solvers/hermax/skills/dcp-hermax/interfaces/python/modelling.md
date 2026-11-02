@@ -26,6 +26,10 @@ A plain Python list of `IntVar`s (each with its own domain) becomes a container 
 The pattern is checked by the n-queens enumeration in [All solutions](README.md#all-solutions).
 No-overlap on a machine is the `cumulative` call in the README table, and
 [assets/scheduling](../../assets/python/scheduling/README.md) shows `cumulative` with demands other than 1.
+For a machine that runs one task at a time, one ordering Boolean per pair of its tasks,
+`(s[a] + d[a] <= s[b]).only_if(o)` and `(s[b] + d[b] <= s[a]).only_if(~o)`, can solve much
+faster than `cumulative(..., [1] * k, 1)` (10 s against 84 s on a 10-job, 5-machine job
+shop, whichever `cumulative` backend): try both on the data you will solve.
 
 ### Linear constraints over integers: write them directly
 
@@ -92,7 +96,7 @@ m &= m.table([da, db, dc, dd], allowed=rows)
 | 2-D table lookup | `m &= m.table([r, c, val], allowed=[(i, j, tab[i][j]) for ...])` |
 | any other container indexed by an IntVar | `for j: m &= (y == bv[j]).only_if(k == j)` |
 | `b * x`, Boolean times IntVar | `p = m.int(..., 0, x.ub); m &= (p == x).only_if(b); m &= (p == 0).only_if(~b)` |
-| `x * y`, two IntVars | not supported (`TypeError`); `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)`, or a table |
+| `x * y`, two IntVars | not supported (`TypeError`); `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)`, or a table; when `x` is wide, write it in binary digits `x = sum(2**b * bit[b])` and `x * y = sum(2**b * part[b])` with `(part[b] == y).only_if(bit[b])`, `(part[b] == 0).only_if(~bit[b])` |
 | `x * x` | `x.piecewise(base_value=x.lb ** 2, steps={k: k * k for k in range(x.lb + 1, x.ub + 1)})` |
 | remainder, quotient | `x % k` or `m.modulo(x, k)`; `m.floor_div(x, k)` |
 | maximum / minimum | `m.max([a, b])`, `m.min(...)` over IntVars |

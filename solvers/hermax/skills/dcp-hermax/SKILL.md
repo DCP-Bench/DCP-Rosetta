@@ -65,10 +65,13 @@ when it states the arithmetic directly instead of building it from Booleans:
 correctness can shorten the search a lot: a counting argument (when pieces fill a board
 exactly, every row and column of the board is filled exactly), a symmetry break between
 interchangeable objects, a bound on the objective. The objective may also be shifted by
-a constant without changing which solutions are optimal: when every solution must pay at
-least `c_j` for item `j` (the cheapest way to serve it), subtract `c_j` from each of `j`'s
-costs and add the constant `sum(c_j)` back, so the soft clauses only weigh what is above
-the minimum. Report the value computed from the original costs.
+a constant without changing which solutions are optimal: when every solution pays for a
+fixed quantity `q_j` of item `j` (an equality, not an at-least), and `c_j` is its cheapest
+unit cost, subtract `c_j` from each of `j`'s unit costs and add the constant
+`sum(c_j * q_j)` back, so the soft clauses only weigh what is above the minimum. With an
+at-least constraint the shift is not a constant; when extra units only add cost, an optimal
+solution meets the quantity exactly, so the equality can be posted first. Report the value
+computed from the original costs.
 
 **Readable models.** Write for a student reading the model for the first time, in the
 words of the problem statement, not of the API:
