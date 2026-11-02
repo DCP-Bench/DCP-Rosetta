@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
+from evaluation.build import missing_secrets
 from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
@@ -26,7 +27,8 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
           "idp_z3": "model_idp.idp",
           "choco_java": "model_choco_java.java",
           "eclipse_clp": "model_eclipse.ecl",
-          "maxicp_java": "model_maxicp_java.java"}
+          "maxicp_java": "model_maxicp_java.java",
+          "hexaly_python": "model_hexaly.py"}
 
 # Integrations whose metadata says they cannot optimize. The pilot cases that
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
@@ -34,6 +36,14 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
 def satisfaction_only(solver):
     path = integration_folder(solver, ROOT) / "metadata.json"
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
+
+
+# An image built without its licence secret (CI has none) cannot solve, so its
+# pilot runs only where the secret was there to build with.
+def skip_without_secrets(case, solver):
+    missing = missing_secrets(solver, ROOT)
+    if missing:
+        case.skipTest(f"{solver} needs build secrets: {', '.join(missing)}")
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
 # can turn it around. Kept beside PILOTS because the two are added together.
@@ -69,7 +79,8 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       "maxicp_java": ("minimize", "maximize"),
                       "paramita_python": ("minimize", "maximize"),
                       "scip_python": ("minimize", "maximize"),
-                      "idp_z3": ("minimize", "maximize")}
+                      "idp_z3": ("minimize", "maximize"),
+                      "hexaly_python": ("minimize", "maximize")}
 
 # n-queens, with the board size left as a placeholder so the same model can be
 # written either instance-agnostically or with the embedded example baked in.
@@ -295,6 +306,7 @@ class ContainerTests(unittest.TestCase):
             if satisfaction_only(solver):
                 continue
             with self.subTest(solver=solver), tempfile.TemporaryDirectory() as temp:
+                skip_without_secrets(self, solver)
                 original = ROOT / "tests/fixtures" / filename
                 model = Path(temp) / ("model" + original.suffix)
                 model.write_text(original.read_text().replace(*replacements[solver]))
@@ -322,6 +334,7 @@ class ContainerTests(unittest.TestCase):
                 if optimize and satisfaction_only(solver):
                     continue
                 with self.subTest(solver=solver, optimize=optimize):
+                    skip_without_secrets(self, solver)
                     source = SOURCE.replace("optimize = False", f"optimize = {optimize}")
                     result = evaluate(ROOT / "tests/fixtures" / filename, "tiny", solver,
                                       reference_source=source, instances=[{"n": 3, "optimize": optimize}],
