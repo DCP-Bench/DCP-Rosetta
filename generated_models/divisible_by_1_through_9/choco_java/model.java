@@ -35,6 +35,6 @@ public class Submission {
       m.arithm(r, "=", 0).post();
     }
 
-    out.putDigits("number", d, 10);
+    out.put("digits", d);
   }
 }

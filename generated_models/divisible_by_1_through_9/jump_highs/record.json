@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790773376.1485806,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/jump/julia/CONTRACT.md": "e66c1a1da3b5f9c64441c71f649768e957bfe50dcef2cc68ce43e9594e4b4d0e"
+    },
+    "created_at": 1793619922.7407286,
     "problem_id": "divisible_by_1_through_9",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,32 +18,64 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70159e9e611d0bc24823dfcf9d1e4e3fff79901d0f9e183b20a46884e2624383",
-    "run_id": "20260930T1209Z-jump-15ff",
-    "schema": 2,
-    "skill_bundle_hash": "fb8a4b583a7c1d2ead4593e509125a35aa2b045c07b05774db16671c44cc3758",
-    "skill_source": "solvers\\jump_highs\\skills\\jump",
+    "readiness_hash": "e231c62039107ad70892fb7aac5723e3f73f0013c52b9d8e41b1c80ea6787694",
+    "run_id": "20261102-divisible-digits",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "6fdd349931b341caf87e2d48dcb2af44a2d5e0c0",
+      "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
       "modified": false,
-      "path": "solvers/jump_highs/skills/jump"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "02ca9d3f9a82e8c1728e3fc9c345269545731fd8eee36015d01e7136dbf6b94c",
+        "source": "solvers/jump/skills/dcp-jump",
+        "version": {
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
+          "modified": false,
+          "path": "solvers/jump/skills/dcp-jump"
+        }
+      }
+    ],
     "solver_id": "jump_highs"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:1e2a7151692def217f9235986f443073a9894479efba40cbb756c1369ba67b6a",
+      "id": "sha256:9a0342c3b196bdca28d46b42087b9705f40a2cd8346b65eba4b42807a5ca3c7e",
+      "recipe": "sha256:f7f9a309755d1105643688da6696248855bb8b264b44e5e4b777018d007ae84e",
       "tag": "dcp-eval/jump_highs:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.03132860001642257,
-        "execution_wall_seconds": 38.10473040002398,
+        "checking_seconds": 0.005135699873790145,
+        "execution_wall_seconds": 32.96446459996514,
         "first_solution": {
-          "number": 3816547290
+          "digits": [
+            3,
+            8,
+            1,
+            6,
+            5,
+            4,
+            7,
+            2,
+            9,
+            0
+          ]
         },
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
@@ -47,12 +83,15 @@
         "oom_killed": false,
         "optimum": null,
         "outputs": [
-          "number"
+          "digits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2600894999923185,
+        "reference_setup_seconds": 1.9263129997998476,
         "runner_status": {
+          "build_seconds": 2.322070057,
           "detail": "",
+          "main_seconds": 22.325825236,
+          "read_seconds": 5.630428068,
           "status": "complete",
           "type": "status"
         },
@@ -64,19 +103,19 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "9ee958ad7ae4a15100b09d8c35e997b1168a2a361ce21514aa5241a3553d1aee",
+    "model_hash": "093294367077ef622320adc73639429eaa3e8eddf8eaf54b69d94cefc682efe1",
     "problem_id": "divisible_by_1_through_9",
     "reason": "accepted",
-    "reference_hash": "ab7db19ec6cd969de02c1edbe609c91dfc340c82b2700c3997e4c953932f3698",
+    "reference_hash": "aed8e9b5552f77ccdd5e99c3fa4e055b7cd61503756019d9524653e75877a73f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
       "python": "3.12.10"
     },
@@ -89,7 +128,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "jump_highs",
-    "total_wall_seconds": 41.06872380001005,
+    "total_wall_seconds": 35.81043289997615,
     "unperformed_instances": []
   },
   "generated_by": {

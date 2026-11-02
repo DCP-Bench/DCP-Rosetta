@@ -18,8 +18,6 @@ def create_model(instance):
     digits = [model.new_int_var(0, 9, f"digits_{i}") for i in range(n_digits)]
     # prefix[i] is the number formed by the first i + 1 digits
     prefix = [model.new_int_var(0, 10**n_digits, f"prefix_{i}") for i in range(n_digits)]
-    # number is the whole ten-digit number
-    number = prefix[n_digits - 1]
 
     # Each digit from 0 to 9 is used exactly once.
     model.add_all_different(digits)
@@ -32,7 +30,7 @@ def create_model(instance):
         model.add_modulo_equality(remainder, prefix[i], i + 1)
         model.add(remainder == 0)
 
-    return model, {"number": number}
+    return model, {"digits": digits}
 
 
 if __name__ == "__main__":

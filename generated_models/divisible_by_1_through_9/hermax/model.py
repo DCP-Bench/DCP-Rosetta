@@ -28,8 +28,5 @@ def build(instance):
         q = m.int(f"quotient_{k}", 0, sum(c * 9 for c, _ in terms) // k)
         m &= (sum(c * d for c, d in terms) == k * q)
 
-    # number = the whole ten-digit number. One IntVar over 0..10**10 does not fit in memory, so
-    # the output is the sum of the digits times their place values.
-    number = sum(10 ** (n_digits - 1 - i) * digit[i] for i in range(n_digits))
-
-    return m, {"number": number}
+    # The digits of the number, read from left to right.
+    return m, {"digits": digit}

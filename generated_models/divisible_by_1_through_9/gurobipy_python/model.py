@@ -33,7 +33,5 @@ def build(instance):
         quotient = model.addVar(lb=0, ub=upper, vtype=GRB.INTEGER, name=f"quotient[{n}]")
         model.addConstr(residue == n * quotient, name=f"divisible_by[{n}]")
 
-    # The number itself, read from the rounded digits.
-    number = gp.quicksum(10 ** (LENGTH - 1 - j) * x[j] for j in range(LENGTH))
-
-    return model, {"number": number}
+    # The digits of the number, read from left to right.
+    return model, {"digits": x}

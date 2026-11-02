@@ -1,12 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/maxicp_java/CONTRACT.md": "7ef1a3d250c4c9a0b0749c8e38f6c81ea50d2aa0271dd67371ede0fd023c8303"
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/maxicp/java/CONTRACT.md": "099416ac69950dfea2a510f481b4fc9b9d635d078bce53b7fb1d2a277a770707"
     },
-    "created_at": 1792158972.389763,
+    "created_at": 1793619949.4288838,
     "problem_id": "divisible_by_1_through_9",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "50177dcfb049ec0003e84ba107e177767d9a5b99a3779d1e7d40d1a657c38319",
-    "run_id": "20261016-maxicp-java-models",
+    "readiness_hash": "182ef8529c78ce097028a5e8e8aab9e70c6d662087f8d03afc5e400793a2299c",
+    "run_id": "20261102-divisible-digits",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "967629555a8b7df66572b1c140719269a051f8b3",
+      "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "967629555a8b7df66572b1c140719269a051f8b3",
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "de6dfcf4000026926d7fd71b271a77ed6e7c542e7a7a742888c4e7eb2e188075",
-        "source": "solvers/maxicp_java/skills/maxicp-java",
+        "bundle_hash": "e17f3a36fce2fba5e87bda109381b1fa2e0d029bf2c07faf4f61efdeb4bce68f",
+        "source": "solvers/maxicp/skills/dcp-maxicp",
         "version": {
-          "commit": "967629555a8b7df66572b1c140719269a051f8b3",
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
           "modified": false,
-          "path": "solvers/maxicp_java/skills/maxicp-java"
+          "path": "solvers/maxicp/skills/dcp-maxicp"
         }
       }
     ],
@@ -54,16 +54,28 @@
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:ce12504d748601595c0a5916b4265b64a8363799b2b5191355d329fa12c6d06f",
+      "id": "sha256:583df5919dfca3f7f862546b6ed2e7f38b2f698dfaca43ae56145041d1df7c5b",
+      "recipe": "sha256:91edd22cad85105230ca94614ee57c3438b1ceb51f78209ae3f81a261578e4a0",
       "tag": "dcp-eval/maxicp_java:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.021060196973849088,
-        "execution_wall_seconds": 8.076115973002743,
+        "checking_seconds": 0.0036094998940825462,
+        "execution_wall_seconds": 9.0537169999443,
         "first_solution": {
-          "number": 3816547290
+          "digits": [
+            3,
+            8,
+            1,
+            6,
+            5,
+            4,
+            7,
+            2,
+            9,
+            0
+          ]
         },
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
@@ -71,19 +83,22 @@
         "oom_killed": false,
         "optimum": null,
         "outputs": [
-          "number"
+          "digits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9473519239691086,
+        "reference_setup_seconds": 1.957918800180778,
         "runner_status": {
+          "build_seconds": 0.983356238,
           "detail": "",
-          "solve_seconds": 6.614728434,
+          "main_seconds": 6.242108644,
+          "read_seconds": 0.006043864,
+          "solve_seconds": 6.242085082,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "Compilation: 0.916s\n"
+        "stderr": "Compilation: 1.247s\n"
       }
     ],
     "instances_available": 1,
@@ -95,15 +110,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "53a3cb2d82b4d82524ae0f363341566513e5e638efb06a1eba736d3ce39011c9",
+    "model_hash": "f0f3d47911bd8a1fb36f68020a0309074167ba3001269e3521f51511fc75f5c8",
     "problem_id": "divisible_by_1_through_9",
     "reason": "accepted",
-    "reference_hash": "ab7db19ec6cd969de02c1edbe609c91dfc340c82b2700c3997e4c953932f3698",
+    "reference_hash": "aed8e9b5552f77ccdd5e99c3fa4e055b7cd61503756019d9524653e75877a73f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.10"
     },
     "requested": {
       "instance_count": 99,
@@ -114,11 +129,11 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "maxicp_java",
-    "total_wall_seconds": 9.137258239032235,
+    "total_wall_seconds": 11.890853400109336,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.java",

@@ -35,9 +35,5 @@ def build(instance):
         q = model.integer_var(0, top, name=f"quotient_{k}")
         model.add_constraint(reduced == k * q)
 
-    # The ten-digit number, read from its digits. Its value is below 2^53, so the runner's
-    # double arithmetic over the 0/1 values gives it exactly.
-    number = model.sum(d * 10 ** (n - 1 - i) * is_digit[i, d] for i in positions
-                       for d in digits if d)
-
-    return model, {"number": number}
+    # The digits of the number, read from left to right.
+    return model, {"digits": [digit(i) for i in positions]}

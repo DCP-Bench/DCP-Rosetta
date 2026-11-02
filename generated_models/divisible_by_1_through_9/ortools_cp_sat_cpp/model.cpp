@@ -10,8 +10,8 @@ using namespace operations_research::sat;
 // Divisible by 1 through 9 (and 10): find a ten-digit number that uses each
 // digit 0-9 exactly once, such that the number formed by its first n digits,
 // read from the left, is divisible by n for every n from 1 to 10.
-// The problem has no instance data. CP-SAT integers are 64-bit, so the
-// ten-digit number fits in one variable.
+// The problem has no instance data. CP-SAT integers are 64-bit, so every
+// prefix, up to the ten-digit number itself, fits in one variable.
 void Build(const json& /*instance*/, CpModelBuilder& model, json& outputs) {
   const int kDigits = 10;
   const int64_t kMax = 10000000000LL;  // 10^10, the bound the statement's prefixes stay under
@@ -42,5 +42,7 @@ void Build(const json& /*instance*/, CpModelBuilder& model, json& outputs) {
     model.AddEquality(t[i], (i + 1) * quotient);
   }
 
-  outputs = {{"number", t[kDigits - 1].index()}};
+  json digits = json::array();
+  for (const IntVar& digit : x) digits.push_back(digit.index());
+  outputs = {{"digits", digits}};
 }

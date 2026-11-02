@@ -6,6 +6,7 @@ function build(instance)
     # The puzzle is fixed by the problem; the instance carries no data.
     n = 10
     model = Model()
+    # x[i] = the i-th digit of the number, read from the left; each of 0 to 9 is used once
     @variable(model, 0 <= x[1:n] <= 9, Int)
     @constraint(model, x in MOI.AllDifferent(n))
     # t[i] = the number formed by the first i digits, and t[i] = i * k[i]
@@ -14,5 +15,5 @@ function build(instance)
     @constraint(model, t[1] == x[1])
     @constraint(model, [i = 2:n], t[i] == 10 * t[i - 1] + x[i])
     @constraint(model, [i = 1:n], t[i] == i * k[i])
-    return model, Dict("number" => t[n])
+    return model, Dict("digits" => x)
 end

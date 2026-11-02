@@ -1,7 +1,7 @@
 """Divisible by 1 through 9 (and 10): find a 10-digit number that uses each digit 0..9 once,
 where the number formed by its first n digits is divisible by n for every n.
 
-The model reports the number.
+The model reports the ten digits of the number, read from left to right.
 """
 import pulp
 
@@ -36,6 +36,5 @@ def build(instance):
         multiple = pulp.LpVariable(f"multiple_{i}", 0, largest // divisor, cat="Integer")
         problem += pulp.lpSum(w * x[j] for j, w in enumerate(weights)) == divisor * multiple
 
-    # the number read from its ten digits
-    number = pulp.lpSum(10 ** (length - 1 - i) * x[i] for i in places)
-    return problem, {"number": number}
+    # x[i] is the digit at place i, read from left to right
+    return problem, {"digits": x}

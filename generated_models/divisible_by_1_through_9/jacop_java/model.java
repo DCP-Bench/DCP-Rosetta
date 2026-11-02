@@ -1,8 +1,8 @@
 // Divisible by 1 through 9: a 10-digit number that uses each digit 0 to 9 exactly once, where
 // the number formed by its first n digits is divisible by n, for n = 1 to 10.
 // The digits are read left to right: digits[0] is the leading digit, digits[9] the last.
-// The whole number is 10 digits (above 2^31), so it is reported with putDigits. Its prefixes
-// of length 1 to 9 stay below 10^9 and fit in int.
+// The whole number is 10 digits (above 2^31) and is never built; its prefixes of length 1 to 9
+// stay below 10^9 and fit in int.
 import org.jacop.constraints.Alldifferent;
 import org.jacop.constraints.LinearInt;
 import org.jacop.constraints.XeqC;
@@ -45,7 +45,7 @@ public class Submission {
         // The whole 10-digit number is divisible by 10: its last digit is 0.
         store.impose(new XeqC(digits[9], 0));
 
-        return new Model().putDigits("number", digits, 10).search(digits, null, null);
+        return new Model().put("digits", digits).search(digits, null, null);
     }
 
     private static int pow10(int k) {

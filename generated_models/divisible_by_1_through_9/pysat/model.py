@@ -11,7 +11,9 @@ def build(instance):
     pool = IDPool()
     # x[i] = the i-th digit of the number, read from the left. Direct encoding: ten values each.
     x = [Integer(f"x{i}", 0, 9, vpool=pool) for i in range(n_digits)]
-    engine = IntegerEngine(vars=x, vpool=pool)
+    # The engine gets its own copy of the list: it keeps the list it is given and
+    # add_var appends to it, which would add the quotients below to the digits output.
+    engine = IntegerEngine(vars=list(x), vpool=pool)
 
     # each of the digits 0..9 is used exactly once
     engine.add_alldifferent(x)
@@ -31,8 +33,5 @@ def build(instance):
         engine.add_var(q)
         engine.add_linear(reduced - k * q == 0)
 
-    # number = the whole 10-digit number. It can be up to 10**10, too wide for one Integer, so it
-    # is declared as the sum of the digits times their place values.
-    number = sum(10 ** (n_digits - 1 - i) * x[i] for i in range(n_digits))
-
-    return engine.clausify(), {"number": number}
+    # The digits of the number, read from left to right.
+    return engine.clausify(), {"digits": x}

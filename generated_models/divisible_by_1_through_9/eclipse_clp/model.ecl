@@ -1,10 +1,10 @@
 % Model for divisible_by_1_through_9: find a 10 digit number that uses each of
 % the digits 0 to 9 exactly once and where the number formed by the first n
-% digits of the number is divisible by n. Output: number (the full 10 digit number).
+% digits of the number is divisible by n. Output: digits (the ten digits, left to right).
 
 :- lib(ic).
 
-model(_Instance, Digits, [number-Number]) :-
+model(_Instance, Digits, [digits-Digits]) :-
     % a number that uses each of the digits 0 to 9 exactly once
     length(Digits, 10),
     Digits :: 0..9,
@@ -13,11 +13,7 @@ model(_Instance, Digits, [number-Number]) :-
     Digits = [First|_],
     First #\= 0,
     % the number formed by the first n digits of the number is divisible by n
-    prefix_rules(1, 10, Digits),
-    % the number itself, read from left to right
-    place_values(Digits, 9, Terms),
-    Number :: 0..9999999999,
-    Number #= sum(Terms).
+    prefix_rules(1, 10, Digits).
 
 % The prefix of length N, read as a number, is divisible by N. Its value is
 % sum of 10^(N-i) * D_i. Reduced modulo N, each weight 10^(N-i) mod N is a
@@ -58,10 +54,3 @@ wsum([], S, S).
 wsum([W|Ws], A, S) :-
     A1 is A + W,
     wsum(Ws, A1, S).
-
-% place values of the 10 digits: digit i has weight 10^(10-i)
-place_values([], _, []).
-place_values([D|Ds], E, [P*D|Ts]) :-
-    P is 10^E,
-    E1 is E - 1,
-    place_values(Ds, E1, Ts).

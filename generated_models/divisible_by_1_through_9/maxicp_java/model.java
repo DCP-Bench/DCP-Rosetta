@@ -50,6 +50,6 @@ public class Submission {
     // the whole 10 digit number is divisible by 10, so its last digit is 0
     m.cp().post(eq(d[9], 0));
 
-    out.putDigits("number", d, 10);
+    out.put("digits", d);
   }
 }

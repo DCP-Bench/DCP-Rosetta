@@ -2,10 +2,14 @@
   "attempt": {
     "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790718527.559509,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/picat/picat/CONTRACT.md": "4dee59a603589f5dce25209855574189bc01e437052e470ae8d25ad0df96866d"
+    },
+    "created_at": 1793619673.4254415,
     "problem_id": "divisible_by_1_through_9",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,32 +18,64 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20260929T2116Z-picat-0895",
-    "schema": 2,
-    "skill_bundle_hash": "af69b3a1f8f7bef39c3329699413479af027d2d4d554c107d569578acaf82b22",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "a0fb80751d2e1351447a966641adafa41613055fd76a1c8ebb708f6113fd7585",
+    "run_id": "20261102-divisible-digits",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b49a99cf7ce143ff33ec9b03d0e89b5519a7e9a4",
+      "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "8f5f55394e4dfb5c5fdc53edcdca55839ab2c22d2589a2f86b2718da625169c1",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "c9c54cda8bbfa3c57066b336dacd070b672a160b",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:0973b0b404ff51f3b0856b76c6e0c5c987519cbe628bfd4f175e523e76d704bf",
+      "recipe": "sha256:2e359dd21509fd8f08cd31b601cabb991d9948bdfa5ed911067eca48ef3f256b",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.033156500081531703,
-        "execution_wall_seconds": 3.1474025000352412,
+        "checking_seconds": 0.0031437999568879604,
+        "execution_wall_seconds": 1.350831399904564,
         "first_solution": {
-          "number": 3816547290
+          "digits": [
+            3,
+            8,
+            1,
+            6,
+            5,
+            4,
+            7,
+            2,
+            9,
+            0
+          ]
         },
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
@@ -47,12 +83,15 @@
         "oom_killed": false,
         "optimum": null,
         "outputs": [
-          "number"
+          "digits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.9214752999832854,
+        "reference_setup_seconds": 2.2788988000247627,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.03,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -64,19 +103,19 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "3eab059037355535718113debe4f995ab10152b75596c98516f39b1729ba18ad",
+    "model_hash": "3a26f8ef02bd0f762d7365412fd47bcd656a250527f4c2ea92f4e683f8a332b5",
     "problem_id": "divisible_by_1_through_9",
     "reason": "accepted",
-    "reference_hash": "ab7db19ec6cd969de02c1edbe609c91dfc340c82b2700c3997e4c953932f3698",
+    "reference_hash": "aed8e9b5552f77ccdd5e99c3fa4e055b7cd61503756019d9524653e75877a73f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
       "python": "3.12.10"
     },
@@ -89,7 +128,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "picat",
-    "total_wall_seconds": 6.974344399990514,
+    "total_wall_seconds": 4.549881399841979,
     "unperformed_instances": []
   },
   "generated_by": {

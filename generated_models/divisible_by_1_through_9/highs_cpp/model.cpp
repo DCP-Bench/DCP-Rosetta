@@ -1,5 +1,5 @@
 // Find a 10 digit number that uses each of the digits 0 to 9 exactly once, where the
-// number formed by its first n digits is divisible by n, for n = 1..10. Output the number.
+// number formed by its first n digits is divisible by n, for n = 1..10. Output its digits.
 #include <cmath>
 #include <vector>
 
@@ -54,8 +54,6 @@ void build(const json& instance, Highs& h, dcp::Outputs& out) {
     previous = prefix;
   }
 
-  // The number itself: digit 0 is the most significant.
-  dcp::Lin number = d[0];
-  for (int k = 1; k < digits; ++k) number = 10.0 * number + d[k];
-  out.add("number", number);
+  // The digits of the number, read from left to right.
+  out.add("digits", d);
 }
