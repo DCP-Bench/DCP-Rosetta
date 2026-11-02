@@ -1,41 +1,82 @@
-# Futoshiki: fill an n x n grid with the digits 1..n so that every row and
-# every column contains each digit once, respecting the given digits and the
-# "less than" signs between neighbouring cells.
-# Each cell is one-hot over its digit; the grid output is the integer value.
-from paramita.modelling import Bool
+# futoshiki: a Paramita (Python) model from DCP Rosetta.
+# Download the `futoshiki.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/futoshiki.html
+# Then install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python futoshiki.py futoshiki.json
+
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_container, to_cnf
 
 
-def build(instance):
-    values = instance["values"]
-    lt = instance["lt"]
-    n = len(values)
-    digits = range(1, n + 1)
+def create_model(instance):
+    """Futoshiki: fill an n_rows-by-n_rows grid with the digits 1 to n_rows so that every row
+    and every column holds each digit once, the given digits are in place, and every
+    inequality sign holds."""
+    values = instance["values"]  # values[r][c]: the digit given in row r, column c; 0 when the cell is empty
+    lt = instance["lt"]  # lt[i] = [r1, c1, r2, c2]: cell (r1, c1) is less than cell (r2, c2); rows and columns count from 1
+    n_rows = len(values)  # the grid has n_rows rows and n_rows columns
+    rows = range(n_rows)
+    digits = range(1, n_rows + 1)
 
-    # v[r][c][k] = cell (r, c) holds digit k
-    v = [[{k: Bool(f"v_{r}_{c}_{k}") for k in digits} for c in range(n)] for r in range(n)]
-    # g[r][c] = value of cell (r, c)
-    g = [[sum(k * v[r][c][k] for k in digits) for c in range(n)] for r in range(n)]
+    # digit_at[r][c][k] is true when the cell in row r, column c holds digit k.
+    digit_at = [[{k: Bool(f"v_{r}_{c}_{k}") for k in digits} for c in rows] for r in rows]
 
-    cons = []
+    # grid[r][c] is the digit in row r, column c.
+    grid = [[sum(k * digit_at[r][c][k] for k in digits) for c in rows] for r in rows]
 
-    # each cell holds exactly one digit
-    cons += [sum(v[r][c].values()) == 1 for r in range(n) for c in range(n)]
+    # Each cell holds exactly one digit.
+    subject_to = [sum(digit_at[r][c].values()) == 1 for r in rows for c in rows]
 
-    # each row contains each digit 1 to n exactly once
-    cons += [sum(v[r][c][k] for c in range(n)) == 1 for r in range(n) for k in digits]
+    # Each row contains each digit once.
+    subject_to += [sum(digit_at[r][c][k] for c in rows) == 1 for r in rows for k in digits]
 
-    # each column contains each digit 1 to n exactly once
-    cons += [sum(v[r][c][k] for r in range(n)) == 1 for c in range(n) for k in digits]
+    # Each column contains each digit once.
+    subject_to += [sum(digit_at[r][c][k] for r in rows) == 1 for c in rows for k in digits]
 
-    # given digits are fixed in their cells
-    for r in range(n):
-        for c in range(n):
+    # The digits given at the start stay in their cells.
+    for r in rows:
+        for c in rows:
             if values[r][c] > 0:
-                cons.append(v[r][c][values[r][c]])
+                subject_to.append(digit_at[r][c][values[r][c]])
 
-    # inequality signs: the cell on the left (or top) is less than its neighbour.
-    # Positions in the instance are 1-based.
+    # Each inequality sign holds.
     for r1, c1, r2, c2 in lt:
-        cons.append(g[r1 - 1][c1 - 1] + 1 <= g[r2 - 1][c2 - 1])
+        subject_to.append(grid[r1 - 1][c1 - 1] + 1 <= grid[r2 - 1][c2 - 1])
 
-    return cons, {"grid": g}
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in subject_to:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs = create_model(instances[index])
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

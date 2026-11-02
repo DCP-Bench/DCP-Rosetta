@@ -1,59 +1,103 @@
-# Sports tournament scheduling: n teams play a round robin over n-1 weeks.
-# Each week has n/2 periods, and each period holds one game between a home
-# team and an away team. Every team plays once a week, at most twice in the
-# same period, and every pair of teams plays exactly once.
-#
-# Encoding: one-hot per (week, period) for the home team H[w][p][t] and the
-# away team A[w][p][t]. The auxiliary M[w][p][i][j] says teams i and j play
-# each other in period p of week w, in either order.
+# csplib_026_sports_tournament_scheduling: a Paramita (Python) model from DCP Rosetta.
+# Download the `csplib_026_sports_tournament_scheduling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_026_sports_tournament_scheduling.html
+# Then install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python csplib_026_sports_tournament_scheduling.py csplib_026_sports_tournament_scheduling.json
 
-from paramita.modelling import Bool, Iff, Or
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, Iff, Or, add_to_container, to_cnf
 
 
-def build(instance):
-    n = instance["n_teams"]
-    weeks = n - 1
-    periods = n // 2
-    teams = range(n)
+def create_model(instance):
+    """Schedule a round robin of n teams over n - 1 weeks, with n / 2 periods in each week and
+    one game in each period between a home team and an away team. Every team plays once a
+    week, at most twice in the same period over the tournament, and every two teams play
+    each other exactly once."""
+    n = instance["n_teams"]  # the number of teams
+    weeks = n - 1            # every team plays once a week, against each other team once
+    periods = n // 2         # the games of one week
+    teams = range(n)         # the teams, numbered 0 to n - 1 here
 
-    H = [[[Bool(f"home_{w}_{p}_{t}") for t in teams] for p in range(periods)] for w in range(weeks)]
-    A = [[[Bool(f"away_{w}_{p}_{t}") for t in teams] for p in range(periods)] for w in range(weeks)]
+    # is_home[w][p][t] is true when team t is the home team of the game in week w, period p
+    is_home = [[[Bool(f"home_{w}_{p}_{t}") for t in teams] for p in range(periods)]
+               for w in range(weeks)]
+    # is_away[w][p][t] is true when team t is the away team of that game
+    is_away = [[[Bool(f"away_{w}_{p}_{t}") for t in teams] for p in range(periods)]
+               for w in range(weeks)]
 
-    cons = []
+    constraints = []
 
-    # each slot holds exactly one team: one home team and one away team per game
+    # Each game has one home team and one away team.
     for w in range(weeks):
         for p in range(periods):
-            cons.append(sum(H[w][p]) == 1)
-            cons.append(sum(A[w][p]) == 1)
+            constraints.append(sum(is_home[w][p]) == 1)
+            constraints.append(sum(is_away[w][p]) == 1)
 
-    # every team plays once a week (so it is home or away in exactly one period)
+    # Every team plays once a week, as home or as away.
     for w in range(weeks):
         for t in teams:
-            cons.append(sum(H[w][p][t] + A[w][p][t] for p in range(periods)) == 1)
+            constraints.append(sum(is_home[w][p][t] + is_away[w][p][t] for p in range(periods)) == 1)
 
-    # every team plays at most twice in the same period over the tournament
+    # Every team plays at most twice in the same period over the tournament.
     for p in range(periods):
         for t in teams:
-            cons.append(sum(H[w][p][t] + A[w][p][t] for w in range(weeks)) <= 2)
+            constraints.append(sum(is_home[w][p][t] + is_away[w][p][t] for w in range(weeks)) <= 2)
 
-    # every team plays every other team: each pair meets in exactly one game
-    M = {}
+    # meet[w, p, i, j] is true when teams i and j play each other in period p of week w, in either order.
+    meet = {}
     for w in range(weeks):
         for p in range(periods):
             for i in teams:
                 for j in teams:
                     if i < j:
-                        m = Bool(f"meet_{w}_{p}_{i}_{j}")
-                        M[w, p, i, j] = m
-                        cons.append(Iff(m, Or([H[w][p][i] & A[w][p][j], H[w][p][j] & A[w][p][i]])))
+                        meet[w, p, i, j] = Bool(f"meet_{w}_{p}_{i}_{j}")
+                        constraints.append(Iff(meet[w, p, i, j], Or([is_home[w][p][i] & is_away[w][p][j],
+                                                                     is_home[w][p][j] & is_away[w][p][i]])))
+
+    # Every two teams play each other exactly once over the tournament.
     for i in teams:
         for j in teams:
             if i < j:
-                cons.append(sum(M[w, p, i, j] for w in range(weeks) for p in range(periods)) == 1)
+                constraints.append(sum(meet[w, p, i, j] for w in range(weeks) for p in range(periods)) == 1)
 
-    # output the schedule with teams numbered 1..n
-    home = [[sum((t + 1) * H[w][p][t] for t in teams) for p in range(periods)] for w in range(weeks)]
-    away = [[sum((t + 1) * A[w][p][t] for t in teams) for p in range(periods)] for w in range(weeks)]
+    # The home and away team of each game, numbered 1 to n.
+    home = [[sum((t + 1) * is_home[w][p][t] for t in teams) for p in range(periods)] for w in range(weeks)]
+    away = [[sum((t + 1) * is_away[w][p][t] for t in teams) for p in range(periods)] for w in range(weeks)]
 
-    return cons, {"home": home, "away": away}
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {"home": home, "away": away}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs = create_model(instances[index])
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

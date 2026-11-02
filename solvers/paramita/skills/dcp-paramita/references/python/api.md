@@ -21,7 +21,7 @@ from paramita.base import PbConstraint      # not `from paramita import PbConstr
 | Form | Meaning |
 |---|---|
 | `Bool(name)` | a variable, identified by its name |
-| `~a`, `a & b`, `a \| b` | Not, And, Or; `And(a, b)`/`Or(a, b)` or one list `Or([a, b, c])`; three operands or one bare operand raise TypeError |
+| `~a`, `a & b`, `a \| b` | Not, And, Or; `And(a, b)`/`Or(a, b)` or one list `Or([a, b, c])`; three operands or one bare operand raise TypeError; a one-element list works, an empty list raises |
 | `If(a, b)`, `Iff(a, b)` | implication, equivalence; either side may be a PB comparison |
 | `w * a`, `a + b`, `sum(...)`, `e + c`, `-e` | integer expressions over Bools |
 | `e1 <= e2`, `<`, `==`, `>=`, `>` | PB comparison (a Boolean expression) |

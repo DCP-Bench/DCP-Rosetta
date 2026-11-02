@@ -1,56 +1,95 @@
-# Maximum density still life on an n x m active grid (CSPLib 032).
-#
-# A still life is a pattern that does not change from one generation to the next
-# (Conway's Game of Life). Cells outside the active grid are dead and are not
-# printed, but they can still be born, so the birth rule is also checked on the
-# ring of dead cells around the grid. The objective is the number of live cells.
-#
-# Encoding: one Bool per cell. The number of live neighbours of a cell is a linear
-# sum of its (up to 8) neighbour Bools, so every rule is a PB constraint on that
-# sum. Cells outside the grid are constant dead, so their neighbour sums simply
-# leave out the out-of-grid positions.
+# csplib_032_max_density_still_life: a Paramita (Python) model from DCP Rosetta.
+# Download the `csplib_032_max_density_still_life.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+# Then install Paramita with its EvalMaxSAT solver (the build needs Linux, git, cmake,
+# a C++ compiler and zlib) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
+#   python csplib_032_max_density_still_life.py csplib_032_max_density_still_life.json
 
-from paramita.modelling import Bool, If, Or
+from paramita.containers import WcnfFormula
+from paramita.modelling import (
+    And, Bool, DimacsVariablePool, If, Or, add_to_weighted_container, to_cnf,
+)
 
 
-def build(instance):
-    n, m = instance["n"], instance["m"]
+def create_model(instance):
+    """In an n x m window of Conway's Game of Life, place as many live cells as possible so that
+    the pattern does not change from one generation to the next. The board is infinite; cells
+    outside the window are dead."""
+    n = instance["n"]  # the number of rows of the window
+    m = instance["m"]  # the number of columns of the window
 
-    # c[i][j] = 1 if the cell in row i, column j of the active grid is alive
-    c = [[Bool(f"c_{i}_{j}") for j in range(m)] for i in range(n)]
+    # alive[i][j] is true when the cell in row i, column j of the window is alive
+    alive = [[Bool(f"alive_{i}_{j}") for j in range(m)] for i in range(n)]
 
+    # Whether cell (i, j) lies in the window.
     def inside(i, j):
         return 0 <= i < n and 0 <= j < m
 
-    def neighbours(i, j):
-        # the number of live neighbours of (i, j), counting in-grid cells only
+    # The number of live neighbours of cell (i, j). Cells outside the window are dead.
+    def live_neighbours(i, j):
         return sum(
-            c[i + di][j + dj]
+            alive[i + di][j + dj]
             for di in (-1, 0, 1)
             for dj in (-1, 0, 1)
             if (di, dj) != (0, 0) and inside(i + di, j + dj)
         )
 
-    cons = []
+    # The constraints of the model, collected as they are added.
+    constraints = []
 
-    # a live cell must have exactly 2 or 3 live neighbours to stay alive
+    # A live cell has 2 or 3 live neighbours, so it stays alive.
     for i in range(n):
         for j in range(m):
-            nb = neighbours(i, j)
-            cons.append(If(c[i][j], (nb >= 2) & (nb <= 3)))
+            n_live_neighbours = live_neighbours(i, j)
+            constraints.append(If(alive[i][j], (n_live_neighbours >= 2) & (n_live_neighbours <= 3)))
 
-    # a dead cell must not have exactly 3 live neighbours (otherwise it is born).
-    # This covers the cells of the grid and the ring of dead cells around it.
+    # A dead cell does not have exactly 3 live neighbours, so no cell is born. This covers the
+    # window and the ring of dead cells just outside it.
     for i in range(-1, n + 1):
         for j in range(-1, m + 1):
-            nb = neighbours(i, j)
+            n_live_neighbours = live_neighbours(i, j)
             if inside(i, j):
-                cons.append(Or([c[i][j], nb <= 2, nb >= 4]))
+                constraints.append(Or([alive[i][j], n_live_neighbours <= 2, n_live_neighbours >= 4]))
             else:
-                cons.append(Or([nb <= 2, nb >= 4]))
+                constraints.append(Or([n_live_neighbours <= 2, n_live_neighbours >= 4]))
 
-    # maximise the number of live cells
-    density = sum(c[i][j] for i in range(n) for j in range(m))
+    # The number of live cells in the window, to maximise.
+    density = sum(alive[i][j] for i in range(n) for j in range(m))
 
-    grid = [[c[i][j] for j in range(m)] for i in range(n)]
-    return cons, {"grid": grid}, ("maximize", density)
+    # Encode into a weighted formula: the constraints as hard clauses, the value to
+    # maximise as soft clauses. The pool gives each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(density, And(constraints), to_cnf, formula, pool)
+
+    return (formula, pool), {"grid": alive}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs = create_model(instances[index])
+
+    solver = MaxSatSolver.from_name("EvalMaxSAT2022")
+    # copy the formula into the solver: the hard clauses, then each soft clause with its weight
+    solver.add_clauses(formula.hard_clauses())
+    for weight, clause in formula.soft_clauses():
+        solver.add_clause(clause, weight)
+
+    if solver.solve() == MAXSAT_ANSWER.OPTIMAL:
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")
