@@ -68,8 +68,8 @@ short-name-mode = "permissive"
 
 Results then match Docker's with two differences, both because of the missing
 subuid range and cgroup delegation. Candidates run as root inside the container,
-which is still the unprivileged host user, with every other restriction kept. That
-makes `test_isolation`'s uid assertion fail. And `--cpus` is not enforced: set
+which is still the unprivileged host user, with every other restriction kept
+(`test_isolation` checks the host mapping, not the uid). And `--cpus` is not enforced: set
 `DCP_TASKSET=0-7` to pin containers to cores, and expect noisier timings.
 `--memory` limits and their `memory_limit` verdicts do work.
 

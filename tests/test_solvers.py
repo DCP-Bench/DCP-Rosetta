@@ -375,8 +375,15 @@ class ContainerTests(unittest.TestCase):
             path = Path(temp) / "model.py"
             path.write_text('''
 import os, socket
+def host_uid(uid):
+    for line in open('/proc/self/uid_map'):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
 def build(instance):
-    assert os.getuid() != 0
+    # Unprivileged on the host: Docker runs as nobody; rootless podman without a
+    # subuid range can only run as container root, which maps to the invoking user.
+    assert os.getuid() != 0 or host_uid(0) != 0
     assert not os.path.exists('/dataset')
     assert sorted(os.listdir('/input')) == ['model.py', 'request.json']
     try:
