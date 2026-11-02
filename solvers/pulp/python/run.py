@@ -1,9 +1,10 @@
 """Runner protocol for the pulp_cbc integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(problem, outputs)`, where
-`problem` is a `pulp.LpProblem`. Its own `objective` says whether this is an
-optimization: PuLP leaves it `None` until something is added to it, and its
-`sense` says which direction, so the submission needs no extra convention.
+A submission defines `create_model(instance)` (`build` in models retained earlier)
+returning `(problem, outputs)`, where `problem` is a `pulp.LpProblem`. Its own
+`objective` says whether this is an optimization: PuLP leaves it `None` until
+something is added to it, and its `sense` says which direction, so the submission
+needs no extra convention.
 
 Two things about CBC shape this runner.
 
@@ -72,14 +73,15 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("build(instance) must return (problem, outputs)")
+        raise ValueError("create_model(instance) must return (problem, outputs)")
     problem, outputs = returned
     if not isinstance(problem, pulp.LpProblem):
-        raise ValueError("build(instance) must return a pulp.LpProblem")
+        raise ValueError("create_model(instance) must return a pulp.LpProblem")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return problem, outputs
 
 

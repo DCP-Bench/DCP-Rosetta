@@ -2,23 +2,26 @@
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how PuLP with
 CBC expresses it. Runner: [run.py](run.py), which imports `emit` and `finish` from
-[runner/runtime.py](../../../runner/runtime.py) but has its own `build`, solve and
+[runner/runtime.py](../../../runner/runtime.py) but has its own loader, solve and
 enumeration loop.
 
 ## Submission file
 
 One Python file, `model.py`. It may import `pulp` and the standard library; nothing else
-is installed (no NumPy), and no other file of yours is staged.
+is installed (no NumPy), and no other file of yours is staged. The standalone run block
+imports `numpy`, which is fine: the runner never executes it.
 
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[pulp.LpProblem, dict]:
+def create_model(instance) -> tuple[pulp.LpProblem, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return exactly a
-2-tuple `(problem, outputs)` with `problem` a `pulp.LpProblem`; a third element is
-rejected. Anything the module prints goes to stderr.
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+It must return exactly a 2-tuple `(problem, outputs)` with `problem` a `pulp.LpProblem`; a
+third element is rejected. Anything the module prints goes to stderr. Models retained
+before 2026-11-02 name it `build(instance)`, which the runner still accepts; write
+`create_model`.
 
 ## Instance
 
@@ -58,7 +61,7 @@ enumerating.
   values repeat an earlier one (the cut moved only a variable inside an expression) is
   skipped. Exhausted when the cut problem is `Infeasible`, or every such variable is
   already fixed by its bounds.
-- Time: the budget runs from the start of the run (`build` included). A `SIGALRM` at
+- Time: the budget runs from the start of the run (`create_model` included). A `SIGALRM` at
   `execution_timeout + 5` s becomes `timeout`.
 
 ## Compilation
@@ -97,22 +100,94 @@ dcp-eval/pulp_cbc:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_pulp.py](../../../tests/fixtures/model_pulp.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
+# knapsack: a PuLP (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python knapsack.py knapsack.json
+
 import pulp
 
 
-def build(instance):
-    n = instance["n"]
-    problem = pulp.LpProblem("smoke", pulp.LpMinimize)
-    x = pulp.LpVariable("x", 0, n, cat="Integer")
-    y = pulp.LpVariable("y", 0, n, cat="Integer")
-    if instance["optimize"]:
-        problem += x + y >= n
-        problem += x + y
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    problem = pulp.LpProblem("knapsack", pulp.LpMaximize)
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [pulp.LpVariable(f"x_{i}", cat="Binary") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    problem += pulp.lpSum(w * xi for w, xi in zip(weights, x)) <= capacity
+
+    # Pack the most valuable selection.
+    problem += pulp.lpSum(v * xi for v, xi in zip(values, x))
+
+    return problem, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
     else:
-        problem += x + y == n
-    return problem, {"x": x, "y": y}
+        print("No solution:", pulp.LpStatus[problem.status])
+```
+
+## Standalone run
+
+Every model carries the header and the run block of the example, with `knapsack` replaced
+by the problem id, so a reader can copy it from the catalogue and run it with PuLP and
+numpy. Nothing else goes in either: the header is the first lines of the file, the run block
+the last, and the model sits between them. The runner loads the file as module `candidate`,
+so the block never runs during evaluation.
+
+The run block solves once with the bundled CBC and prints each output rounded to an
+integer, read with `pulp.value` through `numpy.vectorize`. It checks `problem.status`,
+which is enough without a time limit; the runner, which sets one, checks `sol_status`.
+`numpy.vectorize` turns a bare integer, or a list holding only integers, into numpy
+integers that `pulp.value` does not accept, so give a fixed output as a variable or keep
+it in a list with variables.
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install pulp numpy`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])
 ```

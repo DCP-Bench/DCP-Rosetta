@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-003",
-    "created_at": 1791003726.4265125,
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/pulp/python/CONTRACT.md": "e86159499f7e679c3b2d7fbd9209c998bf67e20192b9c82f2810fc9fd7cfc12b"
+    },
+    "created_at": 1793659768.6770551,
     "problem_id": "handshaking",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "c9ceb1d75645af5a597ca8521b3c530477586c222ddd370eabbc520136f53806",
-    "run_id": "20261001T1218Z-pulp-b8e0",
-    "schema": 2,
-    "skill_bundle_hash": "4691959542f86349cdad4ef164c8c798ae089f8f2e77edc164a79b77a7d30fb2",
-    "skill_source": "solvers\\pulp_cbc\\skills\\pulp-cbc",
+    "readiness_hash": "6448d514caf75b83bc8666101e9df2d23afb79654085df535c78cb0bdb537ee9",
+    "run_id": "pulp-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "152d21b9d22d19fb4c7fd6ef7bc95e324e693637",
+      "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
       "modified": false,
-      "path": "solvers/pulp_cbc/skills/pulp-cbc"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b71e3bb22dc1c35363f948461e671aff1a0904f42c8dd88a885950e500d79127",
+        "source": "solvers/pulp/skills/dcp-pulp",
+        "version": {
+          "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
+          "modified": false,
+          "path": "solvers/pulp/skills/dcp-pulp"
+        }
+      }
+    ],
     "solver_id": "pulp_cbc"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:ca4aac137e9cea374b23272d4faaf82184ecc724a5a7e431504e2c6b88078800",
+      "id": "sha256:a6bc246dd25ba8281d66531eb8f410eb5113d6b0d8414573020b51bb92a53b5e",
+      "recipe": "sha256:31eb5f47721802817b1a13d9b044d8864d135284f1500b02cbb9316ede479075",
       "tag": "dcp-eval/pulp_cbc:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.1098446000032709,
-        "execution_wall_seconds": 8.000696299997799,
+        "checking_seconds": 0.05144809000194073,
+        "execution_wall_seconds": 4.357993468991481,
         "first_solution": {
           "hil": 8
         },
@@ -50,9 +75,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7753375000029337,
+        "reference_setup_seconds": 0.4597915030317381,
         "runner_status": {
+          "build_seconds": 0.02514426806010306,
           "detail": "",
+          "main_seconds": 3.9981001769192517,
+          "read_seconds": 0.0001564169069752097,
           "status": "complete",
           "type": "status"
         },
@@ -62,8 +90,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.025517899994156323,
-        "execution_wall_seconds": 1.2646964000014123,
+        "checking_seconds": 0.010523592005483806,
+        "execution_wall_seconds": 0.4060365869663656,
         "first_solution": {
           "hil": 4
         },
@@ -76,9 +104,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6448395000043092,
+        "reference_setup_seconds": 0.3935019209748134,
         "runner_status": {
+          "build_seconds": 0.004861572990193963,
           "detail": "",
+          "main_seconds": 0.05485619907267392,
+          "read_seconds": 0.00012843706645071507,
           "status": "complete",
           "type": "status"
         },
@@ -88,8 +119,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006149799999548122,
-        "execution_wall_seconds": 1.1222649999981513,
+        "checking_seconds": 0.002761153969913721,
+        "execution_wall_seconds": 0.34771094599273056,
         "first_solution": {
           "hil": 1
         },
@@ -102,9 +133,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5860832000034861,
+        "reference_setup_seconds": 0.4183599000098184,
         "runner_status": {
+          "build_seconds": 0.001598177943378687,
           "detail": "",
+          "main_seconds": 0.013130413019098341,
+          "read_seconds": 0.00014769600238651037,
           "status": "complete",
           "type": "status"
         },
@@ -114,8 +148,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.024580100005550776,
-        "execution_wall_seconds": 1.2239453999936813,
+        "checking_seconds": 0.008640114916488528,
+        "execution_wall_seconds": 0.34839038003701717,
         "first_solution": {
           "hil": 3
         },
@@ -128,9 +162,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.127106799998728,
+        "reference_setup_seconds": 0.41763621009886265,
         "runner_status": {
+          "build_seconds": 0.0023966440930962563,
           "detail": "",
+          "main_seconds": 0.02600854099728167,
+          "read_seconds": 9.245204273611307e-05,
           "status": "complete",
           "type": "status"
         },
@@ -140,8 +177,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07028530000388855,
-        "execution_wall_seconds": 1.4195223999995505,
+        "checking_seconds": 0.024350918014533818,
+        "execution_wall_seconds": 0.4985783899901435,
         "first_solution": {
           "hil": 6
         },
@@ -154,9 +191,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6306398000015179,
+        "reference_setup_seconds": 0.40453909896314144,
         "runner_status": {
+          "build_seconds": 0.01092051004525274,
           "detail": "",
+          "main_seconds": 0.17024791904259473,
+          "read_seconds": 0.00013598694931715727,
           "status": "complete",
           "type": "status"
         },
@@ -168,21 +208,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "70c4b6f5d55680b86dd09aeef57de5d8abcf12acdf76dfccdf874e678daa3a44",
+    "model_hash": "afea384b6c57b31e9e442c06e291a0d82d807f30941413ca0c9f32b331b3e4f9",
     "problem_id": "handshaking",
     "reason": "accepted",
     "reference_hash": "6e0d6650271f5d480fa03235ece6f71602ce37a799ac2fc69cb1a6f4529091f1",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -193,7 +233,7 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "pulp_cbc",
-    "total_wall_seconds": 23.81256890000077,
+    "total_wall_seconds": 8.444419184932485,
     "unperformed_instances": []
   },
   "generated_by": {

@@ -1,52 +1,48 @@
-"""Word design for DNA computing: find num_words strings of length n over the
-alphabet {A, C, G, T} that can be used together without unwanted hybridisation.
+# csplib_033_word_design: a PuLP (Python) model from DCP Rosetta.
+# Download the `csplib_033_word_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python csplib_033_word_design.py csplib_033_word_design.json
 
-The letters are coded 1 for A, 2 for C, 3 for G and 4 for T.
-  - Each word has exactly 4 letters from {C, G}.
-  - Any two different words differ in at least 4 positions.
-  - For any two words x and y (possibly the same word), the reverse of x and the
-    Watson-Crick complement of y (A<->T, C<->G, i.e. letter l becomes 5 - l)
-    differ in at least 4 positions.
-"""
 import pulp
 
-A, C, G, T = 1, 2, 3, 4
+A, C, G, T = 1, 2, 3, 4  # the letters, as the output numbers them
 LETTERS = (A, C, G, T)
-# The three thresholds below are the problem's own constants, not instance data:
-# the reference fixes them at 4 for every instance.
-CG_COUNT = 4
-MIN_DIFFERENCE = 4
+GC_LETTERS = 4           # each word has this many letters from {C, G}
+MIN_DIFFERENCE = 4       # two words differ in at least this many positions
 
 
-def build(instance):
+def create_model(instance):
+    """Find num_words words of length n over the letters A, C, G and T such that every word has
+    four letters from {C, G}, any two different words differ in at least four positions, and the
+    reverse of any word x differs from the Watson-Crick complement of any word y (x and y may be
+    the same word) in at least four positions. The complement of a letter is its partner in the
+    pairs A-T and C-G, which is 5 minus the letter."""
     n = instance["n"]                  # length of each word
     num_words = instance["num_words"]  # number of words to find
 
     problem = pulp.LpProblem("word_design", pulp.LpMinimize)
 
-    # has[i][j][l] = 1 if letter j of word i is the letter l
+    # has[i][j][l] is 1 when letter j of word i is the letter l
     has = [[{l: pulp.LpVariable(f"has_{i}_{j}_{l}", cat="Binary") for l in LETTERS}
             for j in range(n)] for i in range(num_words)]
 
-    # words[i][j] = the letter at position j of word i (declared output), a bounded
-    # integer tied to the 0/1 variables by equality
+    # words[i][j] is the letter at position j of word i
     words = [[pulp.LpVariable(f"words_{i}_{j}", A, T, cat="Integer") for j in range(n)]
              for i in range(num_words)]
 
-    # every position of every word holds exactly one letter, and words reads it back
+    # Each position holds exactly one letter, and words reads that letter.
     for i in range(num_words):
         for j in range(n):
             problem += pulp.lpSum(has[i][j].values()) == 1
             problem += words[i][j] == pulp.lpSum(l * has[i][j][l] for l in LETTERS)
 
-    # each word has exactly 4 letters from {C, G}
+    # Each word has four letters from {C, G}.
     for i in range(num_words):
-        problem += pulp.lpSum(has[i][j][C] + has[i][j][G] for j in range(n)) == CG_COUNT
+        problem += pulp.lpSum(has[i][j][C] + has[i][j][G] for j in range(n)) == GC_LETTERS
 
-    # each pair of distinct words differ in at least 4 positions: same[j] is forced to
-    # 1 when the two words hold the same letter at position j, so the number of equal
-    # positions is at most n - 4. One lower-bound row per letter suffices because
-    # each position holds exactly one letter.
+    # same[j] is 1 when the two words have the same letter at position j. Two different words
+    # differ in at least four positions, so they agree in at most n - 4 positions.
     for x in range(num_words):
         for y in range(x + 1, num_words):
             same = [pulp.LpVariable(f"same_{x}_{y}_{j}", 0, 1) for j in range(n)]
@@ -55,10 +51,10 @@ def build(instance):
                     problem += same[j] >= has[x][j][l] + has[y][j][l] - 1
             problem += pulp.lpSum(same) <= n - MIN_DIFFERENCE
 
-    # for every ordered pair of words (x, y), including x = y: reversed x and the
-    # complement of y differ in at least 4 positions. Position j of reversed x is
-    # letter n-1-j of x; the complement of letter l is 5 - l, so the two agree at
-    # position j when letter n-1-j of x is l and letter j of y is 5 - l.
+    # The reverse of word x and the complement of word y differ in at least four positions, so
+    # they agree in at most n - 4 positions. Position j of the reversed x is letter n-1-j of x,
+    # and it agrees with position j of the complemented y when letter n-1-j of x is l and letter
+    # j of y is 5 - l.
     for x in range(num_words):
         for y in range(num_words):
             agree = [pulp.LpVariable(f"agree_{x}_{y}_{j}", 0, 1) for j in range(n)]
@@ -68,3 +64,22 @@ def build(instance):
             problem += pulp.lpSum(agree) <= n - MIN_DIFFERENCE
 
     return problem, {"words": words}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

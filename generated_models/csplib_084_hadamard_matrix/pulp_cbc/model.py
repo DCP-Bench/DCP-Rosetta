@@ -1,56 +1,75 @@
-"""Hadamard matrix (Legendre pairs): for an odd l, find two sequences a and b of l values,
-each -1 or +1, that each sum to 1 and whose periodic autocorrelations add up to -2 at every
-shift s = 1..(l-1)/2: PAF(a, s) + PAF(b, s) = -2, where PAF(a, s) is the sum over i of
-a[i] * a[(i + s) mod l].
+# csplib_084_hadamard_matrix: a PuLP (Python) model from DCP Rosetta.
+# Download the `csplib_084_hadamard_matrix.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_084_hadamard_matrix.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python csplib_084_hadamard_matrix.py csplib_084_hadamard_matrix.json
 
-The model reports the two sequences.
-"""
 import math
 
 import pulp
 
 
-def build(instance):
-    l = instance["l"]  # odd length of each sequence
-    half = (l - 1) // 2  # number of shifts constrained
+def create_model(instance):
+    """Find two sequences a and b of odd length l, with entries -1 or +1, that each sum to 1
+    and whose periodic autocorrelations add up to -2 at every shift s = 1, ..., (l-1)/2
+    (a Legendre pair, which gives a Hadamard matrix)."""
+    l = instance["l"]         # length of each sequence, an odd positive integer
+    n_shifts = (l - 1) // 2   # number of shifts s = 1, ..., n_shifts that are constrained
 
     problem = pulp.LpProblem("hadamard_legendre_pairs", pulp.LpMinimize)  # satisfaction: no objective
 
-    # A value -1 or +1 is a binary p: value = 2p - 1 (p = 1 for +1). The product of two
-    # values is not linear, so it is written through unlike[i][j] = 1 if the two values
-    # differ (p_i XOR p_j): the product is then 1 - 2 * unlike.
-    p = {name: [pulp.LpVariable(f"{name}_{i}", cat="Binary") for i in range(l)] for name in "ab"}
+    # p[name][i] is 1 when entry i of sequence name is +1, and 0 when it is -1
+    p = {name: [pulp.LpVariable(f"{name}_{i}", cat="Binary") for i in range(l)] for name in ["a", "b"]}
 
-    # each sequence sums to 1: (number of +1) - (number of -1) = 1, i.e. (l + 1) / 2 are +1
-    for name in "ab":
+    # Each sequence has (l + 1) / 2 entries +1, so its entries sum to 1.
+    for name in ["a", "b"]:
         problem += pulp.lpSum(p[name]) == (l + 1) // 2
 
-    # PAF(a, s) + PAF(b, s) = -2 for each shift s. PAF(x, s) = l - 2 * (number of i whose
-    # value differs from that at i + s mod l), so the condition is: the numbers of
-    # differing pairs in a and in b add up to l + 1.
-    #
-    # The number of differing pairs at shift s is even: the positions i -> i + s mod l fall
-    # in cycles, and going once around a cycle the value changes an even number of times.
-    # It is written as 2 * pairs_apart[s] with pairs_apart integer, which hands CBC this
-    # parity (it cannot derive it from the 0/1 variables) and gives (l + 1) / 2 as the sum
-    # of the two integers. At most l - gcd(s, l) pairs can differ, since every cycle has an
-    # odd length and so keeps at least one pair equal.
-    unlike = {}
-    pairs_apart = {}
-    for s in range(1, half + 1):
+    # differ[(name, s, i)] marks a sign change between entries i and i + s (mod l) of sequence name.
+    differ = {}
+    # half_differ[(name, s)] is half the number of sign changes at shift s.
+    half_differ = {}
+    for s in range(1, n_shifts + 1):
+        # Going once around a cycle of shifts, the sign changes an even number of times, so the
+        # number of sign changes at shift s is even. Each cycle has odd length, so at least one
+        # pair in it agrees, which bounds the number of sign changes by l - gcd(s, l).
         cap = (l - math.gcd(s, l)) // 2
-        for name in "ab":
-            pairs_apart[(name, s)] = pulp.LpVariable(f"pairs_apart_{name}_{s}", 0, cap, cat="Integer")
+        for name in ["a", "b"]:
+            half_differ[(name, s)] = pulp.LpVariable(f"half_differ_{name}_{s}", 0, cap, cat="Integer")
             for i in range(l):
                 j = (i + s) % l
-                q = pulp.LpVariable(f"unlike_{name}_{s}_{i}", cat="Binary")
-                unlike[(name, s, i)] = q
-                problem += q >= p[name][i] - p[name][j]
-                problem += q >= p[name][j] - p[name][i]
-                problem += q <= p[name][i] + p[name][j]
-                problem += q <= 2 - p[name][i] - p[name][j]
-            problem += pulp.lpSum(unlike[(name, s, i)] for i in range(l)) == 2 * pairs_apart[(name, s)]
-        problem += pairs_apart[("a", s)] + pairs_apart[("b", s)] == (l + 1) // 2
+                differ[(name, s, i)] = pulp.LpVariable(f"differ_{name}_{s}_{i}", cat="Binary")
+                # differ is 1 exactly when the two entries have different signs.
+                problem += differ[(name, s, i)] >= p[name][i] - p[name][j]
+                problem += differ[(name, s, i)] >= p[name][j] - p[name][i]
+                problem += differ[(name, s, i)] <= p[name][i] + p[name][j]
+                problem += differ[(name, s, i)] <= 2 - p[name][i] - p[name][j]
+            # The sign changes at shift s are twice half_differ.
+            problem += pulp.lpSum(differ[(name, s, i)] for i in range(l)) == 2 * half_differ[(name, s)]
 
-    outputs = {name: [2 * var - 1 for var in p[name]] for name in "ab"}
+        # The two sequences together have l + 1 sign changes at shift s, so their periodic
+        # autocorrelations add up to -2.
+        problem += half_differ[("a", s)] + half_differ[("b", s)] == (l + 1) // 2
+
+    # The reported entries are -1 or +1.
+    outputs = {name: [2 * x - 1 for x in p[name]] for name in ["a", "b"]}
     return problem, outputs
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

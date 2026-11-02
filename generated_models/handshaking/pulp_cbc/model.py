@@ -1,65 +1,89 @@
-"""Handshaking: Hilary and Jocelyn are married and invite some couples to dinner. Everybody
-shakes hands with some of the others, nobody with themselves or with their own spouse, and
-all the people except Hilary have shaken a different number of hands. How many hands has
-Hilary shaken?
+# handshaking: a PuLP (Python) model from DCP Rosetta.
+# Download the `handshaking.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python handshaking.py handshaking.json
 
-The model reports the number of hands Hilary has shaken.
-"""
 import pulp
 
 
-def build(instance):
-    num_couples = instance["num_couples"]  # invited couples, not counting Hilary and Jocelyn
-    n = 2 + num_couples * 2  # number of people; person 2k and 2k + 1 are a couple
-    # Person 0 is Hilary and person 1 is her spouse Jocelyn (the same coding as the reference).
-    ranks = range(n - 1)  # the possible numbers of hands of a person: 0..n-2
+def create_model(instance):
+    """Hilary and Jocelyn are married and invite some couples to dinner. Everybody shakes
+    hands with some of the others, but nobody shakes hands with themselves or with their
+    own spouse. Everyone except Hilary has shaken a different number of hands. How many
+    hands has Hilary shaken?"""
+    # The number of couples invited, not counting Hilary and Jocelyn.
+    num_couples = instance["num_couples"]
 
-    problem = pulp.LpProblem("handshaking", pulp.LpMinimize)  # satisfaction: no objective
+    # The number of people. Hilary is person 0, Jocelyn is person 1, and each invited
+    # couple is a pair of persons 2k and 2k + 1.
+    n_people = 2 + num_couples * 2
+    # The numbers of hands a person can have, from 0 up to n_people - 2, since nobody
+    # shakes hands with themselves or with their spouse.
+    hand_counts = range(n_people - 1)
 
-    # A person shakes hands with nobody but others and not with the spouse, so nobody shakes
-    # more than n - 2 hands. The people other than Hilary are n - 1 and all have a different
-    # number of hands, so each number 0..n-2 is the number of hands of exactly one of them.
-    # The handshakes are described by those numbers instead of by the people: "the person with r
-    # hands" is a single person for every r. has[i][r] = 1 if person i (not Hilary) has shaken r
-    # hands, so every person has one number and every number belongs to one person.
-    has = pulp.LpVariable.dicts("has", (range(1, n), ranks), cat="Binary")
-    for i in range(1, n):
-        problem += pulp.lpSum(has[i][r] for r in ranks) == 1
-    for r in ranks:
-        problem += pulp.lpSum(has[i][r] for i in range(1, n)) == 1
+    problem = pulp.LpProblem("handshaking", pulp.LpMinimize)
 
-    # shake[(r, s)] = 1 if the person with r hands and the person with s hands shake hands
-    # (r < s); handshaking is symmetric, so one variable stands for both directions. Nobody
-    # shakes hands with themselves.
+    # has[i][r] is 1 when person i has shaken r hands, and 0 when not. Hilary is left out.
+    has = pulp.LpVariable.dicts("has", (range(1, n_people), hand_counts), cat="Binary")
+
+    # shake[r, s] is 1 when the person with r hands and the person with s hands shake
+    # hands, and 0 when not. A handshake involves two people, so each pair is listed once.
     shake = {(r, s): pulp.LpVariable(f"shake_{r}_{s}", cat="Binary")
-             for r in ranks for s in ranks if r < s}
+             for r in hand_counts for s in hand_counts if r < s}
 
+    # The handshake between the people with r and s hands, in either order.
     def together(r, s):
-        """the variable for the handshake of the people with r and s hands (r != s)"""
         return shake[(min(r, s), max(r, s))]
 
-    # shake_hil[r] = 1 if Hilary shakes hands with the person who has r hands
-    shake_hil = [pulp.LpVariable(f"shake_hil_{r}", cat="Binary") for r in ranks]
+    # shake_hil[r] is 1 when Hilary shakes hands with the person who has r hands, and 0 when not.
+    shake_hil = [pulp.LpVariable(f"shake_hil_{r}", cat="Binary") for r in hand_counts]
 
-    # The person with r hands has shaken exactly r hands, with other people or with Hilary.
-    for r in ranks:
-        problem += pulp.lpSum(together(r, s) for s in ranks if s != r) + shake_hil[r] == r
+    # Each person other than Hilary has one number of hands.
+    for i in range(1, n_people):
+        problem += pulp.lpSum(has[i][r] for r in hand_counts) == 1
 
-    # Nobody shakes hands with their spouse. For a couple (2k, 2k + 1), if one has r hands and
-    # the other s hands, the people with r and s hands do not shake hands.
+    # All of them have different numbers, so each number of hands is held by exactly one of them.
+    for r in hand_counts:
+        problem += pulp.lpSum(has[i][r] for i in range(1, n_people)) == 1
+
+    # The person with r hands shakes hands with exactly r others, Hilary included.
+    for r in hand_counts:
+        problem += pulp.lpSum(together(r, s) for s in hand_counts if s != r) + shake_hil[r] == r
+
+    # A couple does not shake hands with itself: if one spouse has r hands and the other
+    # has s hands, the people with r and s hands do not shake hands.
     for k in range(1, num_couples + 1):
-        for r in ranks:
-            for s in ranks:
+        for r in hand_counts:
+            for s in hand_counts:
                 if r != s:
                     problem += together(r, s) + has[2 * k][r] + has[2 * k + 1][s] <= 2
 
-    # Hilary does not shake hands with her spouse Jocelyn, person 1
-    for r in ranks:
+    # Hilary does not shake hands with Jocelyn.
+    for r in hand_counts:
         problem += shake_hil[r] + has[1][r] <= 1
 
-    # hil = the number of hands Hilary has shaken (the number of people she shook hands with);
-    # at most n - 2 since she has no handshake with herself or with Jocelyn
-    hil = pulp.LpVariable("hil", 0, n - 2, cat="Integer")
+    # hil is the number of hands Hilary has shaken.
+    hil = pulp.LpVariable("hil", 0, n_people - 2, cat="Integer")
     problem += hil == pulp.lpSum(shake_hil)
 
     return problem, {"hil": hil}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

@@ -1,59 +1,68 @@
-"""CMO 2012: given two positive integers a and b, where a - b is a prime number p
-and a * b is a perfect square n^2, find the smallest a that is at least min_a.
+# cmo_2012: a PuLP (Python) model from DCP Rosetta.
+# Download the `cmo_2012.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python cmo_2012.py cmo_2012.json
 
-All of a, b, n, p are at most max_val, b is at least 1, and p is a prime below
-max_val. The model reports a, b, n and p.
-"""
 import math
 
 import pulp
 
 
 def primes_below(limit):
-    """The primes p with 2 <= p < limit (the reference's own list of allowed p)."""
-    sieve = [True] * max(limit, 2)
-    found = []
+    """The primes p with 2 <= p < limit."""
+    is_candidate = [True] * max(limit, 2)  # False once a number is known to be composite
+    found = []  # the primes below limit, in increasing order
     for candidate in range(2, limit):
-        if sieve[candidate]:
+        if is_candidate[candidate]:
             found.append(candidate)
             for multiple in range(candidate * candidate, limit, candidate):
-                sieve[multiple] = False
+                is_candidate[multiple] = False
     return found
 
 
-def build(instance):
-    min_a = instance["min_a"]      # a must be at least this
-    max_val = instance["max_val"]  # upper bound on a, b, n, p
+def create_model(instance):
+    """Find two positive whole numbers a and b, with b at least 1, such that the
+    difference a - b is a prime p and the product a * b is a perfect square n * n.
+    Find the smallest such a that is at least min_a. Every value of a, b, n and p
+    is at most max_val."""
+    min_a = instance["min_a"]      # the smallest value a may take
+    max_val = instance["max_val"]  # the largest value a, b, n and p may take
 
     problem = pulp.LpProblem("cmo_2012", pulp.LpMinimize)
 
+    # a is the larger number
     a = pulp.LpVariable("a", min_a, max_val, cat="Integer")
+    # b is the smaller number
     b = pulp.LpVariable("b", 1, max_val, cat="Integer")
+    # n is the square root of a * b
     n = pulp.LpVariable("n", 0, max_val, cat="Integer")
+    # p is the prime difference a - b
     p = pulp.LpVariable("p", 2, max_val, cat="Integer")
 
-    # objective: the smallest a
+    # The smallest a.
     problem += a
 
-    # p is a prime below max_val: one 0/1 variable per prime, exactly one chosen
+    # is_p[q] is 1 when p is the prime q.
     prime_list = primes_below(max_val)
     is_p = {q: pulp.LpVariable(f"is_p_{q}", cat="Binary") for q in prime_list}
+    # Exactly one prime below max_val is p.
     problem += pulp.lpSum(is_p.values()) == 1
     problem += p == pulp.lpSum(q * var for q, var in is_p.items())
 
-    # a - b = p
+    # p is the difference a - b.
     problem += p == a - b
 
-    # a * b = n^2 is not linear, so it is replaced by an equivalent description.
-    # Write a = g*x and b = g*y with g = gcd(a, b); a*b = g^2*x*y is a square only if
-    # x*y is, and x, y share no factor, so x = s^2 and y = t^2 with s > t >= 1
-    # (a > b because p >= 2, and b >= 1). Then a - b = g*(s - t)*(s + t), and
-    # s + t >= 3, so it can be prime only when g = 1, s - t = 1 and s + t = p. So
-    #   a = s^2,  b = (s - 1)^2,  n = s*(s - 1),  p = 2*s - 1,
-    # and every such s gives a * b = n^2 and a - b = p. s runs over 2..sqrt(max_val)
-    # because a = s^2 <= max_val; one 0/1 variable per s, exactly one chosen.
+    # Let g be the largest number dividing both a and b, and write a = g * x and
+    # b = g * y, where x and y share no factor. Since a * b is a square, x and y are
+    # both squares: x = s * s and y = t * t with s > t >= 1. The difference
+    # g * (s - t) * (s + t) is prime only when g = 1, s - t = 1 and s + t = p.
+    # So a = s * s, b = (s - 1) * (s - 1), n = s * (s - 1) and p = 2 * s - 1, for
+    # some s from 2 up to the square root of max_val.
     top = math.isqrt(max_val)
+    # is_s[s] is 1 when s is the chosen root.
     is_s = {s: pulp.LpVariable(f"is_s_{s}", cat="Binary") for s in range(2, top + 1)}
+    # Exactly one root s is chosen, and a, b, n and p follow from it.
     problem += pulp.lpSum(is_s.values()) == 1
     problem += a == pulp.lpSum(s * s * var for s, var in is_s.items())
     problem += b == pulp.lpSum((s - 1) ** 2 * var for s, var in is_s.items())
@@ -61,3 +70,22 @@ def build(instance):
     problem += p == pulp.lpSum((2 * s - 1) * var for s, var in is_s.items())
 
     return problem, {"a": a, "b": b, "n": n, "p": p}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

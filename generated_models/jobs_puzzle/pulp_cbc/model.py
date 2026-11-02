@@ -1,47 +1,68 @@
-"""Jobs puzzle: four people hold eight different jobs, two each. From the clues, determine
-which person holds which jobs.
+# jobs_puzzle: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/jobs_puzzle.html
+# Run it (after `pip install pulp numpy`) with:
+#   python jobs_puzzle.py
 
-The model reports, for each job, the person (0..3) who holds it.
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the puzzle has no instance data
-
+def create_model(instance):
+    """Four people hold eight different jobs, two each: chef, guard, nurse, clerk,
+    police officer, teacher, actor and boxer. Five clues say who cannot hold which job.
+    Find the person, 0 to 3, who holds each job."""
     people = range(4)
     jobs = ["chef", "guard", "nurse", "clerk", "police_officer", "teacher", "actor", "boxer"]
 
-    problem = pulp.LpProblem("jobs_puzzle", pulp.LpMinimize)  # satisfaction
+    # The person and job pairs that the clues rule out: clues 3, 4 and 5.
+    ruled_out = {"boxer": [0], "teacher": [3], "police_officer": [0, 3], "nurse": [3], "chef": [0]}
 
-    # holds[job][p] = 1 if person p holds the job; every job has one holder
-    holds = {job: [pulp.LpVariable(f"holds_{job}_{p}", cat="Binary") for p in people]
-             for job in jobs}
+    problem = pulp.LpProblem("jobs_puzzle", pulp.LpMinimize)
+
+    # holds[job][p] is 1 when person p holds the job, and 0 when not.
+    holds = {
+        job: [pulp.LpVariable(f"holds_{job}_{p}", 0, 0 if p in ruled_out.get(job, []) else 1,
+                              cat="Integer")
+              for p in people]
+        for job in jobs
+    }
+
+    # Each job has one holder.
     for job in jobs:
         problem += pulp.lpSum(holds[job]) == 1
 
-    # each person holds exactly two jobs
+    # Each person holds exactly two jobs.
     for p in people:
         problem += pulp.lpSum(holds[job][p] for job in jobs) == 2
 
+    # The two jobs are held by different people.
     def different(job1, job2):
-        """the two jobs are held by different people"""
         for p in people:
             problem.addConstraint(holds[job1][p] + holds[job2][p] <= 1)
 
-    # 1. The nurse is not a teacher, police officer, or clerk.
+    # Clue 1: the nurse is not the teacher, the police officer or the clerk.
     for other in ("teacher", "police_officer", "clerk"):
         different("nurse", other)
-    # 2. The clerk is not the chef.
+
+    # Clue 2: the clerk is not the chef.
     different("clerk", "chef")
-    # 3. Person 0 is not the boxer.
-    problem += holds["boxer"][0] == 0
-    # 4. Person 3 is not the teacher, police officer, or nurse.
-    for job in ("teacher", "police_officer", "nurse"):
-        problem += holds[job][3] == 0
-    # 5. Person 0, the chef, and the police officer went golfing together: three people
-    problem += holds["chef"][0] == 0
-    problem += holds["police_officer"][0] == 0
+
+    # Clue 5: the chef and the police officer are different people.
     different("chef", "police_officer")
 
-    return problem, {job: pulp.lpSum(p * var for p, var in zip(people, holds[job])) for job in jobs}
+    return problem, {
+        job: pulp.lpSum(p * var for p, var in zip(people, holds[job])) for job in jobs
+    }
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

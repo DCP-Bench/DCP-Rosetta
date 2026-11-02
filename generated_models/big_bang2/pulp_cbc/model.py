@@ -1,66 +1,87 @@
-"""Nontransitive dice (Rock-Paper-Scissors-Lizard-Spock): five six-sided dice with faces
-1..12 such that each of the ten 'beats' relations of the game holds, where die A beats
-die B when A shows the strictly larger face in more than half of the 36 face pairs.
+# big_bang2: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install pulp numpy`) with:
+#   python big_bang2.py
 
-The model reports the dice, one row per die: Rock, Paper, Scissors, Lizard, Spock.
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the puzzle has no instance data; its constants are below
-
-    # Problem constants, mirrored from the reference.
+def create_model(instance):
+    """Nontransitive dice: five six-sided dice, one for each of Rock, Paper, Scissors, Lizard
+    and Spock, with faces from 1 to 12, so that each of the ten 'beats' relations of the game
+    holds. Die A beats die B when A shows a strictly larger face in more than half of the 36
+    pairs of faces, one face from each die."""
+    # The five choices, one die for each.
     rock, paper, scissors, lizard, spock = range(5)
-    m = 5   # number of dice
-    n = 6   # faces per die
-    f = 12  # largest face value
-    edge = [
-        [rock, scissors],   # Rock crushes Scissors
-        [rock, lizard],     # Rock crushes Lizard
-        [paper, rock],      # Paper covers Rock
-        [paper, spock],     # Paper disproves Spock
-        [scissors, paper],  # Scissors cuts Paper
-        [scissors, lizard],  # Scissors decapitates Lizard
-        [lizard, paper],    # Lizard eats Paper
-        [lizard, spock],    # Lizard poisons Spock
-        [spock, rock],      # Spock vaporizes Rock
-        [spock, scissors],  # Spock smashes Scissors
+    n_dice = 5       # one die for each choice
+    n_faces = 6      # each die has six faces
+    max_face = 12    # face values run from 1 to 12
+
+    # The ten 'beats' relations, as (winner, loser).
+    beats = [
+        (rock, scissors),      # rock crushes scissors
+        (rock, lizard),        # rock crushes lizard
+        (paper, rock),         # paper covers rock
+        (paper, spock),        # paper disproves Spock
+        (scissors, paper),     # scissors cut paper
+        (scissors, lizard),    # scissors decapitate lizard
+        (lizard, paper),       # lizard eats paper
+        (lizard, spock),       # lizard poisons Spock
+        (spock, rock),         # Spock vaporizes rock
+        (spock, scissors),     # Spock smashes scissors
     ]
 
-    problem = pulp.LpProblem("big_bang2", pulp.LpMinimize)  # satisfaction
+    problem = pulp.LpProblem("big_bang2", pulp.LpMinimize)
 
-    # at_least[i][j][v] = 1 if face j of die i shows v or more (order encoding). The value
-    # 1 is always reached and f + 1 never, so those two levels are constants. A face
-    # value is 1 plus the number of levels 2..f it reaches. Values may repeat.
+    # reach[i][j][v] is 1 when face j of die i shows v or more, for v from 2 to max_face
+    reach = [[{v: pulp.LpVariable(f"reach_{i}_{j}_{v}", cat="Binary")
+               for v in range(2, max_face + 1)}
+              for j in range(n_faces)]
+             for i in range(n_dice)]
+
+    # Every face shows at least 1, and none shows more than max_face.
     def at_least(i, j, v):
         if v <= 1:
             return 1
-        if v > f:
+        if v > max_face:
             return 0
-        return level[i][j][v]
+        return reach[i][j][v]
 
-    level = [[{v: pulp.LpVariable(f"atleast_{i}_{j}_{v}", cat="Binary") for v in range(2, f + 1)}
-              for j in range(n)] for i in range(m)]
-    for i in range(m):
-        for j in range(n):
-            for v in range(3, f + 1):
-                problem += level[i][j][v] <= level[i][j][v - 1]
-    dice = [[1 + pulp.lpSum(level[i][j].values()) for j in range(n)] for i in range(m)]
+    # A face that shows v or more also shows v - 1 or more.
+    for i in range(n_dice):
+        for j in range(n_faces):
+            for v in range(3, max_face + 1):
+                problem += reach[i][j][v] <= reach[i][j][v - 1]
 
-    # For each relation 'winner beats loser', win[x, y] = 1 may only be set when face x of
-    # the winner is strictly larger than face y of the loser: whenever the loser's face
-    # reaches v, the winner's face reaches v + 1. Stated level by level this is much
-    # tighter than one big-M comparison of the two values.
-    for winner, loser in edge:
+    # dice[i][j] is the value on face j of die i: 1, plus the values from 2 up that the face shows.
+    dice = [[1 + pulp.lpSum(reach[i][j].values()) for j in range(n_faces)]
+            for i in range(n_dice)]
+
+    # win[x][y] may be 1 only when face x of the winner is strictly larger than face y of the
+    # loser: if the loser's face shows v or more, the winner's face shows v + 1 or more.
+    for winner, loser in beats:
         wins = []
-        for x in range(n):
-            for y in range(n):
+        for x in range(n_faces):
+            for y in range(n_faces):
                 win = pulp.LpVariable(f"win_{winner}_{loser}_{x}_{y}", cat="Binary")
-                for v in range(1, f + 1):
+                for v in range(1, max_face + 1):
                     problem += win <= 1 - at_least(loser, y, v) + at_least(winner, x, v + 1)
                 wins.append(win)
-        # the winner shows the larger face in more than half of all face pairs
-        problem += pulp.lpSum(wins) >= (n * n) // 2 + 1
+        # The winner shows the larger face in more than half of the pairs.
+        problem += pulp.lpSum(wins) >= (n_faces * n_faces) // 2 + 1
 
     return problem, {"dice": dice}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

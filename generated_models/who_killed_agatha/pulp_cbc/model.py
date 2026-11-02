@@ -1,61 +1,95 @@
-"""Who killed Agatha (Dreadsbury Mansion): Agatha, the butler and Charles are the only
-people in the mansion, and one of them killed Agatha. From the facts about who hates whom
-and who is richer than whom, find the killer.
+# who_killed_agatha: a PuLP (Python) model from DCP Rosetta.
+# Download the `who_killed_agatha.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/who_killed_agatha.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python who_killed_agatha.py who_killed_agatha.json
 
-The model reports the 0-based index of the killer (0 Agatha, 1 the butler, 2 Charles).
-"""
 import pulp
 
 
-def build(instance):
-    names = instance["names"]  # the residents; the puzzle's facts name the first three
-    n = len(names)
-    people = range(n)
-    agatha, butler, charles = 0, 1, 2
-    victim = agatha
+def create_model(instance):
+    """Someone in Dreadsbury Mansion killed Aunt Agatha. Agatha, the butler and
+    Charles are the only residents. From the clues about who hates whom and who
+    is richer than whom, find out who killed Agatha."""
+    names = instance["names"]  # names[i]: the name of resident i
+    n_residents = len(names)   # the number of residents
+    residents = range(n_residents)
 
-    problem = pulp.LpProblem("who_killed_agatha", pulp.LpMinimize)  # satisfaction
+    # The residents the clues talk about.
+    agatha = names.index("Agatha herself")  # the victim
+    butler = names.index("the butler")
+    charles = names.index("Charles")
 
-    # is_killer[k] = 1 if person k is the killer; exactly one is
-    is_killer = [pulp.LpVariable(f"is_killer_{k}", cat="Binary") for k in people]
+    problem = pulp.LpProblem("who_killed_agatha", pulp.LpMinimize)
+
+    # is_killer[k] is 1 when resident k killed Agatha.
+    is_killer = [pulp.LpVariable(f"is_killer_{k}", cat="Binary") for k in residents]
+
+    # Exactly one resident killed Agatha.
     problem += pulp.lpSum(is_killer) == 1
-    killer = pulp.lpSum(k * var for k, var in enumerate(is_killer))
 
-    # hates[i][j] = 1 if i hates j; richer[i][j] = 1 if i is richer than j
-    hates = [[pulp.LpVariable(f"hates_{i}_{j}", cat="Binary") for j in people] for i in people]
-    richer = [[pulp.LpVariable(f"richer_{i}_{j}", cat="Binary") for j in people] for i in people]
+    # The number of the resident who killed Agatha.
+    killer = pulp.lpSum(k * flag for k, flag in zip(residents, is_killer))
+
+    # hates[i][j] is 1 when resident i hates resident j.
+    hates = [[pulp.LpVariable(f"hates_{i}_{j}", cat="Binary") for j in residents]
+             for i in residents]
+    # Agatha hates herself and Charles, and does not hate the butler.
+    hates[agatha][agatha].bounds(1, 1)
+    hates[agatha][charles].bounds(1, 1)
+    hates[agatha][butler].bounds(0, 0)
+
+    # richer[i][j] is 1 when resident i is richer than resident j.
+    richer = [[pulp.LpVariable(f"richer_{i}_{j}", cat="Binary") for j in residents]
+              for i in residents]
+    # Nobody is richer than himself.
+    for i in residents:
+        richer[i][i].bounds(0, 0)
 
     # A killer always hates, and is no richer than, his victim.
-    for k in people:
-        problem += hates[k][victim] >= is_killer[k]
-        problem += richer[k][victim] <= 1 - is_killer[k]
+    for k in residents:
+        problem += hates[k][agatha] >= is_killer[k]
+        problem += richer[k][agatha] <= 1 - is_killer[k]
 
-    # No one is richer than himself, and of two different people exactly one is richer.
-    for i in people:
-        problem += richer[i][i] == 0
-        for j in people:
+    # Of two different residents, exactly one is richer than the other.
+    for i in residents:
+        for j in residents:
             if i < j:
                 problem += richer[i][j] == 1 - richer[j][i]
 
     # Charles hates no one that Agatha hates.
-    for i in people:
+    for i in residents:
         problem += hates[charles][i] <= 1 - hates[agatha][i]
 
-    # Agatha hates everybody except the butler.
-    problem += hates[agatha][agatha] == 1
-    problem += hates[agatha][charles] == 1
-    problem += hates[agatha][butler] == 0
-
-    # The butler hates everyone not richer than Aunt Agatha.
-    for i in people:
+    # The butler hates everyone who is not richer than Agatha.
+    for i in residents:
         problem += hates[butler][i] >= 1 - richer[i][agatha]
 
     # The butler hates everyone whom Agatha hates.
-    for i in people:
+    for i in residents:
         problem += hates[butler][i] >= hates[agatha][i]
 
-    # No one hates everyone.
-    for i in people:
-        problem += pulp.lpSum(hates[i]) <= n - 1
+    # Nobody hates everyone.
+    for i in residents:
+        problem += pulp.lpSum(hates[i]) <= n_residents - 1
 
     return problem, {"killer": killer}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

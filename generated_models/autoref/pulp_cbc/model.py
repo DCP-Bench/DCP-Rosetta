@@ -1,38 +1,58 @@
-"""Autoreferential series: given n > 0 and m >= 0, find a series s[0], ..., s[n+1]
-such that (1) for each i from 0 to n the number i occurs exactly s[i] times in
-the series, and (2) the last element s[n+1] equals m.
+# autoref: a PuLP (Python) model from DCP Rosetta.
+# Download the `autoref.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/autoref.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python autoref.py autoref.json
 
-Every element is a number between 0 and n (the value range of the reference).
-"""
 import pulp
 
 
-def build(instance):
-    n = instance["n"]  # the series counts the values 0..n
-    m = instance["m"]  # required value of the last element
+def create_model(instance):
+    """Find a series s[0], s[1], ..., s[n+1] in which every integer i from 0 to n
+    occurs exactly s[i] times, and whose last element s[n+1] equals m."""
+    n = instance["n"]  # the values 0 to n are counted in the series
+    m = instance["m"]  # the required value of the last element
 
     problem = pulp.LpProblem("autoref", pulp.LpMinimize)
 
-    length = n + 2  # the series s[0], ..., s[n+1]
+    n_elements = n + 2  # the series has the elements s[0] to s[n+1]
 
-    # holds[j][v] = 1 if element j of the series has the value v (values 0..n)
+    # s[j] is the value of element j, a number from 0 to n
+    s = [pulp.LpVariable(f"s_{j}", 0, n, cat="Integer") for j in range(n_elements)]
+
+    # holds[j][v] is 1 when element j of the series has the value v, and 0 when not
     holds = [[pulp.LpVariable(f"holds_{j}_{v}", cat="Binary") for v in range(n + 1)]
-             for j in range(length)]
+             for j in range(n_elements)]
 
-    # s[j] = the value of element j (declared output), a bounded integer tied to
-    # the 0/1 matrix by equality
-    s = [pulp.LpVariable(f"s_{j}", 0, n, cat="Integer") for j in range(length)]
-
-    # every element holds exactly one value, and s reads it back
-    for j in range(length):
+    # Each element has exactly one value, and s[j] is that value.
+    for j in range(n_elements):
         problem += pulp.lpSum(holds[j]) == 1
         problem += s[j] == pulp.lpSum(v * holds[j][v] for v in range(n + 1))
 
-    # the number i occurs exactly s[i] times in the whole series, for i = 0..n
+    # The value i occurs exactly s[i] times in the series, for i from 0 to n.
     for i in range(n + 1):
-        problem += s[i] == pulp.lpSum(holds[j][i] for j in range(length))
+        problem += s[i] == pulp.lpSum(holds[j][i] for j in range(n_elements))
 
-    # the last element of the series is m
+    # The last element is m.
     problem += s[n + 1] == m
 
     return problem, {"s": s}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

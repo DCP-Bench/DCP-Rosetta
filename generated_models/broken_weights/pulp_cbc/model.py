@@ -1,52 +1,77 @@
-"""Broken weights: a measuring weight of m pounds broke into n pieces, each of a
-whole number of pounds. Find the weights of the pieces so that, on a balance
-scale, they can weigh every whole weight from 1 to m pounds.
+# broken_weights: a PuLP (Python) model from DCP Rosetta.
+# Download the `broken_weights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python broken_weights.py broken_weights.json
 
-A piece may go on the same pan as the object, on the other pan, or stay off the
-scale. The weights are not required to be listed in any particular order.
-"""
 import pulp
 
 
-def build(instance):
-    m = instance["m"]  # total weight of the original weight, all pieces together
-    n = instance["n"]  # number of pieces
+def create_model(instance):
+    """A merchant's measuring weight of m pounds broke into n pieces, each a whole number
+    of pounds. On a balance scale the pieces must weigh every whole load from 1 to m."""
+    m = instance["m"]         # the total weight of the unbroken weight, in pounds
+    n_pieces = instance["n"]  # the number of pieces it broke into
 
     problem = pulp.LpProblem("broken_weights", pulp.LpMinimize)
 
-    # A piece weighs at least 1 and the other n - 1 pieces weigh at least 1 each,
-    # so a piece weighs between 1 and m - (n - 1) pounds.
-    top = m - (n - 1)
-    values = range(1, top + 1)
+    # Every other piece weighs at least 1 pound, so no piece weighs more than this.
+    max_piece = m - (n_pieces - 1)
+    # The weights a piece can have, in pounds
+    sizes = range(1, max_piece + 1)
 
-    # weights[j] = weight of piece j (declared output)
-    weights = [pulp.LpVariable(f"weights_{j}", 1, top, cat="Integer") for j in range(n)]
+    # weights[j] is the weight of piece j, in pounds
+    weights = [pulp.LpVariable(f"weights_{j}", 1, max_piece, cat="Integer")
+               for j in range(n_pieces)]
 
-    # the pieces add up to the original weight
+    # The pieces add up to the whole weight.
     problem += pulp.lpSum(weights) == m
 
-    # Pieces of equal weight are interchangeable, so what matters for weighing is
-    # how many pieces there are of each weight: count[v] = number of pieces that
-    # weigh v pounds. The pieces listed in `weights` are these counts, laid out in
-    # positions: is_weight[j][v] = 1 if piece j weighs v.
-    is_weight = [{v: pulp.LpVariable(f"is_weight_{j}_{v}", cat="Binary") for v in values}
-                 for j in range(n)]
-    count = {v: pulp.LpVariable(f"count_{v}", 0, n, cat="Integer") for v in values}
-    for j in range(n):
-        problem += pulp.lpSum(is_weight[j].values()) == 1
-        problem += weights[j] == pulp.lpSum(v * var for v, var in is_weight[j].items())
-    for v in values:
-        problem += count[v] == pulp.lpSum(is_weight[j][v] for j in range(n))
+    # is_weight[j][v] is 1 when piece j weighs v pounds, and 0 when not.
+    is_weight = [{v: pulp.LpVariable(f"is_weight_{j}_{v}", cat="Binary") for v in sizes}
+                 for j in range(n_pieces)]
+    # count[v] is the number of pieces that weigh v pounds.
+    count = {v: pulp.LpVariable(f"count_{v}", 0, n_pieces, cat="Integer") for v in sizes}
 
-    # Every weight t = 1..m can be weighed. net[t][v] = (pieces of weight v on the
-    # far pan) - (pieces of weight v on the object's pan). Pieces of weight v on
-    # opposite pans would cancel, so any net number between -count[v] and
-    # +count[v] can be arranged, and the pans balance when the net pounds add up to t.
+    # Each piece has exactly one weight, and it is the weight given in weights.
+    for j in range(n_pieces):
+        problem += pulp.lpSum(is_weight[j].values()) == 1
+        problem += weights[j] == pulp.lpSum(v * is_weight[j][v] for v in sizes)
+
+    # count[v] is the number of pieces of weight v.
+    for v in sizes:
+        problem += count[v] == pulp.lpSum(is_weight[j][v] for j in range(n_pieces))
+
+    # Every load t from 1 to m can be weighed.
     for t in range(1, m + 1):
-        net = {v: pulp.LpVariable(f"net_{t}_{v}", -n, n, cat="Integer") for v in values}
-        for v in values:
+        # net[v] is the number of pieces of weight v on the other pan minus the number on
+        # the pan with the object. Pieces of one weight can be split between the two pans,
+        # so net[v] lies between -count[v] and count[v].
+        net = {v: pulp.LpVariable(f"net_{t}_{v}", -n_pieces, n_pieces, cat="Integer")
+               for v in sizes}
+        for v in sizes:
             problem += net[v] <= count[v]
             problem += net[v] >= -count[v]
-        problem += pulp.lpSum(v * net[v] for v in values) == t
+        # The pieces balance the load when their net weight is t pounds.
+        problem += pulp.lpSum(v * net[v] for v in sizes) == t
 
     return problem, {"weights": weights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

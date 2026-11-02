@@ -1,27 +1,24 @@
-"""Quasigroup existence, QG3.m: find a quasigroup of order m, that is an m x m multiplication
-table (a Latin square) over the elements 0..m-1 in which every element occurs once in every
-row and once in every column, and in which (a * b) * (b * a) = a for all elements a and b.
+# csplib_003_quasigroup_existence: a PuLP (Python) model from DCP Rosetta.
+# Download the `csplib_003_quasigroup_existence.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_003_quasigroup_existence.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python csplib_003_quasigroup_existence.py csplib_003_quasigroup_existence.json
 
-The model reports the table.
-"""
 import pulp
 
 
-def build(instance):
-    m = instance["m"]  # order of the quasigroup
-    elements = range(m)
+def create_model(instance):
+    """QG3.m quasigroup existence: find an order m quasigroup, a Latin square of size
+    m with every element once in each row and column, such that (a*b)*(b*a) = a."""
+    m = instance["m"]            # the order of the quasigroup, the size of the table
+    elements = range(m)          # the elements 0 to m-1
 
-    problem = pulp.LpProblem("qg3", pulp.LpMinimize)  # satisfaction: no objective
+    problem = pulp.LpProblem("qg3", pulp.LpMinimize)
 
-    # The model works on pairs of cells. Write phi(a, b) = (a * b, b * a). The QG3 property
-    # (a * b) * (b * a) = a, applied to (a, b) and to (b, a), says phi(phi(a, b)) = (a, b).
-    # So a table is a QG3 table exactly when phi is a map on pairs with
-    #   phi(a, b) = (k, l)  if and only if  phi(k, l) = (a, b)   (phi undoes itself), and
-    #   phi(a, b) = (k, l)  if and only if  phi(b, a) = (l, k)   (both read the same cells),
-    # and the first coordinates of phi form a Latin square.
-    # maps[a, b, k, l] = 1 if phi(a, b) = (k, l). The two equivalences say the four entries
-    # (a,b,k,l), (k,l,a,b), (b,a,l,k), (l,k,b,a) are equal, so they share one binary.
-    shared = {}
+    # maps(a, b, k, l) is 1 when a*b is k and b*a is l. The QG3 rule says that k*l is a and
+    # l*k is b, so the same fact read from the cells (b, a), (k, l) and (l, k) is the same
+    # variable.
+    shared = {}  # the variables made so far, under the smallest of the four readings of their fact
 
     def maps(a, b, k, l):
         key = min((a, b, k, l), (k, l, a, b), (b, a, l, k), (l, k, b, a))
@@ -29,23 +26,43 @@ def build(instance):
             shared[key] = pulp.LpVariable("maps_%d_%d_%d_%d" % key, cat="Binary")
         return shared[key]
 
-    # every pair of elements has exactly one image
+    # times_is(a, b, k) is 1 when a*b is k.
+    def times_is(a, b, k):
+        return pulp.lpSum(maps(a, b, k, l) for l in elements)
+
+    # Each pair (a, b) has exactly one product a*b, which fixes the reverse product b*a too.
     for a in elements:
         for b in elements:
             problem += pulp.lpSum(maps(a, b, k, l) for k in elements for l in elements) == 1
 
-    # a * b = k exactly when phi(a, b) = (k, l) for some l
-    def times_is(a, b, k):
-        return pulp.lpSum(maps(a, b, k, l) for l in elements)
-
     for k in elements:
-        # every element occurs once in every row
+        # In every row, each element occurs once.
         for a in elements:
             problem += pulp.lpSum(times_is(a, b, k) for b in elements) == 1
-        # every element occurs once in every column
+        # In every column, each element occurs once.
         for b in elements:
             problem += pulp.lpSum(times_is(a, b, k) for a in elements) == 1
 
+    # quasigroup[a][b] is the product a*b.
     quasigroup = [[pulp.lpSum(k * times_is(a, b, k) for k in elements) for b in elements]
                   for a in elements]
     return problem, {"quasigroup": quasigroup}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])
