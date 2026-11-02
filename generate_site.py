@@ -975,7 +975,7 @@ BACKEND_NAMES = {
     "cplex": "CPLEX",
     "exact": "Exact",
     "gurobi": "Gurobi",
-    "glucose4, RC2": "Glucose 4.1 (SAT), RC2 (MaxSAT)",
+    "glucose4, CoreTrail": "Glucose 4.1 (SAT), CoreTrail (MaxSAT)",
     "highs": "HiGHS",
     "gecode": "Gecode",
     "scip": "SCIP",

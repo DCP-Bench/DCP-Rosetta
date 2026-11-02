@@ -1,20 +1,23 @@
 """Runner protocol for the hermax integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(model, outputs)`, where
+A submission defines `create_model(instance)` returning `(model, outputs)`, where
 `model` is a `hermax.model.Model` and `outputs` maps each declared output name
-to variables of that model.
+to variables of that model. Models retained before the rename define
+`build(instance)`, which is still accepted. The file is loaded as module
+"candidate", so its `if __name__ == "__main__":` run block never runs here.
 
 **The objective goes on the model, not into the return.** A MaxSAT solver
 minimises the weight of the soft clauses it breaks, so an objective is written
-the way hermax writes one -- `model.obj[weight] += literal`, which pays
-`weight` when the literal is false. Maximising a quantity means paying for its
-complement. The runner only needs to know an objective exists, which it reads
-off `result.cost`: hermax leaves that None for a model with no soft clauses.
+the way hermax writes one -- `model.obj += expr`, which hermax turns into
+weighted soft clauses (the `model.obj[weight] += literal` form of 1.2 raises
+TypeError since 1.3.0). Maximising a quantity means paying for its complement.
+The runner only needs to know an objective exists, which it reads off
+`result.cost`: hermax leaves that None for a model with no soft clauses.
 
 Routing an objective through an auxiliary integer variable instead, with
-`sum(...) == total`, is what the earlier version of this integration did and it
-is a trap: on a four-by-four assignment problem, encoding that one equality
-took 43 seconds against 3 seconds to solve the whole model with soft clauses.
+`sum(...) == total`, was a trap in hermax 1.2 (43 seconds to encode that one
+equality on a four-by-four assignment); in 1.3.0 it works but is still slower
+than giving the sum to `model.obj` directly.
 
 Optimality is reported only on the `optimum` status. `interrupted_sat` means a
 solution was found without proving it best, which is a timeout here rather than
@@ -71,15 +74,16 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("build(instance) must return (model, outputs), with any "
+        raise ValueError("create_model(instance) must return (model, outputs), with any "
                          "objective declared on model.obj")
     model, outputs = returned
     if not isinstance(model, Model):
         raise ValueError("the first value must be a hermax.model.Model")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return model, outputs
 
 
