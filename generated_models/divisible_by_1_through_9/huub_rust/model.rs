@@ -1,6 +1,6 @@
 // Find a 10 digit number that uses each of the digits 0 to 9 exactly once and
 // where the number formed by the first n digits is divisible by n (n = 1..10).
-// The output "number" is the full 10 digit number.
+// The output "digits" is the ten digits of the number, read left to right.
 
 fn build(_inst: &Instance, m: &mut Model) -> Res<Out> {
     // The digits of the number, read left to right. Each of 0 to 9 is used exactly once.
@@ -27,6 +27,6 @@ fn build(_inst: &Instance, m: &mut Model) -> Res<Out> {
     }
 
     let mut out = Out::new();
-    out.put("number", p[9].clone());
+    out.put("digits", d);
     Ok(out)
 }

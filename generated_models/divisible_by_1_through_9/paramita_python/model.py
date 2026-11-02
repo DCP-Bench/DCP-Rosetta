@@ -43,6 +43,5 @@ def build(instance):
             == sum(n * j * t[j] for j in range(1, top + 1))
         )
 
-    # print the number: its ten digits read from left to right
-    number = sum(10 ** (10 - p) * digit[p] for p in POSITIONS)
-    return cons, {"number": number}
+    # print the digits of the number, read from left to right
+    return cons, {"digits": [digit[p] for p in POSITIONS]}

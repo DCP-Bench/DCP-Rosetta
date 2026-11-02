@@ -15,8 +15,6 @@ def create_model(instance):
     digits = cp.intvar(0, 9, shape=n_digits, name="digits")
     # prefix[i] is the number formed by the first i + 1 digits
     prefix = cp.intvar(0, 10 ** n_digits, shape=n_digits, name="prefix")
-    # number is the whole ten digit number
-    number = prefix[n_digits - 1]
 
     model = cp.Model()
     # Each digit from 0 to 9 is used exactly once.
@@ -27,7 +25,7 @@ def create_model(instance):
         # The number formed by the first i + 1 digits is divisible by i + 1.
         model.add(prefix[i] % (i + 1) == 0)
 
-    return model, {"number": number}
+    return model, {"digits": digits}
 
 
 if __name__ == "__main__":

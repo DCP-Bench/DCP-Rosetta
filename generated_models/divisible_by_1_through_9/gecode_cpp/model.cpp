@@ -47,9 +47,7 @@ class DivisibleByOneThroughNine : public dcp::Space {
     branch(*this, prefix, INT_VAR_NONE(), INT_VAL_MIN());
     branch(*this, quot, INT_VAR_NONE(), INT_VAL_MIN());
 
-    IntVarArgs number;
-    for (int i = 0; i < 10; ++i) number << digit[i];
-    output_digits("number", number, 10);
+    output("digits", digit);
   }
 
   DivisibleByOneThroughNine(DivisibleByOneThroughNine& s) : dcp::Space(s) {

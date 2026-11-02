@@ -38,6 +38,5 @@ def build(instance):
         q = m.addVar(name=f"q_{n}", vtype="I", lb=0, ub=hi)
         m.addCons(prefix[n - 1] == n * q)
 
-    # the output is the full 10 digit number
-    number = prefix[ndig - 1]
-    return m, {"number": number}
+    # the output is the ten digits, read from left to right
+    return m, {"digits": d}

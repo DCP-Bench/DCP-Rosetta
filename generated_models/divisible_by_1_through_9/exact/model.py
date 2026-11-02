@@ -36,4 +36,4 @@ def build(instance):
         solver.addVariable(multiple, 0, (10 ** (i + 1) - 1) // (i + 1))
         solver.addConstraint([(1, prefix[i]), (-(i + 1), multiple)], True, 0, True, 0)
 
-    return solver, {"number": prefix[n - 1]}
+    return solver, {"digits": digits}
