@@ -18,17 +18,21 @@ Apache-2.0, no key. Details: [Quick start](https://hermax.readthedocs.io/en/late
 ```python
 from hermax.model import Model
 
-COST = [4, 1, 3, 2]           # price of each item
+cost = [4, 1, 3, 2]     # cost[i]: the price of item i
+
 m = Model()
-pick = m.bool_vector("pick", len(COST))
-m &= (sum(pick[i] for i in range(len(COST))) == 2)   # choose exactly two
-for i, c in enumerate(COST):
-    m.obj[c] += ~pick[i]      # pay c when item i is picked
+# pick[i] is true when item i is bought
+pick = m.bool_vector("pick", len(cost))
+
+# Buy exactly two items.
+m &= (sum(pick[i] for i in range(len(cost))) == 2)
+# Spend as little as possible.
+m.obj += sum(cost[i] * pick[i] for i in range(len(cost)))
 
 r = m.solve()
 if r.status != "optimum":
     raise SystemExit(f"status: {r.status}")
-print("picked:", [i for i in range(len(COST)) if r[pick[i]]])
+print("picked:", [i for i in range(len(cost)) if r[pick[i]]])
 print("total cost:", r.cost)  # picked: [1, 3], total cost: 3
 ```
 
@@ -45,18 +49,23 @@ Full list: [API reference](https://hermax.readthedocs.io/en/latest/api.html) ·
 | at most / exactly one | [`bv.at_most_one()`, `bv.exactly_one()`](https://hermax.readthedocs.io/en/latest/api.html) |
 | all different | [`iv.all_different()`](https://hermax.readthedocs.io/en/latest/api.html) |
 | ordering | [`iv.increasing()`, `iv.lexicographic_less_than(other)`](https://hermax.readthedocs.io/en/latest/api.html) |
-| linear constraint | `m &= (sum(w[j] * x[j] for j in range(n)) <= cap)` |
+| linear constraint, over Booleans or integers | `m &= (sum(w[j] * x[j] for j in range(n)) <= cap)`, any integer coefficients |
+| constraint only when a Boolean holds | `m &= (s[a] + d[a] <= s[b]).only_if(a_first)` (half reification) |
+| allowed combinations | [`m.table([x, y, z], allowed=rows)`](https://hermax.readthedocs.io/en/latest/api.html) |
+| cost by cases of an integer's value | [`x.piecewise(base_value=v0, steps={t: v_t})`](https://hermax.readthedocs.io/en/latest/api.html), value `v_t` from `x >= t` on |
+| long sum of expressions | `sum_expr(exprs)` (`from hermax.model import sum_expr`) |
+| remainder / quotient | `x % k`, [`m.modulo(x, k)`](https://hermax.readthedocs.io/en/latest/api.html); [`m.floor_div(x, k)`](https://hermax.readthedocs.io/en/latest/api.html) |
 | row / column of a matrix | [`x.row(i)`, `x.col(j)`](https://hermax.readthedocs.io/en/latest/api.html) |
 | min / max / sum of variables | [`m.min`, `m.max`, `m.sum_var`](https://hermax.readthedocs.io/en/latest/api.html) |
-| integer quotient | [`m.floor_div(x, k)`](https://hermax.readthedocs.io/en/latest/api.html) (not `x // k`) |
-| scheduling resource | [`m.cumulative(starts, durations, demands, capacity)`](https://hermax.readthedocs.io/en/latest/api.html), adds its own constraint |
-| no two tasks overlap on one machine | `m.cumulative(starts, durations, [1] * len(starts), 1)`, one call per machine |
+| scheduling resource | [`m &= m.cumulative(starts, durations, demands, capacity)`](https://hermax.readthedocs.io/en/latest/api.html) |
+| no two tasks overlap on one machine | `m &= m.cumulative(starts, durations, [1] * len(starts), 1)` per machine, or a Boolean per pair with `(s[a] + d[a] <= s[b]).only_if(o)` and `(s[b] + d[b] <= s[a]).only_if(~o)` |
 | all different over expressions | auxiliary `IntVar`s, see [Derived values](modelling.md#derived-values) |
 | equality between two sums | `m &= (sum(...) == sum(...))`, both sides may be sums |
-| minimise / maximise | [`m.obj[w] += literal`](https://hermax.readthedocs.io/en/latest/modeling.html), see below |
+| minimise / maximise | [`m.obj += expr`](https://hermax.readthedocs.io/en/latest/modeling.html) / `m.obj += -expr`, see [modelling.md](modelling.md#the-objective) |
 | reading values | `r[var]`; `r[vector]` is a list, `r[matrix]` a list of row lists of the same shape |
 
-`cumulative` is not wrapped in `m &=`: it posts its constraint directly.
+`cumulative` returns its constraint like every other one (since 1.3.0): a call without
+`m &=` is silently dropped.
 
 
 More patterns (derived values, reification, lookups, weighted sums, the objective): [modelling.md](modelling.md).
@@ -69,10 +78,10 @@ Portfolio and time limits: [portfolio](https://hermax.readthedocs.io/en/latest/p
 The status values and their meaning are in [SKILL.md](../../SKILL.md#solving).
 
 
-`solve(time_limit=seconds)` enforces a budget through the portfolio backend, a little
-slower on easy models (3.15 s against 1.81 s on a 4x4 assignment) but the only way to bound
-the run. `result.backend` names the solver that ran. `sat_solver_name`, `maxsat_backend`
-and `backend` select the engines; the defaults are `"g4"`, `"rc2"` and `"auto"`.
+`solve(time_limit=seconds)` bounds the run. `result.backend` names the solver that ran.
+`sat_solver_name`, `maxsat_backend` and `backend` select the engines; the defaults are
+`"g4"` (Glucose 4, for a model without objective), `"coretrail"` (for a model with one)
+and `"auto"`.
 
 Errors: Python exceptions (`TypeError`, `ValueError`) are raised at the line that
 posts or reads the offending expression, so read the traceback's last line. A solve
