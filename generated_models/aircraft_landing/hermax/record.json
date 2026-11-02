@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-4-5-20251001)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1792651639.2714498,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/hermax/python/CONTRACT.md": "f52af42db823537ce54fbf203d7c06b26ec1cad19f08528d3f89d17d02b66e8e"
+    },
+    "created_at": 1793653714.5978243,
     "problem_id": "aircraft_landing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "d17cc3ce515cbeb5e213748b3d94dd21358301cf7138da5cedaf0d0274be0d23",
-    "run_id": "20261022T0900Z-hermax129-r1",
-    "schema": 2,
-    "skill_bundle_hash": "913beeef71ca0eaf3683d33a908e90361f19199f55a738e1b0054f21f9dc0b4f",
-    "skill_source": "solvers/hermax/skills/hermax",
+    "readiness_hash": "76a4f2435640874af1b16def521b49b502c7529e4a6b55ba85f95cf5dff831ab",
+    "run_id": "hermax-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "f3c1e6d19bae6bf5a6fe7cb8e57742c3782f0fec",
+      "commit": "631db3435d2781bbb8f71c9fc75d882757198f24",
       "modified": false,
-      "path": "solvers/hermax/skills/hermax"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "631db3435d2781bbb8f71c9fc75d882757198f24",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "6ab9c23b6ed8c26e595fb0a4a587470481a7c5c7d86a4cdfcb077207be42c46d",
+        "source": "solvers/hermax/skills/dcp-hermax",
+        "version": {
+          "commit": "631db3435d2781bbb8f71c9fc75d882757198f24",
+          "modified": false,
+          "path": "solvers/hermax/skills/dcp-hermax"
+        }
+      }
+    ],
     "solver_id": "hermax"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+      "id": "sha256:dc369d3de479a3539848840d558f9fdc9345f3df351f2558f8b288162fee203e",
+      "recipe": "sha256:4e04f9e3ba11a8c1ecaecc7cd46f285ae66893d1fe9a64586a5d6e0a61df8c3d",
       "tag": "dcp-eval/hermax:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005870833992958069,
-        "execution_wall_seconds": 0.8930408940650523,
+        "checking_seconds": 0.008044560003327206,
+        "execution_wall_seconds": 0.6319390220014611,
         "first_solution": {
           "landing_times": [
             1,
@@ -56,10 +81,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6430416629882529,
+        "reference_setup_seconds": 0.2563089529867284,
         "runner_status": {
+          "build_seconds": 0.0014579869894078001,
           "detail": "",
-          "solve_seconds": 0.34374144196044654,
+          "main_seconds": 0.003133799007628113,
+          "read_seconds": 8.231900574173778e-05,
+          "solve_seconds": 0.0030484379967674613,
           "status": "complete",
           "type": "status"
         },
@@ -69,8 +97,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.012096322956494987,
-        "execution_wall_seconds": 5.244040783960372,
+        "checking_seconds": 0.016373594000469893,
+        "execution_wall_seconds": 1.1326644159998978,
         "first_solution": {
           "landing_times": [
             98,
@@ -96,10 +124,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5890097840456292,
+        "reference_setup_seconds": 0.26169067100272514,
         "runner_status": {
+          "build_seconds": 0.16978879999078345,
           "detail": "",
-          "solve_seconds": 4.797140929964371,
+          "main_seconds": 0.49506599199958146,
+          "read_seconds": 9.600500925444067e-05,
+          "solve_seconds": 0.4949646239983849,
           "status": "complete",
           "type": "status"
         },
@@ -109,8 +140,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04526698892004788,
-        "execution_wall_seconds": 10.680943074985407,
+        "checking_seconds": 0.028666209007496946,
+        "execution_wall_seconds": 1.534914743999252,
         "first_solution": {
           "landing_times": [
             90,
@@ -126,8 +157,8 @@
             196,
             250,
             313,
-            340,
-            343
+            339,
+            342
           ],
           "total_penalty": 1480
         },
@@ -141,10 +172,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6113383530173451,
+        "reference_setup_seconds": 0.2534348359913565,
         "runner_status": {
+          "build_seconds": 0.365529429007438,
           "detail": "",
-          "solve_seconds": 10.185800438048318,
+          "main_seconds": 0.9435423489921959,
+          "read_seconds": 0.00010346899216528982,
+          "solve_seconds": 0.9434367369976826,
           "status": "limit",
           "type": "status"
         },
@@ -154,8 +188,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0652347729774192,
-        "execution_wall_seconds": 25.222224518074654,
+        "checking_seconds": 0.026039752003271133,
+        "execution_wall_seconds": 2.137591855993378,
         "first_solution": {
           "landing_times": [
             82,
@@ -175,8 +209,8 @@
             261,
             287,
             316,
-            336,
-            339,
+            335,
+            338,
             409
           ],
           "total_penalty": 820
@@ -191,10 +225,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9915029789553955,
+        "reference_setup_seconds": 0.2574612710013753,
         "runner_status": {
+          "build_seconds": 0.6351953669945942,
           "detail": "",
-          "solve_seconds": 24.523310580058023,
+          "main_seconds": 1.51712213200517,
+          "read_seconds": 0.00010860600741580129,
+          "solve_seconds": 1.5170112509949831,
           "status": "limit",
           "type": "status"
         },
@@ -204,8 +241,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013692292966879904,
-        "execution_wall_seconds": 1.0067209569970146,
+        "checking_seconds": 0.012529187006293796,
+        "execution_wall_seconds": 0.6317592120030895,
         "first_solution": {
           "landing_times": [
             11,
@@ -227,10 +264,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9022808669833466,
+        "reference_setup_seconds": 0.25165953300893307,
         "runner_status": {
+          "build_seconds": 0.0035497819917509332,
           "detail": "",
-          "solve_seconds": 0.4657170220743865,
+          "main_seconds": 0.005978525994578376,
+          "read_seconds": 8.829000580590218e-05,
+          "solve_seconds": 0.005887127001187764,
           "status": "complete",
           "type": "status"
         },
@@ -242,21 +282,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "6106fd2d9479909e5f3bd49596a5fa8bd3a1d1209ec1ce539989feb9c998ffde",
+    "model_hash": "aac0e416f1c3c2855f811470fcad57466dda674313bf754e9014f700379514a7",
     "problem_id": "aircraft_landing",
     "reason": "accepted",
     "reference_hash": "132d764d185fc7616ee154307a99c5c1edeae9a97d595cf5527c1e4ede973f1d",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -267,11 +307,11 @@
     "skipped_instances": [],
     "solutions_checked": 7,
     "solver_id": "hermax",
-    "total_wall_seconds": 47.411549089010805,
+    "total_wall_seconds": 8.741793338005664,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-4-5-20251001)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

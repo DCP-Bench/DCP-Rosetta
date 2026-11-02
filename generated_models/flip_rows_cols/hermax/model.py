@@ -1,68 +1,83 @@
-# Flip rows and columns (Einav's puzzle): choose, for every row and column,
-# whether to flip its sign so that every row sum and every column sum is
-# non-negative, with the smallest possible total of the whole matrix.
-from hermax.model import Model
+# flip_rows_cols: a hermax (Python) model from DCP Rosetta.
+# Download the `flip_rows_cols.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python flip_rows_cols.py flip_rows_cols.json
+
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
+def create_model(instance):
+    """Choose which rows and which columns of a matrix to flip in sign, so that every row and
+    every column sums to a non-negative number, with the smallest possible total of all entries."""
+    # input_matrix: the given matrix, a list of rows of integers; its shape is taken from the data
     matrix = instance["input_matrix"]
-    rows, cols = len(matrix), len(matrix[0])
+    rows = len(matrix)
+    cols = len(matrix[0])
 
     m = Model()
-    # row_flipped[i] / col_flipped[j] is true when that row / column has its sign flipped
-    row_flipped = m.bool_vector("row_flipped", rows)
-    col_flipped = m.bool_vector("col_flipped", cols)
-    # the signs themselves, -1 or +1 (never 0): reported as the outputs
-    row_signs = m.int_vector("row_signs", rows, -1, 1)
-    col_signs = m.int_vector("col_signs", cols, -1, 1)
-    for i in range(rows):
-        m &= (~row_flipped[i] | (row_signs[i] == -1))
-        m &= (row_flipped[i] | (row_signs[i] == 1))
-    for j in range(cols):
-        m &= (~col_flipped[j] | (col_signs[j] == -1))
-        m &= (col_flipped[j] | (col_signs[j] == 1))
 
-    # cell_flipped[i][j]: the cell changes sign, exactly when its row or its column
-    # (not both) is flipped
-    cell_flipped = [[m.bool(f"cell_flipped_{i}_{j}") for j in range(cols)] for i in range(rows)]
+    # row_flip[i] is true when row i is flipped in sign
+    row_flip = [m.bool(f"row_flip_{i}") for i in range(rows)]
+    # col_flip[j] is true when column j is flipped in sign
+    col_flip = [m.bool(f"col_flip_{j}") for j in range(cols)]
+    # cell_flip[i][j] is true when entry (i, j) changes sign, that is when exactly one of its row
+    # and its column is flipped
+    cell_flip = [[m.bool(f"cell_flip_{i}_{j}") for j in range(cols)] for i in range(rows)]
+
+    # Each cell_flip is the exclusive or of its row_flip and col_flip, written as the four clauses
+    # that forbid the four combinations of the three Booleans that do not fit it.
     for i in range(rows):
         for j in range(cols):
-            f, r, c = cell_flipped[i][j], row_flipped[i], col_flipped[j]
-            m &= (~f | r | c)
-            m &= (~f | ~r | ~c)
-            m &= (f | ~r | c)
-            m &= (f | r | ~c)
+            f, x, y = cell_flip[i][j], row_flip[i], col_flip[j]
+            m &= (~f | x | y)
+            m &= (~f | ~x | ~y)
+            m &= (f | ~x | y)
+            m &= (f | x | ~y)
 
-    # A cell is worth matrix[i][j] * (1 - 2 * flipped), so a line adds up to its plain sum
-    # minus twice the flipped entries. Every row and column sums to at least 0 (the
-    # reference declares a sum to lie in 0..300, which is mirrored here).
-    def flipped(cells):
-        return sum(-2 * matrix[i][j] * cell_flipped[i][j] for i, j in cells if matrix[i][j] != 0)
+    # signed(i, j) is entry (i, j) after the flips: its value when not flipped, its negation when
+    # flipped, written as a linear expression over the cell's Boolean.
+    def signed(i, j):
+        a = matrix[i][j]
+        return a * ~cell_flip[i][j] - a * cell_flip[i][j]
 
+    # Every row sums to a non-negative number after the flips.
     for i in range(rows):
-        line = [(i, j) for j in range(cols)]
-        base = sum(matrix[i][j] for _, j in line)
-        m &= (flipped(line) >= -base)
-        m &= (flipped(line) <= 300 - base)
+        m &= (sum_expr(signed(i, j) for j in range(cols)) >= 0)
+
+    # Every column sums to a non-negative number after the flips.
     for j in range(cols):
-        line = [(i, j) for i in range(rows)]
-        base = sum(matrix[i][j] for i, _ in line)
-        m &= (flipped(line) >= -base)
-        m &= (flipped(line) <= 300 - base)
-    # the total of the matrix lies in the declared range 0..1000
-    everything = [(i, j) for i in range(rows) for j in range(cols)]
-    offset = sum(matrix[i][j] for i, j in everything)
-    m &= (flipped(everything) >= -offset)
-    m &= (flipped(everything) <= 1000 - offset)
+        m &= (sum_expr(signed(i, j) for i in range(rows)) >= 0)
 
-    # Minimise the total. The total is offset - 2 * sum(matrix * flipped), so the
-    # aim is to flip cells with positive entries and keep cells with negative ones
-    # unflipped: a positive cell not flipped pays its size (the literal itself),
-    # a negative cell flipped pays its size (the negated literal).
-    for i, j in everything:
-        if matrix[i][j] > 0:
-            m.obj[matrix[i][j]] += cell_flipped[i][j]
-        elif matrix[i][j] < 0:
-            m.obj[-matrix[i][j]] += ~cell_flipped[i][j]
+    # total is the sum of all entries after the flips. It lies between minus and plus the sum of
+    # the absolute values of all entries, and is tied to the cost expression so that the objective
+    # is one bounded integer.
+    mass = sum(abs(matrix[i][j]) for i in range(rows) for j in range(cols))
+    total = m.int("total", -mass, mass)
+    m &= (total == sum_expr(signed(i, j) for i in range(rows) for j in range(cols)))
 
-    return m, {"row_signs": row_signs, "col_signs": col_signs}
+    # Minimise the total of all entries after the flips.
+    m.obj += total
+
+    return m, {
+        # the sign of a row or column: 1 when not flipped, -1 when flipped
+        "row_signs": [1 - 2 * row_flip[i] for i in range(rows)],
+        "col_signs": [1 - 2 * col_flip[j] for j in range(cols)],
+    }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)
