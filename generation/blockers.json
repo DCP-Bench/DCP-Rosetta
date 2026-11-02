@@ -321,6 +321,14 @@
       "detail": "The brief declares an objective and pindakaas_rust is a satisfaction-only integration: Pindakaas 0.6.0 has no optimiser and the driver adds none (metadata optimization is false).",
       "evidence": "solvers/pindakaas/rust/metadata.json",
       "recorded": "2026-10-19"
+    },
+    {
+      "problem": "csplib_006_golomb_rulers",
+      "solver": "hexaly_python",
+      "reason": "optimum_unproven",
+      "detail": "Hexaly finds rulers at once but cannot prove the minimum length from 8 marks up within 180 s: sizes 8, 9 and 10 (json:1, json:2, example) end FEASIBLE at the limit, which the runner reports as an unproven optimum, while sizes 5 and 7 are accepted (7 in 53 s). That is 2 of 5 instances, below the 80% a performance limit may cover. Adding the implied bound marks[j] - marks[i] >= (j-i)(j-i+1)/2 left size 8 unproven at 180 s. Hexaly's proofs come from its bounds, and pairwise distinct differences give it none that close.",
+      "evidence": "generation/runs/hexaly-pilot-20261102t153126z-252c/attempts/csplib_006_golomb_rulers/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
     }
   ]
 }
