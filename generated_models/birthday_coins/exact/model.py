@@ -1,22 +1,49 @@
-# Birthday coins: Tommy was given 15 coins (half-crowns, shillings and sixpences)
-# worth 1 pound 5 shillings 6 pence. How many half-crowns did he get?
+# birthday_coins: an Exact (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/birthday_coins.html
+# Run it (after `pip install exact numpy`) with:
+#   python birthday_coins.py
+
 from exact import Exact
 
 
-def build(instance):
-    # The puzzle is fixed by the problem; the instance carries no data.
-    values = [30, 12, 6]  # pence in a half-crown, a shilling and a sixpence
-    total_value = 240 + 5 * 12 + 6  # 1 pound 5 shillings 6 pence, in pence
-    total_coins = 15
+def create_model(instance):
+    """Tommy was given 15 coins (half-crowns, shillings and sixpences) that add up to one pound,
+    five shillings and six pence. How many half-crowns was he given?"""
+    shilling = 12                         # pence in a shilling
+    pound = 20 * shilling                 # pence in a pound, which is 20 shillings
+    sixpence = 6                          # pence in a sixpence
+    half_crown = 2 * shilling + sixpence  # pence in a half-crown, which is 2 shillings and sixpence
+    values = [half_crown, shilling, sixpence]     # pence in one coin of each kind
+    total_value = pound + 5 * shilling + sixpence  # 1 pound, 5 shillings and 6 pence, in pence
+    n_coins = 15                          # the number of coins Tommy was given
+
     solver = Exact()
-    # coins[t] = how many coins of type t he was given: half-crowns, shillings, sixpences
-    coins = [f"coins_{t}" for t in range(len(values))]
+
+    # Exact identifies its variables by name.
+    # coins[c] is how many coins of kind c Tommy was given, kinds in the order of values
+    coins = [f"coins_{c}" for c in range(len(values))]
     for name in coins:
-        solver.addVariable(name, 0, total_coins)
+        solver.addVariable(name, 0, n_coins)
 
-    # the coins are worth the total value
-    solver.addConstraint([(values[t], coins[t]) for t in range(len(values))], True, total_value, True, total_value)
-    # he was given 15 coins
-    solver.addConstraint([(1, name) for name in coins], True, total_coins, True, total_coins)
+    # The coins add up to the total value.
+    solver.addConstraint([(values[c], coins[c]) for c in range(len(values))],
+                         True, total_value, True, total_value)
 
-    return solver, {"half_crowns": coins[0]}
+    # The coin counts add up to the number of coins.
+    solver.addConstraint([(1, name) for name in coins], True, n_coins, True, n_coins)
+
+    return solver, {"half_crowns": coins[0]}  # the half-crowns are the first kind of coin
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

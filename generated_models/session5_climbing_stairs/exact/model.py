@@ -1,35 +1,63 @@
-# Climbing stairs: climb a stair of n steps in moves of m1 to m2 steps each. Of the n move slots the
-# first ones are real moves and the rest are 0 (no more steps are taken once the top is reached).
+# session5_climbing_stairs: an Exact (Python) model from DCP Rosetta.
+# Download the `session5_climbing_stairs.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_climbing_stairs.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python session5_climbing_stairs.py session5_climbing_stairs.json
+
 from exact import Exact
 
 
-def build(instance):
-    n = instance["n"]  # steps in the stair, and the number of move slots
-    m1 = instance["m1"]  # fewest steps in one move
-    m2 = instance["m2"]  # most steps in one move
+def create_model(instance):
+    """Climb a stair of n steps, taking between m1 and m2 steps at each move. Find
+    the number of steps taken at each move, or 0 once the top is reached."""
+    n = instance["n"]    # the number of steps in the stair, which is also the number of moves
+    m1 = instance["m1"]  # the fewest steps taken at one move
+    m2 = instance["m2"]  # the most steps taken at one move
+
+    # A move that takes steps takes at least one step, and at least m1 of them.
+    fewest = max(m1, 1)
 
     solver = Exact()
 
-    # steps[i] = number of steps taken at move i, between 0 and m2
+    # Exact identifies its variables by name.
+    # steps[i] is the number of steps taken at move i, between 0 and m2
     steps = [f"steps_{i}" for i in range(n)]
-    # moves[i] = 1 if move i is a real move (takes at least one step)
+    # moves[i] is 1 when move i takes steps, and 0 when the top has been reached before it
     moves = [f"move_{i}" for i in range(n)]
     for i in range(n):
         solver.addVariable(steps[i], 0, m2)
         solver.addVariable(moves[i], 0, 1)
 
-    # the sum of the steps taken equals the number of steps in the stair
+    # The steps taken add up to the height of the stair.
     solver.addConstraint([(1, name) for name in steps], True, n, True, n)
 
-    # the steps of a move are between m1 and m2, or 0 when it is not a real move (a real move
-    # takes at least 1 step, whatever m1 is)
-    smallest = max(m1, 1)
     for i in range(n):
+        # A move takes at most m2 steps, and none when it does not take steps.
         solver.addConstraint([(1, steps[i]), (-m2, moves[i])], False, 0, True, 0)
-        solver.addConstraint([(1, steps[i]), (-smallest, moves[i])], True, 0)
+        # A move that takes steps takes at least the fewest.
+        solver.addConstraint([(1, steps[i]), (-fewest, moves[i])], True, 0)
 
-    # trailing zeros: once a move takes no steps, all following moves take no steps
+    # Once a move takes no steps, every later move takes none.
     for i in range(1, n):
         solver.addConstraint([(1, moves[i - 1]), (-1, moves[i])], True, 0)
 
     return solver, {"steps": steps}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

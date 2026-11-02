@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1790968564.9720607,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/exact/python/CONTRACT.md": "5d091b1021379104762095ed08d30f2d2c555611838ecf6991c8a9749f679bf5"
+    },
+    "created_at": 1793706828.3839753,
     "problem_id": "zebra",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "5ddc8a91f72d6e4f6d1786da659a7aee4b747cb1da227e43c207c70755abe743",
-    "run_id": "20261001T1218Z-exact-e644",
-    "schema": 2,
-    "skill_bundle_hash": "36b3f882f44adfa4c06a35e769791b2e43e95e72b81e0911821acdc88bc88ed1",
-    "skill_source": "solvers\\exact\\skills\\exact",
+    "readiness_hash": "447d2431404f6282bf1622c659c07990ebcc536a7998a787968fec17dd68ed4f",
+    "run_id": "exact-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "26392c66bc97f43b2fd0fa6e2e04b3b99a131245",
+      "commit": "e6c567677b590b9cd5a3d11d7635a52f2aafe420",
       "modified": false,
-      "path": "solvers/exact/skills/exact"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "e6c567677b590b9cd5a3d11d7635a52f2aafe420",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "3cea28ee3a7b42a5300a16f18287b56254096bb3750454e43e67d1e531e03165",
+        "source": "solvers/exact/skills/dcp-exact",
+        "version": {
+          "commit": "e6c567677b590b9cd5a3d11d7635a52f2aafe420",
+          "modified": true,
+          "path": "solvers/exact/skills/dcp-exact"
+        }
+      }
+    ],
     "solver_id": "exact"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:3640a8d12ebcc41cd5b0e3c08e02bb862bee6c6891a4814ff119a2355744a4ba",
+      "id": "sha256:1aa07ef664c95c71b7201148cbf3e2939a4095fbc0226afc2d1f6d784002aae8",
+      "recipe": "sha256:5d22bcd100e2ce833cf9e379d76018cc16b95bc8f46f23e716987741e75f6624",
       "tag": "dcp-eval/exact:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.012592600000061793,
-        "execution_wall_seconds": 1.3789441999997507,
+        "checking_seconds": 0.006123065948486328,
+        "execution_wall_seconds": 0.40055378002580255,
         "first_solution": {
           "colors": [
             0,
@@ -88,10 +113,13 @@
           "drinks"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3032405999983894,
+        "reference_setup_seconds": 0.42766080307774246,
         "runner_status": {
+          "build_seconds": 0.003244376042857766,
           "detail": "",
-          "solve_seconds": 0.03939796400027262,
+          "main_seconds": 0.010135060059837997,
+          "read_seconds": 0.00022605806589126587,
+          "solve_seconds": 0.00990468601230532,
           "status": "limit",
           "type": "status"
         },
@@ -103,21 +131,21 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a172d26c25be1156e327abd5b2f212810ab822df32385a0e8685c43f34a80fb1",
+    "model_hash": "088a1db2604c4abbdd355558fa6fa011c036eb38ab04ed581c6c3bc122e53b03",
     "problem_id": "zebra",
     "reason": "accepted",
     "reference_hash": "7e37874b9333398fa325c8c331f6b835266cfd0d636a3ecf9037cf8bfad3bd3c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -128,7 +156,7 @@
     "skipped_instances": [],
     "solutions_checked": 2,
     "solver_id": "exact",
-    "total_wall_seconds": 3.2233075000003737,
+    "total_wall_seconds": 0.9549842950655147,
     "unperformed_instances": []
   },
   "generated_by": {

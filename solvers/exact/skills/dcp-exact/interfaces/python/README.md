@@ -150,6 +150,55 @@ For a number only, `count(names)` returns `(state, n)`. Example:
 3. Enumerate as above, projected onto the decision variables.
 
 Example: [assets/pick-items](../../assets/python/pick-items/README.md).
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each list of variable names, saying what the variables mean
+  (`x[i] is 1 when item i is packed`), and once, above the first, that Exact identifies its
+  variables by name;
+- a comment on each group of constraints and on the objective;
+- names kept in lists or nested lists, built with a comprehension and then registered with
+  `for name in x: solver.addVariable(name, lb, ub)`, so they print as a whole.
+
+Build the model in one function that creates the solver, adds the variables and
+constraints, sets the objective with `setObjective` when there is one, and returns the
+solver and the names to print. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    solver = Exact()
+
+    # Exact identifies its variables by name.
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [f"x{i}" for i in range(len(values))]
+    for name in x:
+        solver.addVariable(name, 0, 1)
+
+    # The packed items weigh no more than the backpack can carry.
+    solver.addConstraint(list(zip(weights, x)), False, 0, True, capacity)
+
+    # Pack the most valuable selection.
+    solver.setObjective(list(zip(values, x)), minimize=False)
+
+    return solver, {"x": x}
+```
+
+`runFull()` then finds a solution, or the optimum when an objective is set. Read the
+values with one call per output, as Exact's own examples do: flatten its names with
+`numpy.ravel`, pass them to `solver.getLastSolutionFor`, and put the values back in the
+output's shape with `numpy.reshape`.
+
 ## Common issues
 
 | Problem | Likely cause | Fix |

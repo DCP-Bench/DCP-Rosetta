@@ -1,9 +1,13 @@
 """Runner protocol for the exact integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(solver, outputs)` for a
-satisfaction problem, or `(solver, outputs, (direction, terms))` where `solver`
-is an `exact.Exact`, direction is "minimize" or "maximize", and `terms` is the
-objective as a list of `(coefficient, variable_name)` pairs.
+A submission defines `create_model(instance)` returning `(solver, outputs)`, with
+`solver` an `exact.Exact`. An optimisation problem sets its objective on the solver
+with `solver.setObjective(terms, minimize=...)`, as Exact's own examples do. Exact
+cannot hand an objective back, so the runner replaces `exact.Exact` with a subclass
+that records the arguments of `setObjective` before the submission is imported; it
+needs the terms to pin the optimum while enumerating. Models retained before
+2026-11-02 define `build(instance)` and may return the objective as a third value,
+`(direction, terms)` with direction "minimize" or "maximize"; that form still works.
 
 Exact identifies variables by name, so `outputs` maps each declared output name
 to variable names, or nested lists of them. Values come back as integers; the
@@ -29,10 +33,24 @@ sys.path.insert(0, "/opt/runner")
 from runtime import emit, flatten, mapped  # noqa: E402
 from runtime import finish as runtime_finish  # noqa: E402
 
-from exact import Exact  # noqa: E402
+import exact  # noqa: E402
 STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 DIRECTIONS = ("minimize", "maximize")
+
+
+class Exact(exact.Exact):
+    """An exact.Exact that remembers the objective set on it."""
+
+    objective = None  # (terms, minimize, offset) once setObjective was called
+
+    def setObjective(self, terms, minimize=True, offset=0):
+        terms = list(terms)
+        super().setObjective(terms, minimize, offset)
+        self.objective = (terms, minimize, offset)
+
+
+exact.Exact = Exact  # what `from exact import Exact` gives the submission
 
 
 def load(instance):
@@ -41,16 +59,16 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) not in (2, 3):
-        raise ValueError("build(instance) must return (solver, outputs) or "
-                         "(solver, outputs, (direction, terms))")
+        raise ValueError("create_model(instance) must return (solver, outputs)")
     solver, outputs = returned[0], returned[1]
     objective = returned[2] if len(returned) == 3 else None
     if not isinstance(solver, Exact):
         raise ValueError("the first value must be an exact.Exact")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     for leaf in flatten(outputs):
         if not isinstance(leaf, str):
             raise ValueError("an output leaf must be a variable name; got "
@@ -88,12 +106,12 @@ def main():
     solver, outputs, objective = load(request["instance"])
     if objective is not None:
         direction, terms = objective
-        minimise = direction == "minimize"
-        solver.setObjective(list(terms), minimize=minimise)
+        solver.setObjective(terms, minimize=direction == "minimize")
     BUILD_SECONDS = time.monotonic() - building
     names = flatten(outputs)
 
-    if objective is not None:
+    if solver.objective is not None:
+        terms, minimise, offset = solver.objective
         left = deadline - time.monotonic()
         if left <= 0:
             return finish("timeout", "the budget ran out before the search began",
@@ -107,9 +125,10 @@ def main():
             # Exact still holds a solution, which must not be reported as one.
             return finish("timeout", f"the optimum was not proven ({state})",
                           solve_seconds=spent)
-        optimum = value if minimise else -value
+        # Exact reports the objective plus its offset, negated when maximising.
+        optimum = (value if minimise else -value) - offset
         # Pin the objective so every further solution is an optimal one.
-        solver.addConstraint(list(terms), True, optimum, True, optimum)
+        solver.addConstraint(terms, True, optimum, True, optimum)
 
     limit = request["solution_limit"]
     emitted = 0

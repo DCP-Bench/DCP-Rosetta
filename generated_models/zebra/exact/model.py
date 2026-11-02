@@ -1,14 +1,18 @@
-# Zebra puzzle: five houses in a row, each with a colour, an inhabitant of some nationality, a job,
-# a pet and a drink, all different within each kind. Clues relate them; find the house number
-# (0..4, left to right) of every colour, nationality, job, pet and drink.
+# zebra: an Exact (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+# Run it (after `pip install exact numpy`) with:
+#   python zebra.py
+
 from exact import Exact
 
 
-def build(instance):
-    # This problem has no instance data. The five houses and the five items of each kind belong to
-    # the problem statement.
-    n_houses = 5
-    kinds = {
+def create_model(instance):
+    """The Zebra puzzle: five houses in a row, each with a different color,
+    inhabitant nationality, pet, drink and job, fixed by a list of clues. Find the
+    house number (0 to 4, left to right) of every color, nationality, job, pet and
+    drink."""
+    n_houses = 5  # the houses, numbered 0 (leftmost) to 4 (rightmost)
+    kinds = {  # the five items of each kind, one per house
         "colors": ["yellow", "green", "red", "white", "blue"],
         "nations": ["italy", "spain", "japan", "england", "norway"],
         "jobs": ["painter", "sculptor", "diplomat", "pianist", "doctor"],
@@ -18,17 +22,18 @@ def build(instance):
 
     solver = Exact()
 
-    # Each item is a variable holding the house it belongs to. Comparing "which house" with other
-    # items needs 0/1 indicators, so is_in[item][h] = 1 when the item is in house h.
+    # Exact identifies its variables by name.
+    # Each item is a variable holding the number of its house. is_in[item][h] is 1 when the
+    # item is in house h, and 0 when not.
     is_in = {}
     for items in kinds.values():
         for item in items:
             solver.addVariable(item, 0, n_houses - 1)
             is_in[item] = [f"{item}_in_{h}" for h in range(n_houses)]
-            for indicator in is_in[item]:
-                solver.addVariable(indicator, 0, 1)
-            # the item is in exactly one house, and the indicators give its number
-            solver.addConstraint([(1, indicator) for indicator in is_in[item]], True, 1, True, 1)
+            for name in is_in[item]:
+                solver.addVariable(name, 0, 1)
+            # Each item is in exactly one house, and its number is that house.
+            solver.addConstraint([(1, name) for name in is_in[item]], True, 1, True, 1)
             solver.addConstraint([(h, is_in[item][h]) for h in range(1, n_houses)] +
                                  [(-1, item)], True, 0, True, 0)
         # All items of one kind are in different houses: every house holds exactly one of them.
@@ -36,14 +41,15 @@ def build(instance):
             solver.addConstraint([(1, is_in[item][h]) for item in items], True, 1, True, 1)
 
     def same_house(x, y):
+        # x and y are in the same house.
         solver.addConstraint([(1, x), (-1, y)], True, 0, True, 0)
 
     def immediately_left(x, y):
-        # x is in the house directly to the left of y's house
+        # x is in the house directly to the left of y.
         solver.addConstraint([(1, x), (-1, y)], True, -1, True, -1)
 
     def neighbours(x, y):
-        # x and y are in adjacent houses: for every house h, if x is in h then y is in h-1 or h+1
+        # x and y are in neighbouring houses: when x is in house h, y is in house h - 1 or h + 1.
         for h in range(n_houses):
             next_door = [(1, is_in[y][g]) for g in (h - 1, h + 1) if 0 <= g < n_houses]
             solver.addConstraint(next_door + [(-1, is_in[x][h])], True, 0)
@@ -79,4 +85,18 @@ def build(instance):
         solver.addConstraint([(1, is_in[c][h]) for c in ("red", "white", "green")] +
                              [(-1, is_in["italy"][h])], True, 0)
 
-    return solver, {kind: items for kind, items in kinds.items()}
+    return solver, kinds
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")
