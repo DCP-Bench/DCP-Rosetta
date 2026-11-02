@@ -1,87 +1,92 @@
-# KenKen: fill an n x n grid with the digits 1..n so that each row and each column
-# contains every digit exactly once, and each cage's digits achieve its target
-# under an operation that is part of the puzzle (to be determined).
+# kenken: a cvc5 (Python) model from DCP Rosetta.
+# Download the `kenken.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/kenken.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python kenken.py kenken.json
+
 import itertools
+import math
 
-import cvc5.pythonic as cz
-
-
-def any_of(terms):
-    if not terms:
-        return cz.BoolVal(False)
-    if len(terms) == 1:
-        return terms[0]
-    return cz.Or(terms)
+import cvc5.pythonic as c5
 
 
-def all_of(terms):
-    if len(terms) == 1:
-        return terms[0]
-    return cz.And(terms)
+def create_model(instance):
+    """Fill an n by n grid with the digits 1 to n so that every row and column holds each
+    digit once, and the digits of each cage achieve the cage's target with its operation."""
+    n = instance["n"]            # the grid is n by n, with digits 1..n
+    cages = instance["problem"]  # each cage is [target, [[row, col], ...]]: its target and the cells it covers (1-based)
+    digits = range(1, n + 1)
+
+    # x[i][j] is the digit in the cell at row i + 1, column j + 1
+    x = [[c5.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
+
+    def any_of(options):
+        """The one of the options that holds; false when there are no options."""
+        if not options:
+            return c5.BoolVal(False)
+        if len(options) == 1:
+            return options[0]
+        return c5.Or(options)
+
+    solver = c5.Solver()
+
+    # Each cell holds a digit from 1 to n.
+    for row in x:
+        for v in row:
+            solver.add(v >= 1, v <= n)
+
+    # Each row holds each digit exactly once.
+    solver.add([c5.Distinct(row) for row in x])
+
+    # Each column holds each digit exactly once.
+    solver.add([c5.Distinct(list(col)) for col in zip(*x)])
+
+    # Each cage achieves its target. The operation is not given, so a cage may use any
+    # operation that is valid for its size. Digits may repeat within a cage.
+    for target, cells in cages:
+        cage = [x[r - 1][c - 1] for r, c in cells]
+        if len(cage) == 1:
+            solver.add(cage[0] == target)
+        elif len(cage) == 2:
+            # Two cells: their digits form a pair whose sum, difference, product or exact
+            # quotient (either order) is the target.
+            pairs = [
+                (a, b)
+                for a in digits
+                for b in digits
+                if a + b == target or abs(a - b) == target or a * b == target
+                or a == b * target or b == a * target
+            ]
+            solver.add(any_of([c5.And(cage[0] == a, cage[1] == b) for a, b in pairs]))
+        else:
+            # Three or more cells: the digits sum to the target, or they multiply to it.
+            # The digit tuples that multiply to the target.
+            tuples = [
+                tup for tup in itertools.product(digits, repeat=len(cage))
+                if math.prod(tup) == target
+            ]
+            solver.add(any_of(
+                [c5.Sum(cage) == target]
+                + [c5.And([v == d for v, d in zip(cage, tup)]) for tup in tuples]
+            ))
+
+    return solver, {"x": x}
 
 
-def cage_pair_ok(a, b, t):
-    # Two-cell cage: sum, difference, product or exact quotient (larger over smaller).
-    return (a + b == t) or (abs(a - b) == t) or (a * b == t) or (
-        (a % b == 0 and a // b == t) or (b % a == 0 and b // a == t)
-    )
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
 
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-def build(instance):
-    n = instance["n"]
-    digits = list(range(1, n + 1))
-    x = [[cz.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
 
-    constraints = []
-
-    # Each cell takes a digit from 1 to n.
-    # Each row contains exactly one of each digit.
-    # Each column contains exactly one of each digit.
-    for i in range(n):
-        for j in range(n):
-            constraints.append(x[i][j] >= 1)
-            constraints.append(x[i][j] <= n)
-    for i in range(n):
-        constraints.append(cz.Distinct(x[i]))
-    for j in range(n):
-        constraints.append(cz.Distinct([x[i][j] for i in range(n)]))
-
-    # Each bold-outlined group of cells is a cage containing digits which achieve
-    # the specified result using the specified mathematical operation.
-    # The operation is not given: it is one of addition, subtraction, multiplication
-    # and division, with subtraction and division only for two-cell cages. Digits may
-    # repeat within a cage.
-    for target, cells in instance["problem"]:
-        vals = [x[r - 1][c - 1] for r, c in cells]
-        k = len(vals)
-
-        if k == 1:
-            constraints.append(vals[0] == target)
-            continue
-
-        if k == 2:
-            # Union over the four operations of the allowed digit pairs, so the
-            # solver picks the operation as part of the search.
-            pairs = [(a, b) for a in digits for b in digits if cage_pair_ok(a, b, target)]
-            constraints.append(
-                any_of([all_of([vals[0] == a, vals[1] == b]) for a, b in pairs])
-            )
-            continue
-
-        # Larger cages: sum or product (no subtraction or division).
-        options = []
-        options.append(cz.Sum(vals) == target)
-        prod_tuples = []
-        for tup in itertools.product(digits, repeat=k):
-            p = 1
-            for d in tup:
-                p *= d
-            if p == target:
-                prod_tuples.append(tup)
-        if prod_tuples:
-            options.append(
-                any_of([all_of([v == d for v, d in zip(vals, tup)]) for tup in prod_tuples])
-            )
-        constraints.append(any_of(options))
-
-    return constraints, {"x": x}
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,21 +1,40 @@
-# Problem: five_statements. Determine which of five statements is true.
-# Statement i (i = 1..5) says: "Exactly i of these statements are false."
-# Output statements[k] is 1 when statement k+1 is true, 0 otherwise.
+# five_statements: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/five_statements.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python five_statements.py
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    s = cz.Bools("s1 s2 s3 s4 s5")
-    # Number of false statements.
-    num_false = cz.Sum([cz.If(cz.Not(b), 1, 0) for b in s])
+def create_model(instance):
+    """Five statements say that exactly one, exactly two, exactly three,
+    exactly four and exactly five of these statements are false, in that order.
+    Determine which of the statements are true."""
+    n_statements = 5  # the number of statements
 
-    # Each statement is true exactly when the number of false statements equals its index.
-    # Exactly one of these statements is false.
-    # Exactly two of these statements are false.
-    # Exactly three of these statements are false.
-    # Exactly four of these statements are false.
-    # Exactly five of these statements are false.
-    constraints = [s[i] == (num_false == i + 1) for i in range(5)]
+    # statements[i] is true when statement i + 1 is true
+    statements = [c5.Bool(f"statements_{i}") for i in range(n_statements)]
 
-    return constraints, {"statements": list(s)}
+    # The number of false statements
+    n_false = c5.Sum([c5.If(c5.Not(s), 1, 0) for s in statements])
+
+    solver = c5.Solver()
+
+    # Statement i + 1 is true exactly when i + 1 statements are false.
+    solver.add([statements[i] == (n_false == i + 1) for i in range(n_statements)])
+
+    return solver, {"statements": statements}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

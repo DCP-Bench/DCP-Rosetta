@@ -1,64 +1,73 @@
-# hanging_weights: weights A-M hang from a system of bars. Each weight is an
-# integer in 1..13. Find the weights (a..m) so the diagram balances: at every
-# pivot the weights on either side are equal when weighted by distance from the
-# pivot, and a bar hanging beneath another contributes its total weight as a
-# single weight.
-#
-# Bar structure read from the diagram (arm lengths in units of one segment):
-#   top bar:   pivot between the LM bar (arm 4) and the JK bar (arm 3)
-#   LM bar:    H-bar subtree (arm 1), L (arm 1), M (arm 4), pivot at the top-bar string
-#   H bar:     H (arm 3), EF bar (arm 2), I (arm 3), pivot at the LM bar's left end
-#   EF bar:    E (arm 3), F (arm 2)
-#   JK bar:    AB bar (arm 3), J (arm 2), K (arm 1), G bar (arm 2), pivot at the top-bar string
-#   AB bar:    A (arm 4), B (arm 1)
-#   G bar:     G (arm 3), CD bar (arm 2)
-#   CD bar:    C (arm 5), D (arm 1)
+# hanging_weights: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python hanging_weights.py
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    a, b, c, d, e, f, g, h, i, j, k, l, m = cz.Ints("a b c d e f g h i j k l m")
+def create_model(instance):
+    """Thirteen weights, A to M, hang from a system of bars. Each weight is a whole number
+    from 1 to 13. Find the weights that make the diagram balance: at every pivot, the
+    weights on the two sides are equal once each is multiplied by its distance from the
+    pivot. A bar hanging beneath another bar counts as one weight, equal to its total."""
+    # The weights A to M.
+    a, b, c, d, e, f, g, h, i, j, k, l, m = c5.Ints("a b c d e f g h i j k l m")
     weights = [a, b, c, d, e, f, g, h, i, j, k, l, m]
 
-    # Each weight has an integer value between 1 and 13.
-    domain = [w >= 1 for w in weights] + [w <= 13 for w in weights]
+    solver = c5.Solver()
 
-    # Subtree totals: a bar hanging beneath another counts as its total weight.
-    h_sub = h + i + e + f          # H bar with I and the EF bar
-    lm_total = h_sub + l + m       # LM bar with its hanging parts
-    jk_total = a + b + j + k + g + c + d  # JK bar with its hanging parts
+    # Each weight is a whole number from 1 to 13.
+    solver.add([w >= 1 for w in weights] + [w <= 13 for w in weights])
 
-    constraints = list(domain)
+    # The total weight of each bar, with everything hanging beneath it.
+    hi_total = h + i + e + f  # the bar with H and I, and the bar with E and F under it
+    lm_total = hi_total + l + m  # the bar with L and M, and the bar with H and I under it
+    jk_total = a + b + j + k + g + c + d  # the bar with J and K, and all weights under it
 
-    # The top bar: the weights on either side of its pivot must balance.
-    constraints.append(4 * lm_total == 3 * jk_total)
+    # The top bar: the bar with L and M, at distance 4 from the pivot, balances the bar
+    # with J and K, at distance 3.
+    solver.add(4 * lm_total == 3 * jk_total)
 
-    # The bar LM: the H bar (distance 1) balances L (distance 1) and M (distance 4).
-    constraints.append(h_sub == l + 4 * m)
+    # The bar with L and M: the bar with H and I, at distance 1, balances L at distance 1
+    # and M at distance 4.
+    solver.add(hi_total == l + 4 * m)
 
-    # The bar H: the weights on either side of its pivot must balance.
-    # Read from the diagram: H at distance 3, the EF bar at distance 2, I at distance 3.
-    constraints.append(3 * h == 2 * (e + f) + 3 * i)
+    # The bar with H and I: H at distance 3 balances the bar with E and F at distance 2
+    # and I at distance 3.
+    solver.add(3 * h == 2 * (e + f) + 3 * i)
 
-    # The bar EF: 3*E=2*F.
-    constraints.append(3 * e == 2 * f)
+    # The bar with E and F: E at distance 3 balances F at distance 2.
+    solver.add(3 * e == 2 * f)
 
-    # The bar JK: the weights on either side of its pivot must balance.
-    # The AB bar at distance 3, J at distance 2, K at distance 1, the G bar at distance 2.
-    constraints.append(3 * (a + b) + 2 * j == k + 2 * (g + c + d))
+    # The bar with J and K: the bar with A and B at distance 3 and J at distance 2 balance
+    # K at distance 1 and the bar with G at distance 2.
+    solver.add(3 * (a + b) + 2 * j == k + 2 * (g + c + d))
 
-    # The bar AB: 4*A=B.
-    constraints.append(4 * a == b)
+    # The bar with A and B: A at distance 4 balances B at distance 1.
+    solver.add(4 * a == b)
 
-    # The bar G, the one above the bottom right bar: 3*G=2*(C+D).
-    constraints.append(3 * g == 2 * (c + d))
+    # The bar with G: G at distance 3 balances the bar with C and D at distance 2.
+    solver.add(3 * g == 2 * (c + d))
 
-    # The bottom right bar: 5*C=D.
-    constraints.append(5 * c == d)
+    # The bar with C and D: C at distance 5 balances D at distance 1.
+    solver.add(5 * c == d)
 
-    outputs = {
-        "a": a, "b": b, "c": c, "d": d, "e": e, "f": f, "g": g,
-        "h": h, "i": i, "j": j, "k": k, "l": l, "m": m,
-    }
-    return constraints, outputs
+    # The weights, by letter.
+    outputs = {"a": a, "b": b, "c": c, "d": d, "e": e, "f": f, "g": g,
+               "h": h, "i": i, "j": j, "k": k, "l": l, "m": m}
+    return solver, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,37 +1,48 @@
-# Problem cur_num: print another number with the peculiarity (peculiar) between
-# 1 and 10000. The number 48 has the peculiarity: adding 1 to it gives a square,
-# and adding 1 to its half also gives a square. "Another" excludes 48.
+# cur_num: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python cur_num.py
+
 import math
 
-import cvc5.pythonic as cz
-
-LOWER = 1
-UPPER = 10000
-EXAMPLE = 48
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    peculiar = cz.Int("peculiar")
+def create_model(instance):
+    """The number 48 is peculiar: adding 1 to it gives a square number, and adding 1
+    to its half gives a square number too. Find another number between 1 and 10000
+    with this peculiarity."""
+    # The number to find
+    peculiar = c5.Int("peculiar")
 
-    # Bounds from the description: a number between 1 and 10000.
-    constraints = [peculiar >= LOWER, peculiar <= UPPER]
+    solver = c5.Solver()
 
-    # Another number than the example 48.
-    constraints.append(peculiar != EXAMPLE)
+    # It lies between 1 and 10000 and is not the example 48.
+    solver.add(peculiar >= 1, peculiar <= 10000, peculiar != 48)
 
-    # Adding 1 to the number gives a square number. The square root of the
-    # largest value that can be reached, UPPER + 1, bounds the root.
-    # The root is a Python constant per disjunct, so every constraint is linear.
-    root_limit = math.isqrt(UPPER + 1)
-    constraints.append(
-        cz.Or([peculiar + 1 == k * k for k in range(1, root_limit + 1)])
+    # Adding 1 gives a square number k * k, with k at most the square root of 10001.
+    solver.add(
+        c5.Or([peculiar + 1 == k * k for k in range(1, math.isqrt(10001) + 1)])
     )
 
-    # Adding 1 to its half also gives a square number. The half is an integer,
-    # so the number is even: peculiar == 2 * (m * m - 1) for some m >= 1.
-    half_root_limit = math.isqrt((UPPER + 2) // 2) + 1
-    constraints.append(
-        cz.Or([peculiar == 2 * (m * m - 1) for m in range(1, half_root_limit + 1)])
+    # Half of the number, plus 1, is a square number m * m. So the number is even and
+    # equals 2 * (m * m - 1), with m at most the square root of 5001.
+    solver.add(
+        c5.Or([peculiar == 2 * (m * m - 1) for m in range(1, math.isqrt(5001) + 1)])
     )
 
-    return constraints, {"peculiar": peculiar}
+    return solver, {"peculiar": peculiar}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

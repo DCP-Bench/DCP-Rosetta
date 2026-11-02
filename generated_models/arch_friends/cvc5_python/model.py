@@ -1,44 +1,70 @@
-# Harriet's four shoe purchases (ecru espadrilles, fuchsia flats, purple pumps,
-# suede sandals) and the four stores she bought them at (Foot Farm, Heels in a
-# Handcart, The Shoe Palace, Tootsies). Each output is the stop number (1 to 4)
-# of that shoe or store; the same number means the same shoe or store.
-import cvc5.pythonic as cz
+# arch_friends: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/arch_friends.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python arch_friends.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    ecru, fuchsia, purple, suede, foot, heels, palace, tootsies = cz.Ints(
-        "ecruespadrilles fuchsiaflats purplepumps suedesandals "
+def create_model(instance):
+    """Harriet bought four pairs of shoes (ecru espadrilles, fuchsia flats, purple
+    pumps, suede sandals) at four different stores (Foot Farm, Heels in a
+    Handcart, The Shoe Palace, Tootsies). Work out the order in which she bought
+    each pair and where she bought each."""
+    # The stop, from 1 to 4, at which each pair of shoes was bought and each store was visited
+    ecruespadrilles, fuchsiaflats, purplepumps, suedesandals = c5.Ints(
+        "ecruespadrilles fuchsiaflats purplepumps suedesandals"
+    )
+    footfarm, heelsinahandcart, theshoepalace, tootsies = c5.Ints(
         "footfarm heelsinahandcart theshoepalace tootsies"
     )
-    shoes = [ecru, fuchsia, purple, suede]
-    stores = [foot, heels, palace, tootsies]
-    constraints = []
+    shoes = [ecruespadrilles, fuchsiaflats, purplepumps, suedesandals]
+    stores = [footfarm, heelsinahandcart, theshoepalace, tootsies]
 
-    # the stops are the numbers 1 to 4, and each shoe and each store has its own stop
-    for v in shoes + stores:
-        constraints += [v >= 1, v <= 4]
-    constraints += [cz.Distinct(shoes), cz.Distinct(stores)]
+    solver = c5.Solver()
 
-    # Harriet bought fuchsia flats at Heels in a Handcart
-    constraints.append(fuchsia == heels)
+    # There are four stops, numbered 1 to 4.
+    solver.add([v >= 1 for v in shoes + stores] + [v <= 4 for v in shoes + stores])
 
-    # the store she visited just after buying her purple pumps was not Tootsies
-    constraints.append(tootsies != purple + 1)
+    # Harriet buys one pair of shoes at each stop.
+    solver.add(c5.Distinct(shoes))
+    # Harriet visits one store at each stop.
+    solver.add(c5.Distinct(stores))
 
-    # The Foot Farm was Harriet's second stop
-    constraints.append(foot == 2)
+    # Harriet bought the fuchsia flats at Heels in a Handcart.
+    solver.add(fuchsiaflats == heelsinahandcart)
 
-    # two stops after leaving The Shoe Palace, Harriet bought her suede sandals
-    constraints.append(suede == palace + 2)
+    # The store she visited just after buying her purple pumps was not Tootsies.
+    solver.add(tootsies != purplepumps + 1)
+
+    # The Foot Farm was Harriet's second stop.
+    solver.add(footfarm == 2)
+
+    # Two stops after leaving The Shoe Palace, Harriet bought her suede sandals.
+    solver.add(suedesandals == theshoepalace + 2)
 
     outputs = {
-        "ecruespadrilles": ecru,
-        "fuchsiaflats": fuchsia,
-        "purplepumps": purple,
-        "suedesandals": suede,
-        "footfarm": foot,
-        "heelsinahandcart": heels,
-        "theshoepalace": palace,
+        "ecruespadrilles": ecruespadrilles,
+        "fuchsiaflats": fuchsiaflats,
+        "purplepumps": purplepumps,
+        "suedesandals": suedesandals,
+        "footfarm": footfarm,
+        "heelsinahandcart": heelsinahandcart,
+        "theshoepalace": theshoepalace,
         "tootsies": tootsies,
     }
-    return constraints, outputs
+    return solver, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

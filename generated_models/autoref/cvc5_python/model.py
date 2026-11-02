@@ -1,42 +1,64 @@
-# Problem: autoref. Given an integer n > 0 and an integer m >= 0, find a non-empty
-# finite series S = (s0, s1, ..., sn, sn+1) such that (1) there are si occurrences
-# of i in S for each integer i from 0 to n, and (2) sn+1 = m. Output the series S.
-import cvc5.pythonic as cz
+# autoref: a cvc5 (Python) model from DCP Rosetta.
+# Download the `autoref.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/autoref.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python autoref.py autoref.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = instance["n"]
-    m = instance["m"]
-    length = n + 2  # the series has entries s0 .. sn+1
-    s = [cz.Int(f"s{j}") for j in range(length)]
+def create_model(instance):
+    """Find a series s[0], s[1], ..., s[n+1] in which each number i from 0 to n occurs
+    exactly s[i] times, and whose last entry s[n+1] equals m."""
+    n = instance["n"]  # the numbers 0 to n are counted in the series
+    m = instance["m"]  # the required last entry of the series
 
-    solver = cz.SolverFor("QF_LIA")
+    # s[k] is the k-th entry of the series
+    s = [c5.Int(f"s{k}") for k in range(n + 2)]
 
-    # Entry s_i for i <= n counts the occurrences of i in S. Each such entry is an
-    # integer in 0..n.
+    # Linear integer logic: cvc5 solves this model much faster than with the default Solver().
+    solver = c5.SolverFor("QF_LIA")
+
+    # Each count s[i] for i from 0 to n lies between 0 and n.
     for i in range(n + 1):
         solver.add(s[i] >= 0, s[i] <= n)
 
-    # sn+1 = m is the last entry; m is the instance's own value.
+    # The last entry is m.
     solver.add(s[n + 1] == m)
 
-    # (1) there are si occurrences of i in S for each integer i from 0 to n.
-    # Each indicator is 0/1 and the counts are linear in them.
+    # The number i occurs exactly s[i] times in the series, for each i from 0 to n.
     for i in range(n + 1):
-        solver.add(cz.Sum([cz.If(s[j] == i, 1, 0) for j in range(length)]) == s[i])
+        solver.add(c5.Sum([c5.If(s[k] == i, 1, 0) for k in range(n + 2)]) == s[i])
 
-    # Redundant identity: the counts s_0 .. s_n add up to the number of entries
-    # whose value lies in 0..n, since each such entry is counted by exactly one s_i.
+    # The counts of 0 to n add up to the number of entries that lie between 0 and n.
     solver.add(
-        cz.Sum([s[i] for i in range(n + 1)])
-        == cz.Sum([cz.If(s[j] <= n, 1, 0) for j in range(length)])
+        c5.Sum([s[i] for i in range(n + 1)])
+        == c5.Sum([c5.If(s[k] <= n, 1, 0) for k in range(n + 2)])
     )
 
-    # Redundant identity: counting by value equals counting by position, so the sum
-    # of i * s_i over i in 0..n equals the sum of the entries that lie in 0..n.
+    # Each number times its count adds up to the entries that lie between 0 and n.
     solver.add(
-        cz.Sum([i * s[i] for i in range(n + 1)])
-        == cz.Sum([cz.If(s[j] <= n, s[j], 0) for j in range(length)])
+        c5.Sum([i * s[i] for i in range(n + 1)])
+        == c5.Sum([c5.If(s[k] <= n, s[k], 0) for k in range(n + 2)])
     )
 
     return solver, {"s": s}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

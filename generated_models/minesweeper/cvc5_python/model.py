@@ -1,34 +1,61 @@
-# Minesweeper: determine which unopened cells contain mines, from the revealed clue numbers.
-# Each cell is a Boolean (True = mine). Board size and clues come from the instance.
-import cvc5.pythonic as cz
+# minesweeper: a cvc5 (Python) model from DCP Rosetta.
+# Download the `minesweeper.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/minesweeper.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python minesweeper.py minesweeper.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    grid = instance["game_data"]
-    unknown = instance["X"]
-    rows = len(grid)
-    cols = len(grid[0])
+def create_model(instance):
+    """From the numbers on the opened cells of a Minesweeper board, decide which unopened
+    cells hold a mine. An opened cell's number is the count of mines among its neighbours."""
+    unopened = instance["X"]      # the value that marks a cell that is not opened yet
+    game = instance["game_data"]  # game[r][c]: the number on cell (r, c), or the unopened marker
+    n_rows = len(game)            # the number of rows on the board
+    n_cols = len(game[0])         # the number of columns on the board
 
-    mines = [[cz.Bool(f"m_{i}_{j}") for j in range(cols)] for i in range(rows)]
-    constraints = []
+    # mines[r][c] is true when cell (r, c) holds a mine
+    mines = [[c5.Bool(f"mine_{r}_{c}") for c in range(n_cols)] for r in range(n_rows)]
 
-    # The number on a cell shows the number of mines adjacent to it.
-    # Opened cells (clue numbers) are safe, so they contain no mine.
-    for i in range(rows):
-        for j in range(cols):
-            clue = grid[i][j]
-            if clue == unknown:
+    solver = c5.Solver()
+
+    for r in range(n_rows):
+        for c in range(n_cols):
+            if game[r][c] == unopened:
                 continue
-            constraints.append(cz.Not(mines[i][j]))
+
+            # An opened cell holds no mine.
+            solver.add(c5.Not(mines[r][c]))
+
+            # The cells next to (r, c), fewer at the edge of the board.
             neighbours = [
                 mines[a][b]
-                for a in range(max(0, i - 1), min(rows, i + 2))
-                for b in range(max(0, j - 1), min(cols, j + 2))
-                if (a, b) != (i, j)
+                for a in range(max(0, r - 1), min(n_rows, r + 2))
+                for b in range(max(0, c - 1), min(n_cols, c + 2))
+                if (a, b) != (r, c)
             ]
-            if neighbours:
-                constraints.append(
-                    cz.Sum([cz.If(m, 1, 0) for m in neighbours]) == clue
-                )
 
-    return constraints, {"mines": mines}
+            # The number on an opened cell is the count of mines among its neighbours.
+            solver.add(c5.Sum([c5.If(m, 1, 0) for m in neighbours]) == game[r][c])
+
+    return solver, {"mines": mines}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

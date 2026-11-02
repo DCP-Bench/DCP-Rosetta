@@ -1,49 +1,71 @@
-# general_store: cryptarithm. Each different letter stands for a different digit.
-# The words above the line add up to ALL WOOL. Print the values of C, H, E, S, A, B, O, W, P, L.
-# Each letter is an 8-bit bit-vector, so the column sums are bit-blasted to SAT; the integer
-# outputs are read through BV2Int. The column sums (at most 16 digits of 9 plus a carry of 15)
-# stay below 256, so 8 bits never overflow.
-import cvc5.pythonic as cz
+# general_store: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python general_store.py
 
-WIDTH = 8
+import cvc5.pythonic as c5
 
 
-def build(instance):
+def create_model(instance):
+    """A store owner's sign shows sixteen words above a line, which add up to ALL WOOL.
+    Each different letter stands for a different digit. Find the digit of each letter."""
+    # The ten letters, each standing for one digit.
     names = ["C", "H", "E", "S", "A", "B", "O", "W", "P", "L"]
-    letter = {n: cz.BitVec(n, WIDTH) for n in names}
 
-    # Integers appear only in the outputs (BV2Int); the BV part is bit-blasted into the
-    # main SAT solver, which proves that no second solution exists in seconds.
-    solver = cz.SolverFor("ALL")
+    # Digits are kept in 8 bits: a column sum is at most 16 * 9 + 15 = 159.
+    width = 8
+    # letter[n] is the digit that letter n stands for.
+    letter = {n: c5.BitVec(n, width) for n in names}
+
+    # Arithmetic on the digits is done bit by bit: cvc5 then proves there is no second
+    # solution in seconds, which it cannot do within the time limit with the default Solver().
+    solver = c5.SolverFor("ALL")
     solver.set("bv-solver", "bitblast-internal")
 
     # Each letter stands for a digit from 0 to 9.
-    for n in names:
-        solver.add(cz.ULE(letter[n], 9))
+    solver.add(*[c5.ULE(letter[n], 9) for n in names])
 
-    # Each different letter stands for a different digit.
-    solver.add(cz.Distinct(*[letter[n] for n in names]))
+    # Different letters stand for different digits.
+    solver.add(c5.Distinct(*[letter[n] for n in names]))
 
-    # The words above the horizontal line represent numbers that add to the total of ALL WOOL.
+    # The sixteen words above the line, and the total below it.
     words = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
              "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
     total = "ALLWOOL"
-    # Column by column from the units digit: the digits of the words in that column plus the
-    # carry in equal the digit of the total plus ten times the carry out. A column holds at
-    # most 16 digits, so a carry is at most 15; the leftmost column has no carry out.
-    carry_in = cz.BitVecVal(0, WIDTH)
+
+    # The words add up to the total column by column, from the units digit. In each
+    # column, the digits of the words plus the carry from the column before equal the
+    # digit of the total plus ten times the carry into the next column.
+    carry_in = c5.BitVecVal(0, width)  # the carry into the units column is zero
     for k in range(len(total)):
-        column = carry_in
+        column = carry_in  # the sum of this column
         for w in words:
             if len(w) > k:
                 column = column + letter[w[-1 - k]]
         if k + 1 < len(total):
-            carry_out = cz.BitVec(f"carry_{k + 1}", WIDTH)
-            solver.add(cz.ULE(carry_out, 15))
+            carry_out = c5.BitVec(f"carry_{k + 1}", width)
+            # A carry is at most 15.
+            solver.add(c5.ULE(carry_out, 15))
         else:
-            carry_out = cz.BitVecVal(0, WIDTH)
+            # The leading column has no carry out.
+            carry_out = c5.BitVecVal(0, width)
         solver.add(column == letter[total[-1 - k]] + 10 * carry_out)
         carry_in = carry_out
 
-    outputs = {n: cz.BV2Int(letter[n]) for n in names}
+    # The digit of each letter, as a whole number.
+    outputs = {n: c5.BV2Int(letter[n]) for n in names}
     return solver, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,64 +1,87 @@
-# Killer sudoku (csplib 057): fill the grid with the numbers 1 to n so that
-# each row, column and nonet contains each number exactly once,
-# the sum of all numbers in a cage matches the small number in its corner,
-# and no number appears more than once in a cage.
-#
-# The grid is encoded with one Boolean per cell and value (one-hot), so the
-# all-different rules become exactly-one clauses that the SAT core propagates.
-import cvc5.pythonic as cz
+# csplib_057_killer_sudoku: a cvc5 (Python) model from DCP Rosetta.
+# Download the `csplib_057_killer_sudoku.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python csplib_057_killer_sudoku.py csplib_057_killer_sudoku.json
+
+from math import isqrt
+
+import cvc5.pythonic as c5
 
 
-def at_most_one(lits):
-    # Pairwise: no two of the literals are true together.
-    out = []
-    for i in range(len(lits)):
-        for j in range(i + 1, len(lits)):
-            out.append(cz.Or(cz.Not(lits[i]), cz.Not(lits[j])))
-    return out
+def at_most_one(conditions):
+    # No two of the conditions hold together.
+    return [c5.Or(c5.Not(a), c5.Not(b)) for i, a in enumerate(conditions) for b in conditions[i + 1:]]
 
 
-def exactly_one(lits):
-    return [cz.Or(lits)] + at_most_one(lits)
+def exactly_one(conditions):
+    # Exactly one of the conditions holds.
+    return [c5.Or(conditions)] + at_most_one(conditions)
 
 
-def build(instance):
-    n = instance["n"]
-    b = round(n ** 0.5)
-    vals = list(range(1, n + 1))
-    p = [[[cz.Bool(f"p_{r}_{c}_{v}") for v in vals] for c in range(n)] for r in range(n)]
-    x = [[cz.Int(f"x_{r}_{c}") for c in range(n)] for r in range(n)]
+def create_model(instance):
+    """Fill an n by n grid with the numbers 1 to n so that every row, column and nonet
+    holds each number once, and every cage (a group of cells) holds distinct numbers
+    that add up to the small number printed in its corner."""
+    n = instance["n"]            # side of the grid
+    cages = instance["problem"]  # cages[c] = [total, cells]: the total of cage c and its cells
+    box = isqrt(n)               # side of a nonet (3 for the usual 9 by 9 grid)
 
-    cons = []
+    # p[r][c][k] is true when the cell in row r, column c holds the number k + 1
+    p = [[[c5.Bool(f"p_{r}_{c}_{k}") for k in range(n)] for c in range(n)] for r in range(n)]
+    # x[r][c] is the number in row r, column c of the grid, counted from 0
+    x = [[c5.Int(f"x_{r}_{c}") for c in range(n)] for r in range(n)]
 
-    # Each cell holds exactly one number from 1 to n.
-    # The value of the cell is the number it holds.
+    solver = c5.Solver()
+
+    # Each cell holds exactly one number from 1 to n, and x gives that number.
     for r in range(n):
         for c in range(n):
-            cons += exactly_one(p[r][c])
-            cons.append(x[r][c] == cz.Sum([cz.If(p[r][c][k], vals[k], 0) for k in range(n)]))
+            solver.add(exactly_one(p[r][c]))
+            solver.add(x[r][c] == c5.Sum([c5.If(p[r][c][k], k + 1, 0) for k in range(n)]))
 
-    # Each row, column and nonet contains each number exactly once.
+    # The rows, columns and nonets, each as a list of cells.
     units = []
     for r in range(n):
         units.append([(r, c) for c in range(n)])
         units.append([(k, r) for k in range(n)])
-    if b * b == n:
-        for br in range(b):
-            for bc in range(b):
-                units.append([(br * b + i, bc * b + j) for i in range(b) for j in range(b)])
+    if box * box == n:
+        for i in range(box):
+            for j in range(box):
+                units.append([(i * box + a, j * box + b) for a in range(box) for b in range(box)])
+
+    # Each row, column and nonet holds each number once.
     for unit in units:
         for k in range(n):
-            cons += exactly_one([p[r][c][k] for r, c in unit])
+            solver.add(exactly_one([p[r][c][k] for r, c in unit]))
 
-    # The sum of all numbers in a cage must match the small number printed in its corner.
-    # No number appears more than once in a cage.
-    # Cage cells are 1-based (row, column) pairs in the data.
-    for cage in instance["problem"]:
-        total, cells = cage[0], cage[1]
-        cage_cells = [(r - 1, c - 1) for r, c in cells]
-        cons.append(cz.Sum([x[r][c] for r, c in cage_cells]) == total)
-        if len(cage_cells) > 1:
+    # Cage cells are given with rows and columns counted from 1, as in the puzzle.
+    for total, cells in cages:
+        cage = [(r - 1, c - 1) for r, c in cells]
+        # The numbers in the cage add up to its total.
+        solver.add(c5.Sum([x[r][c] for r, c in cage]) == total)
+        # No number repeats inside the cage.
+        if len(cage) > 1:
             for k in range(n):
-                cons += at_most_one([p[r][c][k] for r, c in cage_cells])
+                solver.add(at_most_one([p[r][c][k] for r, c in cage]))
 
-    return cons, {"x": x}
+    return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

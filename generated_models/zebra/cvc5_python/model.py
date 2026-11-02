@@ -1,61 +1,73 @@
-# Zebra puzzle (Einstein's puzzle): five houses in a row, numbered 0 (left) to 4 (right).
-# Each inhabitant attribute (colour, nation, pet, drink, job) is given as the house
-# index of each of its five values. The same index means the same house.
-import cvc5.pythonic as cz
+# zebra: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python zebra.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    yellow, green, red, white, blue = cz.Ints("yellow green red white blue")
-    italy, spain, japan, england, norway = cz.Ints("italy spain japan england norway")
-    cat, zebra, bear, snails, horse = cz.Ints("cat zebra bear snails horse")
-    milk, water, tea, coffee, juice = cz.Ints("milk water tea coffee juice")
-    painter, sculptor, diplomat, pianist, doctor = cz.Ints("painter sculptor diplomat pianist doctor")
+def create_model(instance):
+    """The Zebra puzzle: five houses in a row, numbered 0 (left) to 4 (right). Each
+    house has a different color, nationality, pet, drink and job, and the clues
+    below fix them. Find the house of every color, nationality, job, pet and drink."""
+    # the house of each color
+    yellow, green, red, white, blue = c5.Ints("yellow green red white blue")
+    # the house of each nationality
+    italy, spain, japan, england, norway = c5.Ints("italy spain japan england norway")
+    # the house of each pet
+    cat, zebra, bear, snails, horse = c5.Ints("cat zebra bear snails horse")
+    # the house of each drink
+    milk, water, tea, coffee, juice = c5.Ints("milk water tea coffee juice")
+    # the house of each job
+    painter, sculptor, diplomat, pianist, doctor = c5.Ints("painter sculptor diplomat pianist doctor")
 
+    # the five colors
     colors = [yellow, green, red, white, blue]
+    # the five nationalities
     nations = [italy, spain, japan, england, norway]
+    # the five pets
     pets = [cat, zebra, bear, snails, horse]
+    # the five drinks
     drinks = [milk, water, tea, coffee, juice]
+    # the five jobs
     jobs = [painter, sculptor, diplomat, pianist, doctor]
 
-    constraints = []
+    solver = c5.Solver()
 
-    # Each of the five houses is painted a different color, and has one inhabitant.
-    # The inhabitants are all of different nationalities, own different pets,
-    # drink different beverages and have different jobs.
+    # The houses are numbered 0 to 4, and within each group the five items are in five different houses.
     for group in (colors, nations, pets, drinks, jobs):
-        for v in group:
-            constraints.append(v >= 0)
-            constraints.append(v <= 4)
-        constraints.append(cz.Distinct(group))
+        solver.add([v >= 0 for v in group])
+        solver.add([v <= 4 for v in group])
+        solver.add(c5.Distinct(group))
 
     # the painter owns the horse
-    constraints.append(jobs[0] == pets[4])
+    solver.add(painter == horse)
     # the diplomat drinks coffee
-    constraints.append(jobs[2] == drinks[3])
+    solver.add(diplomat == coffee)
     # the one who drinks milk lives in the white house
-    constraints.append(drinks[0] == colors[3])
+    solver.add(milk == white)
     # the Spaniard is a painter
-    constraints.append(nations[1] == jobs[0])
+    solver.add(spain == painter)
     # the Englishman lives in the red house
-    constraints.append(nations[3] == colors[2])
+    solver.add(england == red)
     # the snails are owned by the sculptor
-    constraints.append(pets[3] == jobs[1])
+    solver.add(snails == sculptor)
     # the green house is immediately on the left of the red one
-    constraints.append(colors[1] + 1 == colors[2])
+    solver.add(green + 1 == red)
     # the Norwegian lives immediately on the right of the blue house
-    constraints.append(nations[4] == colors[4] + 1)
+    solver.add(norway == blue + 1)
     # the doctor drinks milk
-    constraints.append(jobs[4] == drinks[0])
+    solver.add(doctor == milk)
     # the diplomat is Japanese
-    constraints.append(jobs[2] == nations[2])
+    solver.add(japan == diplomat)
     # the Norwegian owns the zebra
-    constraints.append(nations[4] == pets[1])
+    solver.add(norway == zebra)
     # the green house is next to the white one
-    constraints.append(cz.Or(colors[1] == colors[3] + 1, colors[3] == colors[1] + 1))
+    solver.add(c5.Or(green == white + 1, white == green + 1))
     # the horse is owned by the neighbor of the diplomat
-    constraints.append(cz.Or(pets[4] == jobs[2] + 1, jobs[2] == pets[4] + 1))
+    solver.add(c5.Or(horse == diplomat + 1, diplomat == horse + 1))
     # the Italian either lives in the red, white or green house
-    constraints.append(cz.Or(nations[0] == colors[2], nations[0] == colors[3], nations[0] == colors[1]))
+    solver.add(c5.Or(italy == red, italy == white, italy == green))
 
     outputs = {
         "colors": colors,
@@ -64,4 +76,18 @@ def build(instance):
         "nations": nations,
         "pets": pets,
     }
-    return constraints, outputs
+    return solver, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

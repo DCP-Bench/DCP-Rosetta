@@ -1,162 +1,129 @@
-# csplib_021_crossfigures: a numerical crossword on a 9x9 grid. Each white cell holds one digit,
-# and each across or down clue has a number as answer, written in its consecutive white cells
-# (no leading zero). The grid layout and the clue texts come from the problem statement; the
-# instance carries no fields, so they are mirrored here.
+# csplib_021_crossfigures: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python csplib_021_crossfigures.py
 
-import cvc5.pythonic as cz
-
-# Grid from the statement: X = black cell, _ = white cell without a clue number, n = clue number.
-GRID = """
-1 2 _ 3 X 4 _ 5 6
-7 _ X 8 _ _ X 9 _
-_ X 10 _ X 11 12 X _
-13 14 _ _ X 15 _ 16 _
-X _ X X X X X _ X
-17 _ 18 19 X 20 21 _ 22
-_ X 23 _ X 24 _ X _
-25 26 X 27 _ _ X 28 _
-29 _ _ _ X 30 _ _ _
-"""
-
-# Constants from the problem statement's definitions (not from the instance).
-PRIMES2 = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
-SQUARES2 = [16, 25, 36, 49, 64, 81]
-SQUARES4 = [k * k for k in range(32, 100)]
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    rows = [line.split() for line in GRID.strip().splitlines()]
-    R, C = len(rows), len(rows[0])
+def create_model(instance):
+    """Crossfigures are the numerical equivalent of crosswords: place digits in a
+    9x9 grid so that every across and down entry is a number that satisfies its
+    clue, such as "27 across times two", "a prime number" or "a square number"."""
+    # The grid: '#' is a black cell, '.' is a white cell.
+    grid = ["....#....",
+            "..#...#..",
+            ".#..#..#.",
+            "....#....",
+            "#.#####.#",
+            "....#....",
+            ".#..#..#.",
+            "..#...#..",
+            "....#...."]
+    n_side = len(grid)  # the grid is n_side cells wide and n_side cells high
 
-    def white(r, c):
-        return rows[r][c] != "X"
+    # The entries by clue number: the length in digits, and the row and column of the
+    # first digit (the top row and the left column are 1).
+    across_entries = {1: (4, 1, 1), 4: (4, 1, 6), 7: (2, 2, 1), 8: (3, 2, 4), 9: (2, 2, 8),
+                      10: (2, 3, 3), 11: (2, 3, 6), 13: (4, 4, 1), 15: (4, 4, 6), 17: (4, 6, 1),
+                      20: (4, 6, 6), 23: (2, 7, 3), 24: (2, 7, 6), 25: (2, 8, 1), 27: (3, 8, 4),
+                      28: (2, 8, 8), 29: (4, 9, 1), 30: (4, 9, 6)}
+    down_entries = {1: (4, 1, 1), 2: (2, 1, 2), 3: (4, 1, 4), 4: (4, 1, 6), 5: (2, 1, 8),
+                    6: (4, 1, 9), 10: (2, 3, 3), 12: (2, 3, 7), 14: (3, 4, 2), 16: (3, 4, 8),
+                    17: (4, 6, 1), 18: (2, 6, 3), 19: (4, 6, 4), 20: (4, 6, 6), 21: (2, 6, 7),
+                    22: (4, 6, 9), 26: (2, 8, 2), 28: (2, 8, 8)}
 
-    # One digit variable per white cell.
-    M = {}
-    cons = []
-    for r in range(R):
-        for c in range(C):
-            if white(r, c):
-                M[r, c] = cz.Int(f"m_{r}_{c}")
-                cons += [M[r, c] >= 0, M[r, c] <= 9]
+    # The answers to the prime and square clues: two-digit primes, and two-digit and
+    # four-digit squares.
+    primes2 = [p for p in range(10, 100) if all(p % d for d in range(2, p))]
+    squares2 = [k * k for k in range(4, 10)]
+    squares4 = [k * k for k in range(32, 100)]
 
-    # Entries: maximal runs of white cells of length >= 2, keyed by their clue number.
-    across, down = {}, {}
-    for r in range(R):
-        c = 0
-        while c < C:
-            if white(r, c) and (c == 0 or not white(r, c - 1)):
-                cells, k = [], c
-                while k < C and white(r, k):
-                    cells.append((r, k))
-                    k += 1
-                if len(cells) >= 2:
-                    across[int(rows[r][c])] = cells
-                c = k
-            else:
-                c += 1
-    for c in range(C):
-        r = 0
-        while r < R:
-            if white(r, c) and (r == 0 or not white(r - 1, c)):
-                cells, k = [], r
-                while k < R and white(k, c):
-                    cells.append((k, c))
-                    k += 1
-                if len(cells) >= 2:
-                    down[int(rows[r][c])] = cells
-                r = k
-            else:
-                r += 1
+    # A dozen is 12, and a gross is twelve dozen.
+    dozen = 12
+    gross = 12 * dozen
 
-    def num(cells):
-        # the answer written in these cells, most significant digit first
-        L = len(cells)
-        return cz.Sum([M[rc] * 10 ** (L - 1 - i) for i, rc in enumerate(cells)])
+    # M[r][c] is the digit in row r, column c, counted from 0. A black cell holds 0.
+    M = [[c5.Int(f"M_{r}_{c}") if grid[r][c] != "#" else c5.IntVal(0) for c in range(n_side)]
+         for r in range(n_side)]
 
-    # Each answer is a number with no leading zero.
-    for cells in list(across.values()) + list(down.values()):
-        cons.append(M[cells[0]] != 0)
+    # The digits of an entry, read as one number with the first digit most significant.
+    def number(cells):
+        length = len(cells)
+        return c5.Sum([cell * 10 ** (length - 1 - i) for i, cell in enumerate(cells)])
 
-    A = {n: num(cells) for n, cells in across.items()}
-    D = {n: num(cells) for n, cells in down.items()}
+    # The cells of each entry, from its first digit onwards.
+    across_cells = {k: [M[row - 1][col - 1 + i] for i in range(length)]
+                    for k, (length, row, col) in across_entries.items()}
+    down_cells = {k: [M[row - 1 + i][col - 1] for i in range(length)]
+                  for k, (length, row, col) in down_entries.items()}
+
+    # A is the answer to each across clue, D the answer to each down clue.
+    A = {k: number(cells) for k, cells in across_cells.items()}
+    D = {k: number(cells) for k, cells in down_cells.items()}
+
+    solver = c5.Solver()
+
+    # Each digit is between 0 and 9.
+    solver.add([c5.And(M[r][c] >= 0, M[r][c] <= 9)
+                for r in range(n_side) for c in range(n_side) if grid[r][c] != "#"])
+
+    # Each answer has no leading zero.
+    solver.add([cells[0] != 0 for cells in list(across_cells.values()) + list(down_cells.values())])
 
     # Across clues.
-    # 1: 27 across times two
-    cons.append(A[1] == 2 * A[27])
-    # 4: 4 down plus seventy-one
-    cons.append(A[4] == D[4] + 71)
-    # 7: 18 down plus four
-    cons.append(A[7] == D[18] + 4)
-    # 8: 6 down divided by sixteen
-    cons.append(D[6] == 16 * A[8])
-    # 9: 2 down minus eighteen
-    cons.append(A[9] == D[2] - 18)
-    # 10: dozen in six gross (6 * 144 = 864 = 72 dozen)
-    cons.append(A[10] == 72)
-    # 11: 5 down minus seventy
-    cons.append(A[11] == D[5] - 70)
-    # 13: 26 down times 23 across. A23 is a prime, so the product is split over the primes.
-    cons.append(cz.Or([cz.And(A[23] == p, A[13] == p * D[26]) for p in PRIMES2]))
-    # 15: 6 down minus 350
-    cons.append(A[15] == D[6] - 350)
-    # 17: 25 across times 23 across. Same prime split.
-    cons.append(cz.Or([cz.And(A[23] == p, A[17] == p * A[25]) for p in PRIMES2]))
-    # 20: a square number (four digits)
-    cons.append(cz.Or([A[20] == s for s in SQUARES4]))
-    # 23: a prime number (two digits)
-    cons.append(cz.Or([A[23] == p for p in PRIMES2]))
-    # 24: a square number (two digits)
-    cons.append(cz.Or([A[24] == s for s in SQUARES2]))
-    # 25: 20 across divided by seventeen
-    cons.append(A[20] == 17 * A[25])
-    # 27: 6 down divided by four
-    cons.append(D[6] == 4 * A[27])
-    # 28: four dozen (= 48)
-    cons.append(A[28] == 48)
-    # 29: seven gross (= 1008)
-    cons.append(A[29] == 1008)
-    # 30: 22 down plus 450
-    cons.append(A[30] == D[22] + 450)
+    solver.add(A[1] == 2 * A[27])                   # 27 across times two
+    solver.add(A[4] == D[4] + 71)                   # 4 down plus seventy-one
+    solver.add(A[7] == D[18] + 4)                   # 18 down plus four
+    solver.add(D[6] == 16 * A[8])                   # 6 down divided by sixteen
+    solver.add(A[9] == D[2] - 18)                   # 2 down minus eighteen
+    solver.add(A[10] == 6 * gross // dozen)         # dozen in six gross
+    solver.add(A[11] == D[5] - 70)                  # 5 down minus seventy
+    solver.add(c5.Or([c5.And(A[23] == p, A[13] == p * D[26]) for p in primes2]))  # 26 down times 23 across
+    solver.add(A[15] == D[6] - 350)                 # 6 down minus 350
+    solver.add(c5.Or([c5.And(A[23] == p, A[17] == p * A[25]) for p in primes2]))  # 25 across times 23 across
+    solver.add(c5.Or([A[20] == s for s in squares4]))  # a square number
+    solver.add(c5.Or([A[23] == p for p in primes2]))   # a prime number
+    solver.add(c5.Or([A[24] == s for s in squares2]))  # a square number
+    solver.add(A[20] == 17 * A[25])                 # 20 across divided by seventeen
+    solver.add(D[6] == 4 * A[27])                   # 6 down divided by four
+    solver.add(A[28] == 4 * dozen)                  # four dozen
+    solver.add(A[29] == 7 * gross)                  # seven gross
+    solver.add(A[30] == D[22] + 450)                # 22 down plus 450
 
     # Down clues.
-    # 1: 1 across plus twenty-seven
-    cons.append(D[1] == A[1] + 27)
-    # 2: five dozen (= 60)
-    cons.append(D[2] == 60)
-    # 3: 30 across plus 888
-    cons.append(D[3] == A[30] + 888)
-    # 4: two times 17 across
-    cons.append(D[4] == 2 * A[17])
-    # 5: 29 across divided by twelve
-    cons.append(A[29] == 12 * D[5])
-    # 6: 28 across times 23 across (A28 = 48, so the product is linear)
-    cons.append(D[6] == 48 * A[23])
-    # 10: 10 across plus four
-    cons.append(D[10] == A[10] + 4)
-    # 12: three times 24 across
-    cons.append(D[12] == 3 * A[24])
-    # 14: 13 across divided by sixteen
-    cons.append(A[13] == 16 * D[14])
-    # 16: 28 down times fifteen
-    cons.append(D[16] == 15 * D[28])
-    # 17: 13 across minus 399
-    cons.append(D[17] == A[13] - 399)
-    # 18: 29 across divided by eighteen
-    cons.append(A[29] == 18 * D[18])
-    # 19: 22 down minus ninety-four
-    cons.append(D[19] == D[22] - 94)
-    # 20: 20 across minus nine
-    cons.append(D[20] == A[20] - 9)
-    # 21: 25 across minus fifty-two
-    cons.append(D[21] == A[25] - 52)
-    # 22: 20 down times six
-    cons.append(D[22] == 6 * D[20])
-    # 26: five times 24 across
-    cons.append(D[26] == 5 * A[24])
-    # 28: 21 down plus twenty-seven
-    cons.append(D[28] == D[21] + 27)
+    solver.add(D[1] == A[1] + 27)                   # 1 across plus twenty-seven
+    solver.add(D[2] == 5 * dozen)                   # five dozen
+    solver.add(D[3] == A[30] + 888)                 # 30 across plus 888
+    solver.add(D[4] == 2 * A[17])                   # two times 17 across
+    solver.add(A[29] == dozen * D[5])               # 29 across divided by twelve
+    solver.add(D[6] == 4 * dozen * A[23])           # 28 across times 23 across
+    solver.add(D[10] == A[10] + 4)                  # 10 across plus four
+    solver.add(D[12] == 3 * A[24])                  # three times 24 across
+    solver.add(A[13] == 16 * D[14])                 # 13 across divided by sixteen
+    solver.add(D[16] == 15 * D[28])                 # 28 down times fifteen
+    solver.add(D[17] == A[13] - 399)                # 13 across minus 399
+    solver.add(A[29] == 18 * D[18])                 # 29 across divided by eighteen
+    solver.add(D[19] == D[22] - 94)                 # 22 down minus ninety-four
+    solver.add(D[20] == A[20] - 9)                  # 20 across minus nine
+    solver.add(D[21] == A[25] - 52)                 # 25 across minus fifty-two
+    solver.add(D[22] == 6 * D[20])                  # 20 down times six
+    solver.add(D[26] == 5 * A[24])                  # five times 24 across
+    solver.add(D[28] == D[21] + 27)                 # 21 down plus twenty-seven
 
-    # Output: the solved grid, 0 for black cells.
-    grid_out = [[M[r, c] if white(r, c) else 0 for c in range(C)] for r in range(R)]
-    return cons, {"M": grid_out}
+    # The solved grid, with 0 in the black cells.
+    return solver, {"M": M}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

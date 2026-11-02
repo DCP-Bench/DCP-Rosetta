@@ -1,33 +1,45 @@
-# Divisible by 1 through 9: a 10-digit number that uses each digit 0 to 9 exactly once,
-# where the number formed by its first n digits is divisible by n, for n = 1 to 10.
-# Output "digits" is the ten digits of the number, read from left to right.
-import cvc5.pythonic as cz
+# divisible_by_1_through_9: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/divisible_by_1_through_9.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python divisible_by_1_through_9.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    # The description fixes the digit count (10) and the digit set, so the instance
-    # carries no data this model needs.
+def create_model(instance):
+    """Find a 10-digit number that uses each digit 0 to 9 exactly once, where the
+    number formed by its first n digits is divisible by n, for n = 1 to 10."""
     # digits[i] is the digit at position i, read from left to right.
-    digits = cz.Ints(" ".join(f"d{i}" for i in range(10)))
-    cons = []
+    digits = c5.IntVector("digit", 10)
 
-    # Each digit is one of 0 to 9.
-    for x in digits:
-        cons.append(x >= 0)
-        cons.append(x <= 9)
+    # Linear integer logic: cvc5 solves this model much faster than with the default Solver().
+    solver = c5.SolverFor("QF_LIA")
+
+    # Each digit is between 0 and 9.
+    for d in digits:
+        solver.add(d >= 0, d <= 9)
 
     # Each of the digits 0 to 9 is used exactly once.
-    cons.append(cz.Distinct(list(digits)))
+    solver.add(c5.Distinct(*digits))
 
-    # The number has 10 digits, so the leading digit is not zero.
-    cons.append(digits[0] >= 1)
-
-    # The number formed by the first n digits is divisible by n, for n = 1 to 10.
-    # A prefix with n digits is written as prefix_n = n * q_n with q_n a free integer.
+    # The number formed by the first n digits is divisible by n.
+    prefix = 0
     for n in range(1, 11):
-        prefix = cz.Sum([digits[i] * 10 ** (n - 1 - i) for i in range(n)])
-        q = cz.Int(f"q{n}")
-        cons.append(q >= 0)
-        cons.append(prefix == n * q)
+        prefix = prefix * 10 + digits[n - 1]
+        solver.add(prefix % n == 0)
 
-    return cons, {"digits": list(digits)}
+    return solver, {"digits": digits}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

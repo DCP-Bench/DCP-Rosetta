@@ -1,68 +1,87 @@
-# four_islands: A tiny nation in the South Pacific contains four islands connected by bridges.
-# Each island (Pwana, Quero, Rayou, Skern) has a different primary export (alabaster,
-# bananas, coconuts, durian fruit) and a different tourist attraction (hotel, ice skating
-# rink, jai alai stadium, koala preserve). Find the name, export and attraction of each island.
-#
-# Map positions: A=0, B=1, C=2, D=3 on a 2x2 grid:
-#   (A) -- (B)
-#    |      |
-#   (C) -- (D)
-# Bridges: A-B, A-C, B-D, C-D. A is north of C, C is west of D, and so on.
-import cvc5.pythonic as cz
+# four_islands: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python four_islands.py
 
-# (x, y) pairs of map positions, with the relation named in each comment.
-SOUTH = [(0, 2), (1, 3)]  # y is due south of x
-WEST = [(0, 1), (2, 3)]  # x is due west of y
-EAST = [(1, 0), (3, 2)]  # x is due east of y
-NS_BRIDGE = [(0, 2), (2, 0), (1, 3), (3, 1)]  # north-south bridge, either direction
-EW_BRIDGE = [(0, 1), (1, 0), (2, 3), (3, 2)]  # east-west bridge, either direction
-DIAGONAL = [(0, 3), (3, 0), (1, 2), (2, 1)]  # no bridge between the two
+import cvc5.pythonic as c5
 
 
-def pair_in(x, y, allowed):
-    return cz.Or([cz.And(x == a, y == b) for a, b in allowed])
+def create_model(instance):
+    """Four islands, A and B on the top row and C and D below, with bridges A-B, A-C, B-D and C-D.
+    Each island has its own name, primary export and tourist attraction. Find the name, export
+    and attraction of each island on the map, given six clues."""
+    # The puzzle gives its own map and clues, so instance is not used.
+
+    # The four positions on the map: A, B, C and D.
+    a, b, c, d = range(4)
+
+    # Pairs (x, y) where y is due south of x.
+    south = [(a, c), (b, d)]
+    # Pairs (x, y) where x is due west of y.
+    west = [(a, b), (c, d)]
+    # Pairs (x, y) where x is due east of y.
+    east = [(b, a), (d, c)]
+    # Pairs (x, y) joined by a north-south bridge, in either order.
+    north_south = [(a, c), (c, a), (b, d), (d, b)]
+    # Pairs (x, y) joined by an east-west bridge, in either order.
+    east_west = [(a, b), (b, a), (c, d), (d, c)]
+    # Pairs (x, y) on a diagonal of the map, so no bridge joins them.
+    diagonal = [(a, d), (d, a), (b, c), (c, b)]
+
+    # True when the positions x and y form one of the given pairs.
+    def in_pairs(x, y, pairs):
+        return c5.Or([c5.And(x == p, y == q) for p, q in pairs])
+
+    # The map position of each island: Pwana, Quero, Rayou and Skern.
+    island = c5.Ints(["island_pwana", "island_quero", "island_rayou", "island_skern"])
+    pwana, quero, rayou, skern = island
+    # The map position of the island that exports each product: alabaster, bananas,
+    # coconuts and durian fruit.
+    export = c5.Ints(["export_alabaster", "export_bananas", "export_coconuts", "export_durian_fruit"])
+    alabaster, bananas, _, durian_fruit = export
+    # The map position of the island with each tourist attraction: resort hotel, ice skating
+    # rink, jai alai stadium and koala preserve.
+    attraction = c5.Ints(["attraction_resort_hotel", "attraction_ice_skating_rink",
+                          "attraction_jai_alai_stadium", "attraction_koala_preserve"])
+    resort_hotel, ice_skating_rink, jai_alai_stadium, koala_preserve = attraction
+
+    # Each island, export and attraction is at a position from A to D.
+    bounds = [v >= 0 for v in island + export + attraction] + [v <= 3 for v in island + export + attraction]
+
+    solver = c5.Solver()
+
+    solver.add(bounds + [
+        # The islands, the exports and the attractions each take four different positions.
+        c5.Distinct(island),
+        c5.Distinct(export),
+        c5.Distinct(attraction),
+        # The island noted for its koala preserve is due south of Pwana.
+        in_pairs(pwana, koala_preserve, south),
+        # The island with the largest alabaster quarry is due west of Quero.
+        in_pairs(alabaster, quero, west),
+        # The island with the resort hotel is due east of the one that exports durian fruit.
+        in_pairs(resort_hotel, durian_fruit, east),
+        # Skern and the island with the jai alai stadium are connected by a north-south bridge.
+        in_pairs(skern, jai_alai_stadium, north_south),
+        # Rayou and the island that exports bananas are connected by an east-west bridge.
+        in_pairs(rayou, bananas, east_west),
+        # The ice skating rink and the jai alai stadium are not connected by a bridge.
+        in_pairs(ice_skating_rink, jai_alai_stadium, diagonal),
+    ])
+
+    outputs = {"island": island, "export": export, "attraction": attraction}
+    return solver, outputs
 
 
-def build(instance):
-    # island[i]: map position of the island named i (0 Pwana, 1 Quero, 2 Rayou, 3 Skern).
-    island = cz.Ints(["island_pwana", "island_quero", "island_rayou", "island_skern"])
-    # export[j]: map position of the island whose export is j
-    # (0 alabaster, 1 bananas, 2 coconuts, 3 durian fruit).
-    export = cz.Ints(["export_alabaster", "export_bananas", "export_coconuts", "export_durian"])
-    # attraction[k]: map position of the island with attraction k
-    # (0 resort hotel, 1 ice skating rink, 2 jai alai stadium, 3 koala preserve).
-    attraction = cz.Ints(["attr_hotel", "attr_rink", "attr_jai_alai", "attr_koala"])
+if __name__ == "__main__":
+    import numpy as np
 
-    constraints = []
+    solver, outputs = create_model({})
+    status = solver.check()
 
-    # Each island, export and attraction is a permutation of the four map positions.
-    for group in (island, export, attraction):
-        constraints += [v >= 0 for v in group]
-        constraints += [v <= 3 for v in group]
-        constraints.append(cz.Distinct(group))
-
-    # The island noted for its koala preserve is due south of Pwana.
-    constraints.append(pair_in(island[0], attraction[3], SOUTH))
-
-    # The island with the largest alabaster quarry is due west of Quero.
-    constraints.append(pair_in(export[0], island[1], WEST))
-
-    # The island with the resort hotel is due east of the one that exports durian fruit.
-    constraints.append(pair_in(attraction[0], export[3], EAST))
-
-    # Skern and the island with the jai alai stadium are connected by a north-south bridge.
-    constraints.append(pair_in(island[3], attraction[2], NS_BRIDGE))
-
-    # Rayou and the island that exports bananas are connected by an east-west bridge.
-    constraints.append(pair_in(island[2], export[1], EW_BRIDGE))
-
-    # The islands noted for the ice skating rink and for the jai alai stadium are not
-    # connected by a bridge.
-    constraints.append(pair_in(attraction[1], attraction[2], DIAGONAL))
-
-    outputs = {
-        "island": island,
-        "export": export,
-        "attraction": attraction,
-    }
-    return constraints, outputs
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

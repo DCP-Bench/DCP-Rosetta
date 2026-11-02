@@ -1,40 +1,57 @@
-# Futoshiki: place the digits 1 to n on an n x n grid (n from the instance) so that
-# each row and each column contains each digit exactly once. Some cells are given
-# (nonzero entries of "values", 0 means empty) and must keep their digit. Inequality
-# pairs in "lt" are [r1, c1, r2, c2] with 1-based coordinates: the digit in cell
-# (r1, c1) must be lower than the digit in cell (r2, c2).
-import cvc5.pythonic as cz
+# futoshiki: a cvc5 (Python) model from DCP Rosetta.
+# Download the `futoshiki.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/futoshiki.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python futoshiki.py futoshiki.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    values = instance["values"]
-    lt = instance["lt"]
-    n = len(values)
+def create_model(instance):
+    """Futoshiki: fill an n-by-n grid with the digits 1 to n so that each row and column holds
+    every digit once, the given digits stay in place, and each inequality sign holds. Print the
+    completed grid."""
+    values = instance["values"]  # the digits given at the start, by row and column; 0 marks an empty cell
+    lt = instance["lt"]          # the inequality signs, each as [row, column] of the smaller cell and then of the larger, counted from 1
+    n = len(values)              # the grid is n by n
 
-    grid = [[cz.Int(f"g_{r}_{c}") for c in range(n)] for r in range(n)]
-    cons = []
+    # grid[r][c] is the digit in row r, column c.
+    grid = [[c5.Int(f"grid_{r}_{c}") for c in range(n)] for r in range(n)]
 
-    # Each cell holds a digit from 1 to n.
-    for r in range(n):
-        for c in range(n):
-            cons.append(grid[r][c] >= 1)
-            cons.append(grid[r][c] <= n)
+    # Each digit is from 1 to n.
+    bounds = [cell >= 1 for row in grid for cell in row] + [cell <= n for row in grid for cell in row]
 
-    # Each row and each column contains each digit once.
-    for r in range(n):
-        cons.append(cz.Distinct(grid[r]))
-    for c in range(n):
-        cons.append(cz.Distinct([grid[r][c] for r in range(n)]))
+    # Each row and each column holds every digit once.
+    all_different = ([c5.Distinct(row) for row in grid]
+                     + [c5.Distinct([grid[r][c] for r in range(n)]) for c in range(n)])
 
-    # Some digits may be given at the start.
-    for r in range(n):
-        for c in range(n):
-            if values[r][c] != 0:
-                cons.append(grid[r][c] == values[r][c])
+    # The given digits stay in their cells.
+    givens = [grid[r][c] == values[r][c] for r in range(n) for c in range(n) if values[r][c] != 0]
 
-    # Inequality constraints are specified between some of the squares, such that
-    # one must be lower than its neighbour.
-    for r1, c1, r2, c2 in lt:
-        cons.append(grid[r1 - 1][c1 - 1] < grid[r2 - 1][c2 - 1])
+    # Each inequality sign holds.
+    signs = [grid[r1 - 1][c1 - 1] < grid[r2 - 1][c2 - 1] for r1, c1, r2, c2 in lt]
 
-    return cons, {"grid": grid}
+    solver = c5.Solver()
+
+    solver.add(bounds + all_different + givens + signs)
+
+    return solver, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,33 +1,55 @@
-# Magic sequence of length n (csplib 019): find x_0..x_{n-1}, each in 0..n-1,
-# such that for every i, the number i occurs exactly x_i times in the sequence.
-from cvc5.pythonic import *
+# csplib_019_magic_squares_and_sequences: a cvc5 (Python) model from DCP Rosetta.
+# Download the `csplib_019_magic_squares_and_sequences.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_019_magic_squares_and_sequences.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python csplib_019_magic_squares_and_sequences.py csplib_019_magic_squares_and_sequences.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """A magic sequence of length n is a sequence of integers x_0, ..., x_{n-1}
+    between 0 and n-1 such that, for every i, the number i occurs exactly x_i times
+    in the sequence."""
+    n = instance["n"]  # the length of the sequence
 
-    # x[i] is the number of occurrences of the value i in the sequence
-    x = [Int(f"x_{i}") for i in range(n)]
+    # x[i] is the number at position i, so it is also how often the number i occurs
+    x = [c5.Int(f"x_{i}") for i in range(n)]
 
-    constraints = []
+    # Linear integer logic: cvc5 solves this model much faster than with the default Solver().
+    solver = c5.SolverFor("QF_LIA")
 
-    # each x_i takes a value between 0 and n-1 (the sequence values are 0..n-1)
+    # Each number in the sequence is between 0 and n-1.
+    solver.add([c5.And(xi >= 0, xi <= n - 1) for xi in x])
+
+    # The number i occurs exactly x[i] times: count the positions that hold i.
     for i in range(n):
-        constraints.append(x[i] >= 0)
-        constraints.append(x[i] <= n - 1)
+        solver.add(x[i] == c5.Sum([c5.If(x[j] == i, 1, 0) for j in range(n)]))
 
-    # the number i occurs exactly x_i times in the sequence:
-    # count the positions j whose value x_j equals i
-    for i in range(n):
-        constraints.append(x[i] == Sum([If(x[j] == i, 1, 0) for j in range(n)]))
+    # The counts of all numbers add up to the length of the sequence.
+    solver.add(c5.Sum(x) == n)
 
-    # redundant: the counts of all values add up to the length of the sequence
-    constraints.append(Sum(x) == n)
+    # The numbers in the sequence add up to n: each number i counts i for each of its x[i]
+    # occurrences.
+    solver.add(c5.Sum([i * x[i] for i in range(n)]) == n)
 
-    # redundant: summing the sequence counts each occurrence of value i with weight i,
-    # so the weighted total of the counts equals the length of the sequence
-    constraints.append(Sum([i * x[i] for i in range(n)]) == n)
+    return solver, {"x": x}
 
-    s = SolverFor("QF_LIA")
-    s.add(*constraints)
-    return s, {"x": x}
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

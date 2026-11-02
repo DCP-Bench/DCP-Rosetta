@@ -1,47 +1,56 @@
-# Bowls and oranges: place m oranges in n bowls in a line at 1 meter intervals,
-# at most one orange per bowl, so that there are no three oranges A, B, C with
-# the distance between A and B equal to the distance between B and C.
-# Output the bowls holding the oranges, in ascending order (x).
-import cvc5.pythonic as cz
+# bowls_and_oranges: a cvc5 (Python) model from DCP Rosetta.
+# Download the `bowls_and_oranges.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/bowls_and_oranges.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python bowls_and_oranges.py bowls_and_oranges.json
+
+from itertools import combinations
+
+import cvc5.pythonic as c5
 
 
-def _any_of(lits):
-    return lits[0] if len(lits) == 1 else cz.Or(lits)
+def create_model(instance):
+    """n bowls stand in a line one metre apart, numbered 1 to n. Place all the oranges in the
+    bowls, at most one orange per bowl, so that no three oranges A, B and C have the distance
+    from A to B equal to the distance from B to C."""
+    n_bowls = instance["n"]    # the number of bowls
+    n_oranges = instance["m"]  # the number of oranges
 
+    # x[i]: the bowl that orange i is placed in
+    x = [c5.Int(f"x_{i}") for i in range(n_oranges)]
 
-def build(instance):
-    n = instance["n"]
-    m = instance["m"]
+    # Linear integer logic: cvc5 solves this model much faster than with the default Solver().
+    solver = c5.SolverFor("QF_LIA")
 
-    x = [cz.Int(f"x_{i}") for i in range(m)]
-    occ = [cz.Bool(f"occ_{k}") for k in range(1, n + 1)]
-
-    cons = []
-
-    # Each orange is in a bowl numbered 1 to n. The bowls are listed in
-    # ascending order, which also rules out two oranges in the same bowl.
+    # Each orange sits in one of the bowls.
     for xi in x:
-        cons += [xi >= 1, xi <= n]
-    for i in range(m - 1):
-        cons.append(x[i] < x[i + 1])
+        solver.add(xi >= 1, xi <= n_bowls)
 
-    # A bowl is occupied exactly when some orange is placed in it.
-    for k in range(1, n + 1):
-        occ_k = occ[k - 1]
-        cons.append(occ_k == _any_of([xi == k for xi in x]))
+    # The bowls are in increasing order, so no bowl holds two oranges.
+    solver.add([a < b for a, b in zip(x, x[1:])])
 
-    # No three oranges A, B, C with the distance between A and B equal to the
-    # distance between B and C: no three occupied bowls a < b < c in arithmetic
-    # progression, b - a = c - b.
-    for a in range(1, n + 1):
-        for b in range(a + 1, n + 1):
-            c = 2 * b - a
-            if c > n:
-                break
-            cons.append(
-                cz.Not(cz.And(occ[a - 1], occ[b - 1], occ[c - 1]))
-            )
+    # No three oranges are evenly spaced: the gap from the first to the second is not the gap
+    # from the second to the third.
+    for a, b, c in combinations(x, 3):
+        solver.add(b - a != c - b)
 
-    s = cz.SolverFor("QF_LIA")
-    s.add(*cons)
-    return s, {"x": x}
+    return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

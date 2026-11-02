@@ -1,47 +1,56 @@
-# Initials queue: ten people in a queue, each with an alphabetically ordered pair of
-# distinct letters from A..E (coded 0..4). All initials are different, no two adjacent
-# people share a letter, BE is at the front, CD is second, BD is at the end.
-import cvc5.pythonic as cz
+# initials_queue: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/initials_queue.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python initials_queue.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = 10
-    # Each person i has initials (a[i], b[i]) with a[i] < b[i], both in 0..4.
-    a = [cz.Int(f"a_{i}") for i in range(n)]
-    b = [cz.Int(f"b_{i}") for i in range(n)]
-    constraints = []
+def create_model(instance):
+    """Ten people stand in a queue, each with two different letters from A to E in alphabetical order. No two people have the same initials, and nobody shares a letter with the person in front. BE is at the front, CD right behind, and BD at the end."""
+    n = 10  # people in the queue
 
-    # Domain: letters are A..E, coded 0..4.
+    # The five letters A to E, as the integers 0 to 4.
+    A, B, C, D, E = range(5)
+
+    # a[i] and b[i] are the first and second initial of the person at place i in the queue.
+    a = [c5.Int(f"a_{i}") for i in range(n)]
+    b = [c5.Int(f"b_{i}") for i in range(n)]
+
+    # All constraints on the queue.
+    solver = c5.Solver()
+
+    # Every initial is one of the letters A to E.
     for i in range(n):
-        constraints += [a[i] >= 0, a[i] <= 4, b[i] >= 0, b[i] <= 4]
+        solver.add(a[i] >= A, a[i] <= E, b[i] >= A, b[i] <= E)
 
-    # An alphabetically ordered pair of distinct letters.
-    # Each initials pair is an alphabetically ordered pair of distinct letters.
-    for i in range(n):
-        constraints.append(a[i] < b[i])
+    # The two initials of each person are different letters, in alphabetical order.
+    solver.add([a[i] < b[i] for i in range(n)])
 
-    # None of the people had the same initials as any other person.
-    # All initials are different.
-    codes = [5 * a[i] + b[i] for i in range(n)]
-    constraints.append(cz.Distinct(codes))
+    # No two people have the same initials.
+    solver.add([c5.Or(a[i] != a[j], b[i] != b[j]) for i in range(n) for j in range(i + 1, n)])
 
-    # No-one shared a letter with the person in front of them.
-    # Adjacent people share no letter.
+    # Nobody shares a letter with the person in front of them.
     for i in range(n - 1):
-        constraints += [
-            a[i] != a[i + 1],
-            a[i] != b[i + 1],
-            b[i] != a[i + 1],
-            b[i] != b[i + 1],
-        ]
+        solver.add([x != y for x in (a[i], b[i]) for y in (a[i + 1], b[i + 1])])
 
-    # Mathematician BE was at the front of the queue with CD right behind.
-    # BE is (1, 4), CD is (2, 3) in 0-based letter codes.
-    constraints += [a[0] == 1, b[0] == 4]
-    constraints += [a[1] == 2, b[1] == 3]
+    # BE is at the front of the queue, CD right behind, and BD at the end.
+    solver.add(a[0] == B, b[0] == E, a[1] == C, b[1] == D, a[n - 1] == B, b[n - 1] == D)
 
-    # BD was right at the end of the queue.
-    constraints += [a[n - 1] == 1, b[n - 1] == 3]
-
+    # The initials of the person at each place in the queue.
     queue = [[a[i], b[i]] for i in range(n)]
-    return constraints, {"queue": queue}
+    return solver, {"queue": queue}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

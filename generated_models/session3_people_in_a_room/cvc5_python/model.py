@@ -1,28 +1,45 @@
-# Problem: session3_people_in_a_room
-# 13 people enter a room one at a time; 4 of them are male. Find an entry order such that
-# the ratio of females to males in the room at any one time is no greater than 7/3.
-# Output "sequence": [13]bool, 0 = male, 1 = female (here seq[i] is True when entrant i is female).
+# session3_people_in_a_room: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_people_in_a_room.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python session3_people_in_a_room.py
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n_people = 13
-    n_males = 4
-    n_females = n_people - n_males
-    seq = [cz.Bool(f"female_{i}") for i in range(n_people)]
+def create_model(instance):
+    """13 people, 4 of them male, enter a room one at a time. Find an entry order such that
+    the ratio of females to males in the room is never above 7/3."""
+    n_people = 13                         # the number of people
+    n_males = 4                           # the number of males among them
+    n_females = n_people - n_males        # the number of females among them
 
-    constraints = []
+    # sequence[i] is true when the i-th person to enter is female
+    sequence = [c5.Bool(f"sequence_{i}") for i in range(n_people)]
 
-    # There are 13 people. 4 of them are male.
-    constraints.append(cz.Sum([cz.If(b, 1, 0) for b in seq]) == n_females)
+    solver = c5.Solver()
 
-    # They randomly enter a room one at a time. Find a way that the males and females enter so that
-    # the ratio of females to males in the room at any one time is no greater than 7/3.
-    # After the t-th entrant, with f females and m = t - f males in the room: f / m <= 7/3,
-    # i.e. 3 * f <= 7 * m, which is 10 * f <= 7 * t.
+    # Exactly n_females of the people are female.
+    solver.add(c5.Sum([c5.If(female, 1, 0) for female in sequence]) == n_females)
+
+    # After each entry, the females among the people in the room are at most 7/3 of the males.
+    # Written without fractions: 3 times the females is at most 7 times the males.
     for t in range(1, n_people + 1):
-        females_in_room = cz.Sum([cz.If(seq[i], 1, 0) for i in range(t)])
-        constraints.append(10 * females_in_room <= 7 * t)
+        females = c5.Sum([c5.If(female, 1, 0) for female in sequence[:t]])
+        males = t - females
+        solver.add(3 * females <= 7 * males)
 
-    return constraints, {"sequence": seq}
+    return solver, {"sequence": sequence}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

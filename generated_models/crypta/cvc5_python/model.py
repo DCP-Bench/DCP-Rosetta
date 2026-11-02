@@ -1,51 +1,74 @@
-# Cryptarithmetic puzzle "crypta": solve the addition of the three words below,
-# where each letter is a digit. The words are written one letter per digit and
-# right-aligned, so the addition is checked column by column with carries.
-# Each letter takes one digit (one-hot Booleans), and each digit goes to one letter.
-import cvc5.pythonic as cz
+# crypta: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python crypta.py
 
+from itertools import combinations
+
+import cvc5.pythonic as c5
+
+# The first addend, the second addend and their sum, as the puzzle writes them.
 ADDEND_1 = "BAIJJAJIIAHFCFEBBJEA"
 ADDEND_2 = "DHFGABCDIDBIFFAGFEJE"
 SUM = "GJEGACDDHFAFJBFIHEEF"
+# The letters of the puzzle.
 LETTERS = "ABCDEFGHIJ"
+# The digits.
 DIGITS = range(10)
 
 
-def build(instance):
-    constraints = []
+def create_model(instance):
+    """Cryptarithmetic puzzle: each of the letters A to J stands for a different
+    digit from 0 to 9, no number starts with a zero, and the addition of the two
+    twenty-letter numbers must give the third."""
+    # is_digit[c][v] is true when letter c stands for the digit v.
+    is_digit = {c: [c5.Bool(f"{c}_{v}") for v in DIGITS] for c in LETTERS}
 
-    # where all letters are distinct digits from 0 to 9
-    pick = {c: [cz.Bool(f"p_{c}_{v}") for v in DIGITS] for c in LETTERS}
-    d = {}
-    for c in LETTERS:
-        constraints.append(cz.Or([pick[c][v] for v in DIGITS]))
-        for v1 in DIGITS:
-            for v2 in DIGITS:
-                if v1 < v2:
-                    constraints.append(cz.Or(cz.Not(pick[c][v1]), cz.Not(pick[c][v2])))
-        d[c] = cz.Sum([cz.If(pick[c][v], v, 0) for v in DIGITS])
-    for v in DIGITS:
-        holders = [pick[c][v] for c in LETTERS]
-        # each digit is used by at most one letter
-        for i in range(len(holders)):
-            for j in range(i + 1, len(holders)):
-                constraints.append(cz.Or(cz.Not(holders[i]), cz.Not(holders[j])))
+    solver = c5.Solver()
 
-    # the first letter of each number cannot be zero
-    for word in (ADDEND_1, ADDEND_2, SUM):
-        constraints.append(d[word[0]] != 0)
+    # Each letter stands for at least one digit, and not for two digits at once.
+    solver.add([c5.Or(is_digit[c]) for c in LETTERS])
+    solver.add([c5.Or(c5.Not(is_digit[c][v]), c5.Not(is_digit[c][w]))
+                for c in LETTERS for v, w in combinations(DIGITS, 2)])
 
-    # the addition, column by column, with the carry from the column on the right
+    # The digit of each letter.
+    digit = {c: c5.Sum([c5.If(b, v, 0) for v, b in zip(DIGITS, is_digit[c])])
+             for c in LETTERS}
+
+    # Different letters stand for different digits.
+    solver.add([c5.Or(c5.Not(is_digit[c][v]), c5.Not(is_digit[e][v]))
+                for v in DIGITS for c, e in combinations(LETTERS, 2)])
+
+    # No number starts with a zero.
+    solver.add([digit[word[0]] != 0 for word in (ADDEND_1, ADDEND_2, SUM)])
+
+    # carry[k] is the carry from column k into the column to its left. No carry
+    # leaves the leftmost column, and none enters the rightmost one.
     n = len(SUM)
-    carry = [cz.Int(f"carry_{i}") for i in range(n + 1)]
-    constraints += [carry[0] == 0, carry[n] == 0]
-    for i in range(1, n):
-        constraints += [carry[i] >= 0, carry[i] <= 1]
-    for i in range(n):
-        a = d[ADDEND_1[i]]
-        b = d[ADDEND_2[i]]
-        s = d[SUM[i]]
-        constraints.append(a + b + carry[i + 1] == s + 10 * carry[i])
+    carry = [0] + [c5.Int(f"carry_{k}") for k in range(1, n)] + [0]
+    solver.add([c5.And(0 <= c, c <= 1) for c in carry[1:n]])
 
-    outputs = {c: d[c] for c in LETTERS}
-    return constraints, outputs
+    # Each column adds up: its two addend digits and the carry from the column on
+    # the right give its sum digit and the carry to the left.
+    for i in range(n):
+        solver.add(
+            digit[ADDEND_1[i]] + digit[ADDEND_2[i]] + carry[i + 1]
+            == digit[SUM[i]] + 10 * carry[i])
+
+    # The digit of each letter.
+    outputs = {c: digit[c] for c in LETTERS}
+    return solver, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

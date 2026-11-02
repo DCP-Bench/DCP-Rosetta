@@ -1,47 +1,69 @@
-# age_changing: my age m and my husband's age h (both non-negative integers).
-# The four operations +2, /8, -3, *7 are each used once, in some order.
-# Starting from my age and applying the operations in one order gives the husband's age h.
-# Starting from his age and applying them in a different order gives my age m.
-# Operation codes: 0 = +2, 1 = /8 (exact), 2 = -3, 3 = *7.
-from cvc5.pythonic import Int, Ints, Distinct, Implies, Or, And
+# age_changing: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python age_changing.py
+
+import cvc5.pythonic as c5
 
 
-def apply_steps(start, codes, tag):
-    # Chain of four steps: each step applies the operation whose code sits at that position.
-    # Division by 8 is exact: the current value must be a multiple of 8.
-    cons = []
-    cur = start
-    for k, code in enumerate(codes):
-        nxt = Int(f"{tag}_{k}")
-        cons.append(Implies(code == 0, nxt == cur + 2))
-        cons.append(Implies(code == 1, cur == 8 * nxt))
-        cons.append(Implies(code == 2, nxt == cur - 3))
-        cons.append(Implies(code == 3, nxt == 7 * cur))
-        cur = nxt
-    return cons, cur
+def create_model(instance):
+    """Start with my age and apply the four operations +2, /8, -3 and *7 in some
+    order: the result is my husband's age. Starting with his age and applying the
+    same four operations in a different order gives my age. What are our ages?"""
+
+    def apply_steps(start, order, tag):
+        # Apply the operations in the given order, one after the other. The codes are
+        # 0 for +2, 1 for /8 (exact, so the value must be a multiple of 8), 2 for -3
+        # and 3 for *7.
+        steps = []
+        value = start
+        for k, op in enumerate(order):
+            new_value = c5.Int(f"{tag}_{k}")
+            steps += [
+                c5.Implies(op == 0, new_value == value + 2),
+                c5.Implies(op == 1, value == 8 * new_value),
+                c5.Implies(op == 2, new_value == value - 3),
+                c5.Implies(op == 3, new_value == 7 * value),
+            ]
+            value = new_value
+        return steps, value
+
+    # My age and my husband's age.
+    m, h = c5.Ints("m h")
+    # mine_order[k] is the operation applied k-th, starting from my age.
+    mine_order = [c5.Int(f"mine_order_{k}") for k in range(4)]
+    # his_order[k] is the operation applied k-th, starting from his age.
+    his_order = [c5.Int(f"his_order_{k}") for k in range(4)]
+
+    solver = c5.Solver()
+
+    # The ages are not negative.
+    solver.add(m >= 0, h >= 0)
+    # Each operation code is 0 to 3.
+    solver.add([c5.And(op >= 0, op <= 3) for op in mine_order + his_order])
+    # Each order uses every operation once.
+    solver.add(c5.Distinct(mine_order), c5.Distinct(his_order))
+    # The two orders differ in at least one step.
+    solver.add(c5.Or(*[x != y for x, y in zip(mine_order, his_order)]))
+    # Starting from my age, the operations in my order give his age.
+    steps_mine, end_mine = apply_steps(m, mine_order, "a")
+    solver.add(c5.And(*steps_mine, end_mine == h))
+    # Starting from his age, the operations in his order give my age.
+    steps_his, end_his = apply_steps(h, his_order, "b")
+    solver.add(c5.And(*steps_his, end_his == m))
+
+    return solver, {"h": h, "m": m}
 
 
-def build(instance):
-    m, h = Int("m"), Int("h")
-    fwd = Ints("f0 f1 f2 f3")  # order of the operations from my age to his
-    bwd = Ints("g0 g1 g2 g3")  # order of the operations from his age to mine
+if __name__ == "__main__":
+    import numpy as np
 
-    cons = [m >= 0, h >= 0]
-    for codes in (fwd, bwd):
-        for c in codes:
-            cons.append(c >= 0)
-            cons.append(c <= 3)
-        cons.append(Distinct(list(codes)))
+    solver, outputs = create_model({})
+    status = solver.check()
 
-    # The two orders must differ in at least one position.
-    cons.append(Or(*[fwd[k] != bwd[k] for k in range(4)]))
-
-    # Starting from my age and applying the four operations in some order gives his age.
-    c1, end1 = apply_steps(m, fwd, "a")
-    cons.append(And(*c1, end1 == h))
-
-    # Starting from his age and applying the four operations in a different order gives mine.
-    c2, end2 = apply_steps(h, bwd, "b")
-    cons.append(And(*c2, end2 == m))
-
-    return cons, {"h": h, "m": m}
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,46 +1,72 @@
-# Dudeney numbers, cvc5 (Python) model.
-# A Dudeney number is a positive integer that is a perfect cube such that the sum
-# of its digits is equal to the cube root of the number. Print such a number
-# (number) that is also larger than 1.
-# The instance field n is the digit bound: the number has at most n digits.
-import cvc5.pythonic as cz
+# dudeney_numbers: a cvc5 (Python) model from DCP Rosetta.
+# Download the `dudeney_numbers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/dudeney_numbers.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python dudeney_numbers.py dudeney_numbers.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = instance["n"]
-    limit = 10 ** n
+def create_model(instance):
+    """A Dudeney number is a positive integer that is a perfect cube such that
+    the sum of its digits is equal to the cube root of the number. Find such a
+    number that is larger than 1."""
+    n = instance["n"]  # the number of digits of the number
 
-    # The largest cube root whose cube has at most n digits.
+    # top is the largest root whose cube has at most n digits
     top = 1
-    while (top + 1) ** 3 < limit:
+    while (top + 1) ** 3 < 10 ** n:
         top += 1
 
-    # A number with at most n digits: n decimal digits, each 0..9.
-    digits = [cz.Int(f"d{i}") for i in range(n)]
-    number = cz.Int("number")
-    root = cz.Int("root")
+    # digits[i] is the digit worth 10 ** i in the number
+    digits = [c5.Int(f"digit_{i}") for i in range(n)]
+    # the Dudeney number
+    number = c5.Int("number")
+    # the cube root of the number
+    root = c5.Int("root")
 
-    constraints = []
-    # Digits of the number, each between 0 and 9.
+    # the rules the number, its digits and its root must meet
+    solver = c5.Solver()
+
+    # Each digit is one of 0 to 9.
     for d in digits:
-        constraints.append(d >= 0)
-        constraints.append(d <= 9)
+        solver.add(d >= 0)
+        solver.add(d <= 9)
 
-    # The number is the value of its digits.
-    constraints.append(number == cz.Sum([d * 10 ** i for i, d in enumerate(digits)]))
+    # The number is written with these digits.
+    solver.add(number == c5.Sum([d * 10 ** i for i, d in enumerate(digits)]))
 
     # The number is larger than 1.
-    constraints.append(number > 1)
+    solver.add(number > 1)
 
-    # The sum of its digits is equal to the cube root of the number.
-    constraints.append(cz.Sum(digits) == root)
+    # The digits add up to the cube root.
+    solver.add(c5.Sum(digits) == root)
 
-    # The number is a perfect cube of the root: the root is an integer from 2 up to the
-    # largest root whose cube fits in n digits, and the number is its cube.
-    cube_options = [cz.And(root == c, number == c ** 3) for c in range(2, top + 1)]
+    # The number is the cube of root, for a root from 2 to top.
+    # cube_options holds one such choice of root for each value from 2 to top.
+    cube_options = [c5.And(root == c, number == c ** 3) for c in range(2, top + 1)]
     if len(cube_options) == 1:
-        constraints.append(cube_options[0])
+        solver.add(cube_options[0])
     else:
-        constraints.append(cz.Or(cube_options))
+        solver.add(c5.Or(cube_options))
 
-    return constraints, {"number": number}
+    return solver, {"number": number}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

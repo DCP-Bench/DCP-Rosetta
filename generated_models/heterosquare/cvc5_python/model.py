@@ -1,42 +1,79 @@
-# Heterosquare of order n: an n x n square of distinct integers 1..n^2 such that
-# the sums of the rows, the columns and the diagonals are all different.
-from cvc5.pythonic import *
+# heterosquare: a cvc5 (Python) model from DCP Rosetta.
+# Download the `heterosquare.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python heterosquare.py heterosquare.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = instance["n"]
-    N2 = n * n
-    total = N2 * (N2 + 1) // 2  # sum of 1..n^2, fixed by the distinct values
-    # Every line of n distinct values from 1..n^2 lies between the sum of the
-    # n smallest and the sum of the n largest.
-    line_lo = n * (n + 1) // 2
-    line_hi = n * (2 * N2 - n + 1) // 2
+def create_model(instance):
+    """A heterosquare of order n is an n by n square of distinct whole numbers from 1 to n^2
+    whose row, column and diagonal sums are all different."""
+    n = instance["n"]  # the order of the square
+    n_cells = n * n  # how many cells the square has, and the largest number in it
+    cell_total = n_cells * (n_cells + 1) // 2  # the sum of the numbers 1 to n^2
 
-    x = [[Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
-    flat = [x[i][j] for i in range(n) for j in range(n)]
+    # A row, column or diagonal holds n different numbers from 1 to n^2, so its sum lies
+    # between the sum of 1 to n and the sum of the n largest numbers.
+    line_min = n * (n + 1) // 2
+    line_max = n * (2 * n_cells - n + 1) // 2
 
-    constraints = []
+    # x[i][j] is the number in row i, column j
+    x = [[c5.Int(f"x_{i}_{j}") for j in range(n)] for i in range(n)]
 
-    # The elements are distinct integers from 1 to n^2.
-    # cvc5 integers are unbounded, so the bounds must be added.
-    constraints += [And(c >= 1, c <= N2) for c in flat]
-    if len(flat) >= 2:
-        constraints.append(Distinct(flat))
+    # All the numbers of the square, row by row.
+    cells = [x[i][j] for i in range(n) for j in range(n)]
 
-    # Redundant: the values are exactly 1..n^2, so all cells add up to the total.
-    constraints.append(Sum(flat) == total)
+    solver = c5.Solver()
 
-    # The sums of the rows, columns and diagonals are all different.
-    row_sums = [Sum(x[i]) for i in range(n)]
-    col_sums = [Sum([x[i][j] for i in range(n)]) for j in range(n)]
+    # Each number is between 1 and n^2.
+    solver.add([c5.And(c >= 1, c <= n_cells) for c in cells])
+
+    # The numbers in the square are all different.
+    solver.add(c5.Distinct(cells))
+
+    # The numbers add up to the total of 1 to n^2.
+    solver.add(c5.Sum(cells) == cell_total)
+
+    # The sum of each row.
+    row_sums = [c5.Sum(x[i]) for i in range(n)]
+
+    # The sum of each column.
+    col_sums = [c5.Sum([x[i][j] for i in range(n)]) for j in range(n)]
+
+    # The sums of the two diagonals, from top left to bottom right and from top right to bottom left.
     diag_sums = [
-        Sum([x[i][i] for i in range(n)]),
-        Sum([x[i][n - 1 - i] for i in range(n)]),
+        c5.Sum([x[i][i] for i in range(n)]),
+        c5.Sum([x[i][n - 1 - i] for i in range(n)]),
     ]
-    all_sums = row_sums + col_sums + diag_sums
-    for s_ in all_sums:
-        constraints.append(And(s_ >= line_lo, s_ <= line_hi))
-    if len(all_sums) >= 2:
-        constraints.append(Distinct(all_sums))
 
-    return constraints, {"x": x}
+    # Every row, column and diagonal sum.
+    all_sums = row_sums + col_sums + diag_sums
+
+    # Each sum lies between line_min and line_max.
+    solver.add([c5.And(s >= line_min, s <= line_max) for s in all_sums])
+
+    # All the row, column and diagonal sums are different.
+    solver.add(c5.Distinct(all_sums))
+
+    return solver, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

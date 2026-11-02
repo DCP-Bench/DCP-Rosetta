@@ -1,25 +1,43 @@
-# Model for eighteen_hole_golf (cvc5, satisfaction).
-# Generate a random 18-hole golf course where each hole has a length of 3, 4, or 5,
-# and the total length of the course is 72. Output: the lengths of the holes (holes),
-# a list of 18 integers.
+# eighteen_hole_golf: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python eighteen_hole_golf.py
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    # The description fixes 18 holes and the total length 72; the instance carries no data.
-    n_holes = 18
-    total = 72
+def create_model(instance):
+    """Generate an 18 hole golf course where each hole has a length of 3, 4 or 5,
+    and the total length of the course is 72."""
+    n_holes = 18  # the number of holes on the course
+    total_length = 72  # the total length of the course
 
-    holes = cz.Ints(" ".join(f"h{i}" for i in range(n_holes)))
+    # holes[i] is the length of hole i + 1
+    holes = [c5.Int(f"hole_{i}") for i in range(n_holes)]
 
-    # Each hole has a length of 3, 4, or 5.
-    bounds = []
+    # the rules the hole lengths must meet
+    solver = c5.Solver()
+
+    # Each hole is 3, 4 or 5 long.
     for h in holes:
-        bounds.append(h >= 3)
-        bounds.append(h <= 5)
+        solver.add(h >= 3)
+        solver.add(h <= 5)
 
-    # The total length of the course is 72.
-    total_length = [sum(holes) == total]
+    # The holes add up to the total length of the course.
+    solver.add(c5.Sum(holes) == total_length)
 
-    return bounds + total_length, {"holes": list(holes)}
+    return solver, {"holes": holes}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

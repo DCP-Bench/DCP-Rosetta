@@ -1,65 +1,95 @@
-# Magic square (session1_magic_square), cvc5 pythonic, QF_LIA.
-# A magic square is an n x n grid (n != 2) such that each cell contains a different integer
-# from 1 to n^2 and the sum of the integers in each row, column and diagonal is equal.
-# Find a magic square for a given size n, knowing that the sum of integers of each row,
-# column and diagonal has to be equal to n(n^2+ 1)/2 (integer).
-# Output: the square as a list of lists (square) of integers.
-import cvc5.pythonic as cz
+# session1_magic_square: a cvc5 (Python) model from DCP Rosetta.
+# Download the `session1_magic_square.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_magic_square.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python session1_magic_square.py session1_magic_square.json
+
+import cvc5.pythonic as c5
 
 
-def exactly_one(lits):
-    # one-hot helper: at least one of the Booleans is true, and at most one (pairwise)
-    if len(lits) == 1:
-        return [lits[0]]
-    out = [cz.Or(lits)]
-    for a in range(len(lits)):
-        for b in range(a + 1, len(lits)):
-            out.append(cz.Or(cz.Not(lits[a]), cz.Not(lits[b])))
+def exactly_one(flags):
+    # Exactly one of the flags is true.
+    if len(flags) == 1:
+        return [flags[0]]
+    out = [c5.Or(flags)]
+    for a in range(len(flags)):
+        for b in range(a + 1, len(flags)):
+            out.append(c5.Or(c5.Not(flags[a]), c5.Not(flags[b])))
     return out
 
 
-def build(instance):
-    n = instance["n"]
-    total = n * n
-    # the sum of each row, column and diagonal has to be n(n^2+1)/2 (integer)
-    magic = n * (total + 1) // 2
+def create_model(instance):
+    """Fill an n x n grid with the numbers 1 to n^2 so that every row, column and
+    diagonal adds up to the same sum."""
+    n = instance["n"]  # the number of rows and columns of the square
+    n_cells = n * n
 
-    s = cz.SolverFor("QF_LIA")
+    # Each row, column and diagonal adds up to n * (n^2 + 1) / 2: the numbers 1 to n^2
+    # total n^2 * (n^2 + 1) / 2, shared equally between n rows.
+    magic_sum = n * (n_cells + 1) // 2
 
-    cell = [[cz.Int(f"c_{i}_{j}") for j in range(n)] for i in range(n)]
-    # one Boolean per (cell, value) for the values 1..n^2
-    hot = [[[cz.Bool(f"x_{i}_{j}_{v}") for v in range(1, total + 1)]
-            for j in range(n)] for i in range(n)]
+    # Linear integer logic: cvc5 solves this model much faster than with the default Solver().
+    solver = c5.SolverFor("QF_LIA")
 
-    # each cell contains one integer from 1 to n^2
+    # square[i][j] is the number in row i, column j
+    square = [[c5.Int(f"square_{i}_{j}") for j in range(n)] for i in range(n)]
+
+    # placed[i][j][k] is true when cell (i, j) holds the number k + 1
+    placed = [[[c5.Bool(f"placed_{i}_{j}_{k}") for k in range(n_cells)]
+               for j in range(n)] for i in range(n)]
+
+    # all n^2 cells of the square
+    cells = [square[i][j] for i in range(n) for j in range(n)]
+
+    # Each cell holds exactly one number.
     for i in range(n):
         for j in range(n):
-            s.add(*exactly_one(hot[i][j]))
+            solver.add(*exactly_one(placed[i][j]))
 
-    # each cell contains a different integer from 1 to n^2: every value is in exactly one cell
-    for k in range(total):
-        s.add(*exactly_one([hot[i][j][k] for i in range(n) for j in range(n)]))
+    # Each number from 1 to n^2 sits in exactly one cell.
+    for k in range(n_cells):
+        solver.add(*exactly_one([placed[i][j][k] for i in range(n) for j in range(n)]))
 
-    # the integer of a cell is the value its chosen Boolean stands for
+    # The number in each cell is the one its flags stand for.
     for i in range(n):
         for j in range(n):
-            for k in range(total):
-                s.add(cz.Implies(hot[i][j][k], cell[i][j] == k + 1))
+            for k in range(n_cells):
+                solver.add(c5.Implies(placed[i][j][k], square[i][j] == k + 1))
 
-    # redundant, implied by the two rules above: the cells are different,
-    # and together they hold the integers 1 to n^2, whose sum is n^2(n^2+1)/2
-    flat = [cell[i][j] for i in range(n) for j in range(n)]
-    if total >= 2:  # Distinct needs at least two terms
-        s.add(cz.Distinct(flat))
-    s.add(cz.Sum(flat) == total * (total + 1) // 2)
+    # All numbers in the square are different.
+    if n_cells > 1:
+        solver.add(c5.Distinct(cells))
 
-    # the sum of each row, column and diagonal is n(n^2+1)/2
-    for i in range(n):
-        s.add(cz.Sum([cell[i][j] for j in range(n)]) == magic)
-    for j in range(n):
-        s.add(cz.Sum([cell[i][j] for i in range(n)]) == magic)
-    s.add(cz.Sum([cell[i][i] for i in range(n)]) == magic)
-    s.add(cz.Sum([cell[i][n - 1 - i] for i in range(n)]) == magic)
+    # The cells hold 1 to n^2 together, so they add up to n^2 * (n^2 + 1) / 2.
+    solver.add(c5.Sum(cells) == n_cells * (n_cells + 1) // 2)
 
-    outputs = {"square": [[cell[i][j] for j in range(n)] for i in range(n)]}
-    return s, outputs
+    # Every row adds up to the magic sum.
+    solver.add(*[c5.Sum(row) == magic_sum for row in square])
+
+    # Every column adds up to the magic sum.
+    solver.add(*[c5.Sum([square[i][j] for i in range(n)]) == magic_sum for j in range(n)])
+
+    # The main diagonal and the other diagonal each add up to the magic sum.
+    solver.add(c5.Sum([square[i][i] for i in range(n)]) == magic_sum,
+          c5.Sum([square[i][n - 1 - i] for i in range(n)]) == magic_sum)
+
+    return solver, {"square": square}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,47 +1,59 @@
-# Building blocks: alphabet blocks with one letter per side. Place every letter on
-# a block so that each block carries num_sides letters, and each word can be spelt
-# by a sequence of distinct blocks, one block per letter.
+# building_blocks: a cvc5 (Python) model from DCP Rosetta.
+# Download the `building_blocks.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/building_blocks.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python building_blocks.py building_blocks.json
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    alphabet = instance["alphabet"]
-    num_blocks = instance["num_blocks"]
-    num_sides = instance["num_sides"]
-    num_letters = instance["num_letters"]
-    words = instance["words_str"]
+def create_model(instance):
+    """Alphabet blocks with one letter on each side must be arranged so that every word in
+    a list can be spelled, with the letters of each word on different blocks. Find the
+    block that carries each letter."""
+    alphabet = instance["alphabet"]        # the letters on the blocks; alphabet[i] is letter i
+    num_blocks = instance["num_blocks"]    # the number of blocks
+    num_sides = instance["num_sides"]      # the number of sides on each block
+    num_letters = instance["num_letters"]  # the number of letters on the blocks
+    words = instance["words_str"]          # the words that must be spelled
 
-    dice = cz.Ints(" ".join(f"d_{k}" for k in range(num_letters)))
-    if num_letters == 1:
-        dice = [dice]
+    # dice[i] is the block that carries alphabet[i]
+    dice = [c5.Int(f"dice_{i}") for i in range(num_letters)]
 
-    constraints = []
+    solver = c5.Solver()
 
-    # Each letter is placed on one block, between 0 and num_blocks-1.
-    for k in range(num_letters):
-        constraints.append(dice[k] >= 0)
-        constraints.append(dice[k] <= num_blocks - 1)
+    # Each letter sits on one of the blocks.
+    for i in range(num_letters):
+        solver.add(dice[i] >= 0)
+        solver.add(dice[i] <= num_blocks - 1)
 
-    # Each block has exactly num_sides letters.
+    # Each block carries num_sides letters.
     for b in range(num_blocks):
-        constraints.append(
-            cz.Sum([cz.If(dice[k] == b, 1, 0) for k in range(num_letters)]) == num_sides
-        )
+        solver.add(c5.Sum([c5.If(dice[i] == b, 1, 0) for i in range(num_letters)]) == num_sides)
 
-    # Every word of the list can be spelt with its letters on distinct blocks.
-    for w, word in enumerate(words):
-        if len(word) < 2:
-            continue
-        idx = [alphabet.index(ch) for ch in word]
-        pos = cz.Ints(" ".join(f"p_{w}_{p}" for p in range(len(word))))
-        if len(word) == 1:
-            pos = [pos]
-        for p in range(len(word)):
-            constraints.append(pos[p] >= 0)
-            constraints.append(pos[p] <= num_blocks - 1)
-            constraints.append(dice[idx[p]] == pos[p])
-        # The letters of one word sit on distinct blocks.
-        constraints.append(cz.Distinct(list(pos)))
+    # The letters of a word sit on different blocks.
+    for word in words:
+        letters = [dice[alphabet.index(c)] for c in word]
+        if len(letters) > 1:
+            solver.add(c5.Distinct(letters))
 
-    return constraints, {"dice": dice}
+    return solver, {"dice": dice}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

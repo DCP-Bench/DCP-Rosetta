@@ -1,29 +1,50 @@
-# Bin packing: assign each item to one of a number of bins of fixed capacity so
-# that the total weight of the items in each bin does not exceed the capacity.
-# bins[k] is the 0-based bin of item k.
+# bin_packing: a cvc5 (Python) model from DCP Rosetta.
+# Download the `bin_packing.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/bin_packing.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python bin_packing.py bin_packing.json
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    weights = instance["weights"]
-    capacity = instance["capacity"]
-    num_bins = instance["num_bins"]
+def create_model(instance):
+    """Assign each item to one of several bins, each of a fixed capacity, so that the total
+    weight of the items in each bin does not exceed the capacity."""
+    weights = instance["weights"]    # weights[k]: the weight of item k
+    capacity = instance["capacity"]  # the most weight one bin can hold
+    n_bins = instance["num_bins"]    # the number of bins available
 
-    n_items = len(weights)
+    # bins[k]: the bin that item k goes into
+    bins = [c5.Int(f"bin_{k}") for k in range(len(weights))]
 
-    # Each item is assigned to one bin, numbered 0 to num_bins - 1.
-    bins = [cz.Int(f"bin_{k}") for k in range(n_items)]
-    constraints = []
-    for k in range(n_items):
-        constraints.append(bins[k] >= 0)
-        constraints.append(bins[k] <= num_bins - 1)
+    solver = c5.Solver()
 
-    # The total weight of the items in each bin does not exceed the bin capacity.
-    for b in range(num_bins):
-        constraints.append(
-            cz.Sum([cz.If(bins[k] == b, weights[k], 0) for k in range(n_items)]) <= capacity
+    # Each item goes into one of the bins, numbered 0 to n_bins - 1.
+    solver.add([c5.And(b >= 0, b <= n_bins - 1) for b in bins])
+
+    # The items in each bin weigh no more than the capacity.
+    for b in range(n_bins):
+        solver.add(
+            c5.Sum([c5.If(bin_k == b, w, 0) for bin_k, w in zip(bins, weights)]) <= capacity
         )
 
-    outputs = {"bins": bins}
-    return constraints, outputs
+    return solver, {"bins": bins}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

@@ -1,21 +1,21 @@
-# Ages of the three sons: an old man's sons have ages A1 >= A2 >= A3 (oldest first).
-# Clues from the description, in order:
-#   1. The product of their ages is 36. Candidate triples are the ordered positive
-#      triples with that product.
-#   2. The mathematician needs more information: the sum of the ages equals the number
-#      of windows, and the sum alone does not determine the triple (another triple with
-#      product 36 has the same sum).
-#   3. The oldest son has blue eyes (the oldest is unique: A1 > A2).
-#   4. The mathematician now knows: among triples that satisfy clues 1 to 3, only one
-#      has the sum of the true ages.
-import cvc5.pythonic as cz
+# ages_of_the_sons: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python ages_of_the_sons.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    A1, A2, A3 = cz.Ints("A1 A2 A3")
+def create_model(instance):
+    """An old man says the product of his three sons' ages is 36. Knowing the sum
+    of the ages is still not enough for a mathematician to find them, but once
+    told that the oldest son has blue eyes (so there is a unique oldest) he can.
+    What are the ages of the three sons?"""
+    # The ages of the oldest, middle and youngest son.
+    A1, A2, A3 = c5.Ints("A1 A2 A3")
 
-    # Candidate triples: positive integers, ordered oldest first, whose product is 36.
-    # The bounds 1..36 follow from the product being 36 with all factors at least 1.
+    # Candidate triples: ages, oldest first, whole numbers from 1 up, with product 36.
+    # No age can exceed 36, since the other two are at least 1.
     cands = [
         (a, b, c)
         for a in range(1, 37)
@@ -24,39 +24,52 @@ def build(instance):
         if a * b * c == 36
     ]
 
-    constraints = [A3 >= 1, A1 >= A2, A2 >= A3]
-
-    # The product of their ages is 36.
-    constraints.append(cz.Or([cz.And(A1 == a, A2 == b, A3 == c) for a, b, c in cands]))
-
-    # Clue 2: the sum of the ages is not determined by the sum alone, so another
-    # candidate triple (different from the true one) has the same sum.
-    constraints.append(
-        cz.Or([
-            cz.And(A1 + A2 + A3 == a + b + c, cz.Or(A1 != a, A2 != b, A3 != c))
-            for a, b, c in cands
-        ])
-    )
-
-    # Clue 3: the oldest son is identified, so the oldest age is unique.
-    constraints.append(A1 > A2)
-
-    # Clue 4: among the triples that satisfy clues 1 to 3 (product 36, oldest unique,
-    # sum not determined by the sum alone), the sum of the true ages picks out one triple.
-    def unique_max(t):
+    # The oldest son is strictly older than the second son.
+    def unique_oldest(t):
         return t[0] > t[1]
 
-    def ambiguous_sum(t):
+    # Another candidate has the same sum.
+    def sum_is_shared(t):
         s = sum(t)
         return sum(1 for u in cands if sum(u) == s) >= 2
 
-    survivors = [t for t in cands if unique_max(t) and ambiguous_sum(t)]
-    for a, b, c in survivors:
-        constraints.append(
-            cz.Implies(
-                A1 + A2 + A3 == a + b + c,
-                cz.And(A1 == a, A2 == b, A3 == c),
-            )
-        )
+    # Candidates that fit the clues so far: a unique oldest son, and a sum that another candidate shares.
+    survivors = [t for t in cands if unique_oldest(t) and sum_is_shared(t)]
 
-    return constraints, {"A1": A1, "A2": A2, "A3": A3}
+    solver = c5.Solver()
+
+    solver.add(
+        # The sons' ages are whole numbers from 1 up, oldest first.
+        A3 >= 1,
+        A1 >= A2,
+        A2 >= A3,
+        # The ages are one of the candidate triples.
+        c5.Or([c5.And(A1 == a, A2 == b, A3 == c) for a, b, c in cands]),
+        # Another candidate has the same sum as the sons, so the sum alone does not settle the ages.
+        c5.Or([
+            c5.And(A1 + A2 + A3 == a + b + c, c5.Or(A1 != a, A2 != b, A3 != c))
+            for a, b, c in cands
+        ]),
+        # The oldest son is identified by his blue eyes, so no other son has his age.
+        A1 > A2,
+        # Among the candidates that fit the clues so far, the sum of the true ages picks out one.
+        *[
+            c5.Implies(A1 + A2 + A3 == a + b + c, c5.And(A1 == a, A2 == b, A3 == c))
+            for a, b, c in survivors
+        ],
+    )
+    return solver, {"A1": A1, "A2": A2, "A3": A3}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

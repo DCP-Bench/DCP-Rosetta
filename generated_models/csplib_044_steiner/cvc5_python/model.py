@@ -1,53 +1,66 @@
-# csplib_044_steiner: ternary Steiner system of order n. Find n(n-1)/6 triples of
-# distinct integer elements from {1, ..., n} such that any two triples have at most
-# one common element. Output "sets" is a boolean matrix: row = triple, column = element.
-#
-# Boolean clauses carry the set structure; a sum per element carries the implied degree.
+# csplib_044_steiner: a cvc5 (Python) model from DCP Rosetta.
+# Download the `csplib_044_steiner.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_044_steiner.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python csplib_044_steiner.py csplib_044_steiner.json
+
 from itertools import combinations
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def clause(lits):
-    return lits[0] if len(lits) == 1 else cz.Or(lits)
+def create_model(instance):
+    """Find n * (n - 1) / 6 triples of distinct elements of {1, ..., n} such that any two
+    triples have at most one element in common (n is 1 or 3 modulo 6)."""
+    n = instance["n"]          # the number of elements
+    n_sets = n * (n - 1) // 6  # the number of triples required
 
+    # sets[i][j] is true when element j belongs to triple i
+    sets = [[c5.Bool(f"sets_{i}_{j}") for j in range(n)] for i in range(n_sets)]
 
-def build(instance):
-    n = instance["n"]
-    b = n * (n - 1) // 6
-    r = (n - 1) // 2
-    x = [[cz.Bool(f"x_{i}_{j}") for j in range(n)] for i in range(b)]
-    cons = []
+    def either(options):
+        """At least one of the options holds."""
+        return options[0] if len(options) == 1 else c5.Or(options)
 
-    # triples of distinct integer elements: each row holds exactly three elements.
-    # At most three true: no 4 elements of a row are all true.
-    # At least three true: no n-2 elements of a row are all false.
-    for i in range(b):
-        for quad in combinations(range(n), 4):
-            cons.append(clause([cz.Not(x[i][j]) for j in quad]))
-        for rest in combinations(range(n), n - 2):
-            cons.append(clause([x[i][j] for j in rest]))
+    solver = c5.Solver()
 
-    # implied by the Steiner condition: element j is paired with each of the other
-    # n-1 elements exactly once, and each triple through j covers two of those pairs,
-    # so j lies in (n-1)/2 triples
-    for j in range(n):
-        cons.append(cz.Sum([cz.If(x[i][j], 1, 0) for i in range(b)]) == r)
+    # Each triple has exactly three elements: no four elements are all in it, and no n - 2
+    # elements are all out of it.
+    for row in sets:
+        solver.add([either([c5.Not(row[j]) for j in quad]) for quad in combinations(range(n), 4)])
+        solver.add([either([row[j] for j in rest]) for rest in combinations(range(n), n - 2)])
 
-    # any two triples have at most one common element: no two triples both contain
-    # the same two elements. Two rows i < i2 cannot both hold the pair j < k.
-    for i in range(b):
-        for i2 in range(i + 1, b):
-            for j, k in combinations(range(n), 2):
-                cons.append(
-                    clause([cz.Not(x[i][j]), cz.Not(x[i][k]),
-                            cz.Not(x[i2][j]), cz.Not(x[i2][k])])
-                )
+    # Each element is in (n - 1) / 2 triples: it shares exactly one element with each of the
+    # other n - 1 elements, and each triple through it covers two of them.
+    triples_per_element = (n - 1) // 2
+    solver.add([c5.Sum([c5.If(row[j], 1, 0) for row in sets]) == triples_per_element for j in range(n)])
 
-    # the triples cover every pair of elements (the Steiner condition); with the
-    # count n(n-1)/6 this is exactly one triple per pair
+    # Two triples share at most one element: no pair of elements lies in two triples.
+    for i1, i2 in combinations(range(n_sets), 2):
+        for j, k in combinations(range(n), 2):
+            solver.add(c5.Not(c5.And(sets[i1][j], sets[i1][k], sets[i2][j], sets[i2][k])))
+
+    # Every pair of elements lies in some triple.
     for j, k in combinations(range(n), 2):
-        covers = [cz.And(x[i][j], x[i][k]) for i in range(b)]
-        cons.append(clause(covers))
+        solver.add(either([c5.And(row[j], row[k]) for row in sets]))
 
-    return cons, {"sets": x}
+    return solver, {"sets": sets}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

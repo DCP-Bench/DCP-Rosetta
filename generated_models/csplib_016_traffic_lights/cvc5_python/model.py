@@ -1,31 +1,59 @@
-# Traffic lights (csplib 016): a four-way junction with 4 vehicle lights V1..V4 and 4 pedestrian lights P1..P4.
-import cvc5.pythonic as cz
+# csplib_016_traffic_lights: a cvc5 (Python) model from DCP Rosetta.
+# Download the `csplib_016_traffic_lights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_016_traffic_lights.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python csplib_016_traffic_lights.py csplib_016_traffic_lights.json
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    allowed = instance["allowed_tuples"]  # safe (V_i, P_i, V_next, P_next) combinations from the data
-    n = 4  # the junction has four roads, and the cycle wraps from light 4 back to light 1
+def create_model(instance):
+    """A four-way junction has four vehicle lights and four pedestrian lights.
+    Choose a state for every light so that each pair of neighbouring roads shows a
+    safe combination of states."""
+    allowed_tuples = instance["allowed_tuples"]  # the safe (V_i, P_i, V_{i+1}, P_{i+1}) combinations of light states
 
-    # Vehicle light states: 0=red, 1=red-yellow, 2=green, 3=yellow. Pedestrian light states: 0=red, 1=green.
-    V = [cz.Int(f"V{i + 1}") for i in range(n)]
-    P = [cz.Int(f"P{i + 1}") for i in range(n)]
+    n_roads = 4  # the junction has four roads
 
-    # the vehicle light states are 0 to 3 and the pedestrian light states are 0 to 1
-    domains = []
-    for i in range(n):
-        domains += [V[i] >= 0, V[i] <= 3, P[i] >= 0, P[i] <= 1]
+    # vehicle[i] is the state of the vehicle light of road i+1:
+    # 0=red, 1=red-yellow, 2=green, 3=yellow
+    vehicle = [c5.Int(f"vehicle_{i}") for i in range(n_roads)]
+    # pedestrian[i] is the state of the pedestrian light of road i+1: 0=red, 1=green
+    pedestrian = [c5.Int(f"pedestrian_{i}") for i in range(n_roads)]
+    # the rules that the light states must satisfy
+    solver = c5.Solver()
 
-    # the combinations (V_i, P_i, V_i+1, P_i+1) of light states must be safe for intersecting roads, i = 1..4 with V_5 = V_1 and P_5 = P_1; every other combination is disallowed
-    table = []
-    for i in range(n):
-        j = (i + 1) % n
-        table.append(
-            cz.Or([
-                cz.And(V[i] == a, P[i] == b, V[j] == c, P[j] == d)
-                for a, b, c, d in allowed
-            ])
-        )
+    # Every vehicle light is in one of its four states, and every pedestrian light in one of its two.
+    for i in range(n_roads):
+        solver.add(vehicle[i] >= 0, vehicle[i] <= 3, pedestrian[i] >= 0, pedestrian[i] <= 1)
 
-    constraints = domains + table
-    lights = V + P  # output order: V1, V2, V3, V4, P1, P2, P3, P4
-    return constraints, {"lights": lights}
+    # Each road, together with the next one, shows a safe combination. The roads go
+    # round the junction, so road 4 is followed by road 1.
+    for i in range(n_roads):
+        nxt = (i + 1) % n_roads
+        solver.add(c5.Or([
+            c5.And(vehicle[i] == a, pedestrian[i] == b, vehicle[nxt] == c, pedestrian[nxt] == d)
+            for a, b, c, d in allowed_tuples
+        ]))
+
+    lights = vehicle + pedestrian  # all eight lights
+    return solver, {"lights": lights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

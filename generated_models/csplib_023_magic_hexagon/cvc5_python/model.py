@@ -1,31 +1,35 @@
-# Magic hexagon (CSPLib 023): place the numbers 1 to NUM_CELLS in the 19 cells
-# A..S of a hexagon so that each of the 15 lines sums to MAGIC_SUM.
-# LD lists the values of A, B, ..., S in that order.
+# csplib_023_magic_hexagon: a cvc5 (Python) model from DCP Rosetta.
+# Download the `csplib_023_magic_hexagon.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+# Then run it on the first instance (after `pip install cvc5 numpy`):
+#   python csplib_023_magic_hexagon.py csplib_023_magic_hexagon.json
 
-import cvc5.pythonic as cz
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    n = instance["NUM_CELLS"]
-    magic = instance["MAGIC_SUM"]
+def create_model(instance):
+    """Place the numbers 1 to n_cells, each once, in the cells of a hexagon so that each of its
+    15 straight lines of cells adds up to magic_sum."""
+    n_cells = instance["NUM_CELLS"]  # the numbers 1 to n_cells are placed, one per cell
+    magic_sum = instance["MAGIC_SUM"]  # the sum every straight line of cells must reach
 
-    names = "A B C D E F G H I J K L M N O P Q R S".split()
-    cells = cz.Ints(names)
+    # The number written in each cell of the hexagon, cells A to S.
+    cells = [c5.Int(name) for name in "A B C D E F G H I J K L M N O P Q R S".split()]
     A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S = cells
 
-    constraints = []
+    solver = c5.Solver()
 
-    # Each cell holds a number from 1 to NUM_CELLS.
+    # Each cell holds a whole number from 1 to n_cells.
     for c in cells:
-        constraints.append(c >= 1)
-        constraints.append(c <= n)
+        solver.add(c >= 1, c <= n_cells)
 
-    # The numbers 1 to NUM_CELLS are all different.
-    constraints.append(cz.Distinct(cells))
-    # The numbers 1 to NUM_CELLS together add up to the sum of all cells.
-    constraints.append(cz.Sum(cells) == n * (n + 1) // 2)
+    # The numbers are all different.
+    solver.add(c5.Distinct(cells))
 
-    # The hexagon rows (3, 4, 5, 4 and 3 cells) each sum to the magic constant.
+    # Together the 19 cells hold 1 to n_cells, so they add up to 1 + 2 + ... + n_cells.
+    solver.add(c5.Sum(cells) == n_cells * (n_cells + 1) // 2)
+
+    # The three horizontal rows of the hexagon, top to bottom.
     rows = [
         [A, B, C],
         [D, E, F, G],
@@ -33,7 +37,7 @@ def build(instance):
         [M, N, O, P],
         [Q, R, S],
     ]
-    # The lines running down and to the right each sum to the magic constant.
+    # The five lines running from top left to bottom right.
     down_right = [
         [A, E, J, O, S],
         [B, F, K, P],
@@ -41,7 +45,7 @@ def build(instance):
         [D, I, N, R],
         [H, M, Q],
     ]
-    # The lines running down and to the left each sum to the magic constant.
+    # The five lines running from top right to bottom left.
     down_left = [
         [C, F, J, N, Q],
         [B, E, I, M],
@@ -49,8 +53,27 @@ def build(instance):
         [G, K, O, R],
         [L, P, S],
     ]
-    # Each of the 15 lines (rows and diagonals) sums to the magic constant.
-    for line in rows + down_right + down_left:
-        constraints.append(cz.Sum(line) == magic)
 
-    return constraints, {"LD": cells}
+    # Each of the 15 straight lines of cells adds up to magic_sum.
+    solver.add([c5.Sum(line) == magic_sum for line in rows + down_right + down_left])
+
+    return solver, {"LD": cells}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)

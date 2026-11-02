@@ -1,23 +1,51 @@
-# birthday_coins: Tommy was given 15 coins (half-crowns, shillings and sixpence) that add
-# up to 1 pound 5 shillings 6 pence. Print the number of half-crowns he was given.
-import cvc5.pythonic as cz
+# birthday_coins: a cvc5 (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/birthday_coins.html
+# Run it (after `pip install cvc5 numpy`) with:
+#   python birthday_coins.py
+
+import cvc5.pythonic as c5
 
 
-def build(instance):
-    half_crowns, shillings, sixpences = cz.Ints("half_crowns shillings sixpences")
+def create_model(instance):
+    """Tommy was given 15 coins for his birthday: half-crowns, shillings and sixpences. They
+    add up to one pound, five shillings and six pence. How many half-crowns was he given?"""
+    # Money in pence.
+    pence_in_shilling = 12
+    pence_in_sixpence = 6
+    pence_in_half_crown = 2 * pence_in_shilling + pence_in_sixpence  # two shillings and sixpence
+    pence_in_pound = 20 * pence_in_shilling
+    total_pence = pence_in_pound + 5 * pence_in_shilling + pence_in_sixpence  # one pound, five shillings and six pence
+    n_coins = 15  # the number of coins Tommy was given
 
-    constraints = []
+    # How many half-crowns, shillings and sixpences Tommy was given.
+    half_crowns, shillings, sixpences = c5.Ints("half_crowns shillings sixpences")
 
-    # Tommy was given 15 coins in total.
-    constraints.append(half_crowns + shillings + sixpences == 15)
+    solver = c5.Solver()
 
-    # He was given half-crowns, shillings and sixpence, so each kind is present.
-    constraints.append(half_crowns >= 1)
-    constraints.append(shillings >= 1)
-    constraints.append(sixpences >= 1)
+    # The coins number 15 in all.
+    solver.add(half_crowns + shillings + sixpences == n_coins)
 
-    # The coins add up to 1 pound 5 shillings 6 pence, which is 306 pence:
-    # a half-crown is 30 pence, a shilling 12 pence and a sixpence 6 pence.
-    constraints.append(30 * half_crowns + 12 * shillings + 6 * sixpences == 306)
+    # He was given coins of each kind.
+    solver.add(half_crowns >= 1, shillings >= 1, sixpences >= 1)
 
-    return constraints, {"half_crowns": half_crowns}
+    # The coins add up to the total.
+    solver.add(
+        pence_in_half_crown * half_crowns + pence_in_shilling * shillings
+        + pence_in_sixpence * sixpences == total_pence
+    )
+
+    return solver, {"half_crowns": half_crowns}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    status = solver.check()
+
+    if status == c5.sat:
+        model_eval = np.vectorize(solver.model().eval)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", model_eval(output))
+    else:
+        print("No solution:", status)
