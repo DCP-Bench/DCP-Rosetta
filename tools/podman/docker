@@ -1,0 +1,58 @@
+#!/bin/bash
+# A `docker` stand-in that runs Rosetta's docker calls on rootless podman, for machines
+# without Docker where the user may also lack an /etc/subuid range and `cpu` cgroup
+# delegation. Put it on PATH as `docker`; see evaluation/README.md ("Without Docker").
+#
+#  * --user=<uid>:<gid> -> --user=0:0. Without a subuid range the container has a single
+#                          uid; its root is still the unprivileged host user, and Rosetta
+#                          keeps --cap-drop=ALL, --read-only, --network=none.
+#  * --cpus N           -> dropped (needs the `cpu` cgroup controller). Set DCP_TASKSET
+#                          (e.g. "0-7") to pin containers to cores with taskset instead.
+#  * build              -> mounts an apt setting so apt does not switch to the `_apt` user,
+#                          and preloads a no-op chown so tar and dpkg scripts do not fail
+#                          on owners the namespace lacks; a Dockerfile with
+#                          `ADD --checksum` (unsupported by podman 3.x) is rewritten to a
+#                          temporary copy with ADD followed by `sha256sum -c`.
+here=$(dirname "$(readlink -f "$0")")
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/dcp-podman"
+
+args=()
+if [ "$1" = build ]; then
+    if [ ! -f "$cache/nochown.so" ]; then
+        mkdir -p "$cache"
+        gcc -O2 -shared -fPIC -nostdlib -o "$cache/nochown.so" "$here/nochown.c" || exit 1
+        echo /usr/local/lib/dcp-nochown.so > "$cache/ld.so.preload"
+    fi
+    args+=(build -v "$here/apt-no-sandbox.conf:/etc/apt/apt.conf.d/00-no-sandbox:ro"
+                 -v "$cache/nochown.so:/usr/local/lib/dcp-nochown.so:ro"
+                 -v "$cache/ld.so.preload:/etc/ld.so.preload:ro")
+    shift
+fi
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --user=*) args+=("--user=0:0") ;;
+        --user|-u) args+=("--user=0:0"); shift ;;
+        --cpus=*) ;;
+        --cpus) shift ;;
+        *) args+=("$1") ;;
+    esac
+    shift
+done
+
+tmp=
+if [ "${args[0]}" = build ]; then
+    for i in "${!args[@]}"; do
+        if [ "${args[$i]}" = -f ] && grep -q '^ADD[[:space:]]*--checksum' "${args[$((i+1))]}"; then
+            tmp=$(mktemp "${TMPDIR:-/tmp}/dcp-Dockerfile.XXXXXX")
+            python3 "$here/rewrite_dockerfile.py" "${args[$((i+1))]}" > "$tmp" || exit 1
+            args[$((i+1))]="$tmp"
+        fi
+    done
+fi
+
+run=(podman)
+[ -n "$DCP_TASKSET" ] && run=(taskset -c "$DCP_TASKSET" podman)
+if [ -n "$tmp" ]; then
+    "${run[@]}" "${args[@]}"; status=$?; rm -f "$tmp"; exit $status
+fi
+exec "${run[@]}" "${args[@]}"

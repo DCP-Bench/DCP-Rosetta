@@ -44,6 +44,35 @@ python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver c
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python --solution-limit 2
 ```
 
+### Without Docker: rootless podman
+
+On a shared Linux server without Docker, rootless podman can stand in, including
+for a user without an `/etc/subuid` range or `cpu` cgroup delegation (tested with
+podman 3.4 and all integrations). Put [`tools/podman/docker`](../tools/podman/docker)
+on `PATH` as `docker` (e.g. `ln -s "$PWD/tools/podman/docker" ~/.local/bin/docker`;
+it needs `gcc` once, `fuse-overlayfs` and `taskset`), and configure podman:
+
+```toml
+# ~/.config/containers/storage.conf: graphroot on a local disk, not NFS
+[storage]
+driver = "overlay"
+graphroot = "/local/disk/containers"
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+ignore_chown_errors = "true"        # only needed without a subuid range
+
+# ~/.config/containers/registries.conf: resolve bare names like docker does
+unqualified-search-registries = ["docker.io"]
+short-name-mode = "permissive"
+```
+
+Results then match Docker's with two differences, both because of the missing
+subuid range and cgroup delegation. Candidates run as root inside the container,
+which is still the unprivileged host user, with every other restriction kept. That
+makes `test_isolation`'s uid assertion fail. And `--cpus` is not enforced: set
+`DCP_TASKSET=0-7` to pin containers to cores, and expect noisier timings.
+`--memory` limits and their `memory_limit` verdicts do work.
+
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
 `if __name__ == "__main__":` guard — reference checks spawn a child process.

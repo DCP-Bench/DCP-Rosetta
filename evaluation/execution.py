@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import tempfile
@@ -174,6 +175,8 @@ def _inspect(metadata, template):
 def image_identity(metadata):
     """The local image ID. It names the bytes run on this machine only; see recipe."""
     identity = _inspect(metadata, "{{.Id}}")
+    if re.fullmatch(r"[0-9a-f]{64}", identity):
+        identity = "sha256:" + identity  # podman prints the bare digest
     if not identity.startswith("sha256:"):
         raise EvaluationError("infrastructure_error", "Docker did not return an image identity")
     return identity
