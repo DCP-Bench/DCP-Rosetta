@@ -77,6 +77,8 @@ and precompiled into the read-only depot `/opt/julia-depot`. `JULIA_PROJECT=/opt
 is the environment that makes `using JuMP, HiGHS, JSON` resolve;
 `JULIA_DEPOT_PATH=/tmp/julia-depot:/opt/julia-depot` puts anything Julia writes in `/tmp`,
 and `JULIA_PKG_OFFLINE=true`: nothing can be added, and the container has no network.
+`JULIA_CPU_TARGET` names generic x86-64 targets, so the precompiled packages load on
+any x86-64 host instead of being recompiled at run time.
 No licence. The runner itself is Python 3.11.2 (`/usr/bin/python3`), which the submission
 never sees. For an ad hoc run, `--entrypoint sh` bypasses `/opt/runner/run.py`; `julia`
 then picks up the same project.
