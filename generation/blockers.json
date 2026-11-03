@@ -737,6 +737,54 @@
       "detail": "Hidato puzzles have one solution: Hexaly finds it on json:1..3 but cannot prove it unique within 180 s under the solution limit of 2, and finds no path on the 12 x 12 example and json:4 (INFEASIBLE). No instance verified.",
       "evidence": "generation/runs/hexaly-batch40b-20261102t212634z-ea9c/attempts/hidato/hexaly_python/attempt-001/evaluation.json",
       "recorded": "2026-11-02"
+    },
+    {
+      "problem": "csplib_011_acc_basketball_schedule",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "Hexaly finds a valid timetable for the nine teams in seconds but not a second distinct one within 180 s, which the solution limit of 2 requires: the valid timetables are isolated points, so a re-solve starting from the first has no neighbouring solution to move to. 0 of 1 instance verified.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_011_acc_basketball_schedule/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_032_max_density_still_life",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "The 6 x 6 and 7 x 7 instances are accepted. On 8 x 8 Hexaly proves the optimum (36 live cells) and finds one pattern, but not a second optimal pattern or the proof that there is none within 180 s. That is 2 of 3 instances, below the 80% a performance limit may cover.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_032_max_density_still_life/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_003_quasigroup_existence",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "With one-hot Boolean cells and linear implications (attempt-002) the orders 8, 4 and 1 are accepted, but for order 9 Hexaly finds one quasigroup and not a second distinct one within 180 s. That is 3 of 4 instances, below 80%. The first formulation (integer cells with an element lookup) solved only 2 of 4.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_003_quasigroup_existence/hexaly_python/attempt-002/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_002_template_design",
+      "solver": "hexaly_python",
+      "reason": "optimum_unproven",
+      "detail": "The optimum is not proven within 180 s on the example (an objective over products of layout counts and sheets, a sum of nonlinear terms); the second instance (three templates) is accepted. That is 1 of 2 instances.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_002_template_design/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "general_store",
+      "solver": "hexaly_python",
+      "reason": "no_solution_found",
+      "detail": "Three formulations found no solution within 180 s (status INFEASIBLE, nothing found): integer digits with pairwise !=, one-hot Boolean digits with per-column carries, and a list decision for the ten digits. The puzzle adds sixteen words to ALL WOOL, a tight linear equation over ten different digits that Hexaly's local search does not reach.",
+      "evidence": "generation/runs/hexaly-final-20261103t110215z-46d1/attempts/general_store/hexaly_python/attempt-003/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "divisible_by_1_through_9",
+      "solver": "hexaly_python",
+      "reason": "exhaustion_unproven",
+      "detail": "Hexaly finds the number, but within 180 s cannot show that no other exists, which the solution limit of 2 requires of a problem with a single solution. Implied constraints (the number ends in 0, the fifth digit is 5, even digits in even places), which leave 576 candidates, did not change that.",
+      "evidence": "generation/runs/hexaly-final-20261103t110215z-46d1/attempts/divisible_by_1_through_9/hexaly_python/attempt-002/evaluation.json",
+      "recorded": "2026-11-03"
     }
   ]
 }
