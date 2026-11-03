@@ -3,11 +3,13 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # v = number of objects (rows); b = number of blocks (columns); r = number of blocks each object occurs in;
+    # k = number of objects each block contains; l = lambda, the number of blocks in which every two objects occur together
     v, b, r, k, l = instance["v"], instance["b"], instance["r"], instance["k"], instance["l"]
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model
 
-    # matrix[i][j] = 1 if object i is in block j
+    # matrix[i][j] = 1 if object i is in block j (the v x b incidence matrix)
     matrix = [[model.bool() for _ in range(b)] for _ in range(v)]
 
     # Each object occurs in exactly r blocks

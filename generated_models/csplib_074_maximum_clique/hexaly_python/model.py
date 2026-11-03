@@ -3,6 +3,7 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # n = number of vertices of the graph; adj[i][j] = 1 if vertices i and j are joined by an edge, 0 if not
     n, adj = instance["n"], instance["adj"]
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model
@@ -10,7 +11,7 @@ def build(instance):
     # c[i] = 1 if vertex i is in the clique
     c = [model.bool() for _ in range(n)]
 
-    # Two vertices that are not adjacent are not both in the clique
+    # Every two vertices of the clique are adjacent: two vertices that are not adjacent are not both in it
     for i in range(n):
         for j in range(i + 1, n):
             if not adj[i][j]:

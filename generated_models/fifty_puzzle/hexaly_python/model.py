@@ -3,6 +3,7 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # values[i] = the number on dummy i; target_sum = the sum the knocked-over numbers must reach exactly
     values, target = instance["values"], instance["target_sum"]
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model

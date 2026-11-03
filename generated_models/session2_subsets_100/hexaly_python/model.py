@@ -3,12 +3,13 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # A = the given set of different integers; S and T are chosen among its elements
     a = instance["A"]
     n = len(a)
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model
 
-    # in_S[i] and in_T[i] = 1 if element i is in S or in T
+    # in_S[i] = 1 if element a[i] is in S; in_T[i] = 1 if element a[i] is in T (both lists have the length of A)
     in_S = [model.bool() for _ in range(n)]
     in_T = [model.bool() for _ in range(n)]
 

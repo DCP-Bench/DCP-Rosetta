@@ -3,11 +3,13 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # n = number of steps of the stair; m1, m2 = fewest and most steps that one move may take
     n, m1, m2 = instance["n"], instance["m1"], instance["m2"]
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model
 
-    # steps[i] is the number of steps taken at move i, or 0 when no step is taken
+    # steps[i] is the number of steps taken at move i, or 0 when no step is taken. There are n entries because the
+    # output lists n moves; the upper bound m2 is the most steps one move may take.
     steps = [model.int(0, m2) for _ in range(n)]
 
     # Every move is either empty or takes between m1 and m2 steps

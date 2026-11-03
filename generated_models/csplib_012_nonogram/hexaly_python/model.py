@@ -3,7 +3,9 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # rows, cols = grid height and width (row_rule_len and col_rule_len, the padded rule lengths, are not read)
     rows, cols = instance["rows"], instance["cols"]
+    # row_rules[r] / col_rules[c] = the block lengths of that row / column, left to right / top to bottom.
     # Rules are padded with leading zeros to a common length; the non-zero entries are the blocks in order
     row_blocks = [[b for b in rule if b > 0] for rule in instance["row_rules"]]
     col_blocks = [[b for b in rule if b > 0] for rule in instance["col_rules"]]
@@ -16,7 +18,7 @@ def build(instance):
     def line(cells, blocks):
         """Place the blocks along one row or column and tie its cells to them."""
         size = len(cells)
-        # start[i] is the first cell of block i
+        # start[i] is the first cell of block i; it must end inside the line, hence the upper bound
         start = [model.int(0, size - length) for length in blocks]
         # Blocks keep their order with at least one empty cell between them
         for i in range(len(blocks) - 1):
@@ -26,8 +28,10 @@ def build(instance):
             covered = [model.and_(start[i] <= c, c < start[i] + blocks[i]) for i in range(len(blocks))]
             model.constraint(cells[c] == model.sum(covered))
 
+    # Every row shows its sequence of shaded blocks
     for r in range(rows):
         line(board[r], row_blocks[r])
+    # Every column shows its sequence of shaded blocks
     for c in range(cols):
         line([board[r][c] for r in range(rows)], col_blocks[c])
 

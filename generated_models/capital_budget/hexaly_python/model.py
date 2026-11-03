@@ -3,8 +3,10 @@ import hexaly.optimizer as hx
 
 
 def build(instance):
+    # npv[i] = net present value that investment i yields; cash_flow[i] = cash outflow investment i needs now
+    # budget = total amount available for investment now
     npv, cash_flow, budget = instance["npv"], instance["cash_flow"], instance["budget"]
-    n = len(npv)
+    n = len(npv)  # number of investments
     optimizer = hx.HexalyOptimizer()
     model = optimizer.model
 
