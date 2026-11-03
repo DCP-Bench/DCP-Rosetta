@@ -1,7 +1,7 @@
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     model = Model()
     x = model.addVar(name="x", vtype="I", lb=0, ub=n)

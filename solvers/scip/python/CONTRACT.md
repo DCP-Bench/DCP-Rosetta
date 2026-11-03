@@ -8,20 +8,23 @@ worker process it supervises.
 ## Submission file
 
 One Python file, `model.py`. It may import `pyscipopt`, `numpy` and the standard library;
-nothing else is installed, and no other file of yours is staged. Do not call
-`optimize()`, and do not set the time limit, threads, gap or presolve: the runner does
-what it needs (see Solving).
+nothing else is installed, and no other file of yours is staged. Outside the standalone
+run block, do not call `optimize()`, and do not set the time limit, threads, gap or
+presolve: the runner does what it needs (see Solving). The run block, which the runner
+never executes, solves and prints with `numpy`.
 
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[pyscipopt.Model, dict]:
+def create_model(instance) -> tuple[pyscipopt.Model, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once, in its worker process. It
+The runner imports the file as module `candidate` and calls `create_model(instance)`
+once, in its worker process. Models retained before 2026-11-03 name it `build(instance)`,
+which the runner still accepts; write `create_model`. It
 must return a 2-tuple (not a list) `(model, outputs)` with `model` a `pyscipopt.Model`;
 anything else is an `error` (`execution_error`). Anything the module prints, at import or
-in `build`, goes to stderr.
+in `create_model`, goes to stderr.
 
 ## Instance
 
@@ -34,8 +37,8 @@ take every size from the data itself, not from that shape.
 ## Outputs
 
 `outputs` is a non-empty `dict` mapping each declared output name to a leaf or a nested
-`list`/`tuple` of leaves. Anything with `.tolist()` that is not itself a variable or an
-expression (a NumPy array) is expanded element by element. A leaf is one of:
+`list`/`tuple` of leaves. A NumPy array, including a `MatrixVariable` from
+`addMatrixVar` and a `MatrixExpr`, is expanded element by element. A leaf is one of:
 
 - a variable (`addVar`): its value is rounded to the nearest integer, so a binary is
   reported as `0`/`1`, an integer as an integer;
@@ -54,15 +57,16 @@ only after SCIP proved its status `optimal` and holds a solution, never from the
 `model.setObjective(expr, "minimize")` or `"maximize"`. The objective must be linear; an
 objective with no variable terms (never set, or a constant) is a satisfaction problem.
 
-Hold the objective in a bounded integer variable: `z = model.addVar(vtype="I", lb=..,
-ub=..)` with bounds from the data, `model.addCons(z == expr)`, `model.setObjective(z,
-...)`. The runner pins the objective to the proven optimum before enumerating (see
-Solving); with a bare expression as objective, one model proved its optimum in 2 s and
-then timed out searching for the second optimal solution.
+The runner pins the objective to the proven optimum before enumerating (see Solving).
+When the search for a second optimal solution is slow, hold the objective in a bounded
+integer variable: `z = model.addVar(vtype="I", lb=.., ub=..)` with bounds from the data,
+`model.addCons(z == expr)`, `model.setObjective(z, ...)`. With a bare expression as
+objective, one model proved its optimum in 2 s and then timed out searching for the
+second optimal solution.
 
 ## Solving
 
-- Forced after `build` returns, over the submission's own settings: `hideOutput()`,
+- Forced after `create_model` returns, over the submission's own settings: `hideOutput()`,
   `parallel/maxnthreads = 1`, `limits/gap = 0` and `limits/absgap = 0` (so `optimal`
   means proven whatever the submission set), and `limits/time` = the budget left before
   each solve. Other parameters the submission sets are kept.
@@ -90,7 +94,7 @@ then timed out searching for the second optimal solution.
   its final status. A worker that dies on a signal is `error` naming the signal
   (`SCIP worker terminated by signal SIGSEGV`); one that exits nonzero, e.g. through
   `sys.exit(3)`, is `error` with that status (`SCIP worker exited with status 3`).
-- Time: the deadline is set in the worker before `build` runs, so importing and building
+- Time: the deadline is set in the worker before `create_model` runs, so importing and building
   spend the budget. Each solve gets the time left; at budget + 5 s the supervisor kills
   the worker and reports `timeout`.
 - A legacy request is `unsupported`.
@@ -138,26 +142,100 @@ dcp-eval/scip_python:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_scip.py](../../../tests/fixtures/model_scip.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
+# knapsack: a SCIP (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python knapsack.py knapsack.json
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n = instance["n"]
-    model = Model()
-    x = model.addVar(name="x", vtype="I", lb=0, ub=n)
-    y = model.addVar(name="y", vtype="I", lb=0, ub=n)
-    if instance["optimize"]:
-        model.addCons(x + y >= n)
-        model.setObjective(x + y, "minimize")
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    model = Model("knapsack")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [model.addVar(f"x_{i}", vtype="B") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model.addCons(quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
+
+    # Pack the most valuable selection.
+    model.setObjective(quicksum(v * xi for v, xi in zip(values, x)), "maximize")
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
     else:
-        model.addCons(x + y == n)
-    return model, {"x": x, "y": y}
+        print("No solution:", model.getStatus())
 ```
 
-An earlier n-queens model of the scip_python skill (one-hot queens per row and column,
-diagonal constraints, outputs as column numbers from 1) was accepted on all instances of
-`csplib_054_n_queens`.
+## Standalone run
+
+Every model carries the header and the run block of the example, with `knapsack` replaced
+by the problem id, so a reader can copy it from the catalogue and run it with PySCIPOpt and
+numpy (the wheel bundles SCIP). Nothing else goes in either: the header is the first lines
+of the file, the run block the last, and the model sits between them. The runner loads the
+file as module `candidate`, so the block never runs during evaluation.
+
+The run block silences SCIP, solves once, and prints each output as `round(model.getVal(v))`
+through `numpy.vectorize` when the status is `"optimal"`. It sets no gap: SCIP's default
+`limits/gap` and `limits/absgap` are 0, so `"optimal"` is a proven optimum, and it is also
+the status of a satisfaction model with a solution. Otherwise it prints the status, such as
+`infeasible`; `inforunbd` means presolve could not tell infeasible from unbounded (the
+runner then re-solves with presolve off). PySCIPOpt has no call that reads a plain list of
+variables (`getVal` takes one variable or expression, or a matrix), hence `numpy.vectorize`,
+which reads lists, nested lists, matrix variables and matrix expressions alike. It fails on
+a plain `int` or `bool` (`TypeError`), on an empty list and on a ragged nested list, so give
+a fixed output as a variable and keep each output rectangular.
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())
+```

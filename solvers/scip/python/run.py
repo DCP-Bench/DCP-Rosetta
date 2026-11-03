@@ -1,6 +1,7 @@
 """Runner protocol for the scip_python integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(model, outputs)`, where
+A submission defines `create_model(instance)` (`build` in models retained earlier)
+returning `(model, outputs)`, where
 `model` is a `pyscipopt.Model` and `outputs` maps declared names to variables or
 linear expressions. The objective is whatever the submission set with
 `setObjective`; an objective with no variable terms is a satisfaction problem.
@@ -8,7 +9,7 @@ linear expressions. The objective is whatever the submission set with
 Five things about SCIP shape this runner.
 
 SCIP stops at a gap of `limits/gap` and `limits/absgap`. The runner sets both to
-0 after `build` returns, so `optimal` means proven whatever the submission set.
+0 after `create_model` returns, so `optimal` means proven whatever the submission set.
 
 SCIP reports values as floats within its feasibility tolerance. The runner rounds
 every integer declared output, and a continuous declared value must itself be
@@ -132,15 +133,23 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("build(instance) must return (model, outputs)")
+        raise ValueError("create_model(instance) must return (model, outputs)")
     model, outputs = returned
     if not isinstance(model, Model):
-        raise ValueError("build(instance) must return a pyscipopt.Model")
+        raise ValueError("create_model(instance) must return a pyscipopt.Model")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return model, outputs
+
+
+def is_array(value):
+    """A NumPy array, including PySCIPOpt's MatrixVariable and MatrixExpr (which carry
+    vtype and terms of their own), but not a single variable or expression."""
+    return hasattr(value, "ndim") or (
+        hasattr(value, "tolist") and not hasattr(value, "terms") and not hasattr(value, "vtype"))
 
 
 def leaves(value):
@@ -149,7 +158,7 @@ def leaves(value):
         return [x for v in value.values() for x in leaves(v)]
     if isinstance(value, (list, tuple)):
         return [x for v in value for x in leaves(v)]
-    if hasattr(value, "tolist") and not hasattr(value, "terms") and not hasattr(value, "vtype"):
+    if is_array(value):
         return leaves(value.tolist())
     return [value]
 
@@ -160,7 +169,7 @@ def resolved(value, read_one):
         return {k: resolved(v, read_one) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [resolved(v, read_one) for v in value]
-    if hasattr(value, "tolist") and not hasattr(value, "terms") and not hasattr(value, "vtype"):
+    if is_array(value):
         return resolved(value.tolist(), read_one)
     return read_one(value)
 

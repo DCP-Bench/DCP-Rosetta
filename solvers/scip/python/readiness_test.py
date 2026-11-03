@@ -5,9 +5,10 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver scip_python` runs this and keeps
 its output as the readiness evidence.
 
-Candidates are pyscipopt modules with `build(instance)`. The crash and exit checks
-use the three ways the worker can die without a status: a SIGSEGV from an
-indicator constraint without a binary, a SIGABRT, and a sys.exit.
+Candidates are pyscipopt modules with `build(instance)`, the entrypoint of models
+retained before the standalone form; `standalone_block` checks `create_model`. The
+crash and exit checks use the three ways the worker can die without a status: a
+SIGSEGV from an indicator constraint without a binary, a SIGABRT, and a sys.exit.
 The isolation check drives the image directly under the evaluator's container
 flags instead of through a submission.
 """
@@ -74,6 +75,16 @@ GOOD = HEADER + BOUNDED + ("    model.addCons(x + y == n)\n"
 OPTIMAL = HEADER + BOUNDED + ("    model.addCons(x + y >= n)\n"
                               "    model.setObjective(x + y, 'SENSE')\n"
                               "    return model, {'x': x, 'y': y}\n")
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    model.optimize()\n"
+    "    print(outputs)\n")
 # Integer outputs with no upper bound, so the no-good cannot lean on one.
 UNBOUNDED = HEADER + ("    x = model.addVar(name='x', vtype='I', lb=0)\n"
                       "    y = model.addVar(name='y', vtype='I', lb=0)\n"
@@ -93,6 +104,12 @@ def build(instance):
     model.setObjective(quicksum(v * x[i] for i, v in enumerate(values)), "maximize")
     return model, {{"x": x}}
 '''
+# matrix_output: the knapsack with its items as a MatrixVariable, a NumPy array that also
+# has vtype; the runner reads it element by element, like a list.
+MATRIX_MODEL = KNAPSACK_MODEL.replace(
+    'x = [model.addVar(name=f"x{i}", vtype="B") for i in range(len(weights))]',
+    'x = model.addMatrixVar(len(weights), vtype="B", name="x")')
+assert MATRIX_MODEL != KNAPSACK_MODEL
 # Rows of different lengths: the model reads the last item of every row.
 RAGGED_MODEL = ("from pyscipopt import Model\n\n\n"
                 "def build(instance):\n    rows = instance['rows']\n    model = Model()\n"
@@ -183,8 +200,15 @@ UNPROVEN = HEADER + BOUNDED + (
     "    model.addCons(x + y == n)\n"
     "    model.setObjective(quicksum(s for pair in slack for s in pair), 'minimize')\n"
     "    return model, {'x': x, 'y': y}\n")
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
 ISOLATED = HEADER + ("    import os, socket\n"
-                     "    assert os.getuid() != 0, 'container runs as root'\n"
+                     "    def host_uid(uid):\n"
+                     "        for line in open('/proc/self/uid_map'):\n"
+                     "            inside, outside, count = map(int, line.split())\n"
+                     "            if inside <= uid < inside + count:\n"
+                     "                return outside + uid - inside\n"
+                     "    assert os.getuid() != 0 or host_uid(0) != 0, 'container runs as root on the host'\n"
                      "    assert sorted(os.listdir('/input')) == ['model.py', 'request.json'], 'unexpected /input'\n"
                      "    assert not os.path.exists('/dataset'), 'dataset is visible to the candidate'\n"
                      "    probe = socket.socket()\n"
@@ -239,6 +263,8 @@ def main():
         check("general_constraints", GENERAL, solution_limit=3)
         check("auxiliary_free_distinct", AUXILIARY, solution_limit=2)
         check("library_stdout", NOISY)
+        check("standalone_block", STANDALONE)
+        check("matrix_output", MATRIX_MODEL, reference=KNAPSACK)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

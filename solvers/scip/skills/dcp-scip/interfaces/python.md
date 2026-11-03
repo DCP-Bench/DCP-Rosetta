@@ -9,6 +9,7 @@ outcomes and enumeration strategy: [SKILL.md](../SKILL.md).
 - [Modelling](#modelling)
 - [Solving](#solving)
 - [All solutions](#all-solutions)
+- [Readable models](#readable-models)
 - [Common issues](#common-issues)
 - Encodings (`!=`, `abs`, min/max, `//`, `%`, logic, products, symmetry): [references/python/encodings.md](../references/python/encodings.md)
 - Examples: [n-queens](../assets/python/n-queens/README.md) (satisfy), [n-queens-all](../assets/python/n-queens-all/README.md) (all solutions), [all-optimal](../assets/python/all-optimal/README.md), [knapsack](../assets/python/knapsack/README.md) (maximise), [assignment](../assets/python/assignment/README.md) (minimise), [infeasible](../assets/python/infeasible/README.md), [scheduling](../assets/python/scheduling/README.md), [json-input](../assets/python/json-input/README.md) (data from a JSON file)
@@ -55,6 +56,7 @@ Reference: [Model API](https://pyscipopt.readthedocs.io/en/latest/api/model.html
 | Need | API |
 |---|---|
 | variable | [`m.addVar(name=, vtype="B"\|"I"\|"C", lb=, ub=)`](https://pyscipopt.readthedocs.io/en/latest/api/model.html); `lb` defaults to **0**, `ub=None` is infinity. Give every integer tight finite bounds from the data |
+| array of variables | [`x = m.addMatrixVar((n, k), vtype="B", name="x")`](https://pyscipopt.readthedocs.io/en/latest/tutorials/matrix.html): a NumPy-shaped array (also `lb=`, `ub=`). Constraints over whole rows or columns in one call: `m.addMatrixCons(x.sum(axis=1) == 1)`; products with data `(w * x).sum()`, `x @ v`. A plain list of `addVar` works as well; use the matrix form where the problem is a grid or table |
 | linear constraint | `m.addCons(expr <= rhs)`, `>=`, `==`; sums with `quicksum(c * x[i] for i in I)` |
 | ranged `lo <= e <= hi` | `m.addCons((lo <= e) <= hi)` with the parentheses, or two constraints; without them `TypeError: Can't evaluate constraints as booleans` |
 | discrete choice, all-different, element | one-hot binaries: [encodings](../references/python/encodings.md#discrete-choices-and-all-different) |
@@ -96,6 +98,10 @@ Parameters: [SCIP parameter list](https://www.scipopt.org/doc/html/PARAMETERS.ph
   `inforunbd`, and presolve off gives `infeasible`. With `m.addCons(2 * z == 2 * x + 1)`
   for an integer `z` instead, presolve off gives `unbounded`.
 - Read values with `m.getVal(var)` and `m.getObjVal()`; round integers (`round(...)`).
+  `m.getVal(x)` on a matrix variable or matrix expression returns an array of dtype
+  `object`, so `np.round` fails on it: use `m.getVal(x).astype(float).round().astype(int)`,
+  or `np.vectorize(lambda v: round(m.getVal(v)))`, which also reads nested lists of
+  variables and expressions. `getVal` refuses a plain list, `int` or `bool` (`TypeError`).
   `m.getBestSol()[expr]` evaluates any expression in the best solution.
 - **Check the status first.** With no solution `getVal` raises `Warning: No solution
   available` and `getBestSol()` returns `None` (6.3.0); after `freeTransform()` it still
@@ -141,6 +147,54 @@ one). Cap the list when a few are enough: stop the loop once `len(solutions)` re
 cap. When only the **number** of solutions is needed and the model is pure
 linear over binaries (no indicators), `m.count()` then `m.getNCountedSols()` is much faster
 (92 in under 1 s), but it does not return the solutions.
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it: a general constraint where SCIP has one
+  (`addConsIndicator`, `addConsAnd`, `addConsCumulative`, ...), `quicksum` over the data,
+  or a matrix variable with `addMatrixCons` for a grid; variables kept as lists, nested
+  lists or matrices so they print as a whole.
+
+Build the model in one function that creates the `Model`, adds the constraints, sets the
+objective when there is one, and returns the model with the variables to print. For
+example:
+
+```python
+from pyscipopt import Model, quicksum
+
+
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    model = Model("knapsack")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [model.addVar(f"x_{i}", vtype="B") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model.addCons(quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
+
+    # Pack the most valuable selection.
+    model.setObjective(quicksum(v * xi for v, xi in zip(values, x)), "maximize")
+
+    return model, {"x": x}
+```
+
+Solve with `model.hideOutput()` and `model.optimize()`, check for `"optimal"` (no gap to
+set: SCIP's default is 0), and print each output as `round(model.getVal(v))`;
+`numpy.vectorize` applies it to a nested list or a matrix in one call. Give a fixed output
+as a variable, since `getVal` refuses a plain number.
 
 ## Common issues
 

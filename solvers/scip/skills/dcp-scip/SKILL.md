@@ -52,10 +52,10 @@ Lessons that turned timeouts into solves:
 - **Large coefficients in one linear equality are fine**: a cryptarithm's
   `SEND + MORE == MONEY` with `10**k` weights solved in milliseconds; no need to split it
   into column-wise carries.
-- **Hold the objective in a bounded integer variable** (`z == expr`, bounds from the data,
-  `setObjective(z)`): it can then be pinned to enumerate optima. With a bare expression as
-  objective, one model proved its optimum in 2 s and then timed out finding a second
-  optimal solution.
+- **To enumerate optima, hold the objective in a bounded integer variable** (`z == expr`,
+  bounds from the data, `setObjective(z)`): it can then be pinned. With a bare expression
+  as objective, one model proved its optimum in 2 s and then timed out finding a second
+  optimal solution. For a single optimum a bare expression is fine.
 
 ## Solving
 
