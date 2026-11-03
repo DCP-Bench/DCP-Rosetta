@@ -1,11 +1,16 @@
-# Divisible by 1 through 9: find the 10-digit number that uses each digit 0..9 exactly once and
-# where the number formed by its first n digits is divisible by n, for n = 1..10.
+# divisible_by_1_through_9: a PySAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/divisible_by_1_through_9.html
+# Run it (after `pip install "python-sat[pblib]" numpy`) with:
+#   python divisible_by_1_through_9.py
+
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    # The number has 10 digits, each 0..9 (given by the problem; the instance has no fields).
+def create_model(instance):
+    """Find a 10-digit number that uses each digit 0 to 9 exactly once, where the
+    number formed by its first n digits is divisible by n, for n = 1 to 10."""
+    # The number has 10 digits; the problem states this, so the instance holds no data.
     n_digits = 10
 
     pool = IDPool()
@@ -35,3 +40,21 @@ def build(instance):
 
     # The digits of the number, read from left to right.
     return engine.clausify(), {"digits": x}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from pysat.solvers import Solver
+
+    formula, outputs = create_model({})
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

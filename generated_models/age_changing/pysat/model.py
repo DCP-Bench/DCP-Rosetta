@@ -1,60 +1,51 @@
-# Age changing: starting from my age and applying the four operations +2, /8, -3, *7 in some
-# order gives my husband's age; starting from his age and applying the same four operations in
-# a different order gives mine. What are the two ages?
+# age_changing: a PySAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+# Run it (after `pip install "python-sat[pblib]" numpy`) with:
+#   python age_changing.py
+
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    # The four operations, each as the function that gives the new age from the old one, or None
-    # when the operation does not apply. "/8" only applies when the old age is a multiple of 8
-    # (the reference states it as 8 * new == old). These belong to the problem statement.
+def create_model(instance):
+    """Starting from my age and applying the four operations +2, /8, -3 and *7 in some
+    order gives my husband's age. Starting from his age and applying the same four
+    operations in a different order gives my age. Find both ages."""
+    # The four operations, each giving the new age from the old one. "/8" only applies
+    # to an age that is a multiple of 8; for any other age it gives no result.
     operations = [
         lambda old: old + 2,
         lambda old: old // 8 if old % 8 == 0 else None,
         lambda old: old - 3,
         lambda old: old * 7,
     ]
-    n = len(operations)
-    age_low, age_high = 16, 120  # both ages lie in 16..120 (given by the problem)
-    value_low, value_high = 1, 1000  # every age on the way lies in 1..1000 (given by the problem)
+    n_ops = len(operations)
 
     pool = IDPool()
-    m = Integer("m", age_low, age_high, vpool=pool)  # my age
-    h = Integer("h", age_low, age_high, vpool=pool)  # my husband's age
 
-    # perm1[i] / perm2[i] = the operation applied in step i, when starting from my age / his age
-    perm1 = [Integer(f"perm1_{i}", 0, n - 1, vpool=pool) for i in range(n)]
-    perm2 = [Integer(f"perm2_{i}", 0, n - 1, vpool=pool) for i in range(n)]
+    # My age and my husband's age, both between 16 and 120.
+    m = Integer("m", 16, 120, vpool=pool)
+    h = Integer("h", 16, 120, vpool=pool)
 
-    # hlist[i] = the age after i steps when starting from my age. It starts at my age and ends at
-    # my husband's age, so the first and last entries are the variables m and h themselves.
-    hlist = [m] + [Integer(f"hlist{i}", value_low, value_high, vpool=pool) for i in range(1, n)] + [h]
-    # mlist[i] = the age after i steps when starting from his age. It starts at his age and ends
-    # at my age.
-    mlist = [h] + [Integer(f"mlist{i}", value_low, value_high, vpool=pool) for i in range(1, n)] + [m]
+    # perm1[i] is the operation applied at step i when starting from my age, and perm2[i]
+    # is the operation applied at step i when starting from his age.
+    perm1 = [Integer(f"perm1_{i}", 0, n_ops - 1, vpool=pool) for i in range(n_ops)]
+    perm2 = [Integer(f"perm2_{i}", 0, n_ops - 1, vpool=pool) for i in range(n_ops)]
 
-    ages = list(dict.fromkeys(hlist + mlist))
-    engine = IntegerEngine(vars=ages + perm1 + perm2, vpool=pool)
+    # from_mine[i] is the age after i steps starting from my age. It starts at my age and
+    # ends at my husband's age. The ages in between lie between 1 and 1000.
+    from_mine = [m] + [Integer(f"from_mine{i}", 1, 1000, vpool=pool) for i in range(1, n_ops)] + [h]
+    # from_his[i] is the age after i steps starting from his age. It starts at his age and
+    # ends at my age.
+    from_his = [h] + [Integer(f"from_his{i}", 1, 1000, vpool=pool) for i in range(1, n_ops)] + [m]
 
-    # each of the two sequences uses every operation exactly once
-    engine.add_alldifferent(perm1)
-    engine.add_alldifferent(perm2)
+    # Each age variable is listed once: my age and his age appear in both sequences.
+    ages = list(dict.fromkeys(from_mine + from_his))
 
-    cnf = engine.clausify()
-
-    # the two sequences are different orders: some step uses a different operation
-    differs = [pool.id(("differs", i)) for i in range(n)]
-    cnf.append(differs)
-    for i in range(n):
-        for k in range(n):
-            cnf.append([-differs[i], -perm1[i].equals(k), -perm2[i].equals(k)])
-
-    # each step applies the chosen operation to the age before it to give the age after it.
-    # PySAT has no division and multiplication of a variable by an operation chosen at solving
-    # time, so every operation is listed value by value: the old age fixes the new one, and an
-    # old age that the operation cannot take (or that leaves the allowed values) is excluded.
-    def apply_step(perm, old, new):
+    # The step with operation perm turns the age old into the age new. For each operation
+    # and each value of old, the clauses force new to the result, or rule the value out
+    # when the operation does not apply to it or the result is not an allowed age.
+    def apply_step(cnf, perm, old, new):
         for k, operation in enumerate(operations):
             for value in range(old.lb, old.ub + 1):
                 result = operation(value)
@@ -63,8 +54,44 @@ def build(instance):
                 else:
                     cnf.append([-perm.equals(k), -old.equals(value)])
 
-    for i in range(n):
-        apply_step(perm1[i], hlist[i], hlist[i + 1])
-        apply_step(perm2[i], mlist[i], mlist[i + 1])
+    engine = IntegerEngine(vars=ages + perm1 + perm2, vpool=pool)
+
+    # Each of the two orders uses every operation exactly once.
+    engine.add_alldifferent(perm1)
+    engine.add_alldifferent(perm2)
+
+    cnf = engine.clausify()
+
+    # differs[i] is true when the two orders use different operations at step i. The two
+    # orders differ at some step.
+    differs = [pool.id(("differs", i)) for i in range(n_ops)]
+    cnf.append(differs)
+    for i in range(n_ops):
+        for k in range(n_ops):
+            cnf.append([-differs[i], -perm1[i].equals(k), -perm2[i].equals(k)])
+
+    # Each step applies the operation chosen for it to the age before it, giving the age
+    # after it. The first sequence runs from my age to his, the second from his to mine.
+    for i in range(n_ops):
+        apply_step(cnf, perm1[i], from_mine[i], from_mine[i + 1])
+        apply_step(cnf, perm2[i], from_his[i], from_his[i + 1])
 
     return cnf, {"m": m, "h": h}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from pysat.solvers import Solver
+
+    formula, outputs = create_model({})
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

@@ -1,6 +1,9 @@
-# Perfect square placement: pack squares of the given integer sizes into a big square
-# without overlap and with all borders parallel to the big square. The areas add up
-# to the area of the big square, so the packing leaves no gap.
+# csplib_009_perfect_square_placement: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_009_perfect_square_placement.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_009_perfect_square_placement.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_009_perfect_square_placement.py csplib_009_perfect_square_placement.json
+
 from itertools import combinations
 
 from pysat.formula import IDPool
@@ -8,88 +11,123 @@ from pysat.integer import Integer, IntegerEngine
 from pysat.pb import PBEnc
 
 
-def at_least(var, value):
-    """Literal for var >= value; True or False when that holds for the whole domain or none of it."""
-    if value <= var.lb:
+def at_least(coordinate, value):
+    """The condition that the coordinate is at least value. It is True or False when the
+    coordinate's range already decides it."""
+    if value <= coordinate.lb:
         return True
-    if value > var.ub:
+    if value > coordinate.ub:
         return False
-    return var.ge(value)
+    return coordinate.ge(value)
 
 
-def negate(lit):
-    return (not lit) if isinstance(lit, bool) else -lit
+def at_most(coordinate, value):
+    """The condition that the coordinate is at most value."""
+    return negate(at_least(coordinate, value + 1))
 
 
-def at_most(var, value):
-    return negate(at_least(var, value + 1))
+def negate(condition):
+    return (not condition) if isinstance(condition, bool) else -condition
 
 
-def add_clause(cnf, *lits):
-    """Add the disjunction of lits, which may contain the constants True and False."""
+def add_clause(cnf, *conditions):
+    """Require that at least one of the conditions holds. A condition that is True satisfies
+    the requirement, and a condition that is False is left out."""
     kept = []
-    for lit in lits:
-        if lit is True:
+    for condition in conditions:
+        if condition is True:
             return
-        if lit is not False:
-            kept.append(lit)
+        if condition is not False:
+            kept.append(condition)
     cnf.append(kept)
 
 
-def build(instance):
-    base = instance["base"]    # side length of the large square
-    sides = instance["sides"]  # side lengths of the small squares
-    n = len(sides)
+def create_model(instance):
+    """Pack squares of the given whole-number sides into a big square of side base, so that
+    no two squares overlap, all borders are parallel to the big square, and the squares
+    leave no gap."""
+    base = instance["base"]    # side of the big square
+    sides = instance["sides"]  # sides[i]: side of small square i
+    n_squares = len(sides)
 
     pool = IDPool()
-    # x[i], y[i] = coordinates (from 0) of the lower-left corner of square i. A square
-    # must lie inside the large square, so its corner is at most base - side.
-    # The coupled encoding gives both "x = v" literals (needed to report the value) and
-    # "x >= v" literals (needed to compare positions without one clause per value pair).
-    x = [Integer(f"x{i}", 0, base - sides[i], encoding="coupled", vpool=pool) for i in range(n)]
-    y = [Integer(f"y{i}", 0, base - sides[i], encoding="coupled", vpool=pool) for i in range(n)]
+
+    # x[i] and y[i]: the lower-left corner of square i, counted from 0 along each side. The
+    # square lies inside the big square, so the corner is at most base minus its side.
+    x = [Integer(f"x{i}", 0, base - sides[i], encoding="coupled", vpool=pool)
+         for i in range(n_squares)]
+    y = [Integer(f"y{i}", 0, base - sides[i], encoding="coupled", vpool=pool)
+         for i in range(n_squares)]
+
+    # The corners take one whole-number value each; these clauses tie the values together.
     engine = IntegerEngine(vars=x + y, vpool=pool)
     cnf = engine.clausify()
 
-    def before(key, a, b, size_a):
-        """A literal that, when true, forces a + size_a <= b: for every value t of a,
-        'a >= t' implies 'b >= t + size_a'."""
+    def before(key, a, b, side_a):
+        """The condition that square a lies entirely before square b along one side, that
+        is a + side_a <= b. Required: for every value t of a, if a is at least t then b is
+        at least t + side_a."""
         selector = pool.id(key)
         for t in range(a.lb, a.ub + 1):
-            add_clause(cnf, -selector, negate(at_least(a, t)), at_least(b, t + size_a))
+            add_clause(cnf, -selector, negate(at_least(a, t)), at_least(b, t + side_a))
         return selector
 
-    # no two squares overlap: one lies completely to the left of, or below, the other
-    for a, b in combinations(range(n), 2):
+    # No two squares overlap: for each pair, one lies entirely to the left of the other,
+    # or entirely below it.
+    for a, b in combinations(range(n_squares), 2):
         cnf.append([before(("left", a, b), x[a], x[b], sides[a]),
                     before(("left", b, a), x[b], x[a], sides[b]),
                     before(("below", a, b), y[a], y[b], sides[a]),
                     before(("below", b, a), y[b], y[a], sides[b])])
 
-    # Redundant constraint. The areas add up to the area of the big square, so the
-    # squares tile it with no gap: every unit-wide column (and every unit-high row)
-    # of the big square is crossed by squares whose sides add up to base. It follows
-    # from the constraints above and is added because it prunes the search a lot.
-    for axis, position in (("column", x), ("row", y)):
+    # Implied rule that speeds up the search. The areas add up to the area of the big square,
+    # so every unit-wide column and every unit-high row of the big square is covered by
+    # squares whose sides add up to exactly base.
+    for axis, corner in (("column", x), ("row", y)):
         for c in range(base):
-            lits, weights, fixed = [], [], 0
-            for i in range(n):
-                # square i crosses the line c exactly when c - side < position <= c
-                low = at_least(position[i], c - sides[i] + 1)
-                high = at_most(position[i], c)
-                if low is True and high is True:
-                    fixed += sides[i]
+            # open_covers: squares that may or may not cover line c, with their sides;
+            # fixed_side: total side of the squares that surely cover it.
+            open_covers, open_sides, fixed_side = [], [], 0
+            for i in range(n_squares):
+                # Square i covers line c exactly when its corner lies in (c - side, c].
+                starts_after = at_least(corner[i], c - sides[i] + 1)
+                starts_by = at_most(corner[i], c)
+                if starts_after is True and starts_by is True:
+                    fixed_side += sides[i]
                     continue
-                if low is False or high is False:
+                if starts_after is False or starts_by is False:
                     continue
-                crosses = pool.id((axis, c, i))
-                add_clause(cnf, -crosses, low)
-                add_clause(cnf, -crosses, high)
-                add_clause(cnf, crosses, negate(low), negate(high))
-                lits.append(crosses)
-                weights.append(sides[i])
-            if lits:
-                cnf.extend(PBEnc.equals(lits=lits, weights=weights, bound=base - fixed,
-                                        vpool=pool).clauses)
+                covers = pool.id((axis, c, i))
+                add_clause(cnf, -covers, starts_after)
+                add_clause(cnf, -covers, starts_by)
+                add_clause(cnf, covers, negate(starts_after), negate(starts_by))
+                open_covers.append(covers)
+                open_sides.append(sides[i])
+            if open_covers:
+                cnf.extend(PBEnc.equals(lits=open_covers, weights=open_sides,
+                                        bound=base - fixed_side, vpool=pool).clauses)
 
     return cnf, {"x_coords": x, "y_coords": y}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

@@ -1,8 +1,9 @@
-# ACC basketball schedule (CSPLib 11): a double round-robin timetable for 9 basketball teams
-# over 18 dates (odd dates are weekday fixtures, even dates weekend fixtures), where each team
-# plays every other team once at home and once away, subject to nine groups of side constraints.
-# config[d][i] = j says that team i plays team j on date d (j = i is a bye), where[d][i] says
-# whether team i plays at home (0), has a bye (1) or plays away (2).
+# csplib_011_acc_basketball_schedule: a PySAT (Python) model from DCP Rosetta.
+# Download the `csplib_011_acc_basketball_schedule.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python csplib_011_acc_basketball_schedule.py csplib_011_acc_basketball_schedule.json
+
 from itertools import permutations
 
 from pysat.card import CardEnc, EncType
@@ -10,39 +11,45 @@ from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    n_teams = instance["n_teams"]
-    n_days = instance["n_days"]
+def create_model(instance):
+    """Find a double round-robin timetable for the 1997/98 Atlantic Coast Conference basketball
+    teams: over the dates, each team plays every other team once at home and once away,
+    subject to nine sets of rules on the schedule."""
+    n_teams = instance["n_teams"]  # the number of teams
+    n_days = instance["n_days"]    # the number of dates in the schedule
 
-    # The teams, their rivals and the other data below belong to the problem statement.
+    # The rules below name these teams and dates, so they fit only the 9 teams and 18 dates
+    # of the ACC problem.
+    assert n_teams == 9 and n_days == 18, "the rules below are written for the ACC problem"
+
+    # Clemson, Duke, Florida State, Georgia Tech, Maryland, North Carolina, North Carolina
+    # State, Virginia and Wake Forest, numbered from 0 in that order.
     CLEM, DUKE, FSU, GT, UMD, UNC, NCSt, UVA, WAKE = range(9)
-    assert n_teams == 9 and n_days == 18, "the constraints below are written for the ACC problem"
-    rival_pairs = [(DUKE, UNC), (CLEM, GT), (NCSt, WAKE), (UMD, UVA)]  # FSU has no rival
+    # Traditional rivals. Florida State has no rival.
+    rival_pairs = [(DUKE, UNC), (CLEM, GT), (NCSt, WAKE), (UMD, UVA)]
     rival = {}
     for first, second in rival_pairs:
         rival[first], rival[second] = second, first
-    # Mirroring scheme: pairs of dates (1-based in the statement) in which each team plays the
-    # same opponent, once at home and once away.
+    # Mirroring: pairs of dates on which each team plays the same opponent, once at home and
+    # once away. The dates are numbered from 1, as in the statement.
     mirror_pairs = [(1, 8), (2, 9), (3, 12), (4, 13), (5, 14), (6, 15), (7, 16), (10, 17), (11, 18)]
-    HOME, BYE, AWAY = 0, 1, 2
     days = range(n_days)
     teams = range(n_teams)
-    weekends = [d for d in days if d % 2 == 1]  # the even dates of the statement (0-based: odd)
-    last = n_days - 1
+    # Weekend dates are the even-numbered dates of the statement, which are odd indices here.
+    weekends = [d for d in days if d % 2 == 1]
+    last = n_days - 1  # the last date
 
     pool = IDPool()
-    # config[d][t] = the opponent of team t on day d (t itself means a bye)
+
+    HOME, BYE, AWAY = 0, 1, 2  # the values of where
+
+    # config[d][t]: the team that team t plays on date d; t itself means a bye
     config = [[Integer(f"config{d}_{t}", 0, n_teams - 1, vpool=pool) for t in teams] for d in days]
-    # where[d][t] = 0 if team t plays at home on day d, 1 if it has a bye, 2 if it plays away
+    # where[d][t]: HOME, BYE or AWAY, whether team t plays at home, has a bye or plays away on date d
     where = [[Integer(f"where{d}_{t}", 0, 2, vpool=pool) for t in teams] for d in days]
-    engine = IntegerEngine(vars=[v for row in config + where for v in row], vpool=pool)
 
-    # a team cannot have different opponents on the same day: all opponents of a day differ
-    for d in days:
-        engine.add_alldifferent(config[d])
-
-    cnf = engine.clausify()
-
+    # Conditions on date d for team t: it plays team u, it plays at home, it has a bye, or it
+    # plays away.
     def plays(d, t, u):
         return config[d][t].equals(u)
 
@@ -55,14 +62,23 @@ def build(instance):
     def away(d, t):
         return where[d][t].equals(AWAY)
 
-    # if team t plays team u on a day, then team u plays team t
+    engine = IntegerEngine(vars=[v for row in config + where for v in row], vpool=pool)
+
+    # On each date the pairings form a permutation: each team is met by exactly one team,
+    # itself for a bye.
+    for d in days:
+        engine.add_alldifferent(config[d])
+
+    cnf = engine.clausify()
+
+    # Matches are mutual: if t plays u on a date, then u plays t on that date.
     for d in days:
         for t in teams:
             for u in teams:
                 cnf.append([-plays(d, t, u), plays(d, u, t)])
 
-    # connect config and where: when two teams play each other, one is at home and the other
-    # away; a team plays itself exactly when it has a bye
+    # On each date, two teams that play each other are one at home and one away, and a team
+    # plays itself exactly when it has a bye.
     for d in days:
         for t in teams:
             cnf.append([-plays(d, t, t), bye(d, t)])
@@ -74,23 +90,23 @@ def build(instance):
                     cnf.append([-plays(d, t, u), -away(d, t), home(d, u)])
                     cnf.append([-plays(d, t, u), away(d, t), -home(d, u)])
 
-    # double round-robin: each team plays each other team exactly once at home (so, with the
-    # mirroring below, once away as well)
+    # Double round-robin: each team meets every other team exactly once at its own home.
     for t in teams:
         for u in teams:
             if u != t:
-                at_home_against_u = []
+                # home_dates: the dates on which t plays at home against u
+                home_dates = []
                 for d in days:
-                    literal = pool.id(("home_against", d, t, u))
-                    cnf.append([-literal, plays(d, t, u)])
-                    cnf.append([-literal, home(d, t)])
-                    cnf.append([literal, -plays(d, t, u), -home(d, t)])
-                    at_home_against_u.append(literal)
-                cnf.extend(CardEnc.equals(lits=at_home_against_u, bound=1, vpool=pool,
+                    hosts = pool.id(("home_against", d, t, u))
+                    cnf.append([-hosts, plays(d, t, u)])
+                    cnf.append([-hosts, home(d, t)])
+                    cnf.append([hosts, -plays(d, t, u), -home(d, t)])
+                    home_dates.append(hosts)
+                cnf.extend(CardEnc.equals(lits=home_dates, bound=1, vpool=pool,
                                           encoding=EncType.seqcounter).clauses)
 
-    # 1. Mirroring: on the two dates of a pair every team plays the same opponent, home on one
-    # date and away on the other (a bye stays a bye).
+    # 1. Mirroring: on the two dates of a pair, every team plays the same opponent, at home on
+    # one date and away on the other. A bye stays a bye.
     for first, second in mirror_pairs:
         d1, d2 = first - 1, second - 1
         for t in teams:
@@ -108,17 +124,17 @@ def build(instance):
         # 2. No two final aways: no team plays away on both of the last two dates.
         cnf.append([-away(last - 1, t), -away(last, t)])
 
-        # 3. Home/away/bye pattern.
+        # 3. Home, away and bye runs.
         for d in range(n_days - 2):
-            # no more than two home matches in a row
+            # No more than two home matches in a row.
             cnf.append([-home(d, t), -home(d + 1, t), -home(d + 2, t)])
-            # no more than two away matches in a row
+            # No more than two away matches in a row.
             cnf.append([-away(d, t), -away(d + 1, t), -away(d + 2, t)])
         for d in range(n_days - 3):
-            # no more than three away matches or byes in a row: one of four dates is at home
+            # No more than three away matches or byes in a row: one of every four dates is a home date.
             cnf.append([home(d + k, t) for k in range(4)])
         for d in range(n_days - 4):
-            # no more than four home matches or byes in a row: one of five dates is away
+            # No more than four home matches or byes in a row: one of every five dates is an away date.
             cnf.append([away(d + k, t) for k in range(5)])
 
         # 4. Weekend pattern: of the weekends, four at home, four away and one bye.
@@ -129,48 +145,71 @@ def build(instance):
         cnf.extend(CardEnc.equals(lits=[bye(d, t) for d in weekends], bound=1, vpool=pool,
                                   encoding=EncType.seqcounter).clauses)
 
-        # 5. First weekends: home matches or byes (i.e. not away) on at least two of the first
-        # five weekends.
+        # 5. First weekends: home matches or byes on at least two of the first five weekends.
         cnf.extend(CardEnc.atleast(lits=[-away(d, t) for d in weekends[:5]], bound=2, vpool=pool,
                                    encoding=EncType.seqcounter).clauses)
 
-        # 6. Rival matches: in the last date every team except FSU plays its rival, unless it
-        # plays FSU or has a bye.
+        # 6. Rival matches: on the last date, every team except Florida State plays its rival,
+        # unless it plays Florida State or has a bye.
         if t != FSU:
             cnf.append([plays(last, t, rival[t]), plays(last, t, FSU), bye(last, t)])
 
-    # 7. Constrained matches: Wake-UNC, Wake-Duke, GT-UNC and GT-Duke are each played at least
-    # once in dates 11 to 18.
+    # 7. Constrained matches: Wake Forest and Georgia Tech each play North Carolina and Duke
+    # at least once in dates 11 to 18.
     for t, u in [(WAKE, UNC), (WAKE, DUKE), (GT, UNC), (GT, DUKE)]:
         cnf.append([plays(d, t, u) for d in range(10, n_days)])
 
-    # 8. Opponent sequences
+    # 8. Opponent sequences.
     for t in teams:
         if t not in (DUKE, UNC):
-            # no team plays away against UNC and Duke on two consecutive dates
+            # No team plays away against North Carolina and Duke on two consecutive dates.
             for d in range(n_days - 1):
                 for first, second in [(UNC, DUKE), (DUKE, UNC)]:
                     cnf.append([-plays(d, t, first), -away(d, t),
                                 -plays(d + 1, t, second), -away(d + 1, t)])
         if t not in (UNC, DUKE, WAKE):
-            # no team plays UNC, Duke and Wake on three consecutive dates (in any order, home or away)
+            # No team plays North Carolina, Duke and Wake Forest on three consecutive dates,
+            # in any order and home or away.
             for d in range(n_days - 2):
                 for order in permutations([UNC, DUKE, WAKE]):
                     cnf.append([-plays(d + k, t, order[k]) for k in range(3)])
 
-    # 9. Other constraints
-    cnf.append([plays(10, UNC, DUKE)])      # UNC plays Duke in date 11 ...
-    cnf.append([plays(last, UNC, DUKE)])    # ... and in the last date
-    cnf.append([plays(1, UNC, CLEM)])       # UNC plays Clem in the second date
-    cnf.append([bye(15, DUKE)])             # Duke has a bye in date 16
-    cnf.append([-home(16, WAKE)])           # Wake does not play home in date 17
-    cnf.append([bye(0, WAKE)])              # Wake has a bye in the first date
+    # 9. Other constraints.
+    cnf.append([plays(10, UNC, DUKE)])      # North Carolina plays Duke on date 11 ...
+    cnf.append([plays(last, UNC, DUKE)])    # ... and on the last date
+    cnf.append([plays(1, UNC, CLEM)])       # North Carolina plays Clemson on date 2
+    cnf.append([bye(15, DUKE)])             # Duke has a bye on date 16
+    cnf.append([-home(16, WAKE)])           # Wake Forest does not play at home on date 17
+    cnf.append([bye(0, WAKE)])              # Wake Forest has a bye on date 1
     for t in (CLEM, DUKE, UMD, WAKE):
-        cnf.append([-away(last, t)])        # Clem, Duke, UMD and Wake do not play away in the last date
+        cnf.append([-away(last, t)])        # Clemson, Duke, Maryland and Wake Forest do not play away on the last date
     for t in (CLEM, FSU, GT, WAKE):
-        cnf.append([-away(0, t)])           # Clem, FSU, GT and Wake do not play away in the first date
+        cnf.append([-away(0, t)])           # Clemson, Florida State, Georgia Tech and Wake Forest do not play away on date 1
     for t in (FSU, NCSt):
-        cnf.append([-bye(last, t)])         # neither FSU nor NCSt has a bye in the last date
-    cnf.append([-bye(0, UNC)])              # UNC does not have a bye in the first date
+        cnf.append([-bye(last, t)])         # Florida State and NC State have no bye on the last date
+    cnf.append([-bye(0, UNC)])              # North Carolina has no bye on date 1
 
     return cnf, {"config": config, "where": where}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.solvers import Solver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

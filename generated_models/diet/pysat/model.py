@@ -1,85 +1,104 @@
-# Diet problem (hakank, diet1): buy whole units of four foods so that the
-# diet meets the minimum calories, chocolate, sugar and fat requirements at
-# the least total price, and report that price.
+# diet: a PySAT (Python) model from DCP Rosetta.
+# Download the `diet.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+# Then run it on the first instance (after `pip install "python-sat[pblib]" numpy`):
+#   python diet.py diet.json
+
 from math import gcd
 
 from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
 
-
-# Nutrient content of one unit of each food (chocolate cake, chocolate ice
-# cream, cola, pineapple cheesecake). The reference fixes this table as part
-# of the problem, not the instance, so it is mirrored here.
+# Nutrient content of one portion of each food: chocolate cake, chocolate ice cream,
+# cola and pineapple cheesecake.
 CALORIES = [400, 200, 150, 500]
-CHOCOLATE = [3, 2, 0, 0]
-SUGAR = [2, 2, 4, 4]
-FAT = [2, 4, 1, 5]
+CHOCOLATE = [3, 2, 0, 0]  # ounces
+SUGAR = [2, 2, 4, 4]      # ounces
+FAT = [2, 4, 1, 5]        # ounces
 
-# The reference declares cost in 0..1000, so a diet above 1000 is not allowed.
+# Diets costing more than this are not considered.
 MAX_COST = 1000
 
 
-def build(instance):
-    n = instance["n"]
-    price = instance["price"]
-    limits = instance["limits"]
+def create_model(instance):
+    """Given the prices and the nutritional requirements for each food, find the
+    diet of lowest cost that meets every requirement."""
+    n = instance["n"]            # the number of foods
+    price = instance["price"]    # price[i]: the price of one portion of food i
+    limits = instance["limits"]  # limits[k]: the least amount of nutrient k the diet must contain
     contents = [CALORIES, CHOCOLATE, SUGAR, FAT]
 
-    pool = IDPool()
+    pool = IDPool()  # names the variables of the model
 
-    # x[i] is the number of units of food i. The reference allows up to
-    # 10000; an optimal diet never buys more of a food than it would take to
-    # meet, on its own, every requirement it contributes to (one unit less
-    # would still meet them all, for less), so that bounds the domain. Order
-    # encoding: the domains are a dozen values and the constraints are sums.
-    x = []
+    # amount[i] is the number of portions of food i in the diet. No optimal diet buys more
+    # portions of a food than the largest number that meets one requirement on its own.
+    amount = []
     for i in range(n):
         enough = [-(-limits[j] // contents[j][i]) for j in range(len(contents))
                   if contents[j][i] > 0]
         top = max(enough + [1])
-        x.append(Integer(f"x_{i}", 0, top, encoding="order", vpool=pool))
+        amount.append(Integer(f"x_{i}", 0, top, encoding="order", vpool=pool))
 
-    # cost is the declared output. Every price total is a multiple of the
-    # common divisor of the prices, so the sum is stated over units of it
-    # (100 values instead of 1000 on the example), then scaled back below.
+    # Every price is a multiple of unit, the largest common divisor of the prices (1 when
+    # all prices are zero). The cost of a diet is then counted in units of unit.
     unit = 0
     for p in price:
         unit = gcd(unit, p)
     unit = unit or 1
-    units = Integer("cost_units", 0, max(MAX_COST // unit, 1),
-                    encoding="coupled", vpool=pool)
+    cost_units = Integer("cost_units", 0, max(MAX_COST // unit, 1), encoding="coupled", vpool=pool)
 
-    engine = IntegerEngine(vars=x + [units], vpool=pool)
+    engine = IntegerEngine(vars=amount + [cost_units], vpool=pool)  # constraints on the diet
 
-    # Each nutrient requirement is met (at least the limit).
+    # The diet contains at least the required amount of each nutrient.
     for j, content in enumerate(contents):
-        engine.add_linear(sum(content[i] * x[i] for i in range(n)) >= limits[j])
+        engine.add_linear(sum(content[i] * amount[i] for i in range(n)) >= limits[j])
 
-    # units is the total price of the diet in units.
-    engine.add_linear(sum((price[i] // unit) * x[i] for i in range(n)) - units == 0)
+    # The cost in units is the price of the portions bought, in units.
+    engine.add_linear(sum((price[i] // unit) * amount[i] for i in range(n)) - cost_units == 0)
 
     formula = WCNF()
     formula.extend(engine.clausify().clauses)
 
-    # cost = unit * units, within the reference's 0..MAX_COST: cost >= v
-    # exactly when units >= ceil(v / unit). The direct literals of the coupled
-    # encoding are what the runner reads the value from.
+    # cost is the price of the diet, which is cost_units times unit.
     cost = Integer("cost", 0, MAX_COST, encoding="coupled", vpool=pool)
     formula.extend(cost.domain_clauses())
+    # A diet costs at least v exactly when its cost in units is at least ceil(v / unit).
     for v in range(1, MAX_COST + 1):
         k = -(-v // unit)
-        if k <= units.ub:
-            formula.append([-cost.ge(v), units.ge(k)])
-            formula.append([cost.ge(v), -units.ge(k)])
+        if k <= cost_units.ub:
+            formula.append([-cost.ge(v), cost_units.ge(k)])
+            formula.append([cost.ge(v), -cost_units.ge(k)])
         else:
             formula.append([-cost.ge(v)])
-    if MAX_COST // unit + 1 <= units.ub:
-        formula.append([-units.ge(MAX_COST // unit + 1)])
+    if MAX_COST // unit + 1 <= cost_units.ub:
+        formula.append([-cost_units.ge(MAX_COST // unit + 1)])
 
-    # Minimise the price: every unit of food i bought pays price[i].
+    # Minimise the price of the diet: each portion bought costs the price of its food.
     for i in range(n):
         if price[i] > 0:
-            for v in range(1, x[i].ub + 1):
-                formula.append([-x[i].ge(v)], weight=price[i])
+            for v in range(1, amount[i].ub + 1):
+                formula.append([-amount[i].ge(v)], weight=price[i])
 
     return formula, {"cost": cost}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from pysat.examples.rc2 import RC2Stratified
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    formula, outputs = create_model(instances[index])
+
+    # falsify as little soft-clause weight as possible
+    model = RC2Stratified(formula).compute()
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

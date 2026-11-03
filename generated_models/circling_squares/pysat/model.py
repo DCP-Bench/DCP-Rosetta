@@ -1,37 +1,30 @@
-# Circling the squares (Dudeney): put a different number in each of the ten squares of a circle
-# so that the sum of the squares of any two adjacent numbers equals the sum of the squares of
-# the two numbers diametrically opposite to them. Four numbers are given, and no number needs
-# more than two figures.
+# circling_squares: a PySAT (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+# Run it (after `pip install "python-sat[pblib]" numpy`) with:
+#   python circling_squares.py
+
 from pysat.card import CardEnc, EncType
 from pysat.formula import IDPool
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
-    names = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K"]  # the ten squares, around the circle
-    # The four numbers given in the problem statement (the problem has no instance data).
-    given = {"A": 16, "B": 2, "F": 8, "G": 14}
-    largest = 99  # no number needs more than two figures
+def create_model(instance):
+    """Circling the squares: place a different number in each of the ten squares of a circle
+    so that the sum of the squares of any two adjacent numbers equals the sum of the squares of
+    the two numbers diametrically opposite them. Four numbers are given, and no number needs
+    more than two figures."""
+    names = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K"]  # the squares, in order around the circle
+    given = {"A": 16, "B": 2, "F": 8, "G": 14}  # the numbers the puzzle places in squares A, B, F and G
+    largest = 99                                # no number needs more than two figures
 
     pool = IDPool()
-    # x[name] = the number placed in that square
+    # x[name] is the number placed in that square
     x = {name: Integer(name, 1, largest, vpool=pool) for name in names}
     engine = IntegerEngine(vars=list(x.values()), vpool=pool)
 
-    # all ten numbers are different
-    engine.add_alldifferent(list(x.values()))
-
-    # the numbers that are given
-    for name, value in given.items():
-        engine.add_linear(x[name] == value)
-
-    cnf = engine.clausify()
-
-    # same_sum_of_squares(x1, x2, y1, y2): x1^2 + x2^2 == y1^2 + y2^2.
-    # PySAT cannot multiply two variables, so squares are tabulated. The literal sums[s] stands
-    # for "the common sum of squares is s": every pair of values of (x1, x2) and of (y1, y2)
-    # forces the literal of its own sum, and at most one sum literal may hold, so both pairs
-    # have to give the same sum.
+    # The sum of the squares of x1 and x2 equals the sum of the squares of y1 and y2. The squares
+    # are tabulated, because the model cannot multiply two unknown numbers. sums[s] is true when
+    # the common sum of squares is s, and at most one s can be true.
     def same_sum_of_squares(x1, x2, y1, y2, tag):
         sums = {}
         for first, second in ((x1, x2), (y1, y2)):
@@ -44,8 +37,18 @@ def build(instance):
         cnf.extend(CardEnc.atmost(lits=list(sums.values()), bound=1, vpool=pool,
                                   encoding=EncType.seqcounter).clauses)
 
-    # each pair of adjacent squares has the same sum of squares as the pair opposite to it
+    # The ten numbers are all different.
+    engine.add_alldifferent(list(x.values()))
+
+    # The given numbers stand as they are.
+    for name, value in given.items():
+        engine.add_linear(x[name] == value)
+
+    cnf = engine.clausify()
+
+    # the numbers in the squares, named as in the puzzle
     A, B, C, D, E, F, G, H, I, K = (x[name] for name in names)
+    # Each pair of adjacent squares has the same sum of squares as the two squares opposite it.
     same_sum_of_squares(A, B, F, G, "AB")
     same_sum_of_squares(B, C, G, H, "BC")
     same_sum_of_squares(C, D, H, I, "CD")
@@ -53,3 +56,21 @@ def build(instance):
     same_sum_of_squares(E, F, K, A, "EF")
 
     return cnf, {name: x[name] for name in names}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from pysat.solvers import Solver
+
+    formula, outputs = create_model({})
+
+    solver = Solver(bootstrap_with=formula)
+    solver.solve()
+    model = solver.get_model()  # None when there is no solution
+
+    if model:
+        value = np.vectorize(lambda var: var.decode(model))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

@@ -274,6 +274,34 @@ class RenderingHelperTests(unittest.TestCase):
         finally:
             generate_site.INTEGRATIONS = saved
 
+    def test_a_solver_is_satisfaction_only_when_every_binding_says_so(self):
+        """The Solvers page measures such a solver against the satisfaction problems."""
+        saved = generate_site.INTEGRATIONS, generate_site.SOLVERS
+        generate_site.INTEGRATIONS = {"cvc5_python": {"optimization": False}, "z3_python": {},
+                                      "mixed_a": {"optimization": False}, "mixed_b": {}}
+        generate_site.SOLVERS = {"cvc5": {"bindings": ["cvc5_python"]}, "z3": {"bindings": ["z3_python"]},
+                                 "mixed": {"bindings": ["mixed_a", "mixed_b"]}}
+        try:
+            self.assertTrue(generate_site.satisfaction_only("cvc5"))
+            self.assertFalse(generate_site.satisfaction_only("z3"))
+            self.assertFalse(generate_site.satisfaction_only("mixed"))
+        finally:
+            generate_site.INTEGRATIONS, generate_site.SOLVERS = saved
+
+    def test_without_scopes_a_sat_and_maxsat_integration_counts_every_problem_under_sat(self):
+        """The Solvers page passes no scopes: PySAT models both kinds, so its SAT count is all of them."""
+        breakdown = generate_site.paradigm_breakdown(
+            {"queens": {"pysat": [verified("pysat")]}, "knapsack": {"pysat": [verified("pysat")]}},
+            {"pysat": {"id": "pysat", "paradigms": ["sat", "maxsat"]}},
+            VOCABULARY + [{"id": "maxsat", "name": "MaxSAT", "summary": "Weighted clauses."}],
+            problem_types={"queens": "satisfaction", "knapsack": "optimization"}, scopes={})
+        self.assertEqual(breakdown["by_paradigm"]["sat"], {"pysat": 2})
+        self.assertEqual(breakdown["by_paradigm"]["maxsat"], {"pysat": 2})
+
+    def test_an_average_is_rounded_half_up_to_one_decimal(self):
+        self.assertEqual(generate_site.one_decimal(161.25), "161.3")
+        self.assertEqual(generate_site.one_decimal(138.0), "138")
+
     def test_previews_read_formulas_and_markdown_as_plain_text(self):
         plain = generate_site.plain_text
         self.assertEqual(plain("a set of \\( m \\) integers \\( 0 = a_1 < a_2 < \\cdots < a_m \\)"),

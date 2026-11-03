@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-opus-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791120680.468147,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/pysat/python/CONTRACT.md": "c7f513bf8c8b5f7c2bc93b43dbf8e9d51477a9877227606c099fb4471b89effa"
+    },
+    "created_at": 1793650579.0920491,
     "problem_id": "csplib_013_progressive_party_problem",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fb10bba1c8c9a50becb25c2a0060521042c49c29799a5d97d0c5ba573ae6bf93",
-    "run_id": "20261004T1250Z-pysat-rc2-2963",
-    "schema": 2,
-    "skill_bundle_hash": "c603002f85e54ffd8989ad1889c87a8485fa52b8efa5bb6e67f17ed6b14f27f3",
-    "skill_source": "solvers\\pysat\\skills\\pysat",
+    "readiness_hash": "c40067a035bc7bcbf6b0d5b9f4a19836fb5b94944b7824d314e5e69a86cd4e81",
+    "run_id": "pysat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "584a37199caab74ffb205b35ecc886c3d7602130",
+      "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
       "modified": false,
-      "path": "solvers/pysat/skills/pysat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "cb23b9ae16db1fc8d9edcf84e9d69034fec7cf109212274edd71af03bdd28b55",
+        "source": "solvers/pysat/skills/dcp-pysat",
+        "version": {
+          "commit": "7d52a4f4e770ecf54dd37270cf65805de270b1e0",
+          "modified": false,
+          "path": "solvers/pysat/skills/dcp-pysat"
+        }
+      }
+    ],
     "solver_id": "pysat"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:2957a473257a188f9d4bfca1ce33bc5697befd70015c6297c6c8db0b56fd1031",
+      "id": "sha256:d56146145e99e004d72489e7e7e1f091598c39be39e204c4937b32579b1f772e",
+      "recipe": "sha256:55a9de8482e7530cfba9ec8d81512fa02ec670737c3d79132228e9affa1a2247",
       "tag": "dcp-eval/pysat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.07298210001317784,
-        "execution_wall_seconds": 1.0265600999991875,
+        "checking_seconds": 0.05562784394714981,
+        "execution_wall_seconds": 0.34840432892087847,
         "first_solution": {
           "is_host": [
             false,
@@ -48,7 +73,14 @@
           ],
           "visits": [
             [
+              2,
               1,
+              2,
+              3,
+              4
+            ],
+            [
+              3,
               1,
               2,
               3,
@@ -62,14 +94,7 @@
               4
             ],
             [
-              3,
               1,
-              2,
-              3,
-              4
-            ],
-            [
-              2,
               1,
               2,
               3,
@@ -87,10 +112,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1974420999758877,
+        "reference_setup_seconds": 0.5837735770037398,
         "runner_status": {
+          "build_seconds": 0.005122874979861081,
           "detail": "",
-          "solve_seconds": 0.03434753700000215,
+          "main_seconds": 0.008618281921371818,
+          "read_seconds": 0.00016617600340396166,
+          "solve_seconds": 0.008416821015998721,
           "status": "limit",
           "type": "status"
         },
@@ -100,56 +128,56 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.14662320000934415,
-        "execution_wall_seconds": 0.9530520999978762,
+        "checking_seconds": 0.0989123999606818,
+        "execution_wall_seconds": 0.3476318889297545,
         "first_solution": {
           "is_host": [
-            true,
-            true,
-            true,
-            true,
             false,
+            true,
+            true,
+            true,
+            true,
             true
           ],
           "visits": [
             [
-              0,
+              2,
               1,
               2,
               3,
-              2,
+              4,
               5
             ],
             [
-              0,
-              1,
-              2,
-              3,
-              1,
-              5
-            ],
-            [
-              0,
-              1,
-              2,
-              3,
               5,
-              5
-            ],
-            [
-              0,
               1,
               2,
               3,
-              3,
+              4,
               5
             ],
             [
-              0,
+              3,
               1,
               2,
               3,
-              0,
+              4,
+              5
+            ],
+            [
+              1,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            [
+              4,
+              1,
+              2,
+              3,
+              4,
               5
             ]
           ]
@@ -164,10 +192,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1410368000215385,
+        "reference_setup_seconds": 0.7111251590540633,
         "runner_status": {
+          "build_seconds": 0.008271975093521178,
           "detail": "",
-          "solve_seconds": 0.0420642990000033,
+          "main_seconds": 0.01678339298814535,
+          "read_seconds": 0.00016388494987040758,
+          "solve_seconds": 0.016582580050453544,
           "status": "limit",
           "type": "status"
         },
@@ -177,17 +208,17 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.17395649998798035,
-        "execution_wall_seconds": 1.0745545999961905,
+        "checking_seconds": 0.1480379799613729,
+        "execution_wall_seconds": 0.44789401802700013,
         "first_solution": {
           "is_host": [
             true,
             true,
             true,
             true,
+            false,
             true,
-            true,
-            false
+            true
           ],
           "visits": [
             [
@@ -195,54 +226,54 @@
               1,
               2,
               3,
-              4,
+              0,
               5,
-              1
+              6
             ],
             [
               0,
               1,
               2,
               3,
-              4,
+              6,
               5,
-              5
+              6
             ],
             [
               0,
               1,
               2,
               3,
-              4,
+              3,
               5,
-              0
+              6
             ],
             [
               0,
               1,
               2,
               3,
-              4,
               5,
-              2
+              5,
+              6
             ],
             [
               0,
               1,
               2,
               3,
-              4,
+              2,
               5,
-              4
+              6
             ],
             [
               0,
               1,
               2,
               3,
-              4,
+              1,
               5,
-              3
+              6
             ]
           ]
         },
@@ -256,10 +287,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5318857000092976,
+        "reference_setup_seconds": 0.825459566898644,
         "runner_status": {
+          "build_seconds": 0.011418899986892939,
           "detail": "",
-          "solve_seconds": 0.1495947020000017,
+          "main_seconds": 0.08645959594286978,
+          "read_seconds": 0.00013521092478185892,
+          "solve_seconds": 0.08629537909291685,
           "status": "limit",
           "type": "status"
         },
@@ -269,78 +303,78 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.3500021999934688,
-        "execution_wall_seconds": 1.3913627000001725,
+        "checking_seconds": 0.14404452103190124,
+        "execution_wall_seconds": 0.7497935770079494,
         "first_solution": {
           "is_host": [
-            false,
-            true,
-            true,
             true,
             false,
             true,
             true,
+            true,
+            true,
+            false,
             true
           ],
           "visits": [
             [
-              3,
-              1,
+              0,
+              4,
               2,
               3,
+              4,
               5,
               5,
-              6,
               7
             ],
             [
-              1,
-              1,
+              0,
+              2,
               2,
               3,
-              2,
+              4,
               5,
-              6,
+              3,
               7
             ],
             [
-              2,
-              1,
+              0,
+              5,
               2,
               3,
+              4,
+              5,
+              2,
+              7
+            ],
+            [
+              0,
+              0,
+              2,
+              3,
+              4,
+              5,
               7,
-              5,
-              6,
               7
             ],
             [
-              6,
-              1,
-              2,
-              3,
-              6,
-              5,
-              6,
-              7
-            ],
-            [
-              5,
-              1,
-              2,
-              3,
-              1,
-              5,
-              6,
-              7
-            ],
-            [
+              0,
               7,
-              1,
               2,
               3,
-              3,
+              4,
               5,
-              6,
+              0,
+              7
+            ],
+            [
+              0,
+              3,
+              2,
+              3,
+              4,
+              5,
+              4,
               7
             ]
           ]
@@ -355,10 +389,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5449242000177037,
+        "reference_setup_seconds": 0.8884196799481288,
         "runner_status": {
+          "build_seconds": 0.017958645010367036,
           "detail": "",
-          "solve_seconds": 0.547554771999998,
+          "main_seconds": 0.36804556800052524,
+          "read_seconds": 0.00015805207658559084,
+          "solve_seconds": 0.36785273905843496,
           "status": "limit",
           "type": "status"
         },
@@ -368,75 +405,75 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.20518379998975433,
-        "execution_wall_seconds": 0.9849005000141915,
+        "checking_seconds": 0.13927754503674805,
+        "execution_wall_seconds": 0.4478985359892249,
         "first_solution": {
           "is_host": [
             false,
             true,
-            true,
-            true,
             false,
             true,
             false,
-            false,
-            true
+            true,
+            true,
+            true,
+            false
           ],
           "visits": [
             [
-              5,
-              1,
-              2,
               3,
               1,
+              3,
+              3,
               5,
-              8,
               5,
-              8
+              6,
+              7,
+              1
+            ],
+            [
+              7,
+              1,
+              5,
+              3,
+              6,
+              5,
+              6,
+              7,
+              5
             ],
             [
               1,
               1,
-              2,
+              7,
               3,
-              2,
+              3,
               5,
-              1,
-              8,
-              8
+              6,
+              7,
+              6
             ],
             [
+              6,
+              1,
+              1,
               3,
               1,
-              2,
-              3,
               5,
-              5,
-              2,
-              1,
-              8
+              6,
+              7,
+              3
             ],
             [
-              2,
+              5,
               1,
-              2,
+              6,
               3,
-              8,
+              7,
               5,
-              5,
-              3,
-              8
-            ],
-            [
-              8,
-              1,
-              2,
-              3,
-              3,
-              5,
-              3,
-              2,
-              8
+              6,
+              7,
+              7
             ]
           ]
         },
@@ -450,10 +487,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5312306999985594,
+        "reference_setup_seconds": 0.8926592200296,
         "runner_status": {
+          "build_seconds": 0.015763311996124685,
           "detail": "",
-          "solve_seconds": 0.16164704099998062,
+          "main_seconds": 0.11387726594693959,
+          "read_seconds": 0.00016665796283632517,
+          "solve_seconds": 0.11368101800326258,
           "status": "limit",
           "type": "status"
         },
@@ -463,81 +503,81 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.41152389999479055,
-        "execution_wall_seconds": 1.1838187999965157,
+        "checking_seconds": 0.1741823760094121,
+        "execution_wall_seconds": 0.6007799269864336,
         "first_solution": {
           "is_host": [
+            false,
+            false,
             true,
             false,
             true,
             true,
             true,
-            false,
-            false,
             false,
             true,
             false
           ],
           "visits": [
             [
-              0,
+              5,
+              2,
+              2,
+              4,
+              4,
+              5,
+              6,
               8,
+              8,
+              6
+            ],
+            [
               2,
-              3,
-              4,
               4,
               2,
+              5,
               4,
+              5,
+              6,
+              5,
               8,
               2
             ],
             [
-              0,
-              0,
+              4,
+              6,
               2,
-              3,
-              4,
-              3,
-              4,
-              0,
               8,
-              3
-            ],
-            [
-              0,
-              2,
-              2,
-              3,
               4,
-              0,
-              3,
-              3,
-              8,
-              4
-            ],
-            [
-              0,
-              4,
+              5,
+              6,
               2,
-              3,
-              4,
-              2,
-              0,
-              8,
               8,
               8
             ],
             [
-              0,
-              3,
+              8,
+              5,
               2,
-              3,
+              2,
+              4,
+              5,
+              6,
+              6,
+              8,
+              4
+            ],
+            [
+              6,
+              8,
+              2,
+              6,
+              4,
+              5,
+              6,
               4,
               8,
-              8,
-              2,
-              8,
-              0
+              5
             ]
           ]
         },
@@ -551,10 +591,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9942701999971177,
+        "reference_setup_seconds": 1.0599212769884616,
         "runner_status": {
+          "build_seconds": 0.019143020967021585,
           "detail": "",
-          "solve_seconds": 0.3378157890000182,
+          "main_seconds": 0.19268803298473358,
+          "read_seconds": 0.0001241699792444706,
+          "solve_seconds": 0.19253877992741764,
           "status": "limit",
           "type": "status"
         },
@@ -564,86 +607,86 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4118449999950826,
-        "execution_wall_seconds": 1.4502783000061754,
+        "checking_seconds": 0.29064059304073453,
+        "execution_wall_seconds": 0.9502658629789948,
         "first_solution": {
           "is_host": [
             false,
+            true,
+            true,
+            false,
+            false,
+            false,
             false,
             false,
             true,
             true,
-            false,
-            true,
-            false,
-            true,
-            false,
             true
           ],
           "visits": [
             [
-              6,
-              8,
+              1,
+              1,
+              2,
               10,
-              3,
-              4,
-              3,
-              6,
               10,
+              1,
+              2,
+              9,
               8,
-              4,
-              10
-            ],
-            [
-              3,
-              4,
-              8,
-              3,
-              4,
-              6,
-              6,
-              4,
-              8,
-              10,
-              10
-            ],
-            [
-              10,
-              6,
-              6,
-              3,
-              4,
-              8,
-              6,
-              3,
-              8,
-              3,
-              10
-            ],
-            [
-              4,
-              10,
-              3,
-              3,
-              4,
-              4,
-              6,
-              6,
-              8,
-              8,
+              9,
               10
             ],
             [
               8,
-              3,
-              4,
-              3,
-              4,
+              1,
+              2,
+              1,
+              8,
               10,
-              6,
+              9,
+              2,
+              8,
+              9,
+              10
+            ],
+            [
+              9,
+              1,
+              2,
+              9,
+              2,
+              8,
+              1,
               8,
               8,
-              6,
+              9,
+              10
+            ],
+            [
+              10,
+              1,
+              2,
+              2,
+              1,
+              2,
+              10,
+              10,
+              8,
+              9,
+              10
+            ],
+            [
+              2,
+              1,
+              2,
+              8,
+              9,
+              9,
+              8,
+              1,
+              8,
+              9,
               10
             ]
           ]
@@ -658,10 +701,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2760287999990396,
+        "reference_setup_seconds": 1.2162980560678989,
         "runner_status": {
+          "build_seconds": 0.03168003889732063,
           "detail": "",
-          "solve_seconds": 0.6064297309999915,
+          "main_seconds": 0.5810886949766427,
+          "read_seconds": 0.00015480502042919397,
+          "solve_seconds": 0.5809016459388658,
           "status": "limit",
           "type": "status"
         },
@@ -671,93 +717,93 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6078755999915302,
-        "execution_wall_seconds": 1.7215126999944914,
+        "checking_seconds": 0.26653395604807884,
+        "execution_wall_seconds": 1.2002206769539043,
         "first_solution": {
           "is_host": [
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
             true,
             true,
             false,
             true,
             true,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            true
+            false
           ],
           "visits": [
             [
-              0,
-              1,
-              0,
-              3,
               4,
-              3,
-              3,
-              3,
+              9,
+              10,
               4,
-              11,
-              1,
-              11
+              4,
+              7,
+              6,
+              7,
+              6,
+              9,
+              10,
+              6
             ],
             [
-              0,
-              1,
-              1,
-              3,
+              7,
+              10,
+              6,
+              9,
               4,
-              11,
-              1,
               4,
-              0,
-              0,
-              3,
-              11
+              6,
+              7,
+              10,
+              9,
+              10,
+              9
             ],
             [
-              0,
-              1,
+              6,
+              6,
+              9,
+              10,
               4,
-              3,
+              9,
+              6,
+              7,
               4,
-              4,
-              0,
-              11,
-              11,
-              3,
-              4,
-              11
+              9,
+              10,
+              7
             ],
             [
-              0,
-              1,
-              11,
-              3,
+              10,
+              7,
               4,
-              1,
+              6,
               4,
-              0,
-              1,
-              4,
-              0,
-              11
+              6,
+              6,
+              7,
+              9,
+              9,
+              10,
+              4
             ],
             [
-              0,
-              1,
-              3,
-              3,
+              9,
               4,
-              0,
-              11,
-              1,
-              3,
-              1,
-              11,
-              11
+              7,
+              7,
+              4,
+              10,
+              6,
+              7,
+              7,
+              9,
+              10,
+              10
             ]
           ]
         },
@@ -771,10 +817,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.493020699999761,
+        "reference_setup_seconds": 1.9808113790350035,
         "runner_status": {
+          "build_seconds": 0.04490561306010932,
           "detail": "",
-          "solve_seconds": 0.7868867149999801,
+          "main_seconds": 0.7966946020023897,
+          "read_seconds": 0.00016389309894293547,
+          "solve_seconds": 0.796500395052135,
           "status": "limit",
           "type": "status"
         },
@@ -784,99 +833,99 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 1.1810858999961056,
-        "execution_wall_seconds": 1.9748916999960784,
+        "checking_seconds": 0.32884800899773836,
+        "execution_wall_seconds": 1.4556754779769108,
         "first_solution": {
           "is_host": [
             false,
             false,
+            true,
+            true,
             false,
             true,
             false,
             true,
+            false,
+            false,
             true,
-            true,
             false,
-            false,
-            false,
-            false,
-            true
+            false
           ],
           "visits": [
             [
-              5,
-              6,
-              5,
+              2,
+              10,
+              2,
               3,
               7,
               5,
-              6,
+              3,
               7,
-              6,
+              7,
+              7,
+              10,
+              5,
+              5
+            ],
+            [
+              10,
+              7,
+              2,
               3,
               3,
-              12,
-              12
+              5,
+              10,
+              7,
+              2,
+              5,
+              10,
+              3,
+              2
             ],
             [
               3,
               5,
-              6,
+              2,
               3,
-              12,
+              10,
               5,
-              6,
-              7,
-              3,
-              7,
-              6,
-              5,
-              12
-            ],
-            [
-              6,
-              12,
-              12,
-              3,
-              6,
-              5,
-              6,
-              7,
-              7,
-              5,
-              7,
-              7,
-              12
-            ],
-            [
-              12,
-              3,
+              2,
               7,
               3,
-              5,
-              5,
-              6,
+              2,
+              10,
               7,
-              5,
-              6,
-              12,
-              6,
-              12
+              10
             ],
             [
               7,
+              3,
+              2,
+              3,
+              2,
+              5,
+              5,
               7,
-              3,
-              3,
+              5,
+              10,
+              10,
+              10,
+              7
+            ],
+            [
+              5,
+              2,
+              2,
               3,
               5,
-              6,
-              7,
-              12,
-              12,
               5,
+              7,
+              7,
+              10,
               3,
-              12
+              10,
+              2,
+              3
             ]
           ]
         },
@@ -890,10 +939,13 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.4592325999983586,
+        "reference_setup_seconds": 2.249334460007958,
         "runner_status": {
+          "build_seconds": 0.06770796002820134,
           "detail": "",
-          "solve_seconds": 1.0312799069999983,
+          "main_seconds": 1.111608334002085,
+          "read_seconds": 0.0001782659674063325,
+          "solve_seconds": 1.1113914559828117,
           "status": "limit",
           "type": "status"
         },
@@ -905,21 +957,21 @@
     "instances_available": 9,
     "instances_checked": 9,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "1a9b512e0cd31321f80d9dbaab1bbe7439b2604d93a67805f8adaec2eaa4164e",
+    "model_hash": "bb6193f7e2c2389f5bf673d38b2eb0116d5971acd6c4c0b649b357fe83375800",
     "problem_id": "csplib_013_progressive_party_problem",
     "reason": "accepted",
     "reference_hash": "4515c7a73120b62ff3d9c97292b5b93482355551bb6bda7d8476606feb489e64",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -930,7 +982,7 @@
     "skipped_instances": [],
     "solutions_checked": 18,
     "solver_id": "pysat",
-    "total_wall_seconds": 34.910915500018746,
+    "total_wall_seconds": 19.1602948079817,
     "unperformed_instances": []
   },
   "generated_by": {
