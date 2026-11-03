@@ -1,67 +1,90 @@
-# Allergy puzzle: match four friends with their surnames and their allergies.
+# allergy: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/allergy.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python allergy.py
+
 from pyscipopt import Model, quicksum
 
-# Friends are numbered Debra = 0, Janet = 1, Hugh = 2, Rick = 3.
-# Allergies are numbered eggs = 0, mold = 1, nuts = 2, ragweed = 3.
-# Surnames are numbered Baxter = 0, Lemon = 1, Malone = 2, Fleet = 3.
-FRIENDS = range(4)
-FOODS = range(4)
-SURNAMES = range(4)
-DEBRA, JANET, HUGH, RICK = 0, 1, 2, 3
-EGGS, MOLD, NUTS, RAGWEED = 0, 1, 2, 3
-BAXTER, LEMON, MALONE, FLEET = 0, 1, 2, 3
 
+def create_model(instance):
+    """Four friends, Debra, Janet, Hugh and Rick, each have a different allergy
+    (eggs, mold, nuts or ragweed) and a different surname (Baxter, Lemon, Malone
+    or Fleet). Match each friend's surname and allergy so that every clue in the
+    statement holds.
 
-def build(instance):
-    m = Model()
+    The instance file is empty ([]): the statement fixes all the data, so nothing
+    is read from the instance argument.
+    """
+    model = Model("allergy")
 
-    # allergy[p, f] = 1 if friend p is allergic to food f
-    allergy = {(p, f): m.addVar(name=f"allergy_{p}_{f}", vtype="B") for p in FRIENDS for f in FOODS}
-    # surname[p, s] = 1 if friend p has surname s
-    surname = {(p, s): m.addVar(name=f"surname_{p}_{s}", vtype="B") for p in FRIENDS for s in SURNAMES}
+    # The friends, in the statement's numbering: Debra = 0, Janet = 1, Hugh = 2, Rick = 3.
+    DEBRA, JANET, HUGH, RICK = range(4)
+    # The allergies, in the order the statement lists them.
+    EGGS, MOLD, NUTS, RAGWEED = range(4)
+    # The surnames, in the order the statement lists them.
+    BAXTER, LEMON, MALONE, FLEET = range(4)
 
-    # each friend has exactly one allergy
-    for p in FRIENDS:
-        m.addCons(quicksum(allergy[p, f] for f in FOODS) == 1)
-    # each allergy belongs to exactly one friend
-    for f in FOODS:
-        m.addCons(quicksum(allergy[p, f] for p in FRIENDS) == 1)
-    # each friend has exactly one surname
-    for p in FRIENDS:
-        m.addCons(quicksum(surname[p, s] for s in SURNAMES) == 1)
-    # each surname belongs to exactly one friend
-    for s in SURNAMES:
-        m.addCons(quicksum(surname[p, s] for p in FRIENDS) == 1)
+    # allergy[f, a] is 1 when friend f is allergic to allergy a, and 0 otherwise.
+    # Each friend has exactly one allergy, and the statement says each is allergic to
+    # something different, so with four friends and four allergies the 4x4 grid is a
+    # permutation matrix (one 1 in every row and column).
+    allergy = model.addMatrixVar((4, 4), vtype="B", name="allergy")
+    model.addMatrixCons(allergy.sum(axis=1) == 1)  # each friend has exactly one allergy
+    model.addMatrixCons(allergy.sum(axis=0) == 1)  # each allergy belongs to exactly one friend
 
-    # Rick is not allergic to mold
-    m.addCons(allergy[RICK, MOLD] == 0)
+    # surname[f, s] is 1 when friend f has surname s, and 0 otherwise.
+    # The same permutation structure: one surname per friend, one friend per surname.
+    surname = model.addMatrixVar((4, 4), vtype="B", name="surname")
+    model.addMatrixCons(surname.sum(axis=1) == 1)  # each friend has exactly one surname
+    model.addMatrixCons(surname.sum(axis=0) == 1)  # each surname belongs to exactly one friend
 
-    # Baxter is allergic to eggs: whoever is surnamed Baxter is allergic to eggs, and the reverse
-    for p in FRIENDS:
-        m.addCons(surname[p, BAXTER] == allergy[p, EGGS])
+    # Rick is not allergic to mold.
+    model.addCons(allergy[RICK, MOLD] == 0)
 
-    # Hugh is neither surnamed Lemon nor Fleet
-    m.addCons(surname[HUGH, LEMON] == 0)
-    m.addCons(surname[HUGH, FLEET] == 0)
+    # Baxter is allergic to eggs: the friend surnamed Baxter is the friend allergic to eggs.
+    # For every friend f: f is surnamed Baxter exactly when f is allergic to eggs
+    # (column BAXTER of surname equals column EGGS of allergy).
+    model.addMatrixCons(surname[:, BAXTER] == allergy[:, EGGS])
 
-    # Debra is allergic to ragweed
-    m.addCons(allergy[DEBRA, RAGWEED] == 1)
+    # Hugh is neither surnamed Lemon nor surnamed Fleet.
+    model.addCons(surname[HUGH, LEMON] == 0)
+    model.addCons(surname[HUGH, FLEET] == 0)
 
-    # Janet is not surnamed Lemon
-    m.addCons(surname[JANET, LEMON] == 0)
-    # Janet is neither allergic to eggs nor to mold
-    m.addCons(allergy[JANET, EGGS] == 0)
-    m.addCons(allergy[JANET, MOLD] == 0)
+    # Debra is allergic to ragweed.
+    model.addCons(allergy[DEBRA, RAGWEED] == 1)
 
-    # The outputs give, for each food and surname, the friend's index (Debra = 0 ... Rick = 3).
+    # Janet (who isn't Lemon) is neither allergic to eggs nor to mold.
+    model.addCons(surname[JANET, LEMON] == 0)
+    model.addCons(allergy[JANET, EGGS] == 0)
+    model.addCons(allergy[JANET, MOLD] == 0)
+
+    # Each output is the number of the friend (0 to 3) who has that allergy or that
+    # surname. The sum is over the one-hot grid, so it picks out exactly one friend.
     outputs = {
-        "eggs": quicksum(p * allergy[p, EGGS] for p in FRIENDS),
-        "mold": quicksum(p * allergy[p, MOLD] for p in FRIENDS),
-        "nuts": quicksum(p * allergy[p, NUTS] for p in FRIENDS),
-        "ragweed": quicksum(p * allergy[p, RAGWEED] for p in FRIENDS),
-        "baxter": quicksum(p * surname[p, BAXTER] for p in FRIENDS),
-        "lemon": quicksum(p * surname[p, LEMON] for p in FRIENDS),
-        "malone": quicksum(p * surname[p, MALONE] for p in FRIENDS),
-        "fleet": quicksum(p * surname[p, FLEET] for p in FRIENDS),
+        "eggs": quicksum(f * allergy[f, EGGS] for f in range(4)),
+        "mold": quicksum(f * allergy[f, MOLD] for f in range(4)),
+        "nuts": quicksum(f * allergy[f, NUTS] for f in range(4)),
+        "ragweed": quicksum(f * allergy[f, RAGWEED] for f in range(4)),
+        "baxter": quicksum(f * surname[f, BAXTER] for f in range(4)),
+        "lemon": quicksum(f * surname[f, LEMON] for f in range(4)),
+        "malone": quicksum(f * surname[f, MALONE] for f in range(4)),
+        "fleet": quicksum(f * surname[f, FLEET] for f in range(4)),
     }
-    return m, outputs
+
+    # The statement asks for a matching only, so there is no objective.
+    return model, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

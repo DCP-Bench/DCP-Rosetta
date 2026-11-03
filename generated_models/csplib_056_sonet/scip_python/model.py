@@ -1,43 +1,70 @@
-# SONET ring assignment: place nodes on rings so every communication demand is served
-# by a common ring, each ring hosts at most its capacity of nodes, and the total number
-# of add-drop multiplexers (node-ring installations) is minimised.
+# csplib_056_sonet: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_056_sonet.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_056_sonet.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_056_sonet.py csplib_056_sonet.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    r = instance["r"]                      # number of rings
-    n = instance["n"]                      # number of nodes
-    demand = instance["demand"]            # demand[i][j] > 0 when i and j must communicate
-    capacity = instance["capacity_nodes"]  # capacity[k] = max number of nodes on ring k
+def create_model(instance):
+    """SONET ring assignment: each node is installed on some of the rings by an
+    add-drop multiplexer (one ADM per node and ring), each ring hosts at most a
+    given number of nodes, and every two nodes with traffic demand between them
+    must share a ring. Minimise the total number of ADMs."""
+    r = instance["r"]                            # the number of rings, numbered 0..r-1
+    n = instance["n"]                            # the number of nodes, numbered 0..n-1
+    demand = instance["demand"]                  # demand[i][j]: the traffic between nodes i and j
+    capacity_nodes = instance["capacity_nodes"]  # capacity_nodes[k]: the most nodes ring k can host
 
-    m = Model()
+    model = Model("csplib_056_sonet")
 
-    # x[k, i] = 1 if node i is installed on ring k (one ADM)
-    x = {(k, i): m.addVar(name=f"x_{k}_{i}", vtype="B") for k in range(r) for i in range(n)}
+    # x[k, i] is 1 when node i is installed on ring k (one ADM there), and 0 when not
+    x = model.addMatrixVar((r, n), vtype="B", name="x")
 
-    # ring capacity: at most capacity[k] nodes on ring k
-    for k in range(r):
-        # each ring can host at most its node capacity
-        m.addCons(quicksum(x[k, i] for i in range(n)) <= capacity[k])
+    # Ring k hosts at most capacity_nodes[k] nodes.
+    model.addMatrixCons(x.sum(axis=1) <= np.array(capacity_nodes))
 
-    # demand: every pair of nodes with traffic must share at least one ring
+    # Two nodes with traffic between them (in either direction) share at least one ring.
+    # For each ring k, shared[k] is 1 when both nodes are on ring k. addConsAnd makes
+    # shared[k] equal to the conjunction in both directions, not only "at least".
     for i in range(n):
         for j in range(i + 1, n):
-            if demand[i][j] <= 0 and demand[j][i] <= 0:
+            if demand[i][j] == 0 and demand[j][i] == 0:
                 continue
-            # z[k, i, j] = 1 only if both i and j are on ring k
-            z = {}
+            shared = [model.addVar(vtype="B") for _ in range(r)]
             for k in range(r):
-                z[k] = m.addVar(name=f"z_{k}_{i}_{j}", vtype="B")
-                m.addCons(z[k] <= x[k, i])
-                m.addCons(z[k] <= x[k, j])
-            # the pair must be served by at least one common ring
-            m.addCons(quicksum(z[k] for k in range(r)) >= 1)
+                model.addConsAnd([x[k, i], x[k, j]], shared[k])
+            model.addCons(quicksum(shared) >= 1)
 
-    # objective: total number of ADMs used
-    total = quicksum(x[k, i] for k in range(r) for i in range(n))
-    m.setObjective(total, "minimize")
+    # total_adms counts the ADMs: one for each node on each ring. The objective is this
+    # integer variable, tied to the sum, rather than the bare sum: SCIP enumerates other
+    # optimal solutions only when the objective is held in a bounded variable.
+    # The upper bound r * n follows from counting: each of the n nodes is on at most
+    # r rings, one ADM per ring.
+    total_adms = model.addVar(vtype="I", lb=0, ub=r * n, name="total_adms")
+    model.addCons(total_adms == x.sum())
+    model.setObjective(total_adms, "minimize")
 
-    # ring_config[k][i] = x[k, i]; total_adms = total number of ADMs
-    ring_config = [[x[k, i] for i in range(n)] for k in range(r)]
-    return m, {"ring_config": ring_config, "total_adms": total}
+    return model, {"ring_config": x, "total_adms": total_adms}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

@@ -1,34 +1,70 @@
-# Traffic lights: set the states of 4 vehicle lights V1..V4 and 4 pedestrian lights P1..P4 so
-# that every consecutive pair (V_i, P_i, V_{i+1}, P_{i+1}), with V_5 = V_1 and P_5 = P_1,
-# is one of the safe combinations listed in the instance.
-from pyscipopt import Model, quicksum
+# csplib_016_traffic_lights: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_016_traffic_lights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_016_traffic_lights.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_016_traffic_lights.py csplib_016_traffic_lights.json
+
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    allowed = instance["allowed_tuples"]
-    tuples = [tuple(t) for t in allowed]
-    K = len(tuples)
-    n_lights = 4
-    m = Model()
+def create_model(instance):
+    """Traffic lights at a four-way junction: four vehicle lights (V1 to V4) and four
+    pedestrian lights (P1 to P4), each in one of its states. The junction has four
+    pairs of intersecting roads, and for each pair i = 1..4 the lights (V_i, P_i,
+    V_i+1, P_i+1) must form one of the safe combinations listed in the instance, where
+    V_5 = V_1 and P_5 = P_1. Find a state for every light; the states are returned as
+    outputs["lights"] = [V1, V2, V3, V4, P1, P2, P3, P4]."""
+    # allowed[k] = [V_i, P_i, V_i+1, P_i+1]: the k-th safe combination of light states
+    allowed = np.array(instance["allowed_tuples"])
+    n_allowed = len(allowed)  # how many safe combinations the instance lists
 
-    # vehicle states: 0=red, 1=red-yellow, 2=green, 3=yellow (from the problem statement)
-    V = [m.addVar(name=f"V_{i}", vtype="I", lb=0, ub=3) for i in range(n_lights)]
-    # pedestrian states: 0=red, 1=green (from the problem statement)
-    P = [m.addVar(name=f"P_{i}", vtype="I", lb=0, ub=1) for i in range(n_lights)]
+    model = Model("traffic_lights")
 
-    # selector b[i, k] = 1 if the pair (V_i, P_i, V_{i+1}, P_{i+1}) equals the k-th allowed tuple
-    b = {(i, k): m.addVar(name=f"b_{i}_{k}", vtype="B") for i in range(n_lights) for k in range(K)}
+    # state[i, 0] is the vehicle light and state[i, 1] the pedestrian light at position i,
+    # with positions 0..3 standing for lights 1..4. Vehicle states run 0..3 (red,
+    # red-yellow, green, yellow) and pedestrian states 0..1 (red, green), as the
+    # problem statement gives them.
+    state = model.addMatrixVar((4, 2), vtype="I", lb=0, ub=[[3, 1]] * 4, name="state")
 
-    for i in range(n_lights):
-        j = (i + 1) % n_lights  # wrap: V_5 = V_1, P_5 = P_1
-        # each consecutive pair must match exactly one allowed combination
-        m.addCons(quicksum(b[i, k] for k in range(K)) == 1, name=f"one_tuple_{i}")
-        # the pair (V_i, P_i, V_{i+1}, P_{i+1}) is the chosen allowed combination
-        m.addCons(V[i] == quicksum(tuples[k][0] * b[i, k] for k in range(K)), name=f"V_i_{i}")
-        m.addCons(P[i] == quicksum(tuples[k][1] * b[i, k] for k in range(K)), name=f"P_i_{i}")
-        m.addCons(V[j] == quicksum(tuples[k][2] * b[i, k] for k in range(K)), name=f"V_next_{i}")
-        m.addCons(P[j] == quicksum(tuples[k][3] * b[i, k] for k in range(K)), name=f"P_next_{i}")
+    # chosen[i, k] is 1 when road pair i shows the k-th safe combination. Each road pair
+    # shows exactly one safe combination.
+    chosen = model.addMatrixVar((4, n_allowed), vtype="B", name="chosen")
+    model.addMatrixCons(chosen.sum(axis=1) == 1)
 
-    # the output lists the lights as [V1, V2, V3, V4, P1, P2, P3, P4]
-    lights = V + P
-    return m, {"lights": lights}
+    # Each road pair i reads its current lights from the first two entries of its chosen
+    # combination and its next lights from the last two. The next lights of pair i are
+    # the lights at position i+1. np.roll(..., -1) moves each row up one place and the
+    # last row wraps to the first, so the last pair's next lights are light 1's (V_5 = V_1
+    # and P_5 = P_1). PySCIPOpt has no table constraint, so the choice among the safe
+    # combinations is written with the one-hot binaries above.
+    model.addMatrixCons(chosen @ allowed[:, :2] == state)  # current lights of each road pair
+    model.addMatrixCons(
+        chosen @ allowed[:, 2:] == np.roll(state, -1, axis=0)  # next lights of each road pair
+    )
+
+    # The problem asks for any valid assignment, so the model has no objective.
+
+    # The eight light states in the output order: all vehicle lights, then all pedestrian lights.
+    lights = state.T.flatten()
+    return model, {"lights": lights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

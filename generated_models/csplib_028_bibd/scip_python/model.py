@@ -1,38 +1,69 @@
-# BIBD: find a v-by-b binary incidence matrix with r ones per row, k ones per column, and scalar product lambda between every pair of distinct rows.
-from pyscipopt import Model, quicksum
+# csplib_028_bibd: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_028_bibd.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_028_bibd.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_028_bibd.py csplib_028_bibd.json
+
+from itertools import combinations
+
+from pyscipopt import Model
 
 
-def build(instance):
-    v = instance["v"]  # number of objects (rows)
-    b = instance["b"]  # number of blocks (columns)
-    r = instance["r"]  # each object occurs in r blocks
-    k = instance["k"]  # each block contains k objects
-    lam = instance["l"]  # every two distinct objects occur together in lambda blocks
+def create_model(instance):
+    """Balanced Incomplete Block Design: arrange v distinct objects into b blocks
+    so that each block holds exactly k distinct objects, each object lies in
+    exactly r blocks, and every two distinct objects lie together in exactly l
+    blocks. The output is the v-by-b incidence matrix: entry [i][j] is 1 when
+    object i is in block j, and 0 when not."""
+    v = instance["v"]    # number of objects
+    b = instance["b"]    # number of blocks
+    r = instance["r"]    # number of blocks each object lies in
+    k = instance["k"]    # number of objects each block holds
+    lam = instance["l"]  # number of blocks that every pair of objects shares
 
-    m = Model()
+    model = Model("bibd")
 
-    # x[i, j] = 1 if object i is in block j
-    x = {(i, j): m.addVar(name=f"x_{i}_{j}", vtype="B") for i in range(v) for j in range(b)}
+    # x[i, j] is 1 when object i is in block j, and 0 when not
+    x = model.addMatrixVar((v, b), vtype="B", name="x")
 
-    # each object occurs in exactly r blocks
-    for i in range(v):
-        m.addCons(quicksum(x[i, j] for j in range(b)) == r)
+    # Each object lies in exactly r blocks: every row of x has r ones.
+    model.addMatrixCons(x.sum(axis=1) == r)
 
-    # each block contains exactly k distinct objects
-    for j in range(b):
-        m.addCons(quicksum(x[i, j] for i in range(v)) == k)
+    # Each block holds exactly k objects: every column of x has k ones.
+    model.addMatrixCons(x.sum(axis=0) == k)
 
-    # every two distinct objects occur together in exactly lambda blocks
-    # (the scalar product of each pair of distinct rows equals lambda)
-    # y[i, i2, j] = 1 if objects i and i2 both occur in block j
-    for i in range(v):
-        for i2 in range(i + 1, v):
-            y = {}
-            for j in range(b):
-                y[j] = m.addVar(name=f"y_{i}_{i2}_{j}", vtype="B")
-                m.addConsAnd([x[i, j], x[i2, j]], y[j])
-            m.addCons(quicksum(y[j] for j in range(b)) == lam)
+    # Pairs of objects, one row of `both` per pair. both[p, j] is 1 when both
+    # objects of pair p are in block j. The AND is stated with addConsAnd, which
+    # ties both[p, j] to the product x[i, j] * x[i2, j] in both directions, since
+    # SCIP has no product of two binaries in a linear constraint.
+    pairs = list(combinations(range(v), 2))
+    both = model.addMatrixVar((len(pairs), b), vtype="B", name="both")
+    for p, (i, i2) in enumerate(pairs):
+        for j in range(b):
+            model.addConsAnd([x[i, j], x[i2, j]], both[p, j])
 
-    # output: the incidence matrix as 0/1 integers
-    matrix = [[x[i, j] for j in range(b)] for i in range(v)]
-    return m, {"matrix": matrix}
+    # Every two distinct objects lie together in exactly l blocks: each pair's
+    # row of `both` has l ones, so the blocks they share number exactly l.
+    model.addMatrixCons(both.sum(axis=1) == lam)
+
+    return model, {"matrix": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

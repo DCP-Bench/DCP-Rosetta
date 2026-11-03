@@ -1,78 +1,89 @@
-from pyscipopt import Model, quicksum
+# n_puzzle: a SCIP (Python) model from DCP Rosetta.
+# Download the `n_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/n_puzzle.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python n_puzzle.py n_puzzle.json
 
-# N-Puzzle: find a sequence of N_STEPS states from the start to the end configuration,
-# where each step slides one tile into the empty cell (the blank, tile 0).
-# The grid size n is taken from the end configuration, so the model covers any n x n puzzle.
-def build(instance):
-    start = instance["puzzle_start"]
-    end = instance["puzzle_end"]
-    T = instance["N_STEPS"]
-    n = len(end)
-    K = n * n  # tile values 0..K-1, with 0 the blank
-    cells = [(r, c) for r in range(n) for c in range(n)]
-    nbrs = {(r, c): [(r + dr, c + dc)
-                     for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
-                     if 0 <= r + dr < n and 0 <= c + dc < n]
-            for (r, c) in cells}
+import numpy as np
+from pyscipopt import Model
 
-    m = Model()
 
-    # s[t, r, c, k] = 1 if cell (r, c) holds tile k in state t (one-hot over k)
-    s = {(t, r, c, k): m.addVar(name=f"s_{t}_{r}_{c}_{k}", vtype="B")
-         for t in range(T) for (r, c) in cells for k in range(K)}
-    # mv[t, a, b] = 1 if the blank moves from cell a to the adjacent cell b in step t
-    mv = {(t, a, b): m.addVar(name=f"mv_{t}_{a[0]}_{a[1]}_{b[0]}_{b[1]}", vtype="B")
-          for t in range(T - 1) for a in cells for b in nbrs[a]}
+def create_model(instance):
+    """The N-Puzzle: a square board holds numbered tiles and one empty square (tile 0).
+    A move slides a tile into the empty square. Find N_STEPS boards, counting the start
+    and the end, that run from the start board to the end board, each board one slide
+    away from the board before it, so that no step leaves the board unchanged."""
+    N_STEPS = instance["N_STEPS"]                # the number of boards in the plan, start and end included
+    start = np.array(instance["puzzle_start"])   # start[r, c]: the tile in row r, column c of the start board
+    end = np.array(instance["puzzle_end"])       # end[r, c]: the tile in row r, column c of the end board
+    n = len(start)                               # the board is n x n, with n read from the start board
+    cells = n * n                                # cells are numbered p = r * n + c, row by row
+    tiles = np.arange(cells)                     # tile numbers are 0 to n * n - 1, with 0 the empty square
 
-    # each cell holds exactly one tile, and each tile sits in exactly one cell
-    for t in range(T):
-        # one tile per cell
-        for (r, c) in cells:
-            m.addCons(quicksum(s[t, r, c, k] for k in range(K)) == 1,
-                      name=f"one_tile_{t}_{r}_{c}")
-        # one cell per tile
-        for k in range(K):
-            m.addCons(quicksum(s[t, r, c, k] for (r, c) in cells) == 1,
-                      name=f"one_cell_{t}_{k}")
+    model = Model("n_puzzle")
 
-    # the first and last states are the given start and end configurations
-    for (r, c) in cells:
-        m.addCons(s[0, r, c, start[r][c]] == 1, name=f"start_{r}_{c}")
-        m.addCons(s[T - 1, r, c, end[r][c]] == 1, name=f"end_{r}_{c}")
+    # at[s, p, v] is 1 when, on board s, cell p holds tile v. SCIP has no all-different
+    # constraint, so each board, a permutation of the tiles over the cells, is written with
+    # one-hot binaries: the sums below say each cell holds one tile and each tile sits on one cell.
+    at = model.addMatrixVar((N_STEPS, cells, cells), vtype="B", name="at")
 
-    for t in range(T - 1):
-        # exactly one move per step, so every step changes the state ("no freezing")
-        m.addCons(quicksum(mv[t, a, b] for a in cells for b in nbrs[a]) == 1,
-                  name=f"one_move_{t}")
-        # a move leaves from the cell that holds the blank
-        for a in cells:
-            m.addCons(quicksum(mv[t, a, b] for b in nbrs[a]) <= s[t, a[0], a[1], 0],
-                      name=f"move_from_blank_{t}_{a[0]}_{a[1]}")
-        # the blank slides into b, so b holds the blank next and a takes the tile from b
-        # (a move forces s[t+1, a] = s[t, b] through two linear constraints per tile)
-        for a in cells:
-            for b in nbrs[a]:
-                m.addCons(s[t + 1, b[0], b[1], 0] >= mv[t, a, b],
-                          name=f"blank_enters_{t}_{b[0]}_{b[1]}")
-                for k in range(K):
-                    m.addCons(s[t + 1, a[0], a[1], k] - s[t, b[0], b[1], k]
-                              <= 1 - mv[t, a, b],
-                              name=f"swap_up_{t}_{a[0]}_{a[1]}_{k}")
-                    m.addCons(s[t + 1, a[0], a[1], k] - s[t, b[0], b[1], k]
-                              >= mv[t, a, b] - 1,
-                              name=f"swap_lo_{t}_{a[0]}_{a[1]}_{k}")
-        # cells not touched by the move keep their tile
-        for a in cells:
-            touched = (quicksum(mv[t, a, b] for b in nbrs[a])
-                       + quicksum(mv[t, b, a] for b in nbrs[a]))
-            for k in range(K):
-                m.addCons(s[t + 1, a[0], a[1], k] - s[t, a[0], a[1], k] <= touched,
-                          name=f"keep_up_{t}_{a[0]}_{a[1]}_{k}")
-                m.addCons(s[t + 1, a[0], a[1], k] - s[t, a[0], a[1], k] >= -touched,
-                          name=f"keep_lo_{t}_{a[0]}_{a[1]}_{k}")
+    # Each cell holds exactly one tile.
+    model.addMatrixCons(at.sum(axis=2) == 1)
+    # Each tile sits on exactly one cell.
+    model.addMatrixCons(at.sum(axis=1) == 1)
 
-    # steps[t][r][c] = tile value at cell (r, c) in state t
-    steps = [[[quicksum(k * s[t, r, c, k] for k in range(K)) for c in range(n)]
-              for r in range(n)]
-             for t in range(T)]
-    return m, {"steps": steps}
+    # The first board is the start board and the last board is the end board. Row p of
+    # np.eye(cells) is the one-hot form of tile p, so the rows fix the tile on each cell.
+    model.addMatrixCons(at[0] == np.eye(cells, dtype=int)[start.reshape(-1)])
+    model.addMatrixCons(at[-1] == np.eye(cells, dtype=int)[end.reshape(-1)])
+
+    # adj[p, q] is 1 when cells p and q share an edge, that is when they are one row or one
+    # column apart and not both. A slide moves a tile between two cells that share an edge.
+    row = np.arange(cells) // n
+    col = np.arange(cells) % n
+    adj = ((np.abs(row[:, None] - row[None, :]) + np.abs(col[:, None] - col[None, :])) == 1).astype(int)
+
+    # The empty square moves to a neighbouring cell at every step: if it is on cell p on board s,
+    # then on board s + 1 it is on a cell that shares an edge with p. A cell shares no edge with
+    # itself, so the empty square cannot stay where it is and every step is a slide.
+    blank = at[:, :, 0]
+    model.addMatrixCons(blank[:-1] <= blank[1:] @ adj)
+
+    # A slide changes only the two cells involved: the cell the empty square leaves on board s
+    # and the cell it enters on board s + 1. Let touched[s, p] be 1 for those two cells and 0
+    # elsewhere. Every other cell keeps its tile, so for each cell and tile the change from board
+    # s to board s + 1 is 0 wherever touched is 0. It is written as two inequalities
+    # (change <= touched and -change <= touched) instead of abs(change) <= touched, because SCIP
+    # handles abs slowly. touched does not depend on the tile, so it is repeated over the tile axis.
+    touched = blank[:-1] + blank[1:]
+    change = at[1:] - at[:-1]
+    model.addMatrixCons(change <= touched[:, :, None])
+    model.addMatrixCons(-change <= touched[:, :, None])
+
+    # There is no objective: any plan that meets the constraints is an answer.
+
+    # Each board is read back as its n x n grid of tile numbers. On board s, cell p holds tile
+    # sum over v of v * at[s, p, v], since exactly one at[s, p, v] is 1; the reshape cuts each
+    # board of n * n cells into n rows of n.
+    steps = (at * tiles).sum(axis=2).reshape(N_STEPS, n, n)
+    return model, {"steps": steps}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

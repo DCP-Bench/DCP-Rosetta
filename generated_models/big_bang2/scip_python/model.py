@@ -1,49 +1,67 @@
-# Nontransitive dice: find five six-faced dice (faces 1..12) whose 'beats'
-# relation matches the ten Rock-Paper-Scissors-Lizard-Spock relations.
+# big_bang2: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python big_bang2.py
 
 from pyscipopt import Model, quicksum
 
-# Die indices, in the order the output lists them.
-ROCK, PAPER, SCISSORS, LIZARD, SPOCK = 0, 1, 2, 3, 4
-FACES = 6
-MIN_FACE, MAX_FACE = 1, 12
 
-# The ten 'beats' relations of the description, as (winner, loser) pairs.
-BEATS = [
-    (ROCK, SCISSORS),      # Rock crushes Scissors
-    (ROCK, LIZARD),        # Rock crushes Lizard
-    (PAPER, ROCK),         # Paper covers Rock
-    (PAPER, SPOCK),        # Paper disproves Spock
-    (SCISSORS, PAPER),     # Scissors cuts Paper
-    (SCISSORS, LIZARD),    # Scissors decapitate Lizard
-    (LIZARD, PAPER),       # Lizard eats Paper
-    (LIZARD, SPOCK),       # Lizard poisons Spock
-    (SPOCK, ROCK),         # Spock vaporizes Rock
-    (SPOCK, SCISSORS),     # Spock smashes Scissors
-]
+def create_model(instance):
+    """Five nontransitive dice, one per choice of Rock, Paper, Scissors, Lizard and
+    Spock. Each die has six faces, each a whole number from 1 to 12, and faces may
+    repeat. Die A beats die B when A's face is strictly larger than B's face in more
+    than half of the 36 pairs of faces. The ten beats of the game must hold between
+    the dice; the dice are numbered 0 Rock, 1 Paper, 2 Scissors, 3 Lizard, 4 Spock.
 
-def build(instance):
-    m = Model()
+    The instance file is empty ([]): the statement fixes every size and value, so
+    the instance argument is not read.
+    """
+    n_dice = 5   # five dice, one per choice of the game (statement)
+    n_faces = 6  # six faces per die (statement)
 
-    # x[d, f]: value of face f of die d
-    x = {(d, f): m.addVar(name=f"x_{d}_{f}", vtype="I", lb=MIN_FACE, ub=MAX_FACE)
-         for d in range(5) for f in range(FACES)}
+    # The ten beats of the statement as (winner, loser) die numbers.
+    beats = [(0, 2), (0, 3), (1, 0), (1, 4), (2, 1),
+             (2, 3), (3, 1), (3, 4), (4, 0), (4, 2)]
 
-    # Winning pairs of faces must be at least half of all 36 face pairs
-    # (strictly more than half, so at least 19 of 36 pairs).
-    # g[a, b, f, g2] = 1 forces face f of die a to be strictly larger than
-    # face g2 of die b. Only this direction is needed: a lower bound on
-    # the number of winning face pairs is enough.
-    for (a, b) in BEATS:
-        # the winner's face beats the loser's face in more than half of the face pairs
-        wins = []
-        for f in range(FACES):
-            for g2 in range(FACES):
-                g = m.addVar(name=f"win_{a}_{b}_{f}_{g2}", vtype="B")
-                m.addConsIndicator(x[a, f] - x[b, g2] >= 1, binvar=g)
-                wins.append(g)
-        m.addCons(quicksum(wins) >= 19)
+    # More than half of the 36 face pairs (6 x 6) is at least 19 pairs.
+    needed = n_faces * n_faces // 2 + 1
 
-    # Output: the dice as a 5 x 6 list, row order Rock, Paper, Scissors, Lizard, Spock.
-    dice = [[x[d, f] for f in range(FACES)] for d in range(5)]
-    return m, {"dice": dice}
+    model = Model("big_bang2")
+
+    # dice[d, f] is the value of face f of die d. The range 1 to 12 is from the statement.
+    dice = model.addMatrixVar((n_dice, n_faces), vtype="I", lb=1, ub=12, name="dice")
+
+    # larger[k, p, q] is 1 when face p of the winner of beat k is larger than face q of
+    # its loser. SCIP has no strict >, so "larger" is written as a difference of at
+    # least 1, which is exact for integers.
+    larger = model.addMatrixVar((len(beats), n_faces, n_faces), vtype="B", name="larger")
+
+    for k, (winner, loser) in enumerate(beats):
+        for p in range(n_faces):
+            for q in range(n_faces):
+                # Only this direction is posted: a 1 forces the difference. The count
+                # below needs at least 19 ones, so every counted pair really is larger.
+                model.addConsIndicator(
+                    dice[winner, p] - dice[loser, q] >= 1, binvar=larger[k, p, q])
+
+        # The winner beats the loser: more than half of the 36 face pairs are won by its face.
+        model.addCons(
+            quicksum(larger[k, p, q] for p in range(n_faces) for q in range(n_faces))
+            >= needed)
+
+    return model, {"dice": dice}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

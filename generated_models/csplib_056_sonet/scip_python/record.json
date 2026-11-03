@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791985245.3684156,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793723789.888118,
     "problem_id": "csplib_056_sonet",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "647f43df878d2ae8aee7967a37c7d6f37fa7499711a8cde50ba9d3e3e3ff985e",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.04191492998506874,
-        "execution_wall_seconds": 1.7879167950013652,
+        "checking_seconds": 0.015393137990031391,
+        "execution_wall_seconds": 1.136744149000151,
         "first_solution": {
           "ring_config": [
             [
@@ -65,18 +90,6 @@
               false
             ],
             [
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              true,
-              true,
-              false
-            ],
-            [
               false,
               false,
               false,
@@ -87,6 +100,18 @@
               false,
               true,
               true
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false
             ]
           ],
           "total_adms": 14
@@ -101,9 +126,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4191180350026116,
+        "reference_setup_seconds": 0.7150401250110008,
         "runner_status": {
+          "build_seconds": 0.006790710991481319,
           "detail": "",
+          "main_seconds": 0.44104347098618746,
+          "read_seconds": 0.0001605509896762669,
           "status": "limit",
           "type": "status"
         },
@@ -113,8 +141,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.020626002980861813,
-        "execution_wall_seconds": 0.9848515519988723,
+        "checking_seconds": 0.011902348982403055,
+        "execution_wall_seconds": 0.7341050149989314,
         "first_solution": {
           "ring_config": [
             [
@@ -166,9 +194,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8594504100037739,
+        "reference_setup_seconds": 0.3584345070121344,
         "runner_status": {
+          "build_seconds": 0.006779210991226137,
           "detail": "",
+          "main_seconds": 0.0740260939928703,
+          "read_seconds": 0.00012938599684275687,
           "status": "limit",
           "type": "status"
         },
@@ -178,21 +209,12 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0290847200085409,
-        "execution_wall_seconds": 1.052057116990909,
+        "checking_seconds": 0.010831605992279947,
+        "execution_wall_seconds": 0.8363014000060502,
         "first_solution": {
           "ring_config": [
             [
               false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
               false,
               false,
               false,
@@ -201,12 +223,12 @@
               false
             ],
             [
+              false,
+              true,
               true,
               false,
               false,
               false,
-              true,
-              true,
               false
             ],
             [
@@ -217,6 +239,15 @@
               false,
               false,
               true
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false
             ]
           ],
           "total_adms": 9
@@ -231,9 +262,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8385723340325058,
+        "reference_setup_seconds": 0.35564578699995764,
         "runner_status": {
+          "build_seconds": 0.00673511199420318,
           "detail": "",
+          "main_seconds": 0.15453136400901712,
+          "read_seconds": 0.00015541401808150113,
           "status": "limit",
           "type": "status"
         },
@@ -243,29 +277,11 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.025427879998460412,
-        "execution_wall_seconds": 1.0028660570387729,
+        "checking_seconds": 0.012770415982231498,
+        "execution_wall_seconds": 0.7319749559974298,
         "first_solution": {
           "ring_config": [
             [
-              true,
-              false,
-              true,
-              true,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              true
-            ],
-            [
               false,
               false,
               false,
@@ -278,10 +294,28 @@
               true,
               true,
               false,
-              false,
+              true,
               false,
               false,
               true
+            ],
+            [
+              false,
+              false,
+              true,
+              false,
+              true,
+              false,
+              false
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           ],
           "total_adms": 10
@@ -296,9 +330,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9055430440348573,
+        "reference_setup_seconds": 0.39263999700779095,
         "runner_status": {
+          "build_seconds": 0.007094621018040925,
           "detail": "",
+          "main_seconds": 0.09391935498570092,
+          "read_seconds": 0.00015836799866519868,
           "status": "limit",
           "type": "status"
         },
@@ -308,8 +345,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02561166195664555,
-        "execution_wall_seconds": 1.0347233840147965,
+        "checking_seconds": 0.015546415990684181,
+        "execution_wall_seconds": 1.0607684869901277,
         "first_solution": {
           "ring_config": [
             [
@@ -322,30 +359,30 @@
               false
             ],
             [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
               true,
               false,
               false,
-              false,
-              false,
+              true,
               false,
               true
             ],
             [
-              true,
-              true,
-              false,
               false,
               true,
+              false,
+              false,
+              false,
               true,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
               false
             ]
           ],
@@ -361,9 +398,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8736115409992635,
+        "reference_setup_seconds": 0.4183287860068958,
         "runner_status": {
+          "build_seconds": 0.007891733985161409,
           "detail": "",
+          "main_seconds": 0.10217042299336754,
+          "read_seconds": 0.0001496619952376932,
           "status": "limit",
           "type": "status"
         },
@@ -381,15 +421,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "af956a360b9ef33a3627e16cb8ef81a4a7a0570797b67718d343db715ea9b57f",
+    "model_hash": "2c525bf168c2701f9871d83cf659e1d3cc2498933e4f0bb17aae6cc1aaa9e4e6",
     "problem_id": "csplib_056_sonet",
     "reason": "accepted",
     "reference_hash": "69346fb9abd091e290f5139e5b63f976eb3d677dd9ffb8b4d0adfee5c63c256c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -400,11 +440,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "scip_python",
-    "total_wall_seconds": 11.403811950003728,
+    "total_wall_seconds": 7.994701266987249,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

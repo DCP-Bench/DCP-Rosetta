@@ -1,35 +1,66 @@
-# Aircraft assignment: assign aircraft of each type to each route so that every
-# route's passenger demand is met, the number of aircraft of each type stays within
-# its availability, and the total operational cost is minimised.
-from pyscipopt import Model, quicksum
+# aircraft_assignment: a SCIP (Python) model from DCP Rosetta.
+# Download the `aircraft_assignment.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_assignment.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python aircraft_assignment.py aircraft_assignment.json
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    availability = instance["availability"]  # aircraft available per type
-    demand = instance["demand"]              # passengers to carry per route
-    capabilities = instance["capabilities"]  # seats per aircraft, [type][route]
-    costs = instance["costs"]                # operational cost per aircraft, [type][route]
+def create_model(instance):
+    """Aircraft assignment: each aircraft type has a limited number of units
+    and each route has a passenger demand. Decide how many aircraft of each
+    type fly each route so that every route carries its demand, no type is
+    flown more often than it is available, and the total operational cost
+    is as small as possible."""
+    availability = np.array(instance["availability"])  # availability[i]: the number of aircraft of type i that exist
+    demand = np.array(instance["demand"])              # demand[j]: the passengers route j must carry
+    capabilities = np.array(instance["capabilities"])  # capabilities[i][j]: passengers one aircraft of type i carries on route j
+    costs = np.array(instance["costs"])                # costs[i][j]: operational cost of one aircraft of type i flying route j
 
+    # The number of aircraft types and the number of routes.
     n_types = len(availability)
     n_routes = len(demand)
 
-    m = Model("aircraft_assignment")
+    model = Model("aircraft_assignment")
 
-    # allocation[i][j] = number of aircraft of type i assigned to route j
-    x = [[m.addVar(name=f"x_{i}_{j}", vtype="I", lb=0, ub=availability[i])
-          for j in range(n_routes)] for i in range(n_types)]
+    # allocation[i, j] is the number of aircraft of type i assigned to route j.
+    # Its upper bound is the number of aircraft of type i, since no more can fly
+    # (the bound comes from the availability field of the instance).
+    allocation = model.addMatrixVar(
+        (n_types, n_routes), vtype="I", lb=0,
+        ub=np.broadcast_to(availability[:, None], (n_types, n_routes)),
+    )
 
-    # the aircraft of each type assigned to all routes cannot exceed its availability
-    for i in range(n_types):
-        m.addCons(quicksum(x[i][j] for j in range(n_routes)) <= availability[i])
+    # Each aircraft type has a limited number of units: the aircraft of type i
+    # assigned to all routes add up to no more than availability[i].
+    model.addMatrixCons(allocation.sum(axis=1) <= availability)
 
-    # the seats of all aircraft assigned to a route must cover its passenger demand
-    for j in range(n_routes):
-        m.addCons(quicksum(capabilities[i][j] * x[i][j] for i in range(n_types)) >= demand[j])
+    # Every route's passenger demand must be met: the seats of all aircraft
+    # assigned to the route, capabilities[i, j] per aircraft, cover demand[j].
+    model.addMatrixCons((capabilities * allocation).sum(axis=0) >= demand)
 
-    # minimise the total operational cost of the assigned aircraft
-    m.setObjective(quicksum(costs[i][j] * x[i][j]
-                            for i in range(n_types) for j in range(n_routes)),
-                   "minimize")
+    # Minimise the total operational cost of all aircraft assigned to all routes.
+    model.setObjective((costs * allocation).sum(), "minimize")
 
-    return m, {"allocation": x}
+    return model, {"allocation": allocation}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

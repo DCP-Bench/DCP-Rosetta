@@ -1,34 +1,61 @@
-# Schur's lemma: put balls 1..n into 3 boxes so that no triple (x, y, z) with x + y = z
-# has all three balls in the same box.
+# csplib_015_schurs_lemma: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_015_schurs_lemma.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_015_schurs_lemma.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_015_schurs_lemma.py csplib_015_schurs_lemma.json
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n = instance["n"]
-    boxes = 3
-    m = Model()
+def create_model(instance):
+    """Schur's lemma: put the balls labelled 1, ..., n into c boxes so that for
+    every triple of balls (x, y, z) with x + y = z, the three balls are not all
+    in the same box. The statement says that with 3 boxes a solution exists if
+    and only if n < 14. The output balls[i] is the box, from 1 to c, of ball i + 1."""
+    n = instance["n"]  # the number of balls, labelled 1 to n
+    c = instance["c"]  # the number of boxes (the statement fixes it at 3)
 
-    # M[i, j] = 1 if ball i+1 is in box j+1 (0-based indices in the code)
-    M = {(i, j): m.addVar(name=f"M_{i}_{j}", vtype="B") for i in range(n) for j in range(boxes)}
+    model = Model("schurs_lemma")
 
-    # a ball must be in exactly one box
-    for i in range(n):
-        m.addCons(quicksum(M[i, j] for j in range(boxes)) == 1, name=f"one_box_{i}")
+    # M[i, j] is 1 when ball i + 1 is in box j + 1, and 0 when not.
+    # Balls are 1-based in the statement and rows are 0-based, so ball v is row v - 1.
+    M = model.addMatrixVar((n, c), vtype="B", name="M")
 
-    # for each x + y = z with 1 <= x <= y and z <= n, and each box j,
-    # not all of x, y, z are in box j: M[x,j] + M[y,j] + M[z,j] <= 2
-    # (x = y is allowed, as in the description; then the term M[x,j] appears twice)
+    # Each ball is in exactly one box: the row of each ball sums to 1.
+    model.addMatrixCons(M.sum(axis=1) == 1)
+
+    # For each triple x + y = z with x <= y and each box j, at most two of the
+    # three balls are in box j, so not all three are. The triples are the
+    # statement's: x = y is included, so a ball may pair with itself (1 + 1 = 2).
+    # y runs from x to n - x, which keeps z = x + y at most n.
     for x in range(1, n + 1):
-        for y in range(x, n + 1):
+        for y in range(x, n - x + 1):
             z = x + y
-            if z > n:
-                break
-            for j in range(boxes):
-                m.addCons(
-                    quicksum(M[k - 1, j] for k in (x, y, z)) <= 2,
-                    name=f"no_mono_{x}_{y}_{z}_{j}",
-                )
+            for j in range(c):
+                model.addCons(M[x - 1, j] + M[y - 1, j] + M[z - 1, j] <= 2)
 
-    # the output gives the box of each ball, numbered from 1 to 3
-    balls = [quicksum((j + 1) * M[i, j] for j in range(boxes)) for i in range(n)]
-    return m, {"balls": balls}
+    # The output is the box of each ball: the one-hot sum of (j + 1) * M[i, j]
+    # gives the box number directly, so no extra integer variable is needed.
+    balls = [quicksum((j + 1) * M[i, j] for j in range(c)) for i in range(n)]
+
+    return model, {"balls": balls}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

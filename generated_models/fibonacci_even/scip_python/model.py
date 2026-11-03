@@ -1,59 +1,67 @@
-# Problem: sum the even-valued Fibonacci-style terms (1, 2, 3, 5, 8, ...) that do not exceed four million.
+# fibonacci_even: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/fibonacci_even.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python fibonacci_even.py
+
 from pyscipopt import Model, quicksum
 
-# Problem constants from the statement (not instance data): the limit on the terms,
-# and the number of terms generated. Terms above the limit are excluded by the
-# include flags below, so the length only has to be large enough to reach the limit.
-# With terms 1, 2, 3, 5, ..., the 33rd term already exceeds 4,000,000, so 40 terms
-# leave a wide margin.
-LIMIT = 4_000_000
-NUM_TERMS = 40
-# Upper bound on every term: the 40th term is about 2.7e8, so every term stays below this.
-TERM_UB = 300_000_000
+
+def create_model(instance):
+    """Each new term of the Fibonacci sequence is the sum of the previous two terms.
+    Starting with 1 and 2, the sequence's even-valued terms that do not exceed four
+    million are added up. The instance file is empty ([]), so the statement fixes
+    every value and the model does not read the instance argument."""
+    LIMIT = 4_000_000  # the largest value a term may take, from the statement
+    # The first two terms are 1 and 2, and each later term is the sum of the two before it,
+    # so term n is the Fibonacci number F(n + 1) with F(1) = F(2) = 1. Term 32 is F(33) = 3524578,
+    # and term 33 is F(34) = 5702887, which exceeds the limit; the sequence only grows, so no later
+    # term fits either. The 32 terms modelled here are therefore all the terms that do not exceed the limit.
+    N = 32
+
+    model = Model("fibonacci_even")
+
+    # term[k] is the (k + 1)-th term of the sequence, from 1 to the limit
+    term = [model.addVar(f"term_{k}", vtype="I", lb=1, ub=LIMIT) for k in range(N)]
+    # The sequence starts with 1 and 2
+    model.addCons(term[0] == 1)
+    model.addCons(term[1] == 2)
+    # Each term from the third on is the sum of the two terms before it
+    for k in range(2, N):
+        model.addCons(term[k] == term[k - 1] + term[k - 2])
+
+    # odd[k] is 1 when term k is odd, and 0 when it is even
+    odd = [model.addVar(f"odd_{k}", vtype="B") for k in range(N)]
+    # half[k] is a whole number with term[k] == 2 * half[k] + odd[k]; with odd[k] binary this
+    # makes odd[k] the parity of term[k]. Its upper bound is LIMIT // 2 because term[k] <= LIMIT.
+    half = [model.addVar(f"half_{k}", vtype="I", lb=0, ub=LIMIT // 2) for k in range(N)]
+    for k in range(N):
+        model.addCons(term[k] == 2 * half[k] + odd[k])
+
+    # even_value[k] is term k when term k is even, and 0 when it is odd.
+    # SCIP's indicators take one inequality each, so each conditional equality is two indicators, one per side.
+    even_value = [model.addVar(f"even_value_{k}", vtype="I", lb=0, ub=LIMIT) for k in range(N)]
+    for k in range(N):
+        # when term k is even (odd[k] == 0): even_value[k] equals term[k]
+        model.addConsIndicator(even_value[k] - term[k] <= 0, binvar=odd[k], activeone=False)
+        model.addConsIndicator(even_value[k] - term[k] >= 0, binvar=odd[k], activeone=False)
+        # when term k is odd (odd[k] == 1): even_value[k] is 0
+        model.addConsIndicator(even_value[k] <= 0, binvar=odd[k])
+
+    # The output res is the sum of the even-valued terms that do not exceed the limit
+    res = quicksum(even_value)
+    return model, {"res": res}
 
 
-def build(instance):
-    m = Model()
+if __name__ == "__main__":
+    import numpy as np
 
-    # f[k]: the k-th term, with its parity split off as f[k] = 2 * h[k] + p[k].
-    f = [m.addVar(name=f"f_{k}", vtype="I", lb=0, ub=TERM_UB) for k in range(NUM_TERMS)]
-    h = [m.addVar(name=f"h_{k}", vtype="I", lb=0, ub=TERM_UB // 2) for k in range(NUM_TERMS)]
-    p = [m.addVar(name=f"odd_{k}", vtype="B") for k in range(NUM_TERMS)]
-    # inc[k] = 1 if the term does not exceed the limit
-    inc = [m.addVar(name=f"within_{k}", vtype="B") for k in range(NUM_TERMS)]
-    # ev[k] = 1 if the term is even (the complement of odd)
-    ev = [m.addVar(name=f"even_{k}", vtype="B") for k in range(NUM_TERMS)]
-    # chosen[k] = 1 if the term is even and within the limit
-    chosen = [m.addVar(name=f"chosen_{k}", vtype="B") for k in range(NUM_TERMS)]
-    # t[k] = f[k] when chosen, else 0 (linearises the product chosen * f)
-    t = [m.addVar(name=f"picked_{k}", vtype="I", lb=0, ub=TERM_UB) for k in range(NUM_TERMS)]
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-    # the sequence starts with 1 and 2
-    m.addCons(f[0] == 1)
-    m.addCons(f[1] == 2)
-    # each new term is the sum of the previous two terms
-    for k in range(2, NUM_TERMS):
-        m.addCons(f[k] == f[k - 1] + f[k - 2])
-
-    for k in range(NUM_TERMS):
-        # parity: the term is 2 * h + p with p binary
-        m.addCons(f[k] == 2 * h[k] + p[k])
-        m.addCons(ev[k] + p[k] == 1)
-
-        # the term is within the limit: an indicator selects the side of the bound
-        m.addConsIndicator(f[k] <= LIMIT, binvar=inc[k])
-        m.addConsIndicator(f[k] >= LIMIT + 1, binvar=inc[k], activeone=False)
-
-        # chosen = within AND even
-        m.addConsAnd([inc[k], ev[k]], chosen[k])
-
-        # t[k] = f[k] if chosen[k] == 1, and 0 otherwise
-        m.addCons(t[k] <= f[k])
-        m.addCons(t[k] <= TERM_UB * chosen[k])
-        m.addCons(t[k] >= f[k] - TERM_UB * (1 - chosen[k]))
-
-    # the output: the sum of the even terms that do not exceed the limit
-    res = m.addVar(name="res", vtype="I", lb=0, ub=4 * LIMIT)
-    m.addCons(res == quicksum(t[k] for k in range(NUM_TERMS)))
-
-    return m, {"res": res}
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

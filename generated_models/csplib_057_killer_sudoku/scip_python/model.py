@@ -1,50 +1,78 @@
-# Killer sudoku: fill a 9x9 grid with digits 1..9 so that each row, column and nonet
-# holds every digit once, and each cage sums to its printed total with no digit repeated.
+# csplib_057_killer_sudoku: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_057_killer_sudoku.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_057_killer_sudoku.py csplib_057_killer_sudoku.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n = instance["n"]  # grid size (9)
-    cages = instance["problem"]  # list of [total, [[row, col], ...]], 1-based cells
-    digits = range(1, n + 1)
-    # nonets are the 3x3 blocks; the grid size fixes the block width
-    block = int(round(n ** 0.5))
+def create_model(instance):
+    """Killer sudoku: fill an n x n grid with the digits 1 to n so that every row,
+    every column and every nonet (3 x 3 block) holds each digit exactly once, and
+    every cage (a group of cells) sums to the small number printed in its corner,
+    with no digit repeated inside a cage. There is no objective: any grid that
+    follows these rules is a solution."""
+    n = instance["n"]  # the grid side, and the largest digit (the statement's grid is 9 x 9)
+    cages = instance["problem"]  # cages[k] = [target sum, [[row, column], ...]], 1-based rows and columns
+    box = 3  # the nonet side: the statement's 9 x 9 grid has nine 3 x 3 nonets, a fixed rule, not from the instance
 
-    m = Model()
-    m.hideOutput()
+    model = Model("killer_sudoku")
 
-    # one-hot: cell (r, c) holds digit v
-    b = {(r, c, v): m.addVar(vtype="B", name=f"b_{r}_{c}_{v}")
-         for r in range(n) for c in range(n) for v in digits}
-    x = {(r, c): m.addVar(vtype="I", lb=1, ub=n, name=f"x_{r}_{c}")
-         for r in range(n) for c in range(n)}
-    # each cell holds exactly one digit
-    for r in range(n):
-        for c in range(n):
-            m.addCons(quicksum(b[r, c, v] for v in digits) == 1)
-            m.addCons(x[r, c] == quicksum(v * b[r, c, v] for v in digits))
+    # b[r, c, d] = 1 when cell (r, c) holds digit d + 1, and 0 when not.
+    # SCIP has no all-different constraint, so the sudoku and cage rules are written
+    # over these one-hot binaries: each digit is counted once per row, column, nonet and cage.
+    b = model.addMatrixVar((n, n, n), vtype="B", name="b")
+    digits = np.arange(1, n + 1)
 
-    # each row contains every digit once
-    for r in range(n):
-        for v in digits:
-            m.addCons(quicksum(b[r, c, v] for c in range(n)) == 1)
-    # each column contains every digit once
-    for c in range(n):
-        for v in digits:
-            m.addCons(quicksum(b[r, c, v] for r in range(n)) == 1)
-    # each nonet (3x3 block) contains every digit once
-    for br in range(0, n, block):
-        for bc in range(0, n, block):
-            for v in digits:
-                m.addCons(quicksum(b[r, c, v] for r in range(br, br + block)
-                                   for c in range(bc, bc + block)) == 1)
+    # Each cell holds exactly one digit.
+    model.addMatrixCons(b.sum(axis=2) == 1)
 
-    # each cage sums to its total
-    for total, cells in cages:
-        m.addCons(quicksum(x[r - 1, c - 1] for r, c in cells) == total)
-        # no digit appears more than once in a cage
-        for v in digits:
-            m.addCons(quicksum(b[r - 1, c - 1, v] for r, c in cells) <= 1)
+    # x[r, c] is the digit in cell (r, c): the one digit whose bit is set. Its values lie
+    # in 1 to n because each cell takes exactly one of the n one-hot digits.
+    x = (digits * b).sum(axis=2)
 
-    # the output is the solution grid
-    return m, {"x": [[x[r, c] for c in range(n)] for r in range(n)]}
+    # Each row holds each digit exactly once.
+    model.addMatrixCons(b.sum(axis=1) == 1)
+
+    # Each column holds each digit exactly once.
+    model.addMatrixCons(b.sum(axis=0) == 1)
+
+    # Each nonet holds each digit exactly once.
+    for top in range(0, n, box):
+        for left in range(0, n, box):
+            model.addMatrixCons(b[top:top + box, left:left + box].sum(axis=(0, 1)) == 1)
+
+    for target, cells in cages:
+        # Cell positions in the data are 1-based; shift them to 0-based indexes.
+        cage_cells = [(r - 1, c - 1) for r, c in cells]
+
+        # The digits in the cage sum to the target printed in its corner.
+        model.addCons(quicksum(x[r, c] for r, c in cage_cells) == target)
+
+        # No digit appears twice in the cage.
+        for d in range(n):
+            model.addCons(quicksum(b[r, c, d] for r, c in cage_cells) <= 1)
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

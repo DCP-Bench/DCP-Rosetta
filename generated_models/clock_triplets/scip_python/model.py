@@ -1,26 +1,50 @@
-# Clock triplets: arrange the numbers 1 to 12 on the face of a clock so that no triplet of adjacent numbers has a sum higher than 21.
-from pyscipopt import Model, quicksum
+# clock_triplets: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python clock_triplets.py
 
-N = 12  # positions on the clock face and the numbers 1..N (problem constant, from the description)
-MAX_TRIPLET_SUM = 21  # the bound from the description
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    m = Model()
-    # b[p, v] = 1 if position p (0..11, clockwise from 12) holds the number v + 1
-    b = {(p, v): m.addVar(name=f"b_{p}_{v}", vtype="B") for p in range(N) for v in range(N)}
-    # each position holds exactly one number
-    for p in range(N):
-        # one number per position
-        m.addCons(quicksum(b[p, v] for v in range(N)) == 1)
-    # each number is used exactly once
-    for v in range(N):
-        # each number 1..12 appears exactly once on the clock
-        m.addCons(quicksum(b[p, v] for p in range(N)) == 1)
-    # value of each position, as an expression of the one-hot binaries
-    x = [quicksum((v + 1) * b[p, v] for v in range(N)) for p in range(N)]
-    # no triplet of adjacent numbers has a sum higher than 21 (the clock wraps around, so position 11 is adjacent to 0 and 1)
-    for p in range(N):
-        # triplet of adjacent numbers starting at this position
-        m.addCons(x[p] + x[(p + 1) % N] + x[(p + 2) % N] <= MAX_TRIPLET_SUM)
-    return m, {"x": x}
+def create_model(instance):
+    """Put the numbers 1 to 12 on the face of a clock, one per position, so that
+    no three adjacent numbers add up to more than 21. The statement does not
+    number the positions, so position 0 is the one at 12 o'clock and the others
+    run clockwise from it. The face is a ring: the last position is next to the first.
+    The instance file is empty ([]), so the statement fixes all the data and
+    the instance argument is not read."""
+    model = Model("clock_triplets")
+
+    # b[p, v] is 1 when position p on the clock holds the number v + 1.
+    # The clock has 12 positions and the numbers are 1 to 12 (from the statement).
+    b = model.addMatrixVar((12, 12), vtype="B", name="b")
+
+    # Each position holds exactly one number.
+    model.addMatrixCons(b.sum(axis=1) == 1)
+    # Each number sits on exactly one position: the numbers are a permutation.
+    model.addMatrixCons(b.sum(axis=0) == 1)
+
+    # x[p] is the number at position p: the value of its one chosen b[p, v].
+    x = b @ np.arange(1, 13)
+
+    # Any three adjacent positions p, p + 1, p + 2 (wrapping around the ring)
+    # have a sum of at most 21 (the limit from the statement).
+    model.addMatrixCons(x + np.roll(x, -1) + np.roll(x, -2) <= 21)
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

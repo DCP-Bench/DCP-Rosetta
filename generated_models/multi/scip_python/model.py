@@ -1,49 +1,72 @@
-# Multi-commodity transportation: ship every product from the origins to the destinations at minimum total cost.
-from pyscipopt import Model, quicksum
+# multi: a SCIP (Python) model from DCP Rosetta.
+# Download the `multi.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/multi.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python multi.py multi.json
+
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    supply = instance["supply"]    # supply[i][p]: units of product p available at origin i
-    demand = instance["demand"]    # demand[j][p]: units of product p required at destination j
-    limit = instance["limit"]      # limit[i][j]: total units (all products) on the lane from i to j
-    cost = instance["cost"]        # cost[i][j][p]: cost of shipping one unit of p from i to j
-    n_orig = len(supply)
-    n_dest = len(demand)
-    n_prod = len(supply[0])
+def create_model(instance):
+    """A multi-commodity transportation problem: ship every product from the origins
+    to the destinations at the least total cost, without an origin sending out more of
+    a product than its supply, without a destination receiving other than its demand
+    of each product, and without a lane carrying more, over all products, than its limit."""
+    supply = np.array(instance["supply"])  # supply[i][p]: units of product p that origin i can send
+    demand = np.array(instance["demand"])  # demand[j][p]: units of product p that destination j needs
+    limit = np.array(instance["limit"])    # limit[i][j]: most units, all products together, on the lane from origin i to destination j
+    cost = np.array(instance["cost"])      # cost[i][j][p]: cost of shipping one unit of product p from origin i to destination j
+    n_origins, n_destinations, n_products = cost.shape
 
-    m = Model()
+    model = Model("multi")
 
-    # ship[i, j, p] = units of product p shipped from origin i to destination j,
-    # bounded by the smallest of the origin supply, the destination demand and the lane limit
-    ship = {}
-    ub = {}
-    for i in range(n_orig):
-        for j in range(n_dest):
-            for p in range(n_prod):
-                ub[i, j, p] = min(supply[i][p], demand[j][p], limit[i][j])
-                ship[i, j, p] = m.addVar(name=f"ship_{i}_{j}_{p}", vtype="I", lb=0, ub=ub[i, j, p])
+    # ship[i, j, p] is the number of units of product p that origin i sends to destination j.
+    # Its upper bound is the smallest of the three amounts that cap it on its own: supply[i][p],
+    # demand[j][p] and limit[i][j]. Each of those is a constraint below with nonnegative
+    # shipments, so the bound removes no feasible plan.
+    ship_ub = np.minimum(np.minimum(supply[:, None, :], demand[None, :, :]), limit[:, :, None])
+    ship = model.addMatrixVar((n_origins, n_destinations, n_products), vtype="I", lb=0, ub=ship_ub, name="ship")
 
-    # the units of each product shipped out of an origin cannot exceed its supply of that product
-    for i in range(n_orig):
-        for p in range(n_prod):
-            m.addCons(quicksum(ship[i, j, p] for j in range(n_dest)) <= supply[i][p])
+    # total_cost is the total shipping cost of the plan, and the objective. It is a variable
+    # of its own, equal to the cost sum, because the runner blocks the variables an output is
+    # built from when it looks for another solution: blocking the shipments would rule out
+    # every plan, while blocking total_cost rules out only that cost.
+    # Its upper bound: every unit shipped costs at most the largest entry of cost, and the
+    # demand constraints make exactly sum(demand) units shipped.
+    total_cost = model.addVar(vtype="I", lb=0, ub=int(cost.max() * demand.sum()), name="total_cost")
+    model.addCons(total_cost == (cost * ship).sum())
 
-    # the units of each product received at a destination must equal its demand for that product
-    for j in range(n_dest):
-        for p in range(n_prod):
-            m.addCons(quicksum(ship[i, j, p] for i in range(n_orig)) == demand[j][p])
+    # Each origin sends out no more of each product than its supply of that product.
+    model.addMatrixCons(ship.sum(axis=1) <= supply)
 
-    # the total of all products on a lane cannot exceed the lane limit
-    for i in range(n_orig):
-        for j in range(n_dest):
-            m.addCons(quicksum(ship[i, j, p] for p in range(n_prod)) <= limit[i][j])
+    # Each destination receives exactly its demand of each product.
+    model.addMatrixCons(ship.sum(axis=0) == demand)
 
-    # the total shipping cost, held in a variable with a finite upper bound from the data
-    max_cost = sum(cost[i][j][p] * ub[i, j, p]
-                   for i in range(n_orig) for j in range(n_dest) for p in range(n_prod))
-    total_cost = m.addVar(name="total_cost", vtype="I", lb=0, ub=max_cost)
-    m.addCons(total_cost == quicksum(cost[i][j][p] * ship[i, j, p]
-                                     for i in range(n_orig) for j in range(n_dest) for p in range(n_prod)))
-    m.setObjective(total_cost, "minimize")
+    # The shipments on each lane, over all products, stay within the lane's limit.
+    model.addMatrixCons(ship.sum(axis=2) <= limit)
 
-    return m, {"total_cost": total_cost}
+    # Minimise the total shipping cost.
+    model.setObjective(total_cost, "minimize")
+
+    return model, {"total_cost": total_cost}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

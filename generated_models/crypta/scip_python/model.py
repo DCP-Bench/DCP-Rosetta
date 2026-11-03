@@ -1,51 +1,78 @@
-# Cryptarithmetic puzzle: A_WORD + B_WORD = S_WORD, each letter is one distinct digit 0-9,
-# and the first letter of each of the three numbers is not zero.
-from pyscipopt import Model, quicksum
+# crypta: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python crypta.py
 
-# the three numbers as written in the problem statement (the puzzle is fixed; the instance has no fields)
-A_WORD = "BAIJJAJIIAHFCFEBBJEA"
-B_WORD = "DHFGABCDIDBIFFAGFEJE"
-S_WORD = "GJEGACDDHFAFJBFIHEEF"
+import numpy as np
+from pyscipopt import Model
+
+# The three words of the puzzle, most significant letter first, as the statement
+# writes them, and the letters of the puzzle.
+FIRST = "BAIJJAJIIAHFCFEBBJEA"
+SECOND = "DHFGABCDIDBIFFAGFEJE"
+TOTAL = "GJEGACDDHFAFJBFIHEEF"
+LETTERS = "ABCDEFGHIJ"
 
 
-def build(instance):
-    m = Model()
-    letters = sorted(set(A_WORD + B_WORD + S_WORD))
-    digits = range(10)
-    n = len(A_WORD)
+def create_model(instance):
+    """Cryptarithm: give each letter A to J a different digit from 0 to 9 so that
+    the 20-digit sum FIRST + SECOND = TOTAL holds, with the words of the statement.
+    The first letter of each of the three numbers is not zero. The instance file is
+    empty ([]), so the words are fixed by the statement and the function reads
+    nothing from `instance`. It is a satisfaction problem with no objective; the
+    outputs are the digit of each letter."""
+    model = Model("crypta")
+    index = {letter: i for i, letter in enumerate(LETTERS)}
 
-    # x[l, v] = 1 if letter l stands for digit v
-    x = {(l, v): m.addVar(name=f"x_{l}_{v}", vtype="B") for l in letters for v in digits}
-    # the value of each letter
-    val = {l: quicksum(v * x[l, v] for v in digits) for l in letters}
+    # x[l, d] is 1 when letter l (0 for A up to 9 for J) stands for digit d.
+    # SCIP has no all-different constraint, so the ten letters take ten different
+    # digits as a permutation matrix: each letter has one digit, and each digit
+    # has one letter.
+    x = model.addMatrixVar((10, 10), vtype="B", name="x")
+    model.addMatrixCons(x.sum(axis=1) == 1)  # each letter takes exactly one digit
+    model.addMatrixCons(x.sum(axis=0) == 1)  # each digit is taken by exactly one letter
 
-    # each letter stands for exactly one digit
-    for l in letters:
-        m.addCons(quicksum(x[l, v] for v in digits) == 1)
-    # each digit is used by exactly one letter
-    for v in digits:
-        m.addCons(quicksum(x[l, v] for l in letters) == 1)
+    # value[l] is the digit of letter l: the sum of d * x[l, d] over the digits d.
+    # It is an expression, not a new variable, since x already holds it.
+    value = x @ np.arange(10)
 
-    # the first letter of each number cannot be zero
-    for w in (A_WORD, B_WORD, S_WORD):
-        m.addCons(val[w[0]] >= 1)
+    # The first letter of each number cannot be zero.
+    for word in (FIRST, SECOND, TOTAL):
+        model.addCons(value[index[word[0]]] >= 1)
 
-    # carry[k] = 1 if column k (counted from the right) carries into column k+1
-    carry = [m.addVar(name=f"carry_{k}", vtype="B") for k in range(n)]
-    # no carry out of the leftmost column, since the sum has the same number of digits
-    m.addCons(carry[n - 1] == 0)
+    # carry[j] is 1 when column j - 1 passes a carry on to column j, with columns
+    # counted from the right, the units column being 0. Nothing is carried into the
+    # units column (carry[0] = 0), and nothing leaves the leftmost column (carry[20] = 0)
+    # because a carry out of it would need a 21st digit, which TOTAL does not have.
+    # A column adds at most 9 + 9 + 1 = 19, so a carry is 0 or 1.
+    carry = [0] + [model.addVar(f"carry_{j}", vtype="B") for j in range(1, 20)] + [0]
 
-    # column addition, from the rightmost digit to the leftmost
-    for k in range(n):
-        a = A_WORD[n - 1 - k]
-        b = B_WORD[n - 1 - k]
-        s = S_WORD[n - 1 - k]
-        # the digits of this column plus the carry in equal the sum digit plus 10 times the carry out
-        if k == 0:
-            # the rightmost column has no carry in
-            m.addCons(val[a] + val[b] == val[s] + 10 * carry[k])
-        else:
-            m.addCons(val[a] + val[b] + carry[k - 1] == val[s] + 10 * carry[k])
+    # Column by column from the right, the digits of FIRST and SECOND in the column
+    # plus the carry in equal the digit of TOTAL plus 10 times the carry out. Working
+    # column by column keeps every coefficient at most 10; a weighted sum over the whole
+    # numbers would need coefficients up to 10**19, beyond what floating-point arithmetic
+    # keeps exact.
+    for j in range(20):
+        a, b, s = (word[-1 - j] for word in (FIRST, SECOND, TOTAL))
+        model.addCons(
+            value[index[a]] + value[index[b]] + carry[j]
+            == value[index[s]] + 10 * carry[j + 1]
+        )
 
-    outputs = {l: val[l] for l in "ABCDEFGHIJ"}
-    return m, outputs
+    outputs = {letter: value[index[letter]] for letter in LETTERS}
+    return model, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

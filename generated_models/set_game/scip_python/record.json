@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791990041.0224426,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793742750.3122659,
     "problem_id": "set_game",
     "profile": {
       "compilation_timeout": 120,
@@ -14,34 +18,55 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.0719400949892588,
-        "execution_wall_seconds": 0.9025669730035588,
+        "checking_seconds": 0.03057882300345227,
+        "execution_wall_seconds": 0.7396990389970597,
         "first_solution": {
           "winning_cards": [
-            0,
             1,
+            0,
             7
           ]
         },
@@ -54,9 +79,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6013493649661541,
+        "reference_setup_seconds": 0.37275917100487277,
         "runner_status": {
+          "build_seconds": 0.006679997983155772,
           "detail": "",
+          "main_seconds": 0.01191124299657531,
+          "read_seconds": 0.0001288370112888515,
           "status": "limit",
           "type": "status"
         },
@@ -66,13 +94,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.041330273961648345,
-        "execution_wall_seconds": 0.8523273480241187,
+        "checking_seconds": 0.031466104002902284,
+        "execution_wall_seconds": 0.7748085880011786,
         "first_solution": {
           "winning_cards": [
-            7,
             8,
-            11
+            11,
+            7
           ]
         },
         "id": "json:1",
@@ -84,25 +112,28 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7130899450276047,
+        "reference_setup_seconds": 0.3029372539895121,
         "runner_status": {
+          "build_seconds": 0.007424406998325139,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 0.09995149599853903,
+          "read_seconds": 0.00017970497719943523,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03898683795705438,
-        "execution_wall_seconds": 0.85020531603368,
+        "checking_seconds": 0.02815240900963545,
+        "execution_wall_seconds": 0.749245711020194,
         "first_solution": {
           "winning_cards": [
-            0,
             1,
-            4
+            4,
+            0
           ]
         },
         "id": "json:2",
@@ -114,25 +145,28 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7204859389457852,
+        "reference_setup_seconds": 0.36123161399154924,
         "runner_status": {
+          "build_seconds": 0.007450108008924872,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 0.0136207040050067,
+          "read_seconds": 0.00014236001879908144,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0681792389950715,
-        "execution_wall_seconds": 0.9504455559654161,
+        "checking_seconds": 0.03298879798967391,
+        "execution_wall_seconds": 0.8451988589949906,
         "first_solution": {
           "winning_cards": [
-            0,
-            3,
-            6
+            9,
+            13,
+            5
           ]
         },
         "id": "json:3",
@@ -144,9 +178,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.664217688026838,
+        "reference_setup_seconds": 0.32226849702419713,
         "runner_status": {
+          "build_seconds": 0.006731280998792499,
           "detail": "",
+          "main_seconds": 0.01752859799307771,
+          "read_seconds": 0.00013246401795186102,
           "status": "limit",
           "type": "status"
         },
@@ -156,8 +193,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02572765899822116,
-        "execution_wall_seconds": 0.702797249017749,
+        "checking_seconds": 0.02590709298965521,
+        "execution_wall_seconds": 0.7387091780256014,
         "first_solution": {
           "winning_cards": [
             0,
@@ -174,14 +211,17 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5538698029704392,
+        "reference_setup_seconds": 0.34038520202739164,
         "runner_status": {
+          "build_seconds": 0.008868436998454854,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 0.012917949992697686,
+          "read_seconds": 0.0001752059906721115,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       }
     ],
@@ -194,15 +234,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "24483c3a9255adbf918f61305b8f0cff33686af3d70051d20cf7d95379c9313d",
+    "model_hash": "87d70500c5914480d9c536688ac188e2bd8cc3aaea2773f1e2e3df79feafc1d4",
     "problem_id": "set_game",
     "reason": "accepted",
     "reference_hash": "1440ef9dbee8c999ae6d7bf4fa0f20e88827460b09b3e0b2e8aba595f1f1a962",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -211,13 +251,13 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 7,
+    "solutions_checked": 10,
     "solver_id": "scip_python",
-    "total_wall_seconds": 8.035551426000893,
+    "total_wall_seconds": 7.024404438998317,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

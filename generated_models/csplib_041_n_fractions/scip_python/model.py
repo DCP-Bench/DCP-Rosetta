@@ -1,43 +1,70 @@
-# Find distinct non-zero digits A..I with A/BC + D/EF + G/HI = 1, where BC, EF, HI are two-digit numbers.
-from pyscipopt import Model, quicksum
+# csplib_041_n_fractions: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_041_n_fractions.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python csplib_041_n_fractions.py
 
-DIGITS = "ABCDEFGHI"
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    m = Model()
+def create_model(instance):
+    """Find distinct non-zero digits A, B, C, D, E, F, G, H, I such that
+    A / BC + D / EF + G / HI = 1, where BC, EF and HI are the two-digit
+    numbers 10*B + C, 10*E + F and 10*H + I.
 
-    # one-hot binaries: x[d, v] = 1 if digit d takes value v (values 1..9, zero excluded)
-    x = {(d, v): m.addVar(name=f"x_{d}_{v}", vtype="B") for d in DIGITS for v in range(1, 10)}
-    for d in DIGITS:
-        # each digit takes exactly one non-zero value
-        m.addCons(quicksum(x[d, v] for v in range(1, 10)) == 1, name=f"one_value_{d}")
-    for v in range(1, 10):
-        # the nine digits are pairwise distinct: each value is used at most once
-        m.addCons(quicksum(x[d, v] for d in DIGITS) <= 1, name=f"distinct_{v}")
+    The instance file is empty ([]), so the statement fixes all the data and
+    `instance` is not read. The nine digits are distinct and non-zero, so they
+    are exactly the digits 1 to 9, each used once.
+    """
+    model = Model("csplib_041_n_fractions")
 
-    dig = {
-        d: m.addVar(name=d, vtype="I", lb=1, ub=9) for d in DIGITS
-    }
-    for d in DIGITS:
-        # link the integer digit to its one-hot encoding
-        m.addCons(dig[d] == quicksum(v * x[d, v] for v in range(1, 10)), name=f"link_{d}")
+    # x[s, d] = 1 when slot s holds digit d. The slots are, in order, A, B, C,
+    # D, E, F, G, H, I, and the digits are 1 to 9 (row s, column d - 1).
+    x = model.addMatrixVar((9, 9), vtype="B", name="x")
 
-    # two-digit numbers BC, EF, HI (tens digit times 10 plus units digit)
-    bc = m.addVar(name="BC", vtype="I", lb=11, ub=99)
-    ef = m.addVar(name="EF", vtype="I", lb=11, ub=99)
-    hi = m.addVar(name="HI", vtype="I", lb=11, ub=99)
-    m.addCons(bc == 10 * dig["B"] + dig["C"], name="BC_value")
-    m.addCons(ef == 10 * dig["E"] + dig["F"], name="EF_value")
-    m.addCons(hi == 10 * dig["H"] + dig["I"], name="HI_value")
+    # Every slot holds exactly one digit.
+    model.addMatrixCons(x.sum(axis=1) == 1)
+    # All different: each digit is used at most once. With nine slots and nine
+    # digits, this makes every digit used exactly once. SCIP has no all-different
+    # constraint, so it is written this way.
+    model.addMatrixCons(x.sum(axis=0) <= 1)
 
-    # A/BC + D/EF + G/HI = 1, multiplied out by BC * EF * HI to avoid division
-    # (each term is a digit times the product of the two other two-digit numbers)
-    m.addCons(
-        dig["A"] * ef * hi + dig["D"] * bc * hi + dig["G"] * bc * ef == bc * ef * hi,
-        name="fractions_sum_to_one",
-    )
+    # The digit in each slot: A, B, ..., I are the d with x[s, d] = 1, so each
+    # lies in 1 to 9.
+    A, B, C, D, E, F, G, H, I = x @ np.arange(1, 10)
 
-    # the output is the digit values in the order A..I
-    outputs = {d: dig[d] for d in DIGITS}
-    return m, outputs
+    # The two-digit numbers BC, EF and HI, each made from its tens and units
+    # digit. Their bounds come from the digit range 1 to 9: the smallest is 11
+    # (digits 1 and 1) and the largest is 99 (digits 9 and 9).
+    BC = model.addVar(vtype="I", lb=11, ub=99, name="BC")
+    EF = model.addVar(vtype="I", lb=11, ub=99, name="EF")
+    HI = model.addVar(vtype="I", lb=11, ub=99, name="HI")
+    model.addCons(BC == 10 * B + C)
+    model.addCons(EF == 10 * E + F)
+    model.addCons(HI == 10 * H + I)
+
+    # A / BC + D / EF + G / HI = 1, with the three denominators cleared. Each
+    # denominator is at least 11, so multiplying by BC * EF * HI keeps the
+    # equation exact.
+    model.addCons(A * EF * HI + D * BC * HI + G * BC * EF == BC * EF * HI)
+
+    # The problem asks for the digits only, so there is no objective: any
+    # assignment that satisfies the constraints above is an answer.
+
+    outputs = {"A": A, "B": B, "C": C, "D": D, "E": E, "F": F, "G": G, "H": H, "I": I}
+    return model, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

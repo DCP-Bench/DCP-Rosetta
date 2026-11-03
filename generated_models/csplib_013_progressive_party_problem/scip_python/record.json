@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791984447.5609124,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793722489.4848468,
     "problem_id": "csplib_013_progressive_party_problem",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "647f43df878d2ae8aee7967a37c7d6f37fa7499711a8cde50ba9d3e3e3ff985e",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.1060733440099284,
-        "execution_wall_seconds": 1.2902209319872782,
+        "checking_seconds": 0.03646420198492706,
+        "execution_wall_seconds": 0.8353496979980264,
         "first_solution": {
           "is_host": [
             false,
@@ -48,13 +73,6 @@
           ],
           "visits": [
             [
-              3,
-              1,
-              2,
-              3,
-              4
-            ],
-            [
               1,
               1,
               2,
@@ -63,6 +81,13 @@
             ],
             [
               2,
+              1,
+              2,
+              3,
+              4
+            ],
+            [
+              3,
               1,
               2,
               3,
@@ -87,9 +112,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7267326050205156,
+        "reference_setup_seconds": 0.3765173100109678,
         "runner_status": {
+          "build_seconds": 0.010329270007787272,
           "detail": "",
+          "main_seconds": 0.04887243200209923,
+          "read_seconds": 0.00014430598821491003,
           "status": "limit",
           "type": "status"
         },
@@ -99,55 +127,55 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.2670435829786584,
-        "execution_wall_seconds": 2.992490781005472,
+        "checking_seconds": 0.0672403939825017,
+        "execution_wall_seconds": 1.13496573100565,
         "first_solution": {
           "is_host": [
+            true,
+            true,
+            true,
             false,
-            true,
-            true,
-            true,
             true,
             true
           ],
           "visits": [
             [
+              0,
+              1,
+              2,
+              4,
+              4,
+              5
+            ],
+            [
+              0,
+              1,
+              2,
               5,
-              1,
-              2,
-              3,
               4,
               5
             ],
             [
-              2,
+              0,
               1,
               2,
-              3,
+              2,
               4,
               5
             ],
             [
-              4,
+              0,
               1,
               2,
-              3,
-              4,
-              5
-            ],
-            [
-              3,
-              1,
-              2,
-              3,
+              0,
               4,
               5
             ],
             [
-              1,
+              0,
               1,
               2,
-              3,
+              1,
               4,
               5
             ]
@@ -163,9 +191,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8769189799786545,
+        "reference_setup_seconds": 0.4500126339844428,
         "runner_status": {
+          "build_seconds": 0.012765480001689866,
           "detail": "",
+          "main_seconds": 0.43254217598587275,
+          "read_seconds": 0.0001489669957663864,
           "status": "limit",
           "type": "status"
         },
@@ -175,13 +206,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.22074884100584313,
-        "execution_wall_seconds": 8.913287931995,
+        "checking_seconds": 0.08907517400803044,
+        "execution_wall_seconds": 1.7321529210021254,
         "first_solution": {
           "is_host": [
+            true,
+            true,
             false,
-            true,
-            true,
             true,
             true,
             true,
@@ -189,54 +220,54 @@
           ],
           "visits": [
             [
-              4,
+              0,
               1,
-              2,
-              3,
-              4,
-              5,
-              6
-            ],
-            [
               6,
-              1,
-              2,
               3,
               4,
               5,
               6
             ],
             [
-              3,
+              0,
               1,
-              2,
+              4,
               3,
               4,
               5,
               6
             ],
             [
+              0,
               1,
-              1,
-              2,
+              0,
               3,
               4,
               5,
               6
             ],
             [
-              5,
+              0,
               1,
-              2,
+              5,
               3,
               4,
               5,
               6
             ],
             [
-              2,
+              0,
               1,
-              2,
+              1,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              0,
+              1,
+              3,
               3,
               4,
               5,
@@ -254,9 +285,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7374608410173096,
+        "reference_setup_seconds": 0.5555248580058105,
         "runner_status": {
+          "build_seconds": 0.024352301028557122,
           "detail": "",
+          "main_seconds": 1.006368400005158,
+          "read_seconds": 0.00015457699191756546,
           "status": "limit",
           "type": "status"
         },
@@ -266,79 +300,79 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.3842483719927259,
-        "execution_wall_seconds": 12.280080911004916,
+        "checking_seconds": 0.10739640501560643,
+        "execution_wall_seconds": 2.9411502740113065,
         "first_solution": {
           "is_host": [
             true,
+            true,
+            true,
+            true,
             false,
-            false,
             true,
             true,
-            true,
-            true,
-            true
+            false
           ],
           "visits": [
             [
               0,
+              1,
+              2,
               3,
-              7,
-              3,
-              4,
+              2,
               5,
               6,
-              7
+              2
             ],
             [
               0,
-              7,
-              6,
+              1,
+              2,
               3,
-              4,
+              6,
               5,
               6,
-              7
+              3
             ],
             [
               0,
-              0,
-              5,
+              1,
+              2,
               3,
-              4,
+              3,
               5,
               6,
-              7
+              6
             ],
             [
               0,
-              6,
-              4,
+              1,
+              2,
               3,
-              4,
+              0,
               5,
               6,
-              7
+              5
             ],
             [
               0,
-              4,
+              1,
+              2,
               3,
-              3,
-              4,
+              5,
               5,
               6,
-              7
+              1
             ],
             [
               0,
-              5,
-              0,
+              1,
+              2,
               3,
-              4,
+              1,
               5,
               6,
-              7
+              0
             ]
           ]
         },
@@ -352,9 +386,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.506949988019187,
+        "reference_setup_seconds": 0.6037909529986791,
         "runner_status": {
+          "build_seconds": 0.026590494002448395,
           "detail": "",
+          "main_seconds": 2.358930259011686,
+          "read_seconds": 0.0001760039885994047,
           "status": "limit",
           "type": "status"
         },
@@ -364,75 +401,75 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.36779755097813904,
-        "execution_wall_seconds": 19.60569656599546,
+        "checking_seconds": 0.17330767898238264,
+        "execution_wall_seconds": 3.2412255050148815,
         "first_solution": {
           "is_host": [
             false,
             true,
-            true,
-            true,
-            true,
+            false,
             true,
             false,
             false,
-            false
+            true,
+            true,
+            true
           ],
           "visits": [
             [
-              3,
+              8,
               1,
-              2,
+              7,
               3,
-              4,
-              5,
-              4,
-              1,
-              5
+              3,
+              3,
+              6,
+              7,
+              8
             ],
             [
-              2,
-              1,
-              2,
               3,
-              4,
-              5,
               1,
+              8,
               3,
-              4
+              8,
+              6,
+              6,
+              7,
+              8
             ],
             [
-              5,
+              6,
               1,
-              2,
+              1,
               3,
-              4,
-              5,
-              3,
-              5,
-              2
+              6,
+              7,
+              6,
+              7,
+              8
             ],
             [
-              4,
+              7,
               1,
-              2,
               3,
-              4,
-              5,
-              2,
-              2,
-              3
+              3,
+              1,
+              8,
+              6,
+              7,
+              8
             ],
             [
               1,
               1,
-              2,
+              6,
               3,
-              4,
-              5,
-              5,
-              4,
-              1
+              7,
+              1,
+              6,
+              7,
+              8
             ]
           ]
         },
@@ -446,9 +483,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.89121651701862,
+        "reference_setup_seconds": 0.6781028239929583,
         "runner_status": {
+          "build_seconds": 0.02299354801652953,
           "detail": "",
+          "main_seconds": 2.6075296310009435,
+          "read_seconds": 0.00018034997629001737,
           "status": "limit",
           "type": "status"
         },
@@ -458,79 +498,79 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.34569339000154287,
-        "execution_wall_seconds": 18.48619972297456,
+        "checking_seconds": 0.1407081939978525,
+        "execution_wall_seconds": 4.2389886009914335,
         "first_solution": {
           "is_host": [
             false,
+            true,
             false,
-            false,
+            true,
             false,
             false,
             true,
-            true,
-            true,
+            false,
             true,
             true
           ],
           "visits": [
             [
-              7,
-              8,
-              6,
               9,
+              1,
               8,
-              5,
+              3,
+              3,
+              3,
               6,
-              7,
+              1,
               8,
               9
             ],
             [
+              3,
+              1,
               9,
+              3,
+              8,
+              6,
+              6,
               9,
-              8,
-              7,
-              5,
-              5,
-              6,
-              7,
-              8,
-              9
-            ],
-            [
-              6,
-              5,
-              7,
-              5,
-              6,
-              5,
-              6,
-              7,
-              8,
-              9
-            ],
-            [
-              5,
-              6,
-              5,
-              8,
-              7,
-              5,
-              6,
-              7,
               8,
               9
             ],
             [
               8,
-              7,
+              1,
+              1,
+              3,
               9,
+              1,
+              6,
+              3,
+              8,
+              9
+            ],
+            [
+              6,
+              1,
+              3,
+              3,
+              1,
+              8,
+              6,
+              6,
+              8,
+              9
+            ],
+            [
+              1,
+              1,
+              6,
+              3,
               6,
               9,
-              5,
               6,
-              7,
+              8,
               8,
               9
             ]
@@ -546,9 +586,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.116093088989146,
+        "reference_setup_seconds": 0.8588772070070263,
         "runner_status": {
+          "build_seconds": 0.029444897983921692,
           "detail": "",
+          "main_seconds": 3.5529801640077494,
+          "read_seconds": 0.00023040201631374657,
           "status": "limit",
           "type": "status"
         },
@@ -558,84 +601,84 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4852089839987457,
-        "execution_wall_seconds": 35.28820633201394,
+        "checking_seconds": 0.16411061497638002,
+        "execution_wall_seconds": 6.958795020997059,
         "first_solution": {
           "is_host": [
             false,
-            false,
+            true,
             false,
             false,
             false,
             false,
             true,
-            true,
+            false,
             true,
             true,
             true
           ],
           "visits": [
             [
-              6,
-              9,
-              7,
+              1,
+              1,
+              1,
+              1,
               8,
+              6,
               6,
               10,
-              6,
-              7,
-              8,
-              9,
-              10
-            ],
-            [
-              10,
-              7,
-              9,
-              7,
-              8,
-              6,
-              6,
-              7,
-              8,
-              9,
-              10
-            ],
-            [
-              7,
-              10,
-              10,
-              9,
-              9,
-              8,
-              6,
-              7,
               8,
               9,
               10
             ],
             [
               9,
-              6,
+              1,
               8,
               10,
-              7,
+              9,
+              8,
+              6,
+              9,
+              8,
+              9,
+              10
+            ],
+            [
+              6,
+              1,
+              10,
+              8,
+              10,
               9,
               6,
-              7,
+              8,
               8,
               9,
               10
             ],
             [
               8,
+              1,
+              9,
+              6,
+              6,
+              1,
+              6,
+              1,
               8,
-              6,
-              6,
+              9,
+              10
+            ],
+            [
               10,
-              7,
+              1,
               6,
-              7,
+              9,
+              1,
+              10,
+              6,
+              6,
               8,
               9,
               10
@@ -652,9 +695,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.238485421985388,
+        "reference_setup_seconds": 0.939138458983507,
         "runner_status": {
+          "build_seconds": 0.03224659801344387,
           "detail": "",
+          "main_seconds": 6.2076027559814975,
+          "read_seconds": 0.00014523198478855193,
           "status": "limit",
           "type": "status"
         },
@@ -664,8 +710,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6360817580134608,
-        "execution_wall_seconds": 87.07650620496133,
+        "checking_seconds": 0.19861926598241553,
+        "execution_wall_seconds": 12.742573489027563,
         "first_solution": {
           "is_host": [
             false,
@@ -673,84 +719,84 @@
             false,
             false,
             false,
+            true,
+            true,
+            true,
             false,
-            true,
-            true,
-            true,
             true,
             true,
             false
           ],
           "visits": [
             [
+              5,
+              9,
+              5,
               10,
-              7,
-              7,
-              8,
-              6,
-              6,
+              5,
+              5,
               6,
               7,
-              8,
+              6,
+              9,
+              10,
+              7
+            ],
+            [
+              9,
+              7,
+              6,
+              6,
+              10,
+              5,
+              6,
+              7,
+              5,
               9,
               10,
               9
             ],
             [
               6,
-              8,
-              10,
-              9,
-              9,
+              5,
               7,
+              5,
+              9,
+              5,
               6,
               7,
-              8,
-              9,
               10,
-              8
-            ],
-            [
-              9,
-              10,
-              6,
-              10,
-              7,
-              8,
-              6,
-              7,
-              8,
-              9,
-              10,
-              7
-            ],
-            [
-              7,
-              6,
-              9,
-              7,
-              8,
-              10,
-              6,
-              7,
-              8,
               9,
               10,
               10
             ],
             [
-              8,
-              9,
-              8,
-              6,
+              10,
               10,
               9,
+              7,
+              7,
+              5,
               6,
               7,
-              8,
+              9,
               9,
               10,
               6
+            ],
+            [
+              7,
+              6,
+              10,
+              9,
+              6,
+              5,
+              6,
+              7,
+              7,
+              9,
+              10,
+              5
             ]
           ]
         },
@@ -764,9 +810,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.8155355119961314,
+        "reference_setup_seconds": 1.2659692309971433,
         "runner_status": {
+          "build_seconds": 0.044718072982504964,
           "detail": "",
+          "main_seconds": 12.057062748994213,
+          "read_seconds": 0.00018691900186240673,
           "status": "limit",
           "type": "status"
         },
@@ -776,8 +825,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6417051500175148,
-        "execution_wall_seconds": 94.7111341819982,
+        "checking_seconds": 0.24247135600307956,
+        "execution_wall_seconds": 26.779548755992437,
         "first_solution": {
           "is_host": [
             false,
@@ -796,42 +845,27 @@
           ],
           "visits": [
             [
+              9,
+              8,
+              8,
+              9,
               7,
-              6,
-              10,
               9,
-              9,
-              10,
               6,
               7,
               8,
               9,
               10,
-              6,
-              8
+              7,
+              6
             ],
             [
-              6,
-              9,
               7,
-              8,
+              7,
               10,
-              8,
               6,
-              7,
-              8,
-              9,
-              10,
-              10,
-              9
-            ],
-            [
-              8,
-              7,
-              8,
-              7,
               6,
-              9,
+              8,
               6,
               7,
               8,
@@ -841,8 +875,8 @@
               10
             ],
             [
-              10,
               8,
+              10,
               9,
               10,
               8,
@@ -852,23 +886,38 @@
               8,
               9,
               10,
-              7,
+              6,
               7
             ],
             [
+              6,
               9,
+              6,
+              7,
               10,
-              6,
-              6,
-              7,
-              7,
+              10,
               6,
               7,
               8,
               9,
               10,
               8,
-              6
+              8
+            ],
+            [
+              10,
+              6,
+              7,
+              8,
+              9,
+              7,
+              6,
+              7,
+              8,
+              9,
+              10,
+              10,
+              9
             ]
           ]
         },
@@ -882,9 +931,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.858609416987747,
+        "reference_setup_seconds": 1.615106212993851,
         "runner_status": {
+          "build_seconds": 0.05120366098708473,
           "detail": "",
+          "main_seconds": 26.14963695500046,
+          "read_seconds": 0.0001574420020915568,
           "status": "limit",
           "type": "status"
         },
@@ -902,15 +954,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "c8786a85bbaea9ec0259260f6f4679656fbdca89a596832e8427f6e71a5ebdf5",
+    "model_hash": "d2c2f60717ead3586474a3aab9063071e88022f40804f56e4fef18a037b3997a",
     "problem_id": "csplib_013_progressive_party_problem",
     "reason": "accepted",
     "reference_hash": "4515c7a73120b62ff3d9c97292b5b93482355551bb6bda7d8476606feb489e64",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -921,11 +973,11 @@
     "skipped_instances": [],
     "solutions_checked": 18,
     "solver_id": "scip_python",
-    "total_wall_seconds": 304.730348158977,
+    "total_wall_seconds": 71.05255364000914,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

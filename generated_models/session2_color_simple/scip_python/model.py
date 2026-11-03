@@ -1,43 +1,71 @@
-# Graph colouring: colour the countries so that neighbours get different colours, using as few colours as possible.
+# session2_color_simple: a SCIP (Python) model from DCP Rosetta.
+# Download the `session2_color_simple.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_color_simple.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python session2_color_simple.py session2_color_simple.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    edges = instance["graph"]  # pairs of neighbouring countries, numbered from 1
-    # the countries are numbered 1..n in the graph; n is the largest number used
-    n = max(max(e) for e in edges)
-    # a colouring never needs more colours than there are countries
-    k_max = n
+def create_model(instance):
+    """Colour six countries (Belgium, Denmark, France, Germany, Netherlands and
+    Luxembourg) so that neighbouring countries get different colours, using as
+    few colours as possible. Colours are numbered from 1."""
+    # The statement names six countries, so their number is fixed by the problem,
+    # not read from the instance. Country i is the i-th name in the statement.
+    n = 6
 
-    m = Model("colouring")
+    # instance["graph"]: each [a, b] is a pair of neighbouring countries, numbered
+    # from 1 in the order of the statement, so country a is row a - 1 below.
+    borders = instance["graph"]
 
-    # x[i, c] = 1 if country i gets colour c (c = 0..k_max-1 stands for colour c+1)
-    x = {(i, c): m.addVar(name=f"x_{i}_{c}", vtype="B") for i in range(n) for c in range(k_max)}
-    # used[c] = 1 if colour c is used by some country
-    used = {c: m.addVar(name=f"used_{c}", vtype="B") for c in range(k_max)}
+    # One colour per country always works, so n colours are enough. This bound
+    # follows from the problem; it does not depend on the instance.
+    n_colours = n
 
-    # each country gets exactly one colour
-    for i in range(n):
-        m.addCons(quicksum(x[i, c] for c in range(k_max)) == 1)
+    model = Model("session2_color_simple")
 
-    # a colour is used only when some country has it
-    for c in range(k_max):
-        for i in range(n):
-            m.addCons(x[i, c] <= used[c])
+    # b[i, k] is 1 when country i has colour k + 1, and 0 when not
+    b = model.addMatrixVar((n, n_colours), vtype="B", name="b")
 
-    # two neighbouring countries cannot have the same colour
-    for a, b in edges:
-        i, j = a - 1, b - 1
-        for c in range(k_max):
-            m.addCons(x[i, c] + x[j, c] <= 1)
+    # Each country has exactly one colour.
+    model.addMatrixCons(b.sum(axis=1) == 1)
 
-    # symmetry breaking: colours are used in order, so colour c+1 is used only if colour c is
-    for c in range(1, k_max):
-        m.addCons(used[c] <= used[c - 1])
+    # Neighbouring countries cannot have the same colour: for each border and each
+    # colour, the two countries cannot both have that colour.
+    for a, c in borders:
+        model.addMatrixCons(b[a - 1] + b[c - 1] <= 1)
 
-    # minimise the number of colours used
-    m.setObjective(quicksum(used[c] for c in range(k_max)), "minimize")
+    # used[k] is 1 exactly when some country has colour k + 1. The OR constraint
+    # forces it both ways, so it does not rely on the objective.
+    used = model.addMatrixVar(n_colours, vtype="B", name="used")
+    for k in range(n_colours):
+        model.addConsOr(list(b[:, k]), used[k])
 
-    # the colour of each country as a number from 1
-    colors = [quicksum((c + 1) * x[i, c] for c in range(k_max)) for i in range(n)]
-    return m, {"colors": colors}
+    # Minimise the number of colours used: the number of colours k with used[k] = 1.
+    model.setObjective(quicksum(used), "minimize")
+
+    # colors[i] is the colour number of country i, 1 to n_colours.
+    colors = b @ np.arange(1, n_colours + 1)
+    return model, {"colors": colors}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

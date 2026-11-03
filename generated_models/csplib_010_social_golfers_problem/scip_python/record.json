@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-002",
-    "created_at": 1791984942.306707,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793722878.190619,
     "problem_id": "csplib_010_social_golfers_problem",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "647f43df878d2ae8aee7967a37c7d6f37fa7499711a8cde50ba9d3e3e3ff985e",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.036365046980790794,
-        "execution_wall_seconds": 0.8017062089638785,
+        "checking_seconds": 0.03808269900036976,
+        "execution_wall_seconds": 0.8359536560019478,
         "first_solution": {
           "assign": [
             [
@@ -50,47 +75,47 @@
               0,
               1,
               1,
-              2
-            ],
-            [
-              0,
-              2,
-              2,
               1
             ],
             [
-              1,
               0,
+              2,
               2,
               2
             ],
             [
               1,
-              2,
-              1,
-              0
-            ],
-            [
-              1,
-              1,
-              0,
-              1
-            ],
-            [
-              2,
-              0,
-              1,
-              1
-            ],
-            [
-              2,
               1,
               2,
               0
             ],
             [
+              1,
+              2,
+              0,
+              1
+            ],
+            [
+              1,
+              0,
+              1,
+              2
+            ],
+            [
               2,
               2,
+              1,
+              0
+            ],
+            [
+              2,
+              0,
+              2,
+              1
+            ],
+            [
+              2,
+              1,
               0,
               2
             ]
@@ -105,9 +130,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7028285489650443,
+        "reference_setup_seconds": 0.5405412219988648,
         "runner_status": {
+          "build_seconds": 0.02253013799781911,
           "detail": "",
+          "main_seconds": 0.06750823601032607,
+          "read_seconds": 0.00023864401737228036,
           "status": "limit",
           "type": "status"
         },
@@ -117,8 +145,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.014366857009008527,
-        "execution_wall_seconds": 0.8017838709638454,
+        "checking_seconds": 0.01141548200394027,
+        "execution_wall_seconds": 0.8339348910085391,
         "first_solution": {
           "assign": [
             [
@@ -133,13 +161,13 @@
             ],
             [
               1,
-              0,
-              1
+              1,
+              0
             ],
             [
               1,
-              1,
-              0
+              0,
+              1
             ]
           ]
         },
@@ -152,9 +180,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6331198039697483,
+        "reference_setup_seconds": 0.44476257398491725,
         "runner_status": {
+          "build_seconds": 0.011273997981334105,
           "detail": "",
+          "main_seconds": 0.01487742699100636,
+          "read_seconds": 0.00023872900055721402,
           "status": "limit",
           "type": "status"
         },
@@ -164,8 +195,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.1268338939989917,
-        "execution_wall_seconds": 1.002192011976149,
+        "checking_seconds": 0.07628106200718321,
+        "execution_wall_seconds": 1.3354360829980578,
         "first_solution": {
           "assign": [
             [
@@ -177,10 +208,10 @@
             ],
             [
               0,
-              1,
-              1,
-              1,
-              1
+              3,
+              3,
+              3,
+              3
             ],
             [
               0,
@@ -191,94 +222,94 @@
             ],
             [
               0,
-              3,
-              3,
-              3,
-              3
+              1,
+              1,
+              1,
+              1
             ],
             [
               1,
               0,
               1,
-              2,
-              3
-            ],
-            [
-              1,
-              1,
-              0,
               3,
               2
             ],
             [
               1,
-              2,
               3,
+              2,
               0,
               1
             ],
             [
               1,
-              3,
               2,
+              3,
               1,
               0
             ],
             [
-              2,
+              1,
+              1,
               0,
               2,
+              3
+            ],
+            [
+              2,
+              0,
               3,
+              2,
               1
             ],
             [
               2,
-              1,
-              3,
-              2,
-              0
-            ],
-            [
-              2,
-              2,
-              0,
-              1,
-              3
-            ],
-            [
-              2,
-              3,
-              1,
-              0,
-              2
-            ],
-            [
               3,
               0,
-              3,
               1,
               2
             ],
             [
-              3,
-              1,
               2,
+              2,
+              1,
               0,
               3
             ],
             [
-              3,
               2,
               1,
+              2,
               3,
               0
             ],
             [
               3,
-              3,
               0,
               2,
+              1,
+              3
+            ],
+            [
+              3,
+              3,
+              1,
+              2,
+              0
+            ],
+            [
+              3,
+              2,
+              0,
+              3,
               1
+            ],
+            [
+              3,
+              1,
+              3,
+              0,
+              2
             ]
           ]
         },
@@ -291,9 +322,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9128097229986452,
+        "reference_setup_seconds": 0.6744109840074088,
         "runner_status": {
+          "build_seconds": 0.06417946799774654,
           "detail": "",
+          "main_seconds": 0.5599373419827316,
+          "read_seconds": 0.0002448219747748226,
           "status": "limit",
           "type": "status"
         },
@@ -303,8 +337,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.11179924599127844,
-        "execution_wall_seconds": 6.073922853975091,
+        "checking_seconds": 0.0668121190101374,
+        "execution_wall_seconds": 1.7332573370076716,
         "first_solution": {
           "assign": [
             [
@@ -320,91 +354,91 @@
             [
               0,
               1,
-              3,
+              1,
               2,
-              2,
+              1,
               1,
               1,
               1
             ],
             [
               1,
-              2,
               4,
-              3,
-              1,
-              1,
               2,
-              0
-            ],
-            [
-              1,
               3,
               2,
-              4,
-              3,
               0,
-              3,
+              2,
               2
             ],
             [
-              2,
-              4,
-              0,
-              3,
-              4,
-              2,
-              3,
-              1
-            ],
-            [
-              2,
-              2,
-              2,
               1,
               2,
-              3,
               0,
+              2,
+              3,
+              2,
+              3,
               3
             ],
             [
-              3,
-              4,
-              3,
-              4,
-              1,
-              4,
-              4,
-              3
-            ],
-            [
+              2,
               3,
               1,
-              1,
+              3,
+              3,
+              3,
               0,
-              3,
-              2,
-              2,
               4
             ],
             [
+              2,
+              2,
+              3,
               4,
+              2,
+              1,
+              4,
+              0
+            ],
+            [
+              3,
+              1,
+              3,
               0,
-              1,
-              1,
               4,
               4,
-              1,
+              3,
               2
+            ],
+            [
+              3,
+              4,
+              4,
+              1,
+              1,
+              3,
+              4,
+              3
             ],
             [
               4,
               3,
               4,
-              2,
-              0,
-              3,
               4,
+              0,
+              4,
+              2,
+              1
+            ],
+            [
+              4,
+              0,
+              2,
+              1,
+              4,
+              2,
+              1,
               4
             ]
           ]
@@ -418,9 +452,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8596933609806001,
+        "reference_setup_seconds": 0.48932142098783515,
         "runner_status": {
+          "build_seconds": 0.02573215600568801,
           "detail": "",
+          "main_seconds": 1.0323891929874662,
+          "read_seconds": 0.00014203798491507769,
           "status": "limit",
           "type": "status"
         },
@@ -430,8 +467,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.1497060969704762,
-        "execution_wall_seconds": 90.80744256504113,
+        "checking_seconds": 0.07404107801266946,
+        "execution_wall_seconds": 116.79575406899676,
         "first_solution": {
           "assign": [
             [
@@ -444,115 +481,115 @@
             ],
             [
               0,
-              4,
               2,
-              1,
-              1,
-              1
+              4,
+              3,
+              3,
+              4
             ],
             [
               0,
+              1,
               3,
               1,
-              4,
-              4,
-              2
-            ],
-            [
-              1,
-              4,
-              4,
-              0,
               2,
               3
             ],
             [
               1,
-              1,
-              0,
-              3,
-              1,
-              2
+              4,
+              2,
+              4,
+              4,
+              3
             ],
             [
               1,
+              0,
+              3,
+              3,
+              1,
+              1
+            ],
+            [
+              1,
+              3,
+              0,
+              1,
+              3,
+              2
+            ],
+            [
               2,
               2,
+              3,
               2,
+              4,
+              2
+            ],
+            [
+              2,
+              3,
+              4,
+              0,
+              1,
+              3
+            ],
+            [
+              2,
+              0,
+              1,
+              4,
+              2,
+              4
+            ],
+            [
+              3,
+              1,
+              1,
+              3,
               4,
               0
             ],
             [
-              2,
-              0,
+              3,
               4,
+              0,
               2,
               1,
               4
             ],
             [
-              2,
-              2,
-              0,
-              4,
               3,
+              2,
+              2,
+              1,
+              0,
               1
             ],
             [
-              2,
-              3,
-              3,
+              4,
               1,
+              4,
+              4,
+              0,
+              2
+            ],
+            [
+              4,
+              3,
+              2,
+              2,
               2,
               0
             ],
             [
-              3,
               4,
-              3,
-              2,
-              3,
-              2
-            ],
-            [
-              3,
-              2,
-              1,
-              3,
-              2,
-              4
-            ],
-            [
-              3,
-              1,
-              2,
               4,
+              1,
               0,
-              3
-            ],
-            [
-              4,
-              0,
-              1,
-              1,
               3,
-              3
-            ],
-            [
-              4,
-              3,
-              4,
-              3,
-              0,
               1
-            ],
-            [
-              4,
-              1,
-              3,
-              0,
-              4,
-              4
             ]
           ]
         },
@@ -565,9 +602,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 6.136204243986867,
+        "reference_setup_seconds": 3.554664536990458,
         "runner_status": {
+          "build_seconds": 0.04723989000194706,
           "detail": "",
+          "main_seconds": 116.03447964700172,
+          "read_seconds": 0.00017036899225786328,
           "status": "limit",
           "type": "status"
         },
@@ -577,8 +617,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.30309528298676014,
-        "execution_wall_seconds": 129.76214712497313,
+        "checking_seconds": 0.18988569302018732,
+        "execution_wall_seconds": 4.654348451993428,
         "first_solution": {
           "assign": [
             [
@@ -591,130 +631,114 @@
             ],
             [
               0,
+              2,
               1,
-              1,
-              4,
-              1,
-              1
-            ],
-            [
-              0,
               3,
-              2,
-              2,
               2,
               4
             ],
             [
               0,
+              1,
+              3,
               2,
-              3,
-              3,
               4,
               3
             ],
             [
               0,
               4,
+              2,
               4,
               1,
-              3,
               2
             ],
             [
-              1,
+              0,
+              3,
               4,
-              3,
-              0,
               1,
-              4
-            ],
-            [
-              1,
-              0,
-              2,
-              3,
               3,
               1
             ],
             [
               1,
-              2,
+              4,
+              3,
+              1,
+              0,
+              4
+            ],
+            [
               1,
               2,
+              4,
               0,
+              1,
+              3
+            ],
+            [
+              1,
+              0,
+              1,
+              2,
+              3,
               2
             ],
             [
               1,
+              1,
+              0,
+              4,
+              2,
+              1
+            ],
+            [
+              1,
               3,
-              4,
-              4,
+              2,
+              3,
               4,
               0
             ],
             [
-              1,
-              1,
-              0,
-              1,
-              2,
-              3
-            ],
-            [
               2,
               3,
-              1,
               0,
-              3,
-              3
-            ],
-            [
-              2,
-              2,
               2,
               1,
-              1,
-              0
-            ],
-            [
-              2,
-              1,
-              4,
-              3,
-              0,
               4
             ],
             [
               2,
               0,
-              3,
-              4,
               2,
+              1,
+              2,
+              3
+            ],
+            [
+              2,
+              1,
+              4,
+              3,
+              0,
               2
             ],
             [
               2,
               4,
+              1,
               0,
-              2,
               4,
               1
             ],
             [
-              3,
-              3,
-              3,
-              1,
-              0,
-              1
-            ],
-            [
+              2,
+              2,
               3,
               4,
-              1,
               3,
-              2,
               0
             ],
             [
@@ -722,64 +746,80 @@
               1,
               2,
               0,
+              3,
+              4
+            ],
+            [
+              3,
+              3,
+              1,
+              4,
+              0,
+              3
+            ],
+            [
+              3,
+              2,
+              0,
+              1,
               4,
               2
             ],
             [
               3,
-              2,
               0,
-              4,
               3,
-              4
-            ],
-            [
               3,
-              0,
-              4,
-              2,
               1,
-              3
-            ],
-            [
-              4,
-              4,
-              2,
-              4,
-              0,
-              3
-            ],
-            [
-              4,
-              2,
-              4,
-              0,
-              2,
               1
             ],
             [
-              4,
-              0,
-              1,
-              1,
-              4,
-              4
-            ],
-            [
-              4,
-              1,
               3,
+              4,
+              4,
               2,
-              3,
+              2,
               0
             ],
             [
               4,
-              3,
+              0,
+              4,
+              4,
+              4,
+              4
+            ],
+            [
+              4,
+              4,
               0,
               3,
-              1,
+              3,
+              3
+            ],
+            [
+              4,
+              3,
+              3,
+              0,
+              2,
               2
+            ],
+            [
+              4,
+              2,
+              2,
+              2,
+              0,
+              1
+            ],
+            [
+              4,
+              1,
+              1,
+              1,
+              1,
+              0
             ]
           ]
         },
@@ -792,9 +832,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.6132533910567872,
+        "reference_setup_seconds": 1.3438627510040533,
         "runner_status": {
+          "build_seconds": 0.09568377200048417,
           "detail": "",
+          "main_seconds": 3.960028021974722,
+          "read_seconds": 0.00015413097571581602,
           "status": "limit",
           "type": "status"
         },
@@ -804,8 +847,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.5440847330028191,
-        "execution_wall_seconds": 11.762734215997625,
+        "checking_seconds": 0.22487520199501887,
+        "execution_wall_seconds": 4.14594687600038,
         "first_solution": {
           "assign": [
             [
@@ -815,52 +858,32 @@
             ],
             [
               0,
-              4,
-              4
-            ],
-            [
-              0,
-              2,
-              2
-            ],
-            [
-              0,
-              5,
+              1,
               5
             ],
             [
               0,
               3,
-              1
+              4
             ],
             [
               0,
-              1,
+              2,
               3
             ],
             [
-              1,
+              0,
+              4,
+              2
+            ],
+            [
+              0,
               5,
               1
             ],
             [
               1,
               0,
-              2
-            ],
-            [
-              1,
-              4,
-              3
-            ],
-            [
-              1,
-              1,
-              0
-            ],
-            [
-              1,
-              3,
               5
             ],
             [
@@ -869,58 +892,78 @@
               4
             ],
             [
-              2,
-              3,
+              1,
+              1,
               3
             ],
             [
-              2,
               1,
+              3,
               2
             ],
             [
-              2,
-              2,
+              1,
+              4,
               1
             ],
             [
-              2,
-              0,
-              4
-            ],
-            [
-              2,
+              1,
               5,
               0
             ],
             [
               2,
+              2,
+              5
+            ],
+            [
+              2,
+              1,
+              4
+            ],
+            [
+              2,
+              0,
+              3
+            ],
+            [
+              2,
+              5,
+              2
+            ],
+            [
+              2,
+              3,
+              1
+            ],
+            [
+              2,
+              4,
+              0
+            ],
+            [
+              3,
               4,
               5
             ],
             [
               3,
-              5,
-              2
+              0,
+              4
             ],
             [
               3,
-              2,
+              5,
               3
             ],
             [
               3,
               1,
-              4
+              2
             ],
             [
               3,
-              0,
-              5
-            ],
-            [
-              3,
-              4,
+              2,
               1
             ],
             [
@@ -930,13 +973,8 @@
             ],
             [
               4,
-              0,
-              3
-            ],
-            [
-              4,
-              4,
-              0
+              3,
+              5
             ],
             [
               4,
@@ -945,8 +983,13 @@
             ],
             [
               4,
-              2,
-              5
+              4,
+              3
+            ],
+            [
+              4,
+              0,
+              2
             ],
             [
               4,
@@ -955,7 +998,27 @@
             ],
             [
               4,
+              2,
+              0
+            ],
+            [
+              5,
+              5,
+              5
+            ],
+            [
+              5,
+              4,
+              4
+            ],
+            [
+              5,
               3,
+              3
+            ],
+            [
+              5,
+              2,
               2
             ],
             [
@@ -965,28 +1028,8 @@
             ],
             [
               5,
-              5,
-              3
-            ],
-            [
-              5,
-              2,
-              0
-            ],
-            [
-              5,
-              4,
-              2
-            ],
-            [
-              5,
               1,
-              5
-            ],
-            [
-              5,
-              3,
-              4
+              0
             ]
           ]
         },
@@ -999,9 +1042,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1380101129761897,
+        "reference_setup_seconds": 1.089655912015587,
         "runner_status": {
+          "build_seconds": 0.10409553197678179,
           "detail": "",
+          "main_seconds": 3.3899140259891283,
+          "read_seconds": 0.00015110897948034108,
           "status": "limit",
           "type": "status"
         },
@@ -1011,8 +1057,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.46896959497826174,
-        "execution_wall_seconds": 5.200740753032733,
+        "checking_seconds": 0.30289469900890253,
+        "execution_wall_seconds": 5.045088874991052,
         "first_solution": {
           "assign": [
             [
@@ -1024,13 +1070,6 @@
             ],
             [
               0,
-              2,
-              2,
-              2,
-              2
-            ],
-            [
-              0,
               1,
               1,
               1,
@@ -1038,6 +1077,13 @@
             ],
             [
               0,
+              2,
+              2,
+              2,
+              2
+            ],
+            [
+              0,
               3,
               3,
               3,
@@ -1045,15 +1091,15 @@
             ],
             [
               1,
-              1,
               0,
+              1,
               2,
               3
             ],
             [
               1,
-              0,
               1,
+              0,
               3,
               2
             ],
@@ -1073,171 +1119,171 @@
             ],
             [
               2,
-              1,
-              2,
-              0,
-              4
-            ],
-            [
-              2,
-              0,
-              3,
-              1,
-              5
-            ],
-            [
-              2,
-              2,
-              0,
-              3,
-              6
-            ],
-            [
-              2,
-              3,
-              1,
-              2,
-              7
-            ],
-            [
-              3,
-              1,
-              3,
-              4,
-              0
-            ],
-            [
-              3,
               0,
               2,
-              5,
-              1
-            ],
-            [
-              3,
-              2,
-              1,
-              6,
-              3
-            ],
-            [
-              3,
-              3,
-              0,
-              7,
-              2
-            ],
-            [
-              4,
-              4,
-              4,
-              0,
-              2
-            ],
-            [
-              4,
-              5,
-              5,
-              1,
-              3
-            ],
-            [
-              4,
-              6,
-              6,
-              2,
-              0
-            ],
-            [
-              4,
-              7,
-              7,
               3,
               1
             ],
             [
-              5,
+              2,
+              1,
+              3,
+              2,
+              0
+            ],
+            [
+              2,
+              2,
+              0,
+              1,
+              3
+            ],
+            [
+              2,
+              3,
+              1,
+              0,
+              2
+            ],
+            [
+              3,
+              0,
+              3,
+              1,
+              2
+            ],
+            [
+              3,
+              1,
+              2,
+              0,
+              3
+            ],
+            [
+              3,
+              2,
+              1,
+              3,
+              0
+            ],
+            [
+              3,
+              3,
+              0,
+              2,
+              1
+            ],
+            [
               4,
-              5,
+              4,
+              4,
               4,
               4
             ],
             [
-              5,
-              5,
               4,
+              5,
+              5,
               5,
               5
             ],
             [
-              5,
+              4,
               6,
-              7,
+              6,
               6,
               6
             ],
             [
-              5,
+              4,
               7,
-              6,
+              7,
               7,
               7
             ],
             [
-              6,
-              4,
-              6,
               5,
+              4,
+              5,
+              6,
+              7
+            ],
+            [
+              5,
+              5,
+              4,
+              7,
               6
             ],
             [
-              6,
               5,
+              6,
               7,
               4,
-              7
+              5
             ],
             [
-              6,
-              6,
-              4,
+              5,
               7,
+              6,
+              5,
               4
             ],
             [
               6,
-              7,
-              5,
-              6,
-              5
-            ],
-            [
-              7,
               4,
-              7,
+              6,
               7,
               5
             ],
             [
-              7,
-              5,
               6,
+              5,
+              7,
               6,
               4
             ],
             [
+              6,
+              6,
+              4,
+              5,
+              7
+            ],
+            [
+              6,
+              7,
+              5,
+              4,
+              6
+            ],
+            [
+              7,
+              4,
+              7,
+              5,
+              6
+            ],
+            [
+              7,
+              5,
+              6,
+              4,
+              7
+            ],
+            [
               7,
               6,
               5,
-              5,
-              7
+              7,
+              4
             ],
             [
               7,
               7,
               4,
-              4,
-              6
+              6,
+              5
             ]
           ]
         },
@@ -1250,9 +1296,12 @@
           "assign"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.0173018210334703,
+        "reference_setup_seconds": 1.6548367330105975,
         "runner_status": {
+          "build_seconds": 0.17163248799624853,
           "detail": "",
+          "main_seconds": 4.351556662004441,
+          "read_seconds": 0.0001486169931013137,
           "status": "limit",
           "type": "status"
         },
@@ -1270,15 +1319,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "167d9bb21e479e411d6f02bdb49937ed2eb6c239e349ecb39e72f276d59feb9d",
+    "model_hash": "686b924735561ea1ee709ff143a42271a56b99bda21016e9a16c41afddef96c8",
     "problem_id": "csplib_010_social_golfers_problem",
     "reason": "accepted",
     "reference_hash": "6ccb1a6b96ba515cb4db56f45c1ce434ccb0ca647fab7eff7a2ee5b19c603efb",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -1289,11 +1338,11 @@
     "skipped_instances": [],
     "solutions_checked": 16,
     "solver_id": "scip_python",
-    "total_wall_seconds": 265.69906518398784,
+    "total_wall_seconds": 147.86418312200112,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

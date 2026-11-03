@@ -1,50 +1,79 @@
-# Cabling: place the devices in the rack, one per position 1..n, so that the sum of
-# all cable lengths (number of cables times distance between their positions) is minimal.
+# cabling: a SCIP (Python) model from DCP Rosetta.
+# Download the `cabling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python cabling.py cabling.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n = instance["n"]
-    devices = instance["devices"]
-    cables = instance["cable_struct"]  # rows [device, device, number of cables]
-    index = {d: i for i, d in enumerate(devices)}
-    positions = range(1, n + 1)
+def create_model(instance):
+    """Devices are mounted one above another in a rack cabinet, one device per
+    1U slot, and some pairs of devices are joined by cables. A cable's length is
+    the distance between the slots of the two devices it joins. Choose the order
+    of the devices so that the sum of all cable lengths is as short as possible."""
+    n = instance["n"]                  # the number of devices, which is also the number of slots
+    devices = instance["devices"]      # devices[i]: the name of device i
+    cables = instance["cable_struct"]  # rows [a, b, k]: k cables join device a and device b
+    index = {name: i for i, name in enumerate(devices)}  # device name -> its index in devices
 
-    m = Model()
+    model = Model("cabling")
 
-    # p[i, k] = 1 if device i is placed at position k (one-hot).
-    p = {(i, k): m.addVar(name=f"p_{i}_{k}", vtype="B") for i in range(n) for k in positions}
+    # x[d, s] is 1 when device d sits in slot s, and 0 when not. The statement
+    # orders all the devices, so the rack has one slot per device (n slots, numbered
+    # 0 to n-1; the numbering only sets an origin, since costs use differences).
+    x = model.addMatrixVar((n, n), vtype="B", name="x")
 
-    # each device takes exactly one position
-    for i in range(n):
-        m.addCons(quicksum(p[i, k] for k in positions) == 1)
+    # Each device sits in exactly one slot.
+    model.addMatrixCons(x.sum(axis=1) == 1)
+    # Each slot holds exactly one device.
+    model.addMatrixCons(x.sum(axis=0) == 1)
 
-    # each position holds exactly one device
-    for k in positions:
-        m.addCons(quicksum(p[i, k] for i in range(n)) == 1)
+    # slot[d] is the slot number of device d: the expression sum over s of s * x[d, s].
+    slot = x @ np.arange(n)
 
-    # pos[i] = position of device i
-    pos = [m.addVar(name=f"pos_{i}", vtype="I", lb=1, ub=n) for i in range(n)]
-    for i in range(n):
-        m.addCons(pos[i] == quicksum(k * p[i, k] for k in positions))
-
-    # length[e] = distance between the two devices of cable row e (absolute difference),
-    # encoded with two inequalities since SCIP has no min/max over variables
+    # length[j] is the distance in slots between the two devices of cable row j,
+    # taking one cable's length to be the number of slots between its ends. Only the
+    # two lower bounds are posted: the objective pushes length down, so at the
+    # optimum length equals |slot[a] - slot[b]|. Its upper bound n - 1 holds because
+    # every slot number lies between 0 and n - 1.
     length = []
-    for e, (a, b, _) in enumerate(cables):
-        ia, ib = index[a], index[b]
-        L = m.addVar(name=f"len_{e}", vtype="I", lb=0, ub=n - 1)
-        # the length is at least the difference of the positions in either direction
-        m.addCons(L >= pos[ia] - pos[ib])
-        m.addCons(L >= pos[ib] - pos[ia])
-        length.append(L)
+    for a, b, _ in cables:
+        i, j = index[a], index[b]
+        d = model.addVar(vtype="I", lb=0, ub=n - 1, name=f"length_{a}{b}")
+        model.addCons(d >= slot[i] - slot[j])
+        model.addCons(d >= slot[j] - slot[i])
+        length.append(d)
 
-    # final_sum: the sum over all cables of the cable's length
-    total = m.addVar(name="final_sum", vtype="I", lb=0,
-                     ub=sum(c for _, _, c in cables) * (n - 1))
-    # the total sum of cable lengths, each cable counted once
-    m.addCons(total == quicksum(c * length[e] for e, (_, _, c) in enumerate(cables)))
+    # final_sum is the total length of all cables: each cable of row j contributes
+    # its length, and row j has k cables. Its upper bound is (n - 1) times the total
+    # number of cables, since no cable is longer than n - 1 slots.
+    total_cables = sum(k for _, _, k in cables)
+    final_sum = model.addVar(vtype="I", lb=0, ub=(n - 1) * total_cables, name="final_sum")
+    model.addCons(final_sum == quicksum(k * d for (_, _, k), d in zip(cables, length)))
 
-    m.setObjective(total, "minimize")
+    # Minimise the sum of all cable lengths.
+    model.setObjective(final_sum, "minimize")
 
-    return m, {"final_sum": total}
+    return model, {"final_sum": final_sum}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

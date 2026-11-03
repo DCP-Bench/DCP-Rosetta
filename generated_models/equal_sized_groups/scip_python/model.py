@@ -1,51 +1,86 @@
-# Equal-sized groups: cut a sorted list of N elements into K groups, with equal values kept together,
-# so that the total deviation of each group's size from round(N/K) is minimised. Output: the K-1 break points.
+# equal_sized_groups: a SCIP (Python) model from DCP Rosetta.
+# Download the `equal_sized_groups.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/equal_sized_groups.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python equal_sized_groups.py equal_sized_groups.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    # the sorted list and the number of groups come from the instance
-    a = instance["a"]
-    K = instance["k"]
-    N = len(a)
-    # the ideal group size (problem statement: close to round(N/K))
-    target = round(N / K)
+def create_model(instance):
+    """Cut a sorted list of N elements into K consecutive groups, each as close
+    in size as possible to round(N / K), without splitting a run of equal values.
+    The total error, the sum over the groups of |size - round(N / K)|, is minimised.
+    Each group holds at least one element."""
+    a = instance["a"]  # a[i]: the i-th element of the sorted list, counted from 0
+    k = instance["k"]  # K: the number of groups
+    n = len(a)         # N: the number of elements, read from the list itself
 
-    # a break point is 1-based position p, meaning the group ends at element p.
-    # Only positions where the value changes can be break points, so equal values stay together.
-    # This set is derived from the sorted list in the instance.
-    cuts = [p for p in range(1, N) if a[p - 1] != a[p]]
+    # round(N / K): the ideal size of a group. Python's round sends an exact half
+    # to the even neighbour; the statement does not say which half-way rule to use.
+    target = round(n / k)
 
-    m = Model()
+    model = Model("equal_sized_groups")
 
-    # one-hot choice: b[j, p] = 1 if break point j is at position p
-    b = {(j, p): m.addVar(name=f"b_{j}_{p}", vtype="B") for j in range(K - 1) for p in cuts}
+    # y[j, p - 1] is 1 when break j is placed after element p (counted from 1), so
+    # group j + 1 ends at element p. A break after p is allowed only where the
+    # next element has a different value, so equal values stay in one group; the
+    # bound 0 on the other entries comes from the data (a[p - 1] == a[p] there).
+    allowed = [[int(a[p - 1] != a[p]) for p in range(1, n)] for _ in range(k - 1)]
+    y = model.addMatrixVar((k - 1, n - 1), vtype="B", name="y", ub=allowed)
 
-    # break point j is exactly one of the allowed cut positions
-    x = [quicksum(p * b[j, p] for p in cuts) for j in range(K - 1)]
-    for j in range(K - 1):
-        # each break point is at exactly one position
-        m.addCons(quicksum(b[j, p] for p in cuts) == 1)
+    # Each break point takes exactly one position. The allowed positions are a set
+    # picked out of the data, not an interval, so each break point is a one-hot row.
+    model.addMatrixCons(y.sum(axis=1) == 1)
 
-    # break points are strictly increasing, so every group is non-empty
-    for j in range(K - 2):
-        # break point j comes before break point j+1
-        m.addCons(x[j] + 1 <= x[j + 1])
+    # x[j] is the 1-based index of the last element of group j + 1, that is the
+    # position of break point j.
+    x = y @ np.arange(1, n)
 
-    # group boundaries: the first group starts at 0 and the last group ends at N
-    bounds = [0] + x + [N]
+    # cuts[g] is the number of elements before group g + 1. The first group starts
+    # after 0 elements and the last group ends at element N, which are fixed by the
+    # problem, so cuts[0] = 0 and cuts[K] = N.
+    cuts = [0] + list(x) + [n]
 
-    # deviation of each group size from the target, as two linear inequalities for the absolute value
-    dev = [m.addVar(name=f"dev_{g}", vtype="I", lb=0, ub=N) for g in range(K)]
-    for g in range(K):
-        # group g has size bounds[g+1] - bounds[g]
-        size = bounds[g + 1] - bounds[g]
-        # error = |size - target|
-        m.addCons(dev[g] >= size - target)
-        m.addCons(dev[g] >= target - size)
+    # err[g] is the error of group g + 1, |size - target|. The sizes are between 0
+    # and N and so is the target, so an error is at most N.
+    err = [model.addVar(f"err_{g}", vtype="I", lb=0, ub=n) for g in range(k)]
 
-    # the total error of all groups is minimised
-    m.setObjective(quicksum(dev), "minimize")
+    for g in range(k):
+        size = cuts[g + 1] - cuts[g]  # the number of elements in group g + 1
 
-    # the output: the K-1 break points, 1-based
-    return m, {"x": x}
+        # err[g] is at least the error of group g + 1 in either direction. Only the
+        # lower bounds are posted: the objective minimises the errors, so each one
+        # settles at exactly |size - target|.
+        model.addCons(err[g] >= size - target)
+        model.addCons(err[g] >= target - size)
+
+        # Each group is non-empty, as the statement asks for K groups. This also makes
+        # the break points strictly increase, since no two can be at the same place.
+        model.addCons(cuts[g] + 1 <= cuts[g + 1])
+
+    # Total error: the sum of the errors of the groups, to be minimised.
+    model.setObjective(quicksum(err), "minimize")
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

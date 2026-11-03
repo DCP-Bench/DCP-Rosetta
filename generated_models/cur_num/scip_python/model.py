@@ -1,37 +1,58 @@
-# Peculiar number: find a number p between 1 and 10000 such that p + 1 is a
-# square and p / 2 + 1 is also a square (48 is one such number).
-import math
+# cur_num: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python cur_num.py
 
 from pyscipopt import Model
 
-# the search range from the problem statement (problem constant, not instance data)
-LOWER = 1
-UPPER = 10000
+
+def create_model(instance):
+    """Find a number n between 1 and 10000, other than 48, such that n + 1 is a
+    square number and n / 2 + 1 is also a square number. The instance file is
+    empty ([]), so the statement fixes all the data and nothing is read from
+    the instance argument."""
+    model = Model("cur_num")
+
+    # n is the peculiar number the statement asks for, between 1 and 10000
+    # (the bounds come from the statement's range).
+    n = model.addVar("n", vtype="I", lb=1, ub=10000)
+
+    # a is the square root of n + 1. Since n + 1 <= 10001 and 101 * 101 = 10201 > 10001,
+    # a is at most 100 (a derived bound).
+    a = model.addVar("a", vtype="I", lb=1, ub=100)
+
+    # b is the square root of n / 2 + 1. Since n + 2 <= 10002 and 71 * 71 * 2 = 10082 > 10002,
+    # b is at most 70 (a derived bound).
+    b = model.addVar("b", vtype="I", lb=1, ub=70)
+
+    # n + 1 is a square number: n + 1 = a * a, written with the power operator, which SCIP
+    # accepts in a constraint on an integer variable.
+    model.addCons(n + 1 == a**2)
+
+    # n / 2 + 1 is a square number, written without halving n: n / 2 + 1 = b * b gives
+    # n + 2 = 2 * b * b. The right side is even, so this also forces n to be even.
+    model.addCons(n + 2 == 2 * b**2)
+
+    # The statement asks for another number, so 48 is excluded. SCIP has no != on
+    # integers, so one binary d picks the side: n <= 47 when d = 1, and n >= 49 when d = 0.
+    d = model.addVar("d", vtype="B")
+    model.addConsIndicator(n <= 47, binvar=d)
+    model.addConsIndicator(n >= 49, binvar=d, activeone=False)
+
+    # Satisfaction problem: no objective, so any n meeting the constraints is an answer.
+    return model, {"peculiar": n}
 
 
-def build(instance):
-    m = Model()
+if __name__ == "__main__":
+    import numpy as np
 
-    # the peculiar number, between 1 and 10000
-    p = m.addVar(name="peculiar", vtype="I", lb=LOWER, ub=UPPER)
-    # h is half of p; the statement's "half" only makes sense when p is even
-    h = m.addVar(name="half", vtype="I", lb=0, ub=UPPER // 2)
-    # s and t are the square roots in the two conditions
-    s = m.addVar(name="root_plus_one", vtype="I", lb=0, ub=math.isqrt(UPPER + 1))
-    t = m.addVar(name="root_half_plus_one", vtype="I", lb=0, ub=math.isqrt(UPPER // 2 + 1))
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-    # p is even, so that its half h is an integer
-    m.addCons(p == 2 * h)
-    # the half of the number plus one is a square: h + 1 = t^2
-    m.addCons(h + 1 == t * t)
-    # the number plus one is a square: p + 1 = s^2
-    m.addCons(p + 1 == s * s)
-
-    # the statement asks for another number, so 48 itself is excluded: p != 48,
-    # as a binary b that selects p >= 49 (b = 1) or p <= 47 (b = 0)
-    b = m.addVar(name="above_48", vtype="B")
-    m.addConsIndicator(p >= 49, binvar=b)
-    m.addConsIndicator(p <= 47, binvar=b, activeone=False)
-
-    # the output is the peculiar number
-    return m, {"peculiar": p}
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

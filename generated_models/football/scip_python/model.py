@@ -1,50 +1,76 @@
+# football: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/football.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python football.py
+
 from pyscipopt import Model, quicksum
 
-# Football squad selection: choose players from the groups of goalkeepers, defenders,
-# midfielders and strikers, spending as much as possible without going over GBP 30 million.
-# The prices are fixed by the problem statement, so they are written here.
-# Prices are in GBP millions in the statement; the objective uses GBP thousands (price * 1000).
-def build(instance):
-    # price of each player in GBP thousands, grouped by position
-    goalkeepers = {"g1": 0.73, "g2": 1.28, "g3": 3.88}
-    defenders = {"d1": 0.92, "d2": 1.31, "d3": 1.62, "d4": 2.41,
-                 "d5": 2.79, "d6": 3.28, "d7": 3.91, "d8": 4.57}
-    midfielders = {"m1": 1.8, "m2": 2.63, "m3": 3.17, "m4": 3.769, "m5": 4.14,
-                   "m6": 4.75, "m7": 5.38, "m8": 5.93, "m9": 6.78, "m10": 7.13}
-    strikers = {"s1": 4.46, "s2": 6.47, "s3": 7.78, "s4": 8.39, "s5": 9.5}
+# The players available and their prices in GBP thousands. The statement gives the prices in
+# GBP millions with at most three decimals, so 0.73 million is 730 thousand and 3.769 million is
+# 3769 thousand: every price is an integer.
+GOALKEEPERS = [("g1", 730), ("g2", 1280), ("g3", 3880)]
+DEFENDERS = [("d1", 920), ("d2", 1310), ("d3", 1620), ("d4", 2410),
+             ("d5", 2790), ("d6", 3280), ("d7", 3910), ("d8", 4570)]
+MIDFIELDERS = [("m1", 1800), ("m2", 2630), ("m3", 3170), ("m4", 3769), ("m5", 4140),
+               ("m6", 4750), ("m7", 5380), ("m8", 5930), ("m9", 6780), ("m10", 7130)]
+STRIKERS = [("s1", 4460), ("s2", 6470), ("s3", 7780), ("s4", 8390), ("s5", 9500)]
 
-    m = Model()
+# The chairman's upper limit of GBP 30 million, in GBP thousands.
+BUDGET = 30000
 
-    # buy[p] = 1 if player p is bought (each player is bought at most once)
-    groups = {"goalkeeper": goalkeepers, "defender": defenders,
-              "midfielder": midfielders, "striker": strikers}
-    buy = {}
-    for group, players in groups.items():
-        for p in players:
-            buy[p] = m.addVar(name=f"buy_{p}", vtype="B")
 
-    # the budget: the purchases add up to at most GBP 30 million (30000 thousands)
-    m.addCons(quicksum(round(price * 1000) * buy[p]
-                       for players in groups.values()
-                       for p, price in players.items()) <= 30000)
+def create_model(instance):
+    """Choose a football squad from the players available: the total price should be as high as
+    possible without going over the budget, and the squad must include the required numbers of
+    goalkeepers, defenders, midfielders and strikers. The output z is the total price of the
+    squad in GBP thousands. The instance file is empty ([]), so every price, count and the budget
+    come from the problem statement and the model reads nothing from its argument."""
+    model = Model("football")
 
-    # must buy exactly 1 goalkeeper
-    m.addCons(quicksum(buy[p] for p in goalkeepers) == 1)
-    # must buy 2 or more defenders
-    m.addCons(quicksum(buy[p] for p in defenders) >= 2)
-    # must buy 3 or more midfielders
-    m.addCons(quicksum(buy[p] for p in midfielders) >= 3)
-    # must buy 2 or more strikers
-    m.addCons(quicksum(buy[p] for p in strikers) >= 2)
-    # must buy at least eleven players in total
-    m.addCons(quicksum(buy[p] for p in buy) >= 11)
+    def choose(group):
+        # one binary per player, named x_<player>: 1 when the player is bought, 0 when not
+        return [model.addVar(f"x_{name}", vtype="B") for name, _ in group]
 
-    # z = total price of the selected players in GBP thousands
-    z = m.addVar(name="z", vtype="I", lb=0, ub=30000)
-    m.addCons(z == quicksum(round(price * 1000) * buy[p]
-                            for players in groups.values()
-                            for p, price in players.items()))
+    goalkeepers = choose(GOALKEEPERS)
+    defenders = choose(DEFENDERS)
+    midfielders = choose(MIDFIELDERS)
+    strikers = choose(STRIKERS)
+    players = GOALKEEPERS + DEFENDERS + MIDFIELDERS + STRIKERS
+    bought = goalkeepers + defenders + midfielders + strikers  # bought[i] belongs to players[i]
 
-    # spend as much of the GBP 30 million as possible
-    m.setObjective(z, "maximize")
-    return m, {"z": z}
+    # Exactly one goalkeeper must be bought.
+    model.addCons(quicksum(goalkeepers) == 1)
+    # At least two defenders must be bought.
+    model.addCons(quicksum(defenders) >= 2)
+    # At least three midfielders must be bought.
+    model.addCons(quicksum(midfielders) >= 3)
+    # At least two strikers must be bought.
+    model.addCons(quicksum(strikers) >= 2)
+    # At least eleven players must be bought in total.
+    model.addCons(quicksum(bought) >= 11)
+
+    # z is the total price of the squad in GBP thousands. Its upper bound is the chairman's
+    # budget, so the squad never costs more than that limit.
+    z = model.addVar("z", vtype="I", lb=0, ub=BUDGET)
+    # z is the sum of the prices of the players bought.
+    model.addCons(z == quicksum(price * x for (_, price), x in zip(players, bought)))
+
+    # Maximise the total price: the statement wants the purchases as close to the budget as possible.
+    model.setObjective(z, "maximize")
+
+    return model, {"z": z}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

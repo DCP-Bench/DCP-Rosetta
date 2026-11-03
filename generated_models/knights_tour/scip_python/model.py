@@ -1,53 +1,82 @@
-# Knight's tour: a knight visits every square of an n x n board exactly once, without returning to its start; the output gives each square's move number.
-from pyscipopt import Model, quicksum
+# knights_tour: a SCIP (Python) model from DCP Rosetta.
+# Download the `knights_tour.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knights_tour.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python knights_tour.py knights_tour.json
 
-KNIGHT_MOVES = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)]
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    n = instance["n"]
-    N = n * n
+def create_model(instance):
+    """A knight moves on an n x n chessboard and must visit every square exactly once,
+    each move going to a square a knight's move away from the previous one. The tour
+    need not return to its starting square. Output x[r][c] is the move number
+    (0 to n*n-1) at which the knight stands on row r, column c."""
+    n = instance["n"]  # the side of the chessboard: it has n x n squares
+    N = n * n          # the number of squares, which is also the number of move numbers, 0 to N-1
 
-    squares = [(r, c) for r in range(n) for c in range(n)]
+    # Squares are numbered s = r * n + c for row r and column c. A knight's move
+    # changes the row and the column by 1 and 2 in some order, so two squares are
+    # a knight's move apart when their absolute row and column differences multiply to 2.
+    row, col = np.divmod(np.arange(N), n)
+    adjacent = (np.abs(row[:, None] - row[None, :]) * np.abs(col[:, None] - col[None, :]) == 2).astype(int)
 
-    # adjacency: the knight's legal moves from each square to the other squares on the board
-    succ = {s: [] for s in squares}
-    pred = {s: [] for s in squares}
-    for (r, c) in squares:
-        for dr, dc in KNIGHT_MOVES:
-            t = (r + dr, c + dc)
-            if 0 <= t[0] < n and 0 <= t[1] < n:
-                succ[(r, c)].append(t)
-                pred[t].append((r, c))
+    model = Model("knights_tour")
 
-    m = Model()
+    # step[s, t] is 1 when the knight moves directly from square s to square t. Only
+    # knight's-move pairs can be steps: ub=adjacent fixes the other pairs to 0. This
+    # gives at most 8 N step variables, where a variable per square and move number
+    # would give N * N.
+    step = model.addMatrixVar((N, N), vtype="B", ub=adjacent, name="step")
+    # start[s] is 1 when the tour starts on square s, and end[s] when it ends there.
+    start = model.addMatrixVar(N, vtype="B", name="start")
+    end = model.addMatrixVar(N, vtype="B", name="end")
 
-    # step[s, t] = 1 if the knight goes from square s straight to square t on the tour
-    step = {(s, t): m.addVar(name=f"step_{s[0]}_{s[1]}_{t[0]}_{t[1]}", vtype="B")
-            for s in squares for t in succ[s]}
+    # Every square is entered by exactly one step, except the starting square, which
+    # is entered by none. Every square is left by exactly one step, except the end.
+    model.addMatrixCons(step.sum(axis=0) + start == 1)
+    model.addMatrixCons(step.sum(axis=1) + end == 1)
+    # The tour starts on exactly one square.
+    model.addCons(start.sum() == 1)
 
-    # first[s] = 1 if the tour starts on square s; last[s] = 1 if it ends there
-    first = {s: m.addVar(name=f"first_{s[0]}_{s[1]}", vtype="B") for s in squares}
-    last = {s: m.addVar(name=f"last_{s[0]}_{s[1]}", vtype="B") for s in squares}
+    # move[s] is the move number of square s, from 0 at the start to N-1 at the end.
+    # Bounds 0 and N-1 come from the N squares of the tour (the first and last move).
+    move = model.addMatrixVar(N, vtype="I", lb=0, ub=N - 1, name="move")
+    # The steps form one path from the start to the end, plus possibly some cycles.
+    # The move numbers below rule out cycles, so the path goes through every square.
+    # No all-different is needed: the move numbers grow along the path, so its N
+    # squares get N different values from 0 to N-1.
+    for s, t in zip(*np.nonzero(adjacent)):
+        # addMatrixCons takes no indicator, so each knight's-move pair gets one:
+        # if the step from s to t is made, then t is at least one move after s.
+        model.addConsIndicator(move[t] - move[s] >= 1, binvar=step[s, t])
 
-    # move[s] = the move number at which the knight is on square s, from 0 to n*n-1
-    move = {s: m.addVar(name=f"move_{s[0]}_{s[1]}", vtype="I", lb=0, ub=N - 1) for s in squares}
+    # SCIP branches first on the variables with the higher priority. The steps get 1000,
+    # the move numbers the default 0: the search then follows the path step by step.
+    # Branching on the move numbers first wanders, and a second tour can take minutes.
+    for variable in step.flatten():
+        model.chgVarBranchPriority(variable, 1000)
 
-    # the tour starts on exactly one square and ends on exactly one square
-    m.addCons(quicksum(first[s] for s in squares) == 1)
-    m.addCons(quicksum(last[s] for s in squares) == 1)
+    # The problem asks for any tour, so the model has no objective.
+    return model, {"x": move.reshape(n, n)}
 
-    for s in squares:
-        # every square except the last one is left by exactly one knight move
-        m.addCons(quicksum(step[s, t] for t in succ[s]) == 1 - last[s])
-        # every square except the first one is entered by exactly one knight move
-        m.addCons(quicksum(step[u, s] for u in pred[s]) == 1 - first[s])
 
-    # a knight move from s to t means t is the next move after s, so the move numbers increase along the tour;
-    # this rules out cycles, so the moves form one open path that covers all squares
-    for (s, t), b in step.items():
-        m.addConsIndicator(move[t] - move[s] >= 1, binvar=b)
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
 
-    # the output is the board of move numbers, indexed [row][column]
-    board = [[move[(r, c)] for c in range(n)] for r in range(n)]
-    return m, {"x": board}
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

@@ -1,38 +1,74 @@
-# Template design: choose printing templates and the copies of each design variation
-# on each template, so that every variation's demand is met using the fewest printed sheets.
-from pyscipopt import Model, quicksum
+# csplib_002_template_design: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_002_template_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_002_template_design.py csplib_002_template_design.json
+
+from pyscipopt import Model
 
 
-def build(instance):
-    n_slots = instance["n_slots"]          # design slots on one template
-    n_templates = instance["n_templates"]  # number of distinct templates to produce
-    n_var = instance["n_var"]              # number of design variations
-    demand = instance["demand"]            # copies required of each variation
+def create_model(instance):
+    """Template design for a colour printing firm.
 
-    m = Model()
+    Each product variation (for example a design of a cat-food carton) is printed from
+    a template: a thin aluminium sheet with several variations etched on it. The firm
+    produces n_templates templates, each with n_slots positions, and each position
+    carries one copy of one variation. A mother sheet is printed from a template, and
+    printing a template once gives as many copies of each variation as it has positions
+    for it. Choose the variations on each template and how many sheets to print from
+    each template, so that every variation gets at least its demand, with as few printed
+    sheets as possible.
+    """
+    n_slots = instance["n_slots"]          # positions on one template
+    n_templates = instance["n_templates"]  # number of templates the firm produces
+    n_var = instance["n_var"]              # number of product variations
+    demand = instance["demand"]            # demand[j]: copies of variation j to be printed
 
-    # layout[t][v]: copies of variation v etched on template t
-    layout = [[m.addVar(name=f"layout_{t}_{v}", vtype="I", lb=0, ub=n_slots)
-               for v in range(n_var)] for t in range(n_templates)]
-    # production[t]: number of sheets printed from template t
-    # A template never needs more sheets than the largest demand: beyond that,
-    # some variation on it is over-supplied and a sheet can be removed.
-    max_sheets = max(demand)
-    production = [m.addVar(name=f"production_{t}", vtype="I", lb=0, ub=max_sheets)
-                  for t in range(n_templates)]
+    model = Model("csplib_002_template_design")
 
-    # a template holds at most n_slots variations
-    for t in range(n_templates):
-        # the design slots on a template are limited to n_slots
-        m.addCons(quicksum(layout[t][v] for v in range(n_var)) <= n_slots)
+    # layout[i, j]: number of positions of template i that carry variation j. A variation
+    # can take every position of a template, which is the bound n_slots from the data.
+    layout = model.addMatrixVar((n_templates, n_var), vtype="I", lb=0, ub=n_slots)
 
-    # the copies printed of each variation must cover its demand
-    # (sheets from each template times the copies of that variation on it)
-    for v in range(n_var):
-        m.addCons(quicksum(production[t] * layout[t][v] for t in range(n_templates))
-                  >= demand[v])
+    # production[i]: number of sheets printed from template i. Each template is produced,
+    # so it is printed at least once (lb=1). The upper bound max(demand) is derived: a
+    # template printed more than max(demand) times can print max(demand) times instead,
+    # since each variation it carries still gets at least max(demand) >= demand copies
+    # from it, so no optimal solution is cut off.
+    production = model.addMatrixVar((n_templates,), vtype="I", lb=1, ub=max(demand))
 
-    # minimise the total number of printed sheets
-    m.setObjective(quicksum(production), "minimize")
+    # Every position of a template is filled: the variations on a template add up to
+    # n_slots.
+    model.addMatrixCons(layout.sum(axis=1) == n_slots)
 
-    return m, {"layout": layout, "production": production}
+    # Copies of variation j printed: the sheets printed from each template times the copies
+    # of j on that template, summed over templates, is at least the demand of j. The product
+    # of two integer variables is nonlinear; SCIP handles it directly in a constraint, so no
+    # auxiliary variable is needed.
+    printed = production.reshape((n_templates, 1)) * layout
+    model.addMatrixCons(printed.sum(axis=0) >= demand)
+
+    # Minimise the total number of printed sheets.
+    model.setObjective(production.sum(), "minimize")
+
+    return model, {"layout": layout, "production": production}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

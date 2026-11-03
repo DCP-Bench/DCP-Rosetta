@@ -1,39 +1,57 @@
-# Find four different numbers a, b, c, d in 1..100 with a^2 + b^2 = c^2 + d^2.
-from pyscipopt import Model, quicksum
+# session5_hardy_1729_square: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_hardy_1729_square.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python session5_hardy_1729_square.py
+
+from pyscipopt import Model
+import numpy as np
 
 
-def neq(m, x, y, name):
-    # x != y, encoded with one binary that picks the side of the inequality
-    d = m.addVar(name=name, vtype="B")
-    m.addConsIndicator(x - y >= 1, binvar=d)
-    m.addConsIndicator(y - x >= 1, binvar=d, activeone=False)
+def create_model(instance):
+    """Find four different whole numbers from 1 to 100 such that the sum of the squares
+    of the first two equals the sum of the squares of the other two, a^2 + b^2 = c^2 + d^2,
+    and report them as (a, b, c, d).
+
+    The instance file is empty ([]): the statement fixes every number, so nothing is
+    read from `instance`.
+    """
+    # The statement fixes the range: the whole numbers 1 to 100.
+    values = np.arange(1, 101)  # column k stands for the number values[k] = k + 1
+
+    model = Model("hardy_1729_square")
+
+    # x[i, k] is 1 when the i-th of a, b, c, d (in that order) is the number k + 1,
+    # and 0 when not. SCIP has no all-different constraint and no "!=", so each
+    # number is one-hot over the 100 values and the four numbers are kept apart below.
+    x = model.addMatrixVar((4, 100), vtype="B", name="x")
+
+    # Each of a, b, c, d is exactly one number from 1 to 100.
+    model.addMatrixCons(x.sum(axis=1) == 1)
+
+    # The four numbers are different: each value 1 to 100 is picked by at most one of them.
+    model.addMatrixCons(x.sum(axis=0) <= 1)
+
+    # The numbers themselves and their squares, as linear expressions of the one-hot choices.
+    number = x @ values          # number[i]: the i-th number picked
+    square = x @ (values ** 2)   # square[i]: its square
+
+    # The sum of the squares of a and b equals the sum of the squares of c and d.
+    model.addCons(square[0] + square[1] == square[2] + square[3])
+
+    # There is no objective: the problem asks for any solution.
+    return model, {"a": number[0], "b": number[1], "c": number[2], "d": number[3]}
 
 
-def build(instance):
-    m = Model()
-    # the four numbers, each between 1 and 100 (problem statement)
-    a = m.addVar(name="a", vtype="I", lb=1, ub=100)
-    b = m.addVar(name="b", vtype="I", lb=1, ub=100)
-    c = m.addVar(name="c", vtype="I", lb=1, ub=100)
-    d = m.addVar(name="d", vtype="I", lb=1, ub=100)
-    nums = {"a": a, "b": b, "c": c, "d": d}
+if __name__ == "__main__":
+    import numpy as np
 
-    # the four numbers are different (a != b != c != d, read as all pairwise different)
-    names = list(nums)
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            p, q = names[i], names[j]
-            neq(m, nums[p], nums[q], f"diff_{p}_{q}")
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-    # the sum of squares of the first two equals the sum of squares of the other two
-    sq_a = m.addVar(name="sq_a", vtype="I", lb=1, ub=10000)
-    sq_b = m.addVar(name="sq_b", vtype="I", lb=1, ub=10000)
-    sq_c = m.addVar(name="sq_c", vtype="I", lb=1, ub=10000)
-    sq_d = m.addVar(name="sq_d", vtype="I", lb=1, ub=10000)
-    m.addCons(sq_a == a * a)
-    m.addCons(sq_b == b * b)
-    m.addCons(sq_c == c * c)
-    m.addCons(sq_d == d * d)
-    m.addCons(sq_a + sq_b == sq_c + sq_d)
-
-    return m, {"a": a, "b": b, "c": c, "d": d}
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

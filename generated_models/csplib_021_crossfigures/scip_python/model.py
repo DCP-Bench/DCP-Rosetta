@@ -1,9 +1,14 @@
-# Crossfigures (CSPLib 021): fill the digit cells of a 9x9 grid so that every
-# across and down clue holds. Output M gives each cell's digit, 0 for a black cell.
+# csplib_021_crossfigures: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python csplib_021_crossfigures.py
+
+import math
+
 from pyscipopt import Model, quicksum
 
-# The grid is part of the problem statement (the instance data is empty).
-# X is a black cell, a number is a clue label on a white cell, _ is a plain white cell.
+# The grid of the statement, one string per row. "X" is a black cell, "_" an empty
+# white cell, and a number is the label of the cell where an answer starts.
 GRID = [
     "1 2 _ 3 X 4 _ 5 6",
     "7 _ X 8 _ _ X 9 _",
@@ -17,139 +22,136 @@ GRID = [
 ]
 
 
-def build(instance):
-    grid = [row.split() for row in GRID]
-    R, C = len(grid), len(grid[0])
+def is_prime(n):
+    """True when n is a prime number: at least 2, with no divisor from 2 up to its square root."""
+    return n >= 2 and all(n % d for d in range(2, math.isqrt(n) + 1))
 
-    def white(r, c):
-        return 0 <= r < R and 0 <= c < C and grid[r][c] != "X"
 
-    m = Model()
+def create_model(instance):
+    """Crossfigures: fill the white cells of the grid with digits so that every clue holds.
 
-    # One digit variable per white cell.
-    d = {}
-    for r in range(R):
-        for c in range(C):
-            if white(r, c):
-                d[r, c] = m.addVar(name=f"d_{r}_{c}", vtype="I", lb=0, ub=9)
+    A white cell holds one digit. The digits of a run of white cells, read left to right
+    for an across answer or top to bottom for a down answer, form a number, and that number
+    is the answer to the clue numbered with the run's first cell. Each clue of the statement
+    is written here as an equation between answers. The output M is the grid of digits,
+    with 0 in the black cells.
 
-    # Blank output for black cells: a variable fixed to 0.
-    blank = m.addVar(name="blank", vtype="I", lb=0, ub=0)
+    The instance file is empty ([]): the grid and the clues are fixed by the statement,
+    so the argument is not read.
+    """
+    rows = [line.split() for line in GRID]  # rows[r][c]: the token in row r, column c
+    n_rows, n_cols = len(rows), len(rows[0])
+    # where[k]: the (row, column) of the cell labelled k
+    where = {int(tok): (r, c) for r, row in enumerate(rows) for c, tok in enumerate(row) if tok.isdigit()}
 
-    # Find the answer cells of each clue. A label cell starts an across (or down)
-    # answer when the cell before it (or above it) is black or outside the grid.
-    across_cells, down_cells = {}, {}
-    for r in range(R):
-        for c in range(C):
-            tok = grid[r][c]
-            if not tok.isdigit():
-                continue
-            n = int(tok)
-            if white(r, c + 1) and not white(r, c - 1):
-                cells, cc = [], c
-                while white(r, cc):
-                    cells.append((r, cc))
-                    cc += 1
-                across_cells[n] = cells
-            if white(r + 1, c) and not white(r - 1, c):
-                cells, rr = [], r
-                while white(rr, c):
-                    cells.append((rr, c))
-                    rr += 1
-                down_cells[n] = cells
+    model = Model("csplib_021_crossfigures")
 
-    # Each clue answer is an integer with one digit per cell and no leading zero.
-    def answer(name, cells):
-        L = len(cells)
-        v = m.addVar(name=name, vtype="I", lb=10 ** (L - 1), ub=10 ** L - 1)
-        # the answer's decimal digits are the cells' digits, first cell most significant
-        m.addCons(v == quicksum(d[cell] * 10 ** (L - 1 - i) for i, cell in enumerate(cells)))
-        return v
+    # M[r, c] is the digit in row r, column c. A white cell holds one decimal digit, 0 to 9
+    # (0 is needed: the clues force 8220 as the answer to 3 down). The upper bound of 0 holds
+    # each black cell at 0, which is how the output shows it.
+    M = model.addMatrixVar(
+        (n_rows, n_cols),
+        vtype="I",
+        lb=0,
+        ub=[[0 if tok == "X" else 9 for tok in row] for row in rows],
+        name="M",
+    )
 
-    A = {n: answer(f"across_{n}", cells) for n, cells in across_cells.items()}
-    D = {n: answer(f"down_{n}", cells) for n, cells in down_cells.items()}
+    def read_answer(r, c, dr, dc):
+        """The white cells from (r, c), stepping by (dr, dc), up to a black cell or the edge."""
+        cells = []
+        while r < n_rows and c < n_cols and rows[r][c] != "X":
+            cells.append((r, c))
+            r, c = r + dr, c + dc
+        return cells
 
-    # Across clues
-    # 1 across: 27 across times two
-    m.addCons(A[1] == 2 * A[27])
-    # 4 across: 4 down plus seventy-one
-    m.addCons(A[4] == D[4] + 71)
-    # 7 across: 18 down plus four
-    m.addCons(A[7] == D[18] + 4)
-    # 8 across: 6 down divided by sixteen
-    m.addCons(D[6] == 16 * A[8])
-    # 9 across: 2 down minus eighteen
-    m.addCons(A[9] == D[2] - 18)
-    # 10 across: dozen in six gross (six gross is 864 and a dozen is 12)
-    m.addCons(A[10] == 72)
-    # 11 across: 5 down minus seventy
-    m.addCons(A[11] == D[5] - 70)
-    # 13 across: 26 down times 23 across
-    m.addCons(A[13] == D[26] * A[23])
-    # 15 across: 6 down minus 350
-    m.addCons(A[15] == D[6] - 350)
-    # 17 across: 25 across times 23 across
-    m.addCons(A[17] == A[25] * A[23])
-    # 20 across: a square number
-    s20 = m.addVar(name="root_20", vtype="I", lb=0, ub=99)
-    m.addCons(A[20] == s20 * s20)
-    # 23 across: a prime number (two digits, so no divisor from 2 to 9)
-    for k in range(2, 10):
-        q = m.addVar(name=f"prime23_q_{k}", vtype="I", lb=0, ub=99 // k)
-        r = m.addVar(name=f"prime23_r_{k}", vtype="I", lb=1, ub=k - 1)
-        m.addCons(A[23] == k * q + r)
-    # 24 across: a square number
-    s24 = m.addVar(name="root_24", vtype="I", lb=0, ub=9)
-    m.addCons(A[24] == s24 * s24)
-    # 25 across: 20 across divided by seventeen
-    m.addCons(A[20] == 17 * A[25])
-    # 27 across: 6 down divided by four
-    m.addCons(D[6] == 4 * A[27])
-    # 28 across: four dozen
-    m.addCons(A[28] == 48)
-    # 29 across: seven gross
-    m.addCons(A[29] == 1008)
-    # 30 across: 22 down plus 450
-    m.addCons(A[30] == D[22] + 450)
+    def number(cells):
+        """The number the cells spell, read in order: the first cell is the leading digit."""
+        return quicksum(10 ** (len(cells) - 1 - i) * M[r, c] for i, (r, c) in enumerate(cells))
+
+    def one_of(value, candidates, name):
+        """Constrain value to be one of the candidates: one binary per candidate, exactly one set.
+
+        SCIP has no prime or square constraint, so a clue that asks for one lists the values
+        it may take.
+        """
+        pick = {v: model.addVar(name=f"{name}_{v}", vtype="B") for v in candidates}  # pick[v] is 1 when v is the answer
+        model.addCons(quicksum(pick.values()) == 1)  # exactly one candidate is the answer
+        model.addCons(value == quicksum(v * b for v, b in pick.items()))
+
+    # across[k] (down[k]) is the number of the answer that starts at the cell labelled k.
+    # An across answer starts where the cell to its left is black or off the grid; a down
+    # answer where the cell above it is.
+    across, down = {}, {}
+    for k, (r, c) in where.items():
+        if c == 0 or rows[r][c - 1] == "X":
+            across[k] = number(read_answer(r, c, 0, 1))
+        if r == 0 or rows[r - 1][c] == "X":
+            down[k] = number(read_answer(r, c, 1, 0))
+
+    # 23 across: a prime number. Its digits are the cells of the run, so the answer is below
+    # 10 to the power of the run's cell count.
+    limit = 10 ** len(read_answer(*where[23], 0, 1))
+    one_of(across[23], [p for p in range(limit) if is_prime(p)], "prime_23")
+
+    # 20 across and 24 across: square numbers. The positive squares below the limit are
+    # listed; 0 is left out, an assumption (the statement does not say whether 0 is square).
+    limit = 10 ** len(read_answer(*where[20], 0, 1))
+    one_of(across[20], [v for v in range(1, limit) if math.isqrt(v) ** 2 == v], "square_20")
+    limit = 10 ** len(read_answer(*where[24], 0, 1))
+    one_of(across[24], [v for v in range(1, limit) if math.isqrt(v) ** 2 == v], "square_24")
+
+    # Across clues. The products of two answers (13, 17 across; 6 down) are nonlinear,
+    # since both factors are answers that vary; SCIP takes them as they are.
+    model.addCons(across[1] == 2 * across[27])  # 1 across: 27 across times two
+    model.addCons(across[4] == down[4] + 71)  # 4 across: 4 down plus seventy-one
+    model.addCons(across[7] == down[18] + 4)  # 7 across: 18 down plus four
+    model.addCons(16 * across[8] == down[6])  # 8 across: 6 down divided by sixteen
+    model.addCons(across[9] == down[2] - 18)  # 9 across: 2 down minus eighteen
+    model.addCons(across[10] == 72)  # 10 across: dozen in six gross, 6 * 144 / 12
+    model.addCons(across[11] == down[5] - 70)  # 11 across: 5 down minus seventy
+    model.addCons(across[13] == down[26] * across[23])  # 13 across: 26 down times 23 across
+    model.addCons(across[15] == down[6] - 350)  # 15 across: 6 down minus 350
+    model.addCons(across[17] == across[25] * across[23])  # 17 across: 25 across times 23 across
+    model.addCons(17 * across[25] == across[20])  # 25 across: 20 across divided by seventeen
+    model.addCons(4 * across[27] == down[6])  # 27 across: 6 down divided by four
+    model.addCons(across[28] == 48)  # 28 across: four dozen
+    model.addCons(across[29] == 1008)  # 29 across: seven gross, 7 * 144
+    model.addCons(across[30] == down[22] + 450)  # 30 across: 22 down plus 450
 
     # Down clues
-    # 1 down: 1 across plus twenty-seven
-    m.addCons(D[1] == A[1] + 27)
-    # 2 down: five dozen
-    m.addCons(D[2] == 60)
-    # 3 down: 30 across plus 888
-    m.addCons(D[3] == A[30] + 888)
-    # 4 down: two times 17 across
-    m.addCons(D[4] == 2 * A[17])
-    # 5 down: 29 across divided by twelve
-    m.addCons(A[29] == 12 * D[5])
-    # 6 down: 28 across times 23 across
-    m.addCons(D[6] == A[28] * A[23])
-    # 10 down: 10 across plus four
-    m.addCons(D[10] == A[10] + 4)
-    # 12 down: three times 24 across
-    m.addCons(D[12] == 3 * A[24])
-    # 14 down: 13 across divided by sixteen
-    m.addCons(A[13] == 16 * D[14])
-    # 16 down: 28 down times fifteen
-    m.addCons(D[16] == D[28] * 15)
-    # 17 down: 13 across minus 399
-    m.addCons(D[17] == A[13] - 399)
-    # 18 down: 29 across divided by eighteen
-    m.addCons(A[29] == 18 * D[18])
-    # 19 down: 22 down minus ninety-four
-    m.addCons(D[19] == D[22] - 94)
-    # 20 down: 20 across minus nine
-    m.addCons(D[20] == A[20] - 9)
-    # 21 down: 25 across minus fifty-two
-    m.addCons(D[21] == A[25] - 52)
-    # 22 down: 20 down times six
-    m.addCons(D[22] == 6 * D[20])
-    # 26 down: five times 24 across
-    m.addCons(D[26] == 5 * A[24])
-    # 28 down: 21 down plus twenty-seven
-    m.addCons(D[28] == D[21] + 27)
+    model.addCons(down[1] == across[1] + 27)  # 1 down: 1 across plus twenty-seven
+    model.addCons(down[2] == 60)  # 2 down: five dozen
+    model.addCons(down[3] == across[30] + 888)  # 3 down: 30 across plus 888
+    model.addCons(down[4] == 2 * across[17])  # 4 down: two times 17 across
+    model.addCons(12 * down[5] == across[29])  # 5 down: 29 across divided by twelve
+    model.addCons(down[6] == across[28] * across[23])  # 6 down: 28 across times 23 across
+    model.addCons(down[10] == across[10] + 4)  # 10 down: 10 across plus four
+    model.addCons(down[12] == 3 * across[24])  # 12 down: three times 24 across
+    model.addCons(16 * down[14] == across[13])  # 14 down: 13 across divided by sixteen
+    model.addCons(down[16] == 15 * down[28])  # 16 down: 28 down times fifteen
+    model.addCons(down[17] == across[13] - 399)  # 17 down: 13 across minus 399
+    model.addCons(18 * down[18] == across[29])  # 18 down: 29 across divided by eighteen
+    model.addCons(down[19] == down[22] - 94)  # 19 down: 22 down minus ninety-four
+    model.addCons(down[20] == across[20] - 9)  # 20 down: 20 across minus nine
+    model.addCons(down[21] == across[25] - 52)  # 21 down: 25 across minus fifty-two
+    model.addCons(down[22] == 6 * down[20])  # 22 down: 20 down times six
+    model.addCons(down[26] == 5 * across[24])  # 26 down: five times 24 across
+    model.addCons(down[28] == down[21] + 27)  # 28 down: 21 down plus twenty-seven
 
-    # Output: the 9x9 grid of digits, 0 for black cells.
-    M = [[d[r, c] if white(r, c) else blank for c in range(C)] for r in range(R)]
-    return m, {"M": M}
+    return model, {"M": M}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

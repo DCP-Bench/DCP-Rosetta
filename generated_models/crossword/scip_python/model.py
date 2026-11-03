@@ -1,71 +1,99 @@
-# Crossword: choose 8 distinct words from the list so that they fill the 8 word slots
-# of the 6 x 5 grid and agree on every crossing letter.
+# crossword: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python crossword.py
+
 from pyscipopt import Model, quicksum
 
-# The 15 words, sorted from the longest and then alphabetically (problem data).
-WORDS = [
-    "HOSES", "LASER", "SAILS", "SHEET", "STEER",
-    "HEEL", "HIKE", "KEEL", "KNOT", "LINE",
-    "AFT", "ALE", "EEL", "LEE", "TIE",
-]
-
-# The word slots of the grid (problem data). Each slot is (clue number, direction,
-# row, column, length), with rows and columns numbered from 0.
+# The grid of the statement, with 0-based (row, column) cells. "#" is a black square, "." an open
+# cell, and a number an open cell where the statement starts a word:
+#
+#        0 1 2 3 4
+#     0  1 . 2 . 3
+#     1  # # . # .
+#     2  # 4 . 5 .
+#     3  6 # 7 . .
+#     4  8 . . . .
+#     5  . # # . #
+#
+# Each word of the puzzle fills one run of two or more open cells across a row or down a column.
+# The eight runs are the eight slots below, in the order of the statement's numbering.
 SLOTS = [
-    (1, "across", 0, 0, 5),
-    (2, "down", 0, 2, 5),
-    (3, "down", 0, 4, 5),
-    (4, "across", 2, 1, 4),
-    (5, "down", 2, 3, 4),
-    (6, "down", 3, 0, 3),
-    (7, "across", 3, 2, 3),
-    (8, "across", 4, 0, 5),
+    [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4)],  # 1 across
+    [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)],  # 2 down
+    [(0, 4), (1, 4), (2, 4), (3, 4), (4, 4)],  # 3 down
+    [(2, 1), (2, 2), (2, 3), (2, 4)],          # 4 across
+    [(2, 3), (3, 3), (4, 3), (5, 3)],          # 5 down
+    [(3, 0), (4, 0), (5, 0)],                  # 6 down
+    [(3, 2), (3, 3), (3, 4)],                  # 7 across
+    [(4, 0), (4, 1), (4, 2), (4, 3), (4, 4)],  # 8 across
+]
+
+# The 15 words of the statement, sorted as the statement sorts them (longest first, then
+# alphabetically). A word's index is its position here: word 0 is HOSES, word 14 is TIE.
+WORDS = [
+    "HOSES", "LASER", "SAILS", "SHEET", "STEER",  # 0-4: five letters
+    "HEEL", "HIKE", "KEEL", "KNOT", "LINE",       # 5-9: four letters
+    "AFT", "ALE", "EEL", "LEE", "TIE",            # 10-14: three letters
 ]
 
 
-def build(instance):
-    m = Model()
-    n_slots = len(SLOTS)
-    n_words = len(WORDS)
+def create_model(instance):
+    """Complete the crossword of the statement: put eight different words from the list of
+    fifteen into the eight slots of the grid, so that the letters where two words cross agree.
+    Output E lists the index of the word in each slot, in the slots' order. The instance file is
+    empty ([]), so create_model reads no instance field: the grid and the words come from the
+    statement."""
+    model = Model("crossword")
+    n_slots = len(SLOTS)  # one word for each slot
+    n_words = len(WORDS)  # the words to choose from
 
-    # cells of each slot, in reading order
-    cells = []
-    for _, direction, r, c, length in SLOTS:
-        if direction == "across":
-            cells.append([(r, c + i) for i in range(length)])
-        else:
-            cells.append([(r + i, c) for i in range(length)])
+    # x[s, w] is 1 when word w fills slot s. A word can only fill a slot of its own length,
+    # so its upper bound is 0 for every other slot.
+    x = model.addMatrixVar(
+        (n_slots, n_words), vtype="B", name="x",
+        ub=[[int(len(WORDS[w]) == len(SLOTS[s])) for w in range(n_words)]
+            for s in range(n_slots)],
+    )
+    # Every slot is filled by exactly one word ...
+    model.addMatrixCons(x.sum(axis=1) == 1)
+    # ... and no word fills two slots, so the eight words chosen are different.
+    model.addMatrixCons(x.sum(axis=0) <= 1)
 
-    # y[s, w] = 1 if slot s is filled with word w (only words of the slot's length)
-    y = {}
-    for s in range(n_slots):
-        for w in range(n_words):
-            if len(WORDS[w]) == len(cells[s]):
-                y[s, w] = m.addVar(name=f"y_{s}_{w}", vtype="B")
+    # letter[r, c] is the letter in open cell (r, c), as its place in the alphabet (A = 0 to
+    # Z = 25), which is where the bounds come from: the words are written in capital letters.
+    cells = sorted({cell for slot in SLOTS for cell in slot})
+    letter = {(r, c): model.addVar(name=f"letter_{r}_{c}", vtype="I", lb=0, ub=25)
+              for r, c in cells}
 
-    # each slot is filled by exactly one word
-    for s in range(n_slots):
-        m.addCons(quicksum(y[s, w] for w in range(n_words) if (s, w) in y) == 1)
+    # The letter at each position of a slot's word is the letter in the cell at that position.
+    # Two slots that cross share a cell, so the words agree where they cross.
+    for s, slot in enumerate(SLOTS):
+        for i, (r, c) in enumerate(slot):
+            model.addCons(
+                letter[r, c] == quicksum(
+                    (ord(WORDS[w][i]) - ord("A")) * x[s, w]
+                    for w in range(n_words) if len(WORDS[w]) == len(slot)
+                )
+            )
 
-    # the 8 selected words are distinct words from the list
-    for w in range(n_words):
-        m.addCons(quicksum(y[s, w] for s in range(n_slots) if (s, w) in y) <= 1)
+    # E[s] is the index of the word that fills slot s: the one-hot sum is the output itself.
+    E = [quicksum(w * x[s, w] for w in range(n_words)) for s in range(n_slots)]
 
-    # crossing cells: the two slots through a cell must put the same letter there
-    for cell in set(cell for slot_cells in cells for cell in slot_cells):
-        through = [(s, cells[s].index(cell)) for s in range(n_slots) if cell in cells[s]]
-        if len(through) < 2:
-            continue
-        (s, i), (t, j) = through[0], through[1]
-        for letter in set(w[0] for w in WORDS):
-            # a letter at position i of slot s is in the word for slot s exactly when
-            # the word for slot t has the same letter at position j
-            m.addCons(quicksum(y[s, w] for w in range(n_words)
-                               if (s, w) in y and WORDS[w][i] == letter)
-                      == quicksum(y[t, w] for w in range(n_words)
-                                  if (t, w) in y and WORDS[w][j] == letter))
+    # The puzzle has no objective: any completed grid is an answer.
+    return model, {"E": E}
 
-    # E[k] = index of the word in the clue k + 1 slot
-    clue_order = sorted(range(n_slots), key=lambda s: SLOTS[s][0])
-    E = [quicksum(w * y[s, w] for w in range(n_words) if (s, w) in y) for s in clue_order]
-    return m, {"E": E}
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

@@ -1,92 +1,104 @@
-# Four islands: match each island (Pwana, Quero, Rayou, Skern) with its export and tourist attraction.
-# The four islands A, B, C, D form a 2x2 map: A north-west, B north-east, C south-west, D south-east.
+# four_islands: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python four_islands.py
+
 from pyscipopt import Model, quicksum
 
-ISLANDS = ["Pwana", "Quero", "Rayou", "Skern"]
-EXPORTS = ["alabaster", "bananas", "coconuts", "durian_fruit"]
-ATTRACTIONS = ["resort_hotel", "ice_skating_rink", "jai_alai_stadium", "koala_preserve"]
-CATEGORIES = {"island": ISLANDS, "export": EXPORTS, "attraction": ATTRACTIONS}
+# The map is a square with the islands at its corners, numbered 0 = A, 1 = B, 2 = C, 3 = D:
+#     A(0) -- B(1)
+#      |        |
+#     C(2) -- D(3)
+# so cell p is in the north row when p < 2 and in the south row when p >= 2, and in the
+# west column when p is even and in the east column when p is odd.
+# The statement fixes the whole problem: its instance file is empty ([]), and the run
+# block passes {} to create_model, which reads nothing from its argument.
 
-# map positions 0..3 = A, B, C, D; ROW 0 is north, 1 is south; COL 0 is west, 1 is east
-ROW = [0, 0, 1, 1]
-COL = [0, 1, 0, 1]
-
-
-def bridge(p, q):
-    # two islands are joined by a bridge when they are neighbours on the map
-    return abs(ROW[p] - ROW[q]) + abs(COL[p] - COL[q]) == 1
-
-
-def due_south(p, q):
-    # p is due south of q: same column, p lower on the map
-    return COL[p] == COL[q] and ROW[p] > ROW[q]
+# Named items, in the order the statement lists them.
+PWANA, QUERO, RAYOU, SKERN = range(4)  # the four islands
+ALABASTER, BANANAS, DURIAN = 0, 1, 3  # the primary exports the clues name (coconuts, 2, no clue names)
+HOTEL, SKATING_RINK, JAI_ALAI, KOALA = range(4)  # the four tourist attractions
 
 
-def due_west(p, q):
-    # p is due west of q: same row, p further left
-    return ROW[p] == ROW[q] and COL[p] < COL[q]
+def in_south_row(grid, item):
+    """1 when `item` is on the south row of the map (cells 2 and 3), 0 when on the north row."""
+    return quicksum(grid[item, p] for p in (2, 3))
 
 
-def due_east(p, q):
-    return due_west(q, p)
+def in_east_column(grid, item):
+    """1 when `item` is in the east column of the map (cells 1 and 3), 0 when in the west column."""
+    return quicksum(grid[item, p] for p in (1, 3))
 
 
-def north_south_bridge(p, q):
-    return COL[p] == COL[q] and bridge(p, q)
+def create_model(instance):
+    """Four islands on a square map each have a different primary export and a different
+    tourist attraction. From the clues, find the map cell of each island, of each export
+    and of each attraction. The cells are numbered 0 to 3 as on the map above.
+    Returns the model and the cell lists as outputs `island`, `export` and `attraction`."""
+    model = Model("four_islands")
+
+    # island_at[i, p] is 1 when island i (a row of PWANA..SKERN) is on map cell p.
+    # Each island is on one cell, so each row holds one 1 (a one-hot choice of cell).
+    island_at = model.addMatrixVar((4, 4), vtype="B", name="island_at")
+    # export_at[e, p] is 1 when export e (a row of ALABASTER..DURIAN) belongs to the island on cell p.
+    export_at = model.addMatrixVar((4, 4), vtype="B", name="export_at")
+    # attraction_at[a, p] is 1 when attraction a (a row of HOTEL..KOALA) is on the island on cell p.
+    attraction_at = model.addMatrixVar((4, 4), vtype="B", name="attraction_at")
+
+    # Each item is on exactly one cell (row sums are 1), and each cell holds exactly one item
+    # of each kind (column sums are 1). SCIP has no all-different, so the sums state it.
+    model.addMatrixCons(island_at.sum(axis=1) == 1)
+    model.addMatrixCons(island_at.sum(axis=0) == 1)
+    model.addMatrixCons(export_at.sum(axis=1) == 1)
+    model.addMatrixCons(export_at.sum(axis=0) == 1)
+    model.addMatrixCons(attraction_at.sum(axis=1) == 1)
+    model.addMatrixCons(attraction_at.sum(axis=0) == 1)
+
+    # The island with the koala preserve is due south of Pwana: one row lower, same column.
+    model.addCons(in_south_row(attraction_at, KOALA) - in_south_row(island_at, PWANA) == 1)
+    model.addCons(in_east_column(attraction_at, KOALA) == in_east_column(island_at, PWANA))
+
+    # The island with the largest alabaster quarry is due west of Quero: same row, one column west.
+    model.addCons(in_south_row(export_at, ALABASTER) == in_south_row(island_at, QUERO))
+    model.addCons(in_east_column(export_at, ALABASTER) + 1 == in_east_column(island_at, QUERO))
+
+    # The island with the resort hotel is due east of the island that exports durian fruit.
+    model.addCons(in_south_row(attraction_at, HOTEL) == in_south_row(export_at, DURIAN))
+    model.addCons(in_east_column(attraction_at, HOTEL) == in_east_column(export_at, DURIAN) + 1)
+
+    # Skern and the jai alai stadium are joined by a north-south bridge: same column, different rows.
+    model.addCons(in_east_column(island_at, SKERN) == in_east_column(attraction_at, JAI_ALAI))
+    model.addCons(in_south_row(island_at, SKERN) + in_south_row(attraction_at, JAI_ALAI) == 1)
+
+    # Rayou and the island that exports bananas are joined by an east-west bridge:
+    # same row, different columns.
+    model.addCons(in_south_row(island_at, RAYOU) == in_south_row(export_at, BANANAS))
+    model.addCons(in_east_column(island_at, RAYOU) + in_east_column(export_at, BANANAS) == 1)
+
+    # The ice skating rink and the jai alai stadium are not joined by a bridge. Two different
+    # cells on this square are either joined by a bridge or diagonal, so not joined means
+    # different rows and different columns.
+    model.addCons(in_south_row(attraction_at, SKATING_RINK) + in_south_row(attraction_at, JAI_ALAI) == 1)
+    model.addCons(in_east_column(attraction_at, SKATING_RINK) + in_east_column(attraction_at, JAI_ALAI) == 1)
+
+    # The output of each item is its cell: the sum of cell number times its one-hot choice.
+    island = [quicksum(p * island_at[i, p] for p in range(4)) for i in range(4)]
+    export = [quicksum(p * export_at[e, p] for p in range(4)) for e in range(4)]
+    attraction = [quicksum(p * attraction_at[a, p] for p in range(4)) for a in range(4)]
+
+    return model, {"island": island, "export": export, "attraction": attraction}
 
 
-def east_west_bridge(p, q):
-    return ROW[p] == ROW[q] and bridge(p, q)
+if __name__ == "__main__":
+    import numpy as np
 
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-def build(instance):
-    m = Model()
-
-    # b[c, i, p] = 1 if item i of category c is on map position p
-    b = {
-        (c, i, p): m.addVar(name=f"{c}_{i}_{p}", vtype="B")
-        for c, items in CATEGORIES.items()
-        for i in range(len(items))
-        for p in range(4)
-    }
-
-    # each category places its four items on the four islands, one item per island
-    for c, items in CATEGORIES.items():
-        # each item is on exactly one island
-        for i in range(len(items)):
-            m.addCons(quicksum(b[c, i, p] for p in range(4)) == 1)
-        # each island carries exactly one item of this category
-        for p in range(4):
-            m.addCons(quicksum(b[c, i, p] for i in range(len(items))) == 1)
-
-    def link(cat_x, x, cat_y, y, holds):
-        # item x of cat_x and item y of cat_y must stand in the relation holds(pos_x, pos_y);
-        # forbid every pair of positions that breaks it
-        for p in range(4):
-            for q in range(4):
-                if not holds(p, q):
-                    m.addCons(b[cat_x, x, p] + b[cat_y, y, q] <= 1)
-
-    # 1. The island noted for its koala preserve is due south of Pwana.
-    link("attraction", 3, "island", 0, due_south)
-    # 2. The island with the largest alabaster quarry is due west of Quero.
-    link("export", 0, "island", 1, due_west)
-    # 3. The island with the resort hotel is due east of the one that exports durian fruit.
-    link("attraction", 0, "export", 3, due_east)
-    # 4. Skern and the island with the jai alai stadium are connected by a north-south bridge.
-    link("island", 3, "attraction", 2, north_south_bridge)
-    # 5. Rayou and the island that exports bananas are connected by an east-west bridge.
-    link("island", 2, "export", 1, east_west_bridge)
-    # 6. The islands with the ice skating rink and the jai alai stadium are not connected by a bridge.
-    link("attraction", 1, "attraction", 2, lambda p, q: not bridge(p, q))
-
-    def position(c, i):
-        # map position (0=A .. 3=D) of item i of category c
-        return quicksum(p * b[c, i, p] for p in range(4))
-
-    outputs = {
-        "island": [position("island", i) for i in range(4)],
-        "export": [position("export", i) for i in range(4)],
-        "attraction": [position("attraction", i) for i in range(4)],
-    }
-    return m, outputs
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())
