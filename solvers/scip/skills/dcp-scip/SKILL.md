@@ -38,7 +38,8 @@ Other bindings (C API, C++, Java, Julia and others from the SCIP documentation) 
 ## Modelling
 
 Use the general constraints where they state the problem; their exact calls, the encodings
-SCIP lacks (`!=`, `abs`, min/max, `//`, `%`) and the examples are in the interface file.
+for what SCIP lacks (`!=`, min/max, `//`, `%`) or handles slowly (`abs`), and the examples
+are in the interface file.
 
 Lessons that turned timeouts into solves:
 
@@ -83,7 +84,7 @@ Calls and the objective pin: [interfaces/python.md](interfaces/python.md#all-sol
 | Problem | Likely cause | Fix |
 |---|---|---|
 | `inforunbd` taken as "no solution" | presolve could not tell infeasible from unbounded | re-solve with presolve off ([Solving](interfaces/python.md#solving)) |
-| fractional objective: all-optimal list misses optima or repeats | objective variable declared integer, or pinned with `==` on a float | `z` continuous, pin `z <= best + 1e-6` (or `>=`) ([All solutions](interfaces/python.md#all-solutions)) |
+| fractional objective: all-optimal list misses optima or repeats | objective variable declared integer, or an exact `==` pin on a float (relies on `numerics/feastol`) | `z` continuous, pin `z <= best + 1e-6` (or `>=`) ([All solutions](interfaces/python.md#all-solutions)) |
 | enumeration slow with many solutions | one full re-solve per no-good | expected; use `m.count()` for a count on pure binary linear models |
 | `timelimit`, slow proof | weak formulation | one-hot binaries, indicators, no `abs`, symmetry breaking, implied constraints, tight bounds |
 

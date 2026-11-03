@@ -72,7 +72,7 @@ Reference: [Model API](https://pyscipopt.readthedocs.io/en/latest/api/model.html
 
 Not available on variables: Python `min`/`max` and `!=` (`NotImplementedError: can only
 support with '<=', '>=', or '=='`), `//` and `%` (`TypeError`). Encodings for all of
-them: [references/encodings.md](../references/python/encodings.md).
+them: [references/python/encodings.md](../references/python/encodings.md).
 
 
 ## Solving
@@ -142,7 +142,7 @@ within SCIP's feasibility tolerance (`numerics/feastol`, 1e-6), but the one-side
 not rely on it.
 
 **Cost**: each solution is a full re-solve after `freeTransform()`, so time grows with the
-number of solutions (92 n-queens solutions at n = 8: about 9 to 12 s, against about 1 s for
+number of solutions (92 n-queens solutions at n = 8: a few seconds, against well under 1 s for
 one). Cap the list when a few are enough: stop the loop once `len(solutions)` reaches the
 cap. When only the **number** of solutions is needed and the model is pure
 linear over binaries (no indicators), `m.count()` then `m.getNCountedSols()` is much faster
@@ -162,39 +162,39 @@ statement, not of the API:
   or a matrix variable with `addMatrixCons` for a grid; variables kept as lists, nested
   lists or matrices so they print as a whole.
 
-Build the model in one function that creates the `Model`, adds the constraints, sets the
-objective when there is one, and returns the model with the variables to print. For
-example:
+For example:
 
 ```python
 from pyscipopt import Model, quicksum
 
+# A hiker chooses which items to pack: as much total value as possible,
+# without the items weighing more than the backpack can carry.
+values = [6, 10, 12]   # values[i]: the value of item i
+weights = [1, 2, 3]    # weights[i]: the weight of item i
+capacity = 5           # the most weight the backpack can carry
 
-def create_model(instance):
-    """A hiker chooses which items to pack: as much total value as possible,
-    without the items weighing more than the backpack can carry."""
-    values = instance["values"]      # values[i]: the value of item i
-    weights = instance["weights"]    # weights[i]: the weight of item i
-    capacity = instance["capacity"]  # the most weight the backpack can carry
+model = Model("knapsack")
 
-    model = Model("knapsack")
+# x[i] is 1 when the hiker packs item i, and 0 when not
+x = [model.addVar(f"x_{i}", vtype="B") for i in range(len(values))]
 
-    # x[i] is 1 when the hiker packs item i, and 0 when not
-    x = [model.addVar(f"x_{i}", vtype="B") for i in range(len(values))]
+# The packed items weigh no more than the backpack can carry.
+model.addCons(quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
 
-    # The packed items weigh no more than the backpack can carry.
-    model.addCons(quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
+# Pack the most valuable selection.
+model.setObjective(quicksum(v * xi for v, xi in zip(values, x)), "maximize")
 
-    # Pack the most valuable selection.
-    model.setObjective(quicksum(v * xi for v, xi in zip(values, x)), "maximize")
-
-    return model, {"x": x}
+model.hideOutput()
+model.optimize()
+if model.getStatus() == "optimal":  # proven: the default gap is 0
+    print("Value:", round(model.getObjVal()))
+    print("x =", [round(model.getVal(xi)) for xi in x])
+else:
+    print("Status:", model.getStatus())
 ```
 
-Solve with `model.hideOutput()` and `model.optimize()`, check for `"optimal"` (no gap to
-set: SCIP's default is 0), and print each output as `round(model.getVal(v))`;
-`numpy.vectorize` applies it to a nested list or a matrix in one call. Give a fixed output
-as a variable, since `getVal` refuses a plain number.
+Expected output: `Value: 22`, then `x = [0, 1, 1]`. For a grid or matrix of variables,
+`np.vectorize(lambda v: round(model.getVal(v)))(x)` prints it whole.
 
 ## Common issues
 
