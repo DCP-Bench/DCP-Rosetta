@@ -23,11 +23,13 @@ def create_model(instance):
     m = Model()
 
     # left[i] and right[i] bound container i from left to right, right being just past its last column
-    left = m.int_vector("left", n, 0, deck_width)
-    right = m.int_vector("right", n, 0, deck_width)
+    # (a container is at least min(width, length) wide, so left stops short of the deck's far side)
+    smallest = [min(width[i], length[i]) for i in range(n)]
+    left = [m.int(f"left_{i}", 0, deck_width - smallest[i]) for i in range(n)]
+    right = [m.int(f"right_{i}", smallest[i], deck_width) for i in range(n)]
     # bottom[i] and top[i] bound container i from bottom to top, top being just past its last row
-    bottom = m.int_vector("bottom", n, 0, deck_length)
-    top = m.int_vector("top", n, 0, deck_length)
+    bottom = [m.int(f"bottom_{i}", 0, deck_length - smallest[i]) for i in range(n)]
+    top = [m.int(f"top_{i}", smallest[i], deck_length) for i in range(n)]
     # turned[i] is true when container i is turned by 90 degrees, swapping its two sizes
     turned = m.bool_vector("turned", n)
 
@@ -44,15 +46,15 @@ def create_model(instance):
     for i in range(n):
         for j in range(i + 1, n):
             gap = separation[classes[i] - 1][classes[j] - 1]
-            # Each side is a choice: one Boolean per side says that it is the one used.
+            # One Boolean per side: true only if that side holds (at least one must be true).
             j_right_of_i = m.bool()   # j lies to the right of i, at least gap columns away
             i_right_of_j = m.bool()   # i lies to the right of j, at least gap columns away
             j_above_i = m.bool()      # j lies above i, at least gap rows away
             i_above_j = m.bool()      # i lies above j, at least gap rows away
-            m &= (left[j] - right[i] >= gap).iff(j_right_of_i)
-            m &= (left[i] - right[j] >= gap).iff(i_right_of_j)
-            m &= (bottom[j] - top[i] >= gap).iff(j_above_i)
-            m &= (bottom[i] - top[j] >= gap).iff(i_above_j)
+            m &= (left[j] - right[i] >= gap).only_if(j_right_of_i)
+            m &= (left[i] - right[j] >= gap).only_if(i_right_of_j)
+            m &= (bottom[j] - top[i] >= gap).only_if(j_above_i)
+            m &= (bottom[i] - top[j] >= gap).only_if(i_above_j)
             # At least one side must hold.
             m &= (j_right_of_i | i_right_of_j | j_above_i | i_above_j)
 

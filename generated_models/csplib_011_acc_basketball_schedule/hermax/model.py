@@ -71,12 +71,14 @@ def create_model(instance):
                     hosted.append(hosts)
                 m &= (sum(hosted) == 1)
 
-    # 1. Mirroring: the two dates of a pair have the same opponent for every team. A team
-    #    that is home on one of them is away on the other; a bye stays a bye (the codes
-    #    HOME=0 and AWAY=2 add up to 2, and BYE=1 added to itself gives 2 too).
+    # 1. Mirroring: the two dates of a pair have the same opponent for every team.
     for d, e in MIRROR_PAIRS:
         for i in range(n):
             m &= (opp[d][i] == opp[e][i])
+            # (Implied, kept to help the solver: with the same opponent on both dates,
+            #  hosting each team exactly once forces home on one date and away on the
+            #  other; a bye stays a bye. The codes HOME=0 and AWAY=2 add up to 2, and
+            #  BYE=1 added to itself gives 2 too.)
             m &= (loc[d][i] + loc[e][i] == 2)
 
     for t in range(n):
@@ -113,9 +115,10 @@ def create_model(instance):
         m &= (sum(opp[d][a] == b for d in range(10, days)) >= 1)
 
     # 8. Opponent sequences. No team plays away against UNC and against Duke on two
-    #    consecutive dates, in either order (the rule does not apply to UNC and Duke).
+    #    consecutive dates, in either order (skipped for UNC and Duke, for whom it is vacuous:
+    #    a team cannot play itself).
     #    No team plays UNC, Duke and Wake on three consecutive dates, in any order,
-    #    whatever the home/away.
+    #    whatever the home/away (skipped for UNC, Duke and Wake, for whom it is vacuous).
     for t in range(n):
         if t not in (UNC, DUKE):
             for d in range(days - 1):

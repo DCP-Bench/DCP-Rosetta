@@ -30,15 +30,13 @@ def create_model(instance):
     buys = [m.bool_vector(name, len(prices)) for name, _, _, prices in positions]
 
     # Each position's count of players bought lies within its limits.
-    for p, (name, fewest, most, prices) in enumerate(positions):
-        bought = buys[p]
-        m &= (sum(bought[j] for j in range(len(prices))) >= fewest)
+    for bought, (_, fewest, most, _) in zip(buys, positions):
+        m &= (sum(bought) >= fewest)
         if most is not None:
-            m &= (sum(bought[j] for j in range(len(prices))) <= most)
+            m &= (sum(bought) <= most)
 
     # At least eleven players are bought in total.
-    m &= (sum(buys[p][j] for p in range(len(positions))
-              for j in range(len(positions[p][3]))) >= min_players)
+    m &= (sum(sum(bought) for bought in buys) >= min_players)
 
     # The total price of the squad, in GBP thousands: each bought player's price.
     spent = sum_expr(price * buys[p][j]

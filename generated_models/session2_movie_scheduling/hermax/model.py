@@ -12,7 +12,7 @@ def create_model(instance):
     Two movies whose filming days overlap cannot both be taken. Choose the largest
     set of movies that can all be taken."""
     movies = instance["movies"]  # movies[i] = [title, first day of filming, last day of filming]
-    n = len(movies)
+    n = len(movies)  # n: the number of movie offers
 
     m = Model()
     # selected_movies[i] is true when the actor takes movie i

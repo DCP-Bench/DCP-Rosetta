@@ -12,8 +12,8 @@ def create_model(instance):
     machines in the same sequence, and a machine works on one job at a time. Choose the
     sequence of jobs that minimises the makespan, the time the last job leaves the last machine."""
     process_time = instance["process_time"]  # process_time[j][k]: time job j needs on machine k
-    n_jobs = len(process_time)
-    n_machines = len(process_time[0])
+    n_jobs = len(process_time)  # number of jobs
+    n_machines = len(process_time[0])  # number of machines
 
     # Time windows for the start times, derived from the data. head[j][k] is the time job j
     # needs on the machines before k (it cannot start on machine k earlier); tail[j][k] is the
@@ -37,10 +37,14 @@ def create_model(instance):
         for k in range(n_machines):
             ready = max(ready, done[k]) + process_time[j][k]
             done[k] = ready
+    # The +1 only keeps the domain of makespan from being a single value (lower == horizon).
+    # hermax's m.int accepts lo == hi (tested), so this is a harmless safeguard, not a requirement.
     horizon = max(done[-1], lower + 1)
 
     m = Model()
 
+    # horizon - tail[j][k] >= head[j][k] always holds; the max(..., head + 1) padding likewise only
+    # avoids a single-value domain (lo == hi is accepted by m.int, so it is not required).
     # start[j][k] is the time job j starts on machine k, inside its own time window
     start = [[m.int(f"start_{j}_{k}", head[j][k], max(horizon - tail[j][k], head[j][k] + 1))
               for k in range(n_machines)]

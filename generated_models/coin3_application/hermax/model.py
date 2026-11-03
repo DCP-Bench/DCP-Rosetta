@@ -13,7 +13,7 @@ def create_model(instance):
     maximum amount to pay can be paid exactly with some of the carried coins."""
     denominations = instance["denominations"]   # denominations[i]: the value of coin kind i
     max_amount = instance["max_amount_to_pay"]  # every amount 1 .. max_amount - 1 must be payable
-    n = len(denominations)
+    n = len(denominations)                       # n: the number of coin denominations
 
     m = Model()
 

@@ -19,6 +19,8 @@ def create_model(instance):
 
     # Each of the digits 0 to 9 is used exactly once.
     m &= digit.all_different()
+    # The number has ten digits, so its leading digit must be nonzero. This is already enforced:
+    # divisibility by 10 forces digit[9] == 0, and all_different then keeps 0 out of digit[0].
 
     # The number formed by the first n digits is divisible by n, for every n from 1 to 10.
     # Its value is sum(digit[j] * 10**(n-1-j)). Only its remainder modulo n matters for
@@ -34,7 +36,7 @@ def create_model(instance):
         quotient = m.int(f"quotient_{n}", 0, sum(9 * w for w, _ in terms) // n)
         m &= (sum(w * d for w, d in terms) == n * quotient)
 
-    # The objective is a satisfaction problem: no objective is posted.
+    # This is a satisfaction problem: no objective is posted.
     return m, {"digits": digit}
 
 

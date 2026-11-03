@@ -13,7 +13,7 @@ def create_model(instance):
     values = instance["types_of_coins"]     # values[j]: the value of one coin of type j
     available = instance["available_coins"]  # available[j]: how many coins of type j Alice has
     amount = instance["amount"]              # the total value of change Bob must receive
-    n = len(values)
+    n = len(values)                          # n: the number of coin types
 
     m = Model()
 

@@ -8,15 +8,16 @@ from hermax.model import Model
 
 
 def create_model(instance):
-    """Find a series S = (s[0], s[1], ..., s[n+1]) of values from 0 to n in which every
-    value i from 0 to n occurs exactly s[i] times, and whose last element s[n+1] is m.
+    """Find a series S = (s[0], s[1], ..., s[n+1]) in which every
+    value i from 0 to n occurs exactly s[i] times (domain convention: values are restricted
+    to 0..n, as in the reference formulation, not a stated requirement), and whose last element s[n+1] is m.
     The series is not empty, and s is its only output."""
-    n = instance["n"]              # the largest value in the series; values run from 0 to n
+    n = instance["n"]              # the largest value counted (values 0..n)
     last_value = instance["m"]     # the required value of the last element, s[n+1]
 
     model = Model()
 
-    # s[k] is the k-th element of the series, a value from 0 to n; the series has n + 2 elements
+    # s[k] is the k-th element of the series, a value restricted to 0..n as in the reference formulation; the series has n + 2 elements
     s = model.int_vector("s", n + 2, 0, n)
 
     # The last element of the series is m.

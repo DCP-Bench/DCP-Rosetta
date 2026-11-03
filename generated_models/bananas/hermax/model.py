@@ -15,11 +15,15 @@ def create_model(instance):
     total_fruits = 100   # the number of fruits to buy
     total_dollars = 100  # the amount of money to spend
 
-    # Prices per fruit are 3/5, 5/7, 7/9 and 3 dollars. Measuring money in units of 1/315 dollar
-    # makes every price a whole number (945 / 3 = 315 clears the denominators 5, 7, 9 and 3):
-    # bananas 189 units, oranges 225, mangoes 245, apples 945, and 100 dollars is 31500 units.
-    bananas_units, oranges_units, mangoes_units, apples_units = 189, 225, 245, 945
-    budget_units = total_dollars * 315
+    # Prices per fruit are 3/5, 5/7, 7/9 and 3 dollars. Measuring money in units of 1/315 dollar,
+    # where 315 = lcm(5, 7, 9) is the smallest unit that makes every price per fruit whole,
+    # gives bananas 189 units, oranges 225, mangoes 245, apples 945, and 100 dollars is 31500 units.
+    unit = 315  # lcm of the denominators 5, 7, 9
+    bananas_units = 3 * unit // 5
+    oranges_units = 5 * unit // 7
+    mangoes_units = 7 * unit // 9
+    apples_units = 3 * unit
+    budget_units = total_dollars * unit
 
     m = Model()
 
@@ -33,11 +37,11 @@ def create_model(instance):
     m &= (sum_expr([bananas, oranges, mangoes, apples]) == total_fruits)
 
     # Spend exactly 100 dollars, written in the units of 1/315 dollar per fruit.
-    m &= (bananas_units * bananas + oranges_units * oranges
-          + mangoes_units * mangoes + apples_units * apples == budget_units)
+    m &= (sum_expr([bananas_units * bananas, oranges_units * oranges,
+                    mangoes_units * mangoes, apples_units * apples]) == budget_units)
 
     # Minimise the bananas and apples bought, which are the fruits the buyer does not like.
-    m.obj += bananas + apples
+    m.obj += sum_expr([bananas, apples])
 
     return m, {"apples": apples, "bananas": bananas, "mangoes": mangoes, "oranges": oranges}
 

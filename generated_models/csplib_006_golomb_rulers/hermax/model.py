@@ -4,9 +4,6 @@
 # Then run it on the first instance (after `pip install hermax`):
 #   python csplib_006_golomb_rulers.py csplib_006_golomb_rulers.json
 
-import functools
-import operator
-
 from hermax.model import Model
 
 
@@ -25,16 +22,16 @@ def create_model(instance):
     # marks[k] is the position of mark k+1. Mark k is preceded by k gaps, which are distinct
     # positive whole numbers, so it is at least 1 + 2 + ... + k = k(k+1)/2. The r = size-1-k
     # gaps after it likewise need at least r(r+1)/2 more units to fit before the upper bound.
-    marks = m.int_vector("mark", size, 0, upper)
+    marks = []
+    bounds = []
     for k in range(size):
         lowest = k * (k + 1) // 2
         room_after = size - 1 - k
-        highest = upper - room_after * (room_after + 1) // 2
-        m &= (marks[k] >= lowest)
-        m &= (marks[k] <= highest)
+        # The first mark is at position 0, so its domain is just 0.
+        highest = 0 if k == 0 else upper - room_after * (room_after + 1) // 2
+        bounds.append((lowest, highest))
+        marks.append(m.int(f"mark_{k}", lowest, highest))
 
-    # The first mark is at position 0.
-    m &= (marks[0] == 0)
     # The marks are in increasing order along the ruler.
     for k in range(size - 1):
         m &= (marks[k] < marks[k + 1])
@@ -43,14 +40,19 @@ def create_model(instance):
     # Encoding note: the Golomb condition below is posted over these Booleans and pair
     # indicators (pure clauses) rather than as all_different over the distances. Measured on the
     # 10-mark instance: 23 s to prove the optimum, against 151 s for all_different over the
-    # size*(size-1)/2 distance IntVars (attempt-001 lessons.md).
+    # size*(size-1)/2 distance IntVars.
     occupied = m.bool_vector("occupied", upper + 1)
     for p in range(upper + 1):
+        # Only marks whose domain contains p can sit there.
+        here = [k for k in range(size) if bounds[k][0] <= p <= bounds[k][1]]
         # a mark at p makes position p occupied
-        for k in range(size):
+        for k in here:
             m &= (~(marks[k] == p) | occupied[p])
         # an occupied position has some mark on it
-        m &= (~occupied[p] | functools.reduce(operator.or_, [marks[k] == p for k in range(size)]))
+        clause = ~occupied[p]
+        for k in here:
+            clause = clause | (marks[k] == p)
+        m &= clause
 
     # Golomb condition: for each distance d, at most one pair of positions p, p+d is occupied,
     # so the size*(size-1)/2 distances between pairs of marks are all different.

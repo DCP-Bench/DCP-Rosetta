@@ -13,7 +13,7 @@ def create_model(instance):
     so that the total score is as close as possible to the target score."""
     targets = instance["targets"]      # targets[i]: points for a hit on target i
     goal = instance["target_score"]    # the total score the archer aims for
-    n = len(targets)
+    n = len(targets)               # n: the number of targets
 
     m = Model()
 

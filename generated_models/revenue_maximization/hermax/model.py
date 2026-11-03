@@ -14,8 +14,8 @@ def create_model(instance):
     revenue = instance["revenue"]            # revenue[p]: the price of one unit of package p
     delta = instance["delta"]                # delta[p][l] = 1 if package p uses flight leg l
     available_seats = instance["available_seats"]  # available_seats[l]: the seats on flight leg l
-    n_packages = len(demand)
-    n_legs = len(available_seats)
+    n_packages = len(demand)                 # the number of packages
+    n_legs = len(available_seats)            # the number of flight legs
 
     m = Model()
     # sell[p] is the number of units of package p to sell, from 0 up to its estimated demand

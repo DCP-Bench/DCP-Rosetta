@@ -36,21 +36,16 @@ def create_model(instance):
 
     # Every team plays every other team exactly once: each pair of teams (i, j) meets in
     # exactly one slot, either with i at home or with j at home. Each orientation gets a
-    # Boolean z that is true exactly when that team is home and the other is away there;
-    # the pair meets once when the Booleans over all weeks and periods sum to one.
+    # Boolean z reified as "x is home and y is away" in that slot; the pair meets once
+    # when the z over all weeks and periods sum to one.
     for i in range(1, n + 1):
         for j in range(i + 1, n + 1):
             meetings = []
             for w in range(weeks):
                 for p in range(periods):
                     for x, y in ((i, j), (j, i)):
-                        # z is true exactly when x is home and y is away in this slot
                         z = m.bool()
-                        x_home = (home[w][p] == x)
-                        y_away = (away[w][p] == y)
-                        m &= (~z | x_home)
-                        m &= (~z | y_away)
-                        m &= (z | ~x_home | ~y_away)
+                        m &= ((home[w][p] == x) & (away[w][p] == y)).iff(z)
                         meetings.append(z)
             m &= (sum(meetings) == 1)
 

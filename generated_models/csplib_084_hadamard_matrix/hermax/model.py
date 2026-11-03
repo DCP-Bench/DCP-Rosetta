@@ -16,7 +16,7 @@ def create_model(instance):
     The periodic autocorrelation PAF(A, s) is the sum over i of A[i] * A[(i + s) mod l].
     """
     l = instance["l"]  # l: the length of each sequence (an odd number)
-    half = (l - 1) // 2  # m: the number of shifts constrained, s = 1..m
+    m = (l - 1) // 2  # the number of shifts constrained, s = 1..m
 
     model = Model()
 
@@ -31,11 +31,12 @@ def create_model(instance):
     model &= (sum(a[i] for i in range(l)) == 1)
     model &= (sum(b[i] for i in range(l)) == 1)
 
+    # model is a parameter because `model &= ...` rebinds it, which a closure cannot do.
     def same_sign_flags(model, seq):
         # flags[(i, s)] is true when seq[i] and seq[(i + s) mod l] are equal,
         # so their product is +1; when they differ, the product is -1.
         flags = {}
-        for s in range(1, half + 1):
+        for s in range(1, m + 1):
             for i in range(l):
                 same = model.bool()
                 model &= (seq[i] == seq[(i + s) % l]).iff(same)
@@ -48,7 +49,7 @@ def create_model(instance):
     # For each shift s: PAF(A, s) + PAF(B, s) = -2. Since each product is 2 * same - 1,
     # PAF(A, s) = 2 * (number of same-sign pairs) - l, which turns the condition into
     # (same-sign pairs of A) + (same-sign pairs of B) = l - 1.
-    for s in range(1, half + 1):
+    for s in range(1, m + 1):
         model &= (sum(same_a[(i, s)] for i in range(l))
                   + sum(same_b[(i, s)] for i in range(l)) == l - 1)
 

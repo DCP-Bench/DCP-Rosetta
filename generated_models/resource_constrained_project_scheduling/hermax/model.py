@@ -15,8 +15,8 @@ def create_model(instance):
     needs = instance["resource_needs_data"]             # needs[j][r]: how much of resource r job j uses while it runs
     capacities = instance["resource_capacities_data"]   # capacities[r]: how much of resource r is available at any time
     links = instance["successors_link_data"]            # [a, b]: job b may start only after job a has finished
-    n = len(durations)
-    n_resources = len(capacities)
+    n = len(durations)  # the number of jobs
+    n_resources = len(capacities)  # the number of resource types
 
     # Time bounds derived from the data, so each start time has a narrow domain.
     # Running all jobs one after another is a schedule, so the sum of the durations bounds the makespan.

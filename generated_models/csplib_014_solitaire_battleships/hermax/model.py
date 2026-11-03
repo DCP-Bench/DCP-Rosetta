@@ -31,7 +31,7 @@ def create_model(instance):
     TOP = instance["TOP"]             # code of the top end of a vertical ship
     BOTTOM = instance["BOTTOM"]       # code of the bottom end of a vertical ship
     MIDDLE = instance["MIDDLE"]       # code of a middle square of a ship with three or more squares
-    max_code = max(WATER, CIRCLE, LEFT, RIGHT, TOP, BOTTOM, MIDDLE)
+    max_code = max(WATER, CIRCLE, LEFT, RIGHT, TOP, BOTTOM, MIDDLE)  # largest square code, the upper bound of grid's domain
 
     # Every place a ship of each length in the fleet can lie: (length, its squares, the code of each square).
     placements = []
@@ -65,6 +65,7 @@ def create_model(instance):
         m &= (sum(ship[i] for i in range(len(placements)) if placements[i][0] == length) == count)
 
     # occ[r][c] is 1 when a ship covers square (r, c), else 0.
+    # occ is the 0/1 view of the grid (grid != WATER) that the row, column and touching constraints use.
     occ = m.int_matrix("occ", R, C, 0, 1)
     covering = {(r, c): [] for r in range(R) for c in range(C)}
     for i, (_length, cells, _codes) in enumerate(placements):

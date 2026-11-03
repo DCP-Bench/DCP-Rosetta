@@ -23,15 +23,14 @@ def create_model(instance):
         m &= table.row(i).all_different()
         m &= table.col(i).all_different()
 
-    # QG3 property (a*b)*(b*a) = a. hermax cannot index a matrix by a variable, so for each
-    # a, b and each pair of values (p, q) we post: if a*b is p and b*a is q, then p*q is a.
+    # QG3 property (a*b)*(b*a) = a. For each a, b and each row p: if a*b is p, then the
+    # entry of row p at column b*a is a (an element constraint on the row, indexed by b*a).
     for a in range(m_size):
         for b in range(m_size):
             ab = table.row(a)[b]  # the value of a*b
             ba = table.row(b)[a]  # the value of b*a
             for p in range(m_size):
-                for q in range(m_size):
-                    m &= ((ab != p) | (ba != q) | (table.row(p)[q] == a))
+                m &= (table.row(p)[ba] == a).only_if(ab == p)
 
     return m, {"quasigroup": table}
 

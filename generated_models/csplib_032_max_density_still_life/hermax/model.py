@@ -36,7 +36,7 @@ def create_model(instance):
                 # outside the grid with fewer than 3 possible neighbours: never exactly 3
                 continue
 
-            # neighbours[i][j]: how many of the cell's neighbours are alive
+            # neighbours: how many of the neighbours of cell (i, j) are alive (one helper integer per checked cell)
             neighbours = m.int(f"neighbours_{i + 1}_{j + 1}", 0, len(around))
             m &= (neighbours == sum(around))
 

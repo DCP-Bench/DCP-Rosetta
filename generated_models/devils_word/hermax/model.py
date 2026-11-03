@@ -18,13 +18,8 @@ def create_model(instance):
 
     # plus[i] is true when arr[i] gets a plus sign and false when it gets a minus sign
     plus = m.bool_vector("plus", n)
-    # signed[i] is arr[i] with its chosen sign, so it lies between -|arr[i]| and |arr[i]|
-    signed = [m.int(f"signed_{i}", -abs(arr[i]), abs(arr[i])) for i in range(n)]
-
-    # The sign of each number: a plus sign keeps arr[i], a minus sign negates it.
-    for i in range(n):
-        m &= (signed[i] == arr[i]).only_if(plus[i])
-        m &= (signed[i] == -arr[i]).only_if(~plus[i])
+    # arr[i] with its chosen sign: +arr[i] when plus[i], -arr[i] otherwise
+    signed = [2 * arr[i] * plus[i] - arr[i] for i in range(n)]
 
     # The signed numbers add up to the total.
     m &= (sum(signed) == total)

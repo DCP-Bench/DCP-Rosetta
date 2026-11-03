@@ -19,11 +19,13 @@ def create_model(instance):
     n_var = instance["n_var"]                # n_var: number of design variations
 
     total_demand = sum(demand)               # all copies that must be printed, over all variations
-    # Bound on the sheets printed from one template. When every variation fits on one template
-    # (n_var <= n_slots), a single template with a copy of each variation and max(demand) sheets
-    # already meets every demand, so an optimal solution prints at most max(demand) sheets in
-    # all, and so at most that many from any one template. Otherwise only the total demand is
-    # used as the bound.
+    # Implied bound on the sheets printed from one template (safe for optimality: it cannot cut
+    # off an optimum). When every variation fits on one template (n_var <= n_slots), a single
+    # template with a copy of each variation and max(demand) sheets already meets every demand,
+    # so an optimum prints at most max(demand) sheets in all, and so at most that many from any
+    # one template. Otherwise, put each variation on some template and print from each template
+    # the largest demand among its variations: that prints at most total_demand sheets in all,
+    # so an optimum prints at most total_demand from any one template.
     sheet_bound = max(demand) if n_var <= n_slots else total_demand
 
     m = Model()
@@ -37,7 +39,7 @@ def create_model(instance):
     # layout count up to n_slots), and a case split over the sheet count is too slow to solve
     # the larger instances. The binary digits keep every product to a small integer times a
     # Boolean.
-    n_bits = sheet_bound.bit_length()
+    n_bits = sheet_bound.bit_length()  # binary digits needed to write sheet_bound
     bit = [m.bool_vector(f"bit_{t}", n_bits) for t in range(n_templates)]  # bit[t][b]: digit b of production[t]
     production = [sum_expr(2 ** b * bit[t][b] for b in range(n_bits)) for t in range(n_templates)]
     # The sheets from one template cannot exceed the bound.

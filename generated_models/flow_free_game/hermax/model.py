@@ -8,12 +8,12 @@ from hermax.model import Model
 
 
 def create_model(instance):
-    """Flow Free: colour every cell of the board so that each pair of equal clue colours is
-    joined by one pipe. The pipe starts and ends at the two clue cells of its colour and
-    passes through every empty cell once, so that every cell has a pipe colour and no two
-    pipes cross."""
+    """Flow Free: give every cell of the board a pipe colour so that each clue cell has
+    exactly one neighbouring cell of its own colour (a pipe end) and each empty cell has
+    exactly two (a pipe passing through). Only this local degree rule is enforced, so a
+    closed loop of a colour detached from that colour's pipe is not excluded."""
     board = instance["board"]  # board[i][j]: clue colour of cell (i, j), 0 if the cell is empty
-    rows, cols = len(board), len(board[0])
+    rows, cols = len(board), len(board[0])  # board height and width
     # Each colour has a pair of clue cells, so the colours are 1..the largest clue colour.
     n_colours = max(max(row) for row in board)
 
@@ -45,10 +45,10 @@ def create_model(instance):
                                ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1))
                                if 0 <= k < rows and 0 <= l < cols]
             if board[i][j] != 0:
-                # a clue cell is an end of its pipe: exactly one neighbour of its colour
+                # clue cell: exactly one neighbour of its own colour
                 m &= (sum(same_neighbours) == 1)
             else:
-                # an empty cell lies inside a pipe: exactly two neighbours of its colour
+                # empty cell: exactly two neighbours of its own colour
                 m &= (sum(same_neighbours) == 2)
 
     return m, {"B": B}

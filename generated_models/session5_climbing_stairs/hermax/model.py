@@ -22,12 +22,13 @@ def create_model(instance):
     # between m1 and m2. At most n moves are needed (one step each), so there are n moves.
     steps = m.int_vector("steps", n, 0, m2)
 
+    # Each move takes either no steps, or at least m1 steps: remove the gap 1..m1-1 from the domain.
+    if m1 > 1:
+        for i in range(n):
+            m &= steps[i].forbid_interval(1, m1 - 1)
+
     # The moves together climb exactly the whole stair.
     m &= (sum(steps[i] for i in range(n)) == n)
-
-    # Each move takes either no steps, or at least m1 steps.
-    for i in range(n):
-        m &= ((steps[i] == 0) | (steps[i] >= m1))
 
     # Moves that take no steps come last: once a move takes none, every later move takes none.
     for i in range(1, n):

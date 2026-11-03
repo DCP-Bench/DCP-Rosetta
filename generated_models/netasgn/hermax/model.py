@@ -16,8 +16,8 @@ def create_model(instance):
     demand = instance["demand"]   # demand[j]: total hours project j needs
     cost = instance["cost"]       # cost[i][j]: cost per hour of person i working on project j
     limit = instance["limit"]     # limit[i][j]: most hours person i may work on project j
-    n_people = len(supply)
-    n_projects = len(demand)
+    n_people = len(supply)  # number of people
+    n_projects = len(demand)  # number of projects
 
     m = Model()
 

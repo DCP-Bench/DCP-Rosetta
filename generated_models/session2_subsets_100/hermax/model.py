@@ -11,7 +11,7 @@ def create_model(instance):
     """Given a set A of different integers, find two disjoint non-empty subsets S and T
     of A whose elements have the same sum. S and T need not cover all of A."""
     A = instance["A"]  # A[i]: the i-th integer of the set
-    n = len(A)
+    n = len(A)  # n: how many integers A holds
 
     m = Model()
 

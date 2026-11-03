@@ -28,11 +28,11 @@ def create_model(instance):
 
     # A killer always hates his victim, and is no richer than his victim.
     for k in range(n):
-        m &= (~(killer == k) | hates[k][victim])
-        m &= (~(killer == k) | ~richer[k][victim])
+        m &= hates[k][victim].only_if(killer == k)
+        m &= (~richer[k][victim]).only_if(killer == k)
 
-    # Richer is a strict order: no one is richer than himself, and of two different
-    # people exactly one is richer than the other.
+    # Assumed, as in the reference: no one is richer than himself, and of two different
+    # people exactly one is richer than the other (not needed to identify the killer).
     for i in range(n):
         m &= ~richer[i][i]
         for j in range(i + 1, n):

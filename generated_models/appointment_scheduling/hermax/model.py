@@ -27,10 +27,11 @@ def create_model(instance):
     for j in range(n):
         m &= x.col(j).exactly_one()
 
-    # A person may only be placed in a slot where they are free: the one slot they get
-    # must be one of their free slots.
+    # A person may only be placed in a slot where they are free.
     for i in range(n):
-        m &= (sum(free[i][j] * x[i][j] for j in range(n)) == 1)
+        for j in range(n):
+            if free[i][j] == 0:
+                m &= ~x[i][j]
 
     return m, {"x": x}
 

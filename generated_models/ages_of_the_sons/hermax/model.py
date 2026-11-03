@@ -39,15 +39,17 @@ def create_model(instance):
     # Clue 2: the mathematician could not decide from the sum, so there is another
     # triple of ages with product 36 and the same sum. We name it, oldest first.
     others = m.int_vector("B", 3, 1, PRODUCT)  # others[k] is the age of the other triple's k+1 member
-    # Clue 3: the oldest son is unique. The other triple must have its oldest
-    # not unique (two sons share the top age), or the blue-eyes clue would already
-    # have decided the case for the mathematician.
+    # Clue 3: the oldest son is unique. We require the other triple to have its
+    # oldest not unique (two sons share the top age). This is a simplification of
+    # "among the triples with this sum, only the actual one has a unique oldest";
+    # it is valid for product 36, where the only ambiguous sum is 13, from
+    # (9, 2, 2) and (6, 6, 1), so both readings give the same answer.
     m &= m.table(others, allowed=[t for t in triples if t[0] == t[1]])
     # The other triple has the same sum as the actual one.
     m &= (ages[0] + ages[1] + ages[2] == others[0] + others[1] + others[2])
 
     # Clue 3 for the actual sons: the oldest son is unique, so ages[0] > ages[1].
-    m &= (ages[1] + 1 <= ages[0])
+    m &= (ages[0] > ages[1])
 
     return m, {"A1": ages[0], "A2": ages[1], "A3": ages[2]}
 

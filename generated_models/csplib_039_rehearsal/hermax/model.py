@@ -23,8 +23,15 @@ def create_model(instance):
     at = m.bool_matrix("at", num_pieces, num_pieces)
     # rehearsal_order[s] is the piece rehearsed in slot s (the declared output)
     rehearsal_order = m.int_vector("rehearsal_order", num_pieces, 0, num_pieces - 1)
-    # start[s] is the time at which slot s begins; start[num_pieces] is the time the rehearsal ends
-    start = m.int_vector("start", num_pieces + 1, 0, total)
+    # start[s] is the time at which slot s begins; start[num_pieces] is the time the rehearsal ends.
+    # Each has its own tightest bounds: the rehearsal starts at 0 and ends at total (every piece is
+    # played once); otherwise s earlier slots take at least s * shortest, and the num_pieces - s
+    # slots from s on take at least (num_pieces - s) * shortest.
+    shortest = min(duration)
+    start = [m.int(f"start_{s}",
+                   0 if s == 0 else total if s == num_pieces else s * shortest,
+                   0 if s == 0 else total if s == num_pieces else total - (num_pieces - s) * shortest)
+             for s in range(num_pieces + 1)]
 
     # Each slot rehearses exactly one piece, and each piece is rehearsed in exactly one slot.
     for s in range(num_pieces):
@@ -37,8 +44,7 @@ def create_model(instance):
         for j in range(num_pieces):
             m &= (~at[s][j] | (rehearsal_order[s] == j))
 
-    # The rehearsal starts at time 0, and each slot lasts as long as the piece rehearsed in it.
-    m &= (start[0] == 0)
+    # Each slot lasts as long as the piece rehearsed in it.
     for s in range(num_pieces):
         m &= (start[s + 1] == start[s] + sum(duration[j] * at[s][j] for j in range(num_pieces)))
 

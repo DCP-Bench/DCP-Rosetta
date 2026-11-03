@@ -10,8 +10,9 @@ from hermax.model import Model, sum_expr
 def create_model(instance):
     """Choose which rows and which columns of a matrix to flip in sign, so that every row and
     every column sums to a non-negative number, with the smallest possible total of all entries."""
-    # input_matrix: the given matrix, a list of rows of integers; its shape is taken from the data
+    # input_matrix: the given matrix, a list of rows of integers
     matrix = instance["input_matrix"]
+    # rows, cols: number of rows and columns of the matrix
     rows = len(matrix)
     cols = len(matrix[0])
 
@@ -25,21 +26,16 @@ def create_model(instance):
     # and its column is flipped
     cell_flip = [[m.bool(f"cell_flip_{i}_{j}") for j in range(cols)] for i in range(rows)]
 
-    # Each cell_flip is the exclusive or of its row_flip and col_flip, written as the four clauses
-    # that forbid the four combinations of the three Booleans that do not fit it.
+    # Each cell_flip is true exactly when one of its row_flip and col_flip is true.
     for i in range(rows):
         for j in range(cols):
-            f, x, y = cell_flip[i][j], row_flip[i], col_flip[j]
-            m &= (~f | x | y)
-            m &= (~f | ~x | ~y)
-            m &= (f | ~x | y)
-            m &= (f | x | ~y)
+            m &= (row_flip[i] + col_flip[j] == 1).iff(cell_flip[i][j])
 
     # signed(i, j) is entry (i, j) after the flips: its value when not flipped, its negation when
     # flipped, written as a linear expression over the cell's Boolean.
     def signed(i, j):
         a = matrix[i][j]
-        return a * ~cell_flip[i][j] - a * cell_flip[i][j]
+        return a - 2 * a * cell_flip[i][j]
 
     # Every row sums to a non-negative number after the flips.
     for i in range(rows):

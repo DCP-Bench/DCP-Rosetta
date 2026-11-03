@@ -30,9 +30,8 @@ def create_model(instance):
 
     # Rule 1: a guest wearing a green tie has to wear a green shirt (unless he pays the fee).
     m &= (~t | r | n)
-    # Rule 2: green socks, or a green shirt, only with a green tie or a green hat (unless he pays the fee).
-    m &= (~s | t | h | n)
-    m &= (~r | t | h | n)
+    # Rule 2: green socks and a green shirt together need a green tie or a green hat (unless he pays the fee).
+    m &= (~s | ~r | t | h | n)
     # Rule 3: a green shirt, or a green hat, or no green socks, requires a green tie (unless he pays the fee).
     m &= (~r | t | n)
     m &= (~h | t | n)

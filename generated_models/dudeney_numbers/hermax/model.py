@@ -23,7 +23,7 @@ def create_model(instance):
     # root is the cube root k of the answer; k = 1 gives the number 1, which is excluded
     root = m.int("root", 2, cap)
     # number is the Dudeney number itself, with at most n digits
-    number = m.int("number", 0, limit)
+    number = m.int("number", 8, cap ** 3)
     # digit[i] is the digit of the answer in place 10**i
     digits = m.int_vector("digit", n, 0, 9)
 

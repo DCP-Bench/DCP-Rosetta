@@ -13,7 +13,7 @@ def create_model(instance):
     lower-left corner of every square, counting from 0."""
     base = instance["base"]    # the side length of the board
     sides = instance["sides"]  # sides[i]: the side length of square i
-    n = len(sides)
+    n = len(sides)  # the number of squares
 
     m = Model()
 
@@ -43,39 +43,28 @@ def create_model(instance):
     if sum(side * side for side in sides) == base * base:
         for starts in (x, y):
             for c in range(base):
-                cover_terms = []  # side * (1 if the square covers unit c, else 0), undetermined squares
-                fixed = 0         # total side of the squares that surely cover unit c
+                cover_terms = []  # side * (1 if the square covers unit c, else 0), squares that may cover it
                 for i in range(n):
                     covers = covers_unit(m, starts[i], sides[i], c)
-                    if covers is True:
-                        fixed += sides[i]
-                    elif covers is not False:
+                    if covers is not False:
                         cover_terms.append(sides[i] * covers)
                 # The squares covering unit c have sides adding up to the board's side.
                 if cover_terms:
-                    m &= (sum_expr(cover_terms) == base - fixed)
+                    m &= (sum_expr(cover_terms) == base)
 
     # No objective: the problem asks only for a placement, so any valid placement is an answer.
     return m, {"x_coords": x, "y_coords": y}
 
 
 def covers_unit(m, start, side, c):
-    """Whether a square with lower-left corner `start` (a variable) and this side covers the unit
-    at position c, i.e. start is in c - side + 1 .. c. Returns True or False when the domain
-    of `start` already decides it, otherwise a Literal."""
+    """A Boolean that is true when a square with lower-left corner `start` (a variable) and this
+    side covers the unit at position c, i.e. start is in c - side + 1 .. c. Returns False when
+    the domain of `start` rules it out, so no literal or constraint is posted for that square."""
     first, last = c - side + 1, c  # the starts that cover unit c
     if last < start.lb or first > start.ub:
         return False
-    if first <= start.lb and last >= start.ub:
-        return True
-    after_first = True if first <= start.lb else (start >= first)
-    before_last = True if last >= start.ub else (start <= last)
-    if after_first is True:
-        return before_last
-    if before_last is True:
-        return after_first
     covers = m.bool()
-    m &= (after_first & before_last).iff(covers)
+    m &= ((start >= first) & (start <= last)).iff(covers)
     return covers
 
 

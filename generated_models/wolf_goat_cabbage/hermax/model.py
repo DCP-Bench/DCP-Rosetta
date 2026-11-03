@@ -35,8 +35,7 @@ def create_model(instance):
 
     # The boat crosses the river at every stage: its shore changes from one stage to the next.
     for i in range(1, stages):
-        m &= (boat_pos[i] | boat_pos[i - 1])
-        m &= (~boat_pos[i] | ~boat_pos[i - 1])
+        m &= (boat_pos[i] + boat_pos[i - 1] == 1)
 
     # Safety at every stage: the wolf may not be alone with the goat, nor the goat with the cabbage.
     # The farmer is the boat, so a pair on one shore is safe only when the boat is on that shore too.
@@ -55,13 +54,9 @@ def create_model(instance):
         moved = m.bool_vector(f"moved_{i}", 3)
         for k, pos in enumerate((wolf_pos, goat_pos, cabbage_pos)):
             # an item crosses exactly when its shore changes between the two stages
-            m &= (~moved[k] | pos[i] | pos[i + 1])
-            m &= (~moved[k] | ~pos[i] | ~pos[i + 1])
-            m &= (moved[k] | pos[i] | ~pos[i + 1])
-            m &= (moved[k] | ~pos[i] | pos[i + 1])
+            m &= (pos[i] + pos[i + 1] == 1).iff(moved[k])
             # an item can only cross from the shore the boat is on
-            m &= (~moved[k] | ~pos[i] | boat_pos[i])
-            m &= (~moved[k] | pos[i] | ~boat_pos[i])
+            m &= (pos[i] + boat_pos[i] != 1).only_if(moved[k])
         # at most one item crosses per trip
         m &= moved.at_most_one()
 

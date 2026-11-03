@@ -32,12 +32,12 @@ def create_model(instance):
         for j in range(n):
             m &= (complement[i][j] + words[i][j] == A + T)
 
-    # strong[i][j] is 1 when letter j of word i is C or G (codes 2 and 3), else 0
-    strong = m.int_matrix("strong", num_words, n, 0, 1)
+    # strong[i][j] is true when letter j of word i is C or G (codes 2 and 3)
+    strong = m.bool_matrix("strong", num_words, n)
     for i in range(num_words):
         for j in range(n):
             m &= m.table([words[i][j], strong[i][j]],
-                         allowed=[(A, 0), (C, 1), (G, 1), (T, 0)])
+                         allowed=[(A, False), (C, True), (G, True), (T, False)])
 
     # Each word has exactly four letters from {C, G}.
     for i in range(num_words):
@@ -54,9 +54,9 @@ def create_model(instance):
             m &= (sum(differs[j] for j in range(n)) >= MIN_DISTANCE)
 
     # The reverse of word x and the complement of word y differ in at least four
-    # positions, for every pair x, y (x = y included). Reversing x and complementing
-    # y are both involutions on the pair, so the condition for (y, x) is the same as
-    # for (x, y): only the unordered pairs x <= y are posted.
+    # positions, for every pair x, y (x = y included). Substituting
+    # j -> n-1-j and complementing both sides turns the (y, x) condition into the
+    # (x, y) one, so only the pairs x <= y are posted.
     for x in range(num_words):
         for y in range(x, num_words):
             # rev_differs[j]: position j of reversed x (letter n-1-j of x) differs from

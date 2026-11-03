@@ -17,19 +17,16 @@ def create_model(instance):
 
     m = Model()
 
-    # x[r][c] is the digit in row r, column c (0-based here), or 0 for a black cell
-    x = m.int_matrix("x", n, n, 0, 9)
-
-    # Black cells hold 0.
-    for r, c in blanks:
-        m &= (x[r - 1][c - 1] == 0)
+    # x[r][c] is the digit in row r, column c (0-based here), or 0 for a black cell.
+    # Each cell gets its own tightest domain: 0..0 for black, 1..9 for white.
+    black = {(r - 1, c - 1) for r, c in blanks}
+    x = [
+        [m.int(f"x_{r}_{c}", 0, 0) if (r, c) in black else m.int(f"x_{r}_{c}", 1, 9) for c in range(n)]
+        for r in range(n)
+    ]
 
     for clue, *cells in entries:
         run = [x[r - 1][c - 1] for r, c in cells]  # the white cells of this entry
-
-        # Each white cell holds a real digit, 1 to 9 (0 is reserved for black cells).
-        for cell in run:
-            m &= cell.in_range(1, 9)
 
         # The digits of the entry add up to its clue.
         m &= (sum(run) == clue)

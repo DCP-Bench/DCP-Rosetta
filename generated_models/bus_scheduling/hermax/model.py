@@ -13,7 +13,7 @@ def create_model(instance):
     to the first. Choose how many buses start in each slot so that every slot's demand
     is met with as few buses as possible."""
     demands = instance["demands"]  # demands[j]: buses needed in slot j
-    n = len(demands)
+    n = len(demands)  # the number of 4-hour slots in the day
 
     m = Model()
 

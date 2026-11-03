@@ -13,13 +13,13 @@ def create_model(instance):
     # The instance has no fields: every number below comes from the puzzle itself.
     m = Model()
 
-    # Decision variables: one digit per letter, 0..9.
-    # s, e, n, d are the letters of SEND; m_, o, r, y those of MORE and MONEY.
-    s = m.int("s", 0, 9)  # the digit of S
+    # Decision variables: one digit per letter; S and M lead words, so they range over 1..9, the rest 0..9.
+    # s, e, n, d are the letters of SEND; m_, o, r, y are the letters not already in SEND.
+    s = m.int("s", 1, 9)  # the digit of S; leading digit of SEND, so not zero
     e = m.int("e", 0, 9)  # the digit of E
     n = m.int("n", 0, 9)  # the digit of N
     d = m.int("d", 0, 9)  # the digit of D
-    m_ = m.int("m", 0, 9)  # the digit of M
+    m_ = m.int("m", 1, 9)  # the digit of M; leading digit of MORE and MONEY, so not zero
     o = m.int("o", 0, 9)  # the digit of O
     r = m.int("r", 0, 9)  # the digit of R
     y = m.int("y", 0, 9)  # the digit of Y
@@ -27,10 +27,6 @@ def create_model(instance):
 
     # Every letter stands for a different digit.
     m &= m.vector(letters).all_different()
-
-    # No word starts with zero: SEND starts with S, MORE and MONEY with M.
-    m &= (s != 0)
-    m &= (m_ != 0)
 
     # SEND + MORE = MONEY, each word read as a number.
     # E is the hundreds digit of SEND, the units digit of MORE and the tens digit of MONEY.

@@ -11,9 +11,9 @@ PLUS_2, DIVIDE_BY_8, MINUS_3, TIMES_7 = 0, 1, 2, 3
 # The statement fixes no age range. This model assumes both ages are whole
 # numbers of years from 0 to 1000, a generous range for two people.
 MAX_AGE = 1000
-# The smallest value reachable from an age in 0..1000 by these operations is
-# -24, and the largest is (1000 + 2) * 7 = 7014.
-LOWEST_STEP, HIGHEST_STEP = -100, 7014
+# Each operation is used once, so the smallest value reachable from an age in
+# 0..1000 is 0 -> -3 -> *7 = -21, and the largest is (1000 + 2) * 7 = 7014.
+LOWEST_STEP, HIGHEST_STEP = -21, 7014
 
 
 def create_model(instance):
@@ -39,23 +39,21 @@ def create_model(instance):
     # order_to_me[k] is the operation applied at step k, going from his age to mine
     order_to_me = m.int_vector("order_to_me", 4, PLUS_2, TIMES_7)
 
-    # from_me[k] is the value after k operations starting from my age
-    from_me = m.int_vector("from_me", 5, LOWEST_STEP, HIGHEST_STEP)
+    # from_me[k] is the value after k operations starting from my age; the
+    # first and last entries are the ages themselves.
+    mid_me = m.int_vector("mid_me", 3, LOWEST_STEP, HIGHEST_STEP)
+    from_me = [my_age, mid_me[0], mid_me[1], mid_me[2], husband_age]
     # from_him[k] is the value after k operations starting from his age
-    from_him = m.int_vector("from_him", 5, LOWEST_STEP, HIGHEST_STEP)
-
-    # Both chains start and end at the right ages.
-    m &= (from_me[0] == my_age)
-    m &= (from_me[4] == husband_age)
-    m &= (from_him[0] == husband_age)
-    m &= (from_him[4] == my_age)
+    mid_him = m.int_vector("mid_him", 3, LOWEST_STEP, HIGHEST_STEP)
+    from_him = [husband_age, mid_him[0], mid_him[1], mid_him[2], my_age]
 
     # Each order uses every operation exactly once.
     m &= order_to_husband.all_different()
     m &= order_to_me.all_different()
 
     # The two orders are different: at some step they apply different operations.
-    # differs[k] is true when the two orders disagree at step k.
+    # differs[k] is true when the two orders disagree at step k; it exists
+    # because a disjunction of != comparisons cannot be posted directly.
     differs = m.bool_vector("differs", 4)
     for k in range(4):
         m &= (order_to_husband[k] != order_to_me[k]).iff(differs[k])

@@ -27,14 +27,16 @@ def create_model(instance):
     french = m.int("french", 0, 2)      # french: the seat of the Frenchwoman
     m &= m.vector([american, english, french]).all_different()
 
-    # A seat pair (b, a) where a is immediately to the right of b: seat b+1 is right of seat b.
+    # A seat pair (b, a) where a is immediately to the right of b: seat b+1 is right of seat b
+    # (seat 0 is right of seat 2, the table is round).
     right_of = [(0, 1), (1, 2), (2, 0)]
 
     # Y passed three cards to the American, so the American sits immediately to the right of Y.
     m &= m.table([y, american], allowed=right_of)
 
     # X passed to the person who passed to the Frenchwoman. That person sits immediately to the
-    # left of the Frenchwoman, so X sits immediately to the right of the Frenchwoman.
+    # left of the Frenchwoman, so X sits immediately to the right of the Frenchwoman
+    # (on a 3-seat table, two to the right is one to the left).
     m &= m.table([french, x], allowed=right_of)
 
     # There is no objective: the statement asks only for the seating.

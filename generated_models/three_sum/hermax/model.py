@@ -12,7 +12,7 @@ def create_model(instance):
     numbers sum to zero. Report, for each element, whether it is selected."""
     nums = instance["nums"]   # nums[i]: the i-th integer of the collection
     count = instance["m"]     # m: how many elements must be selected (the instance's "m" field)
-    n = len(nums)
+    n = len(nums)             # number of integers in the collection
 
     m = Model()
     # selected[i] is true when element i is part of the chosen group

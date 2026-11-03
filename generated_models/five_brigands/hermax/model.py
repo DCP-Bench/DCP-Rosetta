@@ -17,20 +17,23 @@ def create_model(instance):
     m = Model()
 
     # A, B, C, D, E: doubloons held by Alfonso, Benito, Carlos, Diego and Esteban; each at least 1.
-    # 200 is the most any one can hold, since the other four hold at least one each.
-    A = m.int("A", 1, 200)
-    B = m.int("B", 1, 200)
-    C = m.int("C", 1, 200)
-    D = m.int("D", 1, 200)
-    E = m.int("E", 1, 200)
+    # Upper bounds come from the other four holding at least one each (D at least 2 and E at least 3,
+    # since D is even and E a multiple of 3), so the multiplied-share equation
+    # 12A + 3B + C + D/2 + E/3 = 200 leaves A at most 16, B at most 61 and C at most 183,
+    # and the total of 200 leaves D at most 196 and E at most 195.
+    A = m.int("A", 1, 16)
+    B = m.int("B", 1, 61)
+    C = m.int("C", 1, 183)
+    D = m.int("D", 2, 196)
+    E = m.int("E", 3, 195)
 
     # Together the five hold exactly 200 doubloons.
     m &= (A + B + C + D + E == 200)
 
     # Diego's half and Esteban's third must be whole doubloons, so D is even and E is a multiple of 3.
     # d_half = D / 2 and e_third = E / 3 are auxiliary integers that carry those halves and thirds.
-    d_half = m.int("d_half", 0, 100)
-    e_third = m.int("e_third", 0, 66)
+    d_half = m.int("d_half", 1, 98)
+    e_third = m.int("e_third", 1, 65)
     m &= (D == 2 * d_half)
     m &= (E == 3 * e_third)
 

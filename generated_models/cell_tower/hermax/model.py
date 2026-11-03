@@ -4,6 +4,9 @@
 # Then run it on the first instance (after `pip install hermax`):
 #   python cell_tower.py cell_tower.json
 
+import functools
+import operator
+
 from hermax.model import Model, sum_expr
 
 
@@ -17,14 +20,14 @@ def create_model(instance):
     population = instance["population"]  # population[r]: the inhabitants of region r
     budget = instance["budget"]          # the most money that may be spent on towers
 
-    num_sites = len(cost)
-    num_regions = len(population)
+    num_sites = len(cost)          # the number of candidate tower sites
+    num_regions = len(population)  # the number of regions
 
     m = Model()
 
     # build_tower[s] is true when a tower is built at site s
     build_tower = m.bool_vector("build_tower", num_sites)
-    # covered[r] is true when region r has signal
+    # covered[r] may be true only when region r has signal (the objective makes it true whenever possible)
     covered = m.bool_vector("covered", num_regions)
 
     # The towers built cost no more than the budget.
@@ -35,10 +38,7 @@ def create_model(instance):
         # the literals of the sites whose towers reach region r
         reaching = [build_tower[s] for s in range(num_sites) if delta[s][r] == 1]
         # "not covered, or one of the reaching towers is built" as one clause
-        clause = ~covered[r]
-        for tower in reaching:
-            clause = clause | tower
-        m &= clause
+        m &= functools.reduce(operator.or_, reaching, ~covered[r])
 
     # Minimise the population left without signal, which maximises the population covered.
     m.obj += sum(population[r] * ~covered[r] for r in range(num_regions))

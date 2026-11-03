@@ -22,21 +22,12 @@ def create_model(instance):
     for i in range(oranges - 1):
         m &= (x[i] < x[i + 1])
 
-    # occupied[p - 1] is true when bowl p holds an orange
-    occupied = m.bool_vector("occupied", bowls)
-    # Every orange's bowl is an occupied bowl.
+    # No three oranges at equal distances. As x is strictly ascending, only i < j < k matters:
+    # x[j] - x[i] != x[k] - x[j], i.e. x[i] + x[k] != 2 * x[j].
     for i in range(oranges):
-        for p in range(1, bowls + 1):
-            m &= (~(x[i] == p) | occupied[p - 1])
-    # Exactly one orange per bowl, so exactly `oranges` bowls are occupied; together with
-    # the previous constraint, the occupied bowls are exactly the bowls the oranges use.
-    m &= (sum(occupied[p] for p in range(bowls)) == oranges)
-
-    # No three oranges at bowls p < p + d < p + 2d (equal distances): these three bowls
-    # are never all occupied.
-    for p in range(1, bowls + 1):
-        for d in range(1, (bowls - p) // 2 + 1):
-            m &= (~occupied[p - 1] | ~occupied[p + d - 1] | ~occupied[p + 2 * d - 1])
+        for j in range(i + 1, oranges):
+            for k in range(j + 1, oranges):
+                m &= (x[i] + x[k] != 2 * x[j])
 
     # There is no objective: any placement that satisfies the rules is a solution.
     return m, {"x": x}

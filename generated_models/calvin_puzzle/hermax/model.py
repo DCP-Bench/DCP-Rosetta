@@ -50,13 +50,9 @@ def create_model(instance):
 
     for a in squares:
         out_steps = [step[(a, b)] for b in neighbours(a)]
-        in_steps = [step[(b, a)] for b in neighbours(a)]
         # Every square except the one holding the last number is followed by exactly one
         # other square, the one with the next number.
         m &= (sum(out_steps + [x[a[0]][a[1]] == last]) == 1)
-        # Every square except the one holding number 1 is preceded by exactly one square,
-        # the one with the number before it.
-        m &= (sum(in_steps + [x[a[0]][a[1]] == 1]) == 1)
 
     return m, {"x": x}
 

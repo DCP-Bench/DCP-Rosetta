@@ -15,6 +15,7 @@ def create_model(instance):
     media_costs = instance["media_costs"]
     # incidence_matrix[i][j] = 1 when medium j reaches audience i
     incidence_matrix = instance["incidence_matrix"]
+    # number of media (columns) / number of audiences (rows of incidence_matrix)
     n_media = len(media_costs)
     n_audiences = len(incidence_matrix)
 

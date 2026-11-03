@@ -34,7 +34,7 @@ def create_model(instance):
     for g in range(n_boats):
         for p in range(n_periods):
             for v in range(n_boats):
-                m &= (visits[p][g] != v) | is_host[v]
+                m &= is_host[v].only_if(visits[p][g] == v)
 
     # Capacity: in each period, the people aboard boat b (its host crew if it is a host,
     # plus every guest crew visiting it) do not exceed its capacity.
@@ -42,13 +42,9 @@ def create_model(instance):
         for b in range(n_boats):
             m &= (sum(crew_size[g] * (visits[p][g] == b) for g in range(n_boats)) <= capacity[b])
 
-    # A guest crew never revisits a host: over all periods it visits each host at most once.
-    # (Only guests are bound by this; a host crew sits on its own boat throughout.)
-    for g in range(n_boats):
-        for v in range(n_boats):
-            m &= (sum(visits[p][g] == v for p in range(n_periods)) <= 1).only_if(~is_host[g])
-
-    # Two crews never meet more than once. Crews c1 and c2 meet in period p when they are
+    # Two crews never meet more than once. This also gives the no-revisit rule: a host crew
+    # sits on its own boat every period, so a guest meeting it means visiting that host, and
+    # at most one meeting means at most one visit per host. Crews c1 and c2 meet in period p when they are
     # on the same boat; meet[p] is forced true then, and at most one period may be a meeting.
     for c1 in range(n_boats):
         for c2 in range(c1 + 1, n_boats):

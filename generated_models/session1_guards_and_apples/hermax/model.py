@@ -23,8 +23,9 @@ def create_model(instance):
     upper = 3 * 2 ** num_gates - 2
     apples = m.int_vector("apples", num_gates + 1, 0, upper)
 
-    # bribe[i] is the number of apples he gives the guard at gate i.
-    bribe = m.int_vector("bribe", num_gates, 0, upper)
+    # bribe[i] is the number of apples he gives the guard at gate i: half of at most `upper`
+    # apples plus one, so at most upper // 2 + 1 = 3 * 2**(num_gates - 1); and at least 1.
+    bribe = m.int_vector("bribe", num_gates, 1, upper // 2 + 1)
 
     # He has one apple left after the last gate, which he gives to the girl.
     m &= (apples[num_gates] == 1)

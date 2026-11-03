@@ -19,15 +19,12 @@ def create_model(instance):
 
     m = Model()
 
-    # x[name] is the number placed in that square, a whole number from 1 to 99
-    x = {name: m.int(name, 1, 99) for name in circle}
+    # x[name] is the number placed in that square: a given square is fixed, the others are 1..99
+    x = {name: m.int(name, given[name], given[name]) if name in given else m.int(name, 1, 99)
+         for name in circle}
 
     # Every square holds a different number.
     m &= m.vector([x[name] for name in circle]).all_different()
-
-    # The four numbers the statement places as examples stand as they are.
-    for name, value in given.items():
-        m &= (x[name] == value)
 
     def square(v):
         # hermax 1.3.0 does not support IntVar * IntVar, so v * v is written as a step function

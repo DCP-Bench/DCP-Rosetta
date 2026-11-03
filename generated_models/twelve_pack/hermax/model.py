@@ -15,7 +15,7 @@ def create_model(instance):
     Report the number of packs of each size bought."""
     packs = instance["packs"]    # packs[i]: the number of items in pack size i
     target = instance["target"]  # target: the number of items wanted
-    n = len(packs)
+    n = len(packs)               # n: the number of pack sizes
     largest = max(packs)         # the largest pack size on offer
 
     m = Model()

@@ -14,7 +14,7 @@ def create_model(instance):
     city exactly once and returns to the origin, where the distance between two cities is
     the Euclidean distance between their points rounded to an integer."""
     locations = instance["locations"]  # locations[i] = [x, y] of city i; city 0 is the origin
-    n = len(locations)
+    n = len(locations)  # n: the number of cities
 
     # dist[i][j]: the Euclidean distance from city i to city j, rounded to an integer
     dist = [[round(math.hypot(locations[i][0] - locations[j][0],
@@ -43,7 +43,8 @@ def create_model(instance):
             if i != j:
                 m &= (position[j] == position[i] + 1).only_if(go[i, j])
 
-    # The first city visited after the origin is in place 1.
+    # The first city visited after the origin is in place 1. This fixes the places to the
+    # actual visiting order; it is not needed to rule out loops.
     for j in range(1, n):
         m &= (position[j] == 1).only_if(go[0, j])
 

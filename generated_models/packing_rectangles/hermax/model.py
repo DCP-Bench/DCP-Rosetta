@@ -15,12 +15,13 @@ def create_model(instance):
     widths = instance["widths"]
     # instance["heights"][i]: height of rectangle i
     heights = instance["heights"]
-    n = len(widths)
+    n = len(widths)  # number of rectangles
 
     m = Model()
 
     # total_x, total_y: width and height of the enclosing rectangle. It must be at least
-    # as wide as the widest item and at most as wide as all items side by side.
+    # as wide as the widest item and at most as wide as all items side by side (a wider
+    # rectangle only adds area, so it never helps the minimum-area objective).
     total_x = m.int("total_x", max(widths), sum(widths))
     total_y = m.int("total_y", max(heights), sum(heights))
 

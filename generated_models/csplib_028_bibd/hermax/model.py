@@ -31,20 +31,14 @@ def create_model(instance):
     for j in range(b):
         m &= (sum(matrix[i][j] for i in range(v)) == k)
 
-    # Any two distinct objects occur together in exactly l blocks. Their rows agree in
-    # a block exactly when both are in it, so count, per block, the pairs of ones.
-    # hermax has no product of two Booleans, so both[j] is that conjunction, posted as
-    # a three-column table (a, b, both): both is true only when a and b are.
+    # Any two distinct objects occur together in exactly l blocks: for each pair, count
+    # the blocks that contain both.
     for i1 in range(v):
         for i2 in range(i1 + 1, v):
             together = []  # together[j] is true when both objects are in block j
             for j in range(b):
                 both = m.bool(f"both_{i1}_{i2}_{j}")
-                m &= m.table(
-                    [matrix[i1][j], matrix[i2][j], both],
-                    allowed=[(False, False, False), (False, True, False),
-                             (True, False, False), (True, True, True)],
-                )
+                m &= (matrix[i1][j] & matrix[i2][j]).iff(both)
                 together.append(both)
             m &= (sum(together) == l)
 

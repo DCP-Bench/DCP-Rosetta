@@ -21,16 +21,14 @@ def create_model(instance):
     ends = [date.fromisoformat(d).toordinal() for d in instance["end_data"]]
     # preassigned[i]: the room booking i must use, or -1 when no room is fixed
     preassigned = instance["preassigned_room_data"]
-    n = len(starts)
+    n = len(starts)  # the number of requests
 
     m = Model()
-    # room[i] is the room given to booking i
-    room = m.int_vector("room", n, 0, n_rooms - 1)
-
-    # A booking whose room is already fixed keeps that room.
-    for i in range(n):
-        if preassigned[i] != -1:
-            m &= (room[i] == preassigned[i])
+    # room[i] is the room given to booking i; a pre-assigned request has only its fixed room
+    room = [
+        m.int(f"room_{i}", p, p) if p != -1 else m.int(f"room_{i}", 0, n_rooms - 1)
+        for i, p in enumerate(preassigned)
+    ]
 
     # A room serves one booking at a time: two bookings that share a night must get
     # different rooms. They share a night when the later of their starts comes before

@@ -17,8 +17,8 @@ def create_model(instance):
     at_most = instance["at_most"]      # at_most[o]: the most cars needing option o allowed in a window
     per_slots = instance["per_slots"]  # per_slots[o]: the window length, in consecutive cars, for option o
 
-    n_types = len(demand)
-    n_options = len(at_most)
+    n_types = len(demand)  # number of car types
+    n_options = len(at_most)  # number of options (stations)
     n_cars = sum(demand)  # one position in the sequence per car
 
     m = Model()

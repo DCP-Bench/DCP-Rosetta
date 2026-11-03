@@ -6,7 +6,7 @@
 
 from math import lcm
 
-from hermax.model import Model, sum_expr
+from hermax.model import Model
 
 
 def create_model(instance):
@@ -18,7 +18,7 @@ def create_model(instance):
     b = instance["b"]  # b: the total hours available for production
     c = instance["c"]  # c[j]: the profit of one unit of product j
     u = instance["u"]  # u[j]: the most units of product j that can be made
-    n = len(a)
+    n = len(a)  # n: the number of products
 
     # Time is measured in units of 1/L hour, with L = lcm(a), so that every
     # product's time per unit, 1/a[j] hours, is the whole number L // a[j].
@@ -27,9 +27,7 @@ def create_model(instance):
     m = Model()
 
     # X[j] is the number of units of product j to make, from 0 to u[j]
-    X = m.int_vector("x", n, 0, max(u))
-    for j in range(n):
-        m &= (X[j] <= u[j])
+    X = m.vector([m.int(f"x_{j}", 0, u[j]) for j in range(n)])
 
     # The time spent on all products must fit in the b hours available (b * L units of 1/L hour).
     m &= (sum((L // a[j]) * X[j] for j in range(n)) <= b * L)

@@ -9,9 +9,9 @@ from hermax.model import Model, sum_expr
 LIMIT = 4_000_000     # "which do not exceed four million"
 FIRST, SECOND = 1, 2  # "By starting with 1 and 2"
 
-# The number of terms of the sequence that do not exceed LIMIT. It is a constant of the
-# problem, counted by the same loop the sequence is defined by, so the model has exactly
-# one variable per term it must consider.
+# Precomputed size bound, not part of the answer: the number of terms of the sequence that
+# do not exceed LIMIT, counted by the same loop that defines the sequence. It only sets how
+# many term variables the model creates. No term value and no sum is computed here.
 N_TERMS = 0
 a, b = FIRST, SECOND
 while a <= LIMIT:
@@ -20,7 +20,8 @@ while a <= LIMIT:
 
 # Each term is held as decimal digits: a wide integer variable (up to four million) is
 # encoded value by value by hermax and runs out of memory, while small digit variables
-# with a weighted sum stay cheap. LIMIT has this many decimal digits.
+# with a weighted sum stay cheap. (Measured setting: one 0..4_000_000 integer variable per
+# term ran out of memory in the hermax evaluator.) LIMIT has this many decimal digits.
 DIGITS = len(str(LIMIT))
 
 
@@ -45,11 +46,10 @@ def create_model(instance):
     # The sequence starts with 1 and 2.
     m &= (value(term[0]) == FIRST)
     m &= (value(term[1]) == SECOND)
-    # Each new term is the sum of the two before it, and no term exceeds the limit.
+    # Each new term is the sum of the two before it. The limit needs no constraint of its
+    # own: N_TERMS counts exactly the terms up to LIMIT, so every term stays below it.
     for i in range(2, N_TERMS):
         m &= (value(term[i]) == value(term[i - 1]) + value(term[i - 2]))
-    for i in range(N_TERMS):
-        m &= (value(term[i]) <= LIMIT)
 
     # is_even[i] is true when term i is an even number, which its units digit decides.
     is_even = m.bool_vector("is_even", N_TERMS)
@@ -57,7 +57,8 @@ def create_model(instance):
         units_parity = m.modulo(term[i][0], 2)  # 0 for an even units digit, 1 for odd
         m &= (units_parity == 0).iff(is_even[i])
 
-    # even_term[i] holds term i's digits when term i is even, and zeros otherwise.
+    # even_term[i] holds term i's digits when term i is even, and zeros otherwise. It is a
+    # second digit copy used only for gating, because hermax has no bool * int product.
     even_term = [m.int_vector(f"even_term{i}", DIGITS, 0, 9) for i in range(N_TERMS)]
     for i in range(N_TERMS):
         m &= (value(even_term[i]) == value(term[i])).only_if(is_even[i])

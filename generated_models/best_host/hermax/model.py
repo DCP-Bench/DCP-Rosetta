@@ -12,10 +12,12 @@ WILLING_NEIGHBOURS = [[3, 5], [2, 4], [1, 5], [0, 4], [1, 3], [0, 2]]
 
 
 def create_model(instance):
-    """Seat the six guests round a round table so that every guest sits only next to
-    guests they get along with. The output x lists the guests in seating order:
+    """Seat the six guests around a round table so that every guest sits only next to
+    guests they get along with. The statement's "minimize conflict" is posed here as
+    finding a seating with no conflict at all (the satisfaction contract), so there is
+    no objective. The output x lists the guests in seating order:
     x[i] is the guest in seat i, with the seats going round the table."""
-    n = len(WILLING_NEIGHBOURS)
+    n = len(WILLING_NEIGHBOURS)  # the number of guests, which is also the number of seats
     m = Model()
 
     # x[i] is the guest seated in seat i (0 Andrew ... 5 Frank)
@@ -24,7 +26,8 @@ def create_model(instance):
     # Every guest has exactly one seat.
     m &= x.all_different()
 
-    # The pairs of guests who are willing to sit next to each other, in both directions.
+    # A pair is compatible when each guest is willing to sit next to the other
+    # (the filter changes nothing for this symmetric data).
     compatible = [(a, b) for a in range(n) for b in WILLING_NEIGHBOURS[a]
                   if a in WILLING_NEIGHBOURS[b]]
 

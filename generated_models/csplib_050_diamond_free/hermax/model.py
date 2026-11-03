@@ -27,8 +27,8 @@ def create_model(instance):
         m &= ~adjacent[i][i]
     for i in range(n):
         for j in range(i + 1, n):
-            m &= (~adjacent[i][j] | adjacent[j][i])
-            m &= (adjacent[i][j] | ~adjacent[j][i])
+            m &= adjacent[i][j].implies(adjacent[j][i])
+            m &= adjacent[j][i].implies(adjacent[i][j])
 
     # The degree of vertex i is its number of neighbours. It is a positive multiple
     # of 3 and at most n - 1, so it is 3 * k[i] with k[i] in 1..(n-1)//3.
@@ -45,7 +45,8 @@ def create_model(instance):
         m &= (k[i] >= k[i + 1])
 
     # The sum of all degrees is a multiple of 12. The degrees add up to 3 * sum(k),
-    # so sum(k) must equal 4 * t for some whole number t (t is the number of fours).
+    # so sum(k) must equal 4 * t, where t = sum(k) / 4 = (sum of degrees) / 12 = |E| / 6
+    # is the whole number that makes the degree sum a multiple of 12.
     t = m.int("t", 0, n * max_k // 4)
     m &= (sum(k[i] for i in range(n)) == 4 * t)
 

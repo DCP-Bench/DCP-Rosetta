@@ -46,6 +46,9 @@ def create_model(instance):
     total_price = instance["total_price"]  # total_price: the sum of the prices, in cents
     num_items = instance["num_items"]      # num_items: how many items the kid bought
 
+    # hermax has no product of IntVars (TypeError), and the product total_price*100^(num_items-1),
+    # about 7e8 here, is far too wide for the loop-over-a-factor idiom, so the product is
+    # checked through prime exponents instead.
     # The product of the prices is total_price * 100^(num_items - 1) (prices in cents).
     # Every price divides that product, and a price is at most total_price, so each price
     # is one of the divisors of the product up to total_price. Prime exponents of the
@@ -60,7 +63,7 @@ def create_model(instance):
     # choice[i][k] is true when item i costs candidates[k] cents
     choice = m.bool_matrix("choice", num_items, len(candidates))
     # prices[i] is the price of item i in cents (the declared output)
-    prices = [m.int(f"prices_{i}", 1, total_price) for i in range(num_items)]
+    prices = [m.int(f"prices_{i}", candidates[0], candidates[-1]) for i in range(num_items)]
 
     for i in range(num_items):
         # Each item has exactly one price, and its price is the candidate it chooses.
@@ -73,11 +76,12 @@ def create_model(instance):
     # The prices multiply to the product: for each prime p, the exponents of p in the
     # chosen prices add up to the exponent of p in the product. Only primes that divide
     # the product matter, since every price is one of its divisors.
+    exponent = {(p, d): prime_exponent_in(p, d) for p in target for d in candidates}
     for p, e in target.items():
         if e > 0:
-            m &= (sum(prime_exponent_in(p, d) * choice[i][k]
+            m &= (sum(exponent[p, d] * choice[i][k]
                       for i in range(num_items) for k, d in enumerate(candidates)
-                      if prime_exponent_in(p, d) > 0) == e)
+                      if exponent[p, d] > 0) == e)
 
     return m, {"prices": prices}
 

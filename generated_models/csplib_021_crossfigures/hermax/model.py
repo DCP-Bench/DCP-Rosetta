@@ -33,6 +33,7 @@ DOWN = {"D1": (4, 1, 1), "D2": (2, 1, 2), "D3": (4, 1, 4), "D4": (4, 1, 6), "D5"
 
 
 def is_prime(v):
+    # true when v is a prime number
     return v >= 2 and all(v % d for d in range(2, math.isqrt(v) + 1))
 
 
@@ -58,14 +59,13 @@ def create_model(instance):
                 m &= (M[i][j] == 0)
 
     # Each entry is a number, read from its digits: an across entry left to right, a down entry top to bottom.
-    # value[name] is the number the entry spells, cells[name] its digits in order.
+    # value[name] is the number the entry spells (e.g. 1234 for the digits 1, 2, 3, 4), cells[name] its digits in order.
     value, cells = {}, {}
     for names, across in ((ACROSS, True), (DOWN, False)):
         for name, (length, row, col) in names.items():
             digits = [(row - 1, col - 1 + p) if across else (row - 1 + p, col - 1)
                       for p in range(length)]
             cells[name] = [M[i][j] for i, j in digits]
-            # value[name] is the number the entry spells, e.g. 1234 for the digits 1, 2, 3, 4
             value[name] = m.int(name, 0, 10 ** length - 1)
             m &= (value[name] == sum(10 ** (length - 1 - p) * cells[name][p]
                                      for p in range(length)))
@@ -76,7 +76,8 @@ def create_model(instance):
 
     # Products of two entries: result = multiplicand * multiplier, where the multiplier is
     # one of the given values, so each case is a linear constraint, posted only in that case.
-    def times(m, result, multiplicand, multiplier, multiplier_values):
+    def times(result, multiplicand, multiplier, multiplier_values):
+        nonlocal m  # `m &=` rebinds the name, so the closure must declare it
         for k in multiplier_values:
             m &= (v(result) == k * v(multiplicand)).only_if(v(multiplier) == k)
 
@@ -84,7 +85,7 @@ def create_model(instance):
     primes = [p for p in range(2, 100) if is_prime(p)]  # prime numbers below 100
 
     # A square number, four digits; a prime number, two digits.
-    m &= m.table(cells["A20"], allowed=digit_rows(squares, 4))   # 20 across: a square number
+    m &= m.table([value["A20"]], allowed=[(s,) for s in squares])   # 20 across: a square number (all below 10**4)
     m &= m.table(cells["A24"], allowed=digit_rows(squares, 2))   # 24 across: a square number
     m &= m.table(cells["A23"], allowed=digit_rows(primes, 2))    # 23 across: a prime number
 
@@ -96,9 +97,9 @@ def create_model(instance):
     m &= (v("A9") + 18 == v("D2"))                    # 9: 2 down minus eighteen
     m &= (12 * v("A10") == 6 * 144)                   # 10: a dozen in six gross, 6 * 144 / 12 = 72
     m &= (v("A11") + 70 == v("D5"))                   # 11: 5 down minus seventy
-    times(m, "A13", "D26", "A23", primes)                # 13: 26 down times 23 across
+    times("A13", "D26", "A23", primes)                # 13: 26 down times 23 across
     m &= (v("A15") + 350 == v("D6"))                  # 15: 6 down minus 350
-    times(m, "A17", "A25", "A23", primes)                # 17: 25 across times 23 across
+    times("A17", "A25", "A23", primes)                # 17: 25 across times 23 across
     m &= (17 * v("A25") == v("A20"))                  # 25: 20 across divided by seventeen
     m &= (4 * v("A27") == v("D6"))                    # 27: 6 down divided by four
     m &= (v("A28") == 4 * 12)                         # 28: four dozen
@@ -111,7 +112,7 @@ def create_model(instance):
     m &= (v("D3") == v("A30") + 888)                  # 3: 30 across plus 888
     m &= (v("D4") == 2 * v("A17"))                    # 4: two times 17 across
     m &= (12 * v("D5") == v("A29"))                   # 5: 29 across divided by twelve
-    times(m, "D6", "A28", "A23", primes)                 # 6: 28 across times 23 across
+    times("D6", "A28", "A23", primes)                 # 6: 28 across times 23 across
     m &= (v("D10") == v("A10") + 4)                   # 10: 10 across plus four
     m &= (v("D12") == 3 * v("A24"))                   # 12: three times 24 across
     m &= (16 * v("D14") == v("A13"))                  # 14: 13 across divided by sixteen

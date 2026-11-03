@@ -26,16 +26,19 @@ def create_model(instance):
     price = instance["price"]    # price[i]: cost of one unit of food i
     limits = instance["limits"]  # limits[j]: minimum amount of nutrient j the diet must provide
 
-    # Upper bound on the units of each food. An optimal diet never needs more than max(limits)
-    # units of one food: with one unit removed, that food still covers every nutrient it
-    # contributes to, because each nutrient's requirement is at most max(limits). Prices are
-    # positive, so the removal never raises the cost.
-    most_needed = max(limits)
+    # Upper bound on the units of each food. An optimal diet never needs more than u[i] units of
+    # food i: u[i] units of food i alone cover every nutrient j it contains (NUTRITION[j][i] > 0),
+    # so any further unit can be removed. Removing a unit never raises the cost because prices
+    # are non-negative.
+    u = []
+    for i in range(n):
+        bounds = [-(-limits[j] // NUTRITION[j][i]) for j in range(len(limits)) if NUTRITION[j][i] > 0]
+        u.append(max(bounds))
 
     m = Model()
 
     # count[i] is the number of units of food i in the diet
-    count = m.int_vector("count", n, 0, most_needed)
+    count = [m.int(f"count_{i}", 0, u[i]) for i in range(n)]
 
     # Each nutrient must reach at least its minimum requirement.
     for j in range(len(limits)):

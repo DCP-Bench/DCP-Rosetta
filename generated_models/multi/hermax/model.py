@@ -16,9 +16,9 @@ def create_model(instance):
     demand = instance["demand"]  # demand[j][p]: units of product p needed at destination j
     limit = instance["limit"]  # limit[i][j]: most units, all products together, on the lane from i to j
     cost = instance["cost"]  # cost[i][j][p]: cost of shipping one unit of product p from i to j
-    n_origins = len(supply)
-    n_destinations = len(demand)
-    n_products = len(supply[0])
+    n_origins = len(supply)  # number of origins (rows of supply)
+    n_destinations = len(demand)  # number of destinations (rows of demand)
+    n_products = len(supply[0])  # number of products (columns of supply)
 
     m = Model()
 
@@ -34,8 +34,8 @@ def create_model(instance):
         for p in range(n_products):
             m &= (sum(shipped[i][j][p] for j in range(n_destinations)) <= supply[i][p])
 
-    # Demand: each destination receives its demand of each product. Every unit costs
-    # something to ship, so a cheapest plan never sends more than the demand: asking
+    # Demand: each destination receives its demand of each product. Costs are non-negative,
+    # so cutting any excess delivery never raises the cost or breaks supply/limit: asking
     # for exactly the demand loses no optimal plan, and the objective below relies on it.
     for j in range(n_destinations):
         for p in range(n_products):

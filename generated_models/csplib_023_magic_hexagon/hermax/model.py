@@ -15,10 +15,10 @@ from hermax.model import Model
 # The geometry is fixed by the problem, so the 15 lines are fixed too.
 # Lines running across: the 5 rows.
 ROWS = [[0, 1, 2], [3, 4, 5, 6], [7, 8, 9, 10, 11], [12, 13, 14, 15], [16, 17, 18]]
-# Lines running from top left to bottom right: 5 lines.
-DIAGONALS_DOWN = [[0, 3, 7], [1, 4, 8, 12], [2, 5, 9, 13, 16], [6, 10, 14, 17], [11, 15, 18]]
 # Lines running from top right to bottom left: 5 lines.
-DIAGONALS_UP = [[2, 6, 11], [1, 5, 10, 15], [0, 4, 9, 14, 18], [3, 8, 13, 17], [7, 12, 16]]
+DIAGONALS_DOWN_LEFT = [[0, 3, 7], [1, 4, 8, 12], [2, 5, 9, 13, 16], [6, 10, 14, 17], [11, 15, 18]]
+# Lines running from top left to bottom right: 5 lines.
+DIAGONALS_DOWN_RIGHT = [[2, 6, 11], [1, 5, 10, 15], [0, 4, 9, 14, 18], [3, 8, 13, 17], [7, 12, 16]]
 
 
 def create_model(instance):
@@ -40,12 +40,12 @@ def create_model(instance):
     for line in ROWS:
         m &= (sum(cell[c] for c in line) == magic_sum)
 
-    # Each of the 5 diagonals running top left to bottom right adds up to the magic sum.
-    for line in DIAGONALS_DOWN:
+    # Each of the 5 diagonals running top right to bottom left adds up to the magic sum.
+    for line in DIAGONALS_DOWN_LEFT:
         m &= (sum(cell[c] for c in line) == magic_sum)
 
-    # Each of the 5 diagonals running top right to bottom left adds up to the magic sum.
-    for line in DIAGONALS_UP:
+    # Each of the 5 diagonals running top left to bottom right adds up to the magic sum.
+    for line in DIAGONALS_DOWN_RIGHT:
         m &= (sum(cell[c] for c in line) == magic_sum)
 
     # LD: the numbers in the cells A..S, in order (A is cell 0 ... S is cell 18)

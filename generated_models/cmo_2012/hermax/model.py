@@ -26,7 +26,7 @@ def create_model(instance):
     a - b = p is prime, a * b = n * n, b > 0 and a >= min_a, with a as small as possible.
     Report a, b, n and p."""
     min_a = instance["min_a"]      # a must be at least this value
-    max_val = instance["max_val"]  # a must be at most this value (the upper bound on a)
+    max_val = instance["max_val"]  # every value is at most max_val; b, n, p are below a, so bounding a suffices
 
     # Derivation. Write a = s*u*u and b = s*v*v with s squarefree (a*b is a square).
     # Then a - b = s*(u-v)*(u+v). That is prime only when s = 1, u - v = 1 and u + v is prime,

@@ -27,8 +27,9 @@ def create_model(instance):
     # The edge labels are all different.
     m &= edges.all_different()
 
-    # forward[e] is true when the first end of edge e has the larger label, which fixes
-    # the sign of the difference, so that the edge label is the absolute difference.
+    # hermax has no abs(), so forward[e] is true when the first end of edge e has the
+    # larger label, which fixes the sign of the difference, so that the edge label is
+    # the absolute difference.
     forward = m.bool_vector("forward", edge_count)
     for e, (u, v) in enumerate(graph):
         # The label of edge e is the difference of its end labels, larger minus smaller.

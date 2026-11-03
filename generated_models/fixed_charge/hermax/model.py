@@ -23,6 +23,7 @@ def create_model(instance):
     # max_production: the most units of any one product that may be made
     max_production = instance["max_production"]
 
+    # counts of products, machines and resources, taken from the data
     num_products = len(product)
     num_machines = len(renting_cost)
     num_resources = len(capacity)
@@ -44,7 +45,7 @@ def create_model(instance):
     # Fixed charge: a product can be made only when its machine is rented.
     for p in range(num_products):
         machine = product[p][1]
-        m &= (make[p] <= top[p] * rent[machine])
+        m &= (make[p] == 0).only_if(~rent[machine])
 
     # Labour and cloth: the units made use no more than the capacity of each resource.
     for r in range(num_resources):
@@ -59,7 +60,7 @@ def create_model(instance):
     m &= (z == profit - rental)
 
     # Maximise the profit: the solver minimises the negated profit.
-    m.obj += rental - profit
+    m.obj += -z
 
     return m, {"z": z}
 

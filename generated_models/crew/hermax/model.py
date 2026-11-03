@@ -8,7 +8,7 @@ from hermax.model import Model
 
 
 def create_model(instance):
-    """Staff 10 flights with cabin crew from a pool of 20 flight attendants. Each flight needs
+    """Staff a number of flights with cabin crew from a pool of flight attendants. Each flight needs
     a given number of crew, and at least a given number of them with each attribute (steward,
     hostess, French, Spanish, German). An attendant who works a flight has the next two flights
     off, so no attendant works two flights that are at most two apart. Find an assignment that
@@ -36,10 +36,9 @@ def create_model(instance):
     # Rest rule: after working a flight, an attendant has the next two flights off.
     # So no attendant works two flights among any three consecutive flights.
     for p in range(n_persons):
-        for start in range(n_flights):
-            window = range(start, min(start + 3, n_flights))
-            if len(window) > 1:
-                m &= (sum(crew[f][p] for f in window) <= 1)
+        for start in range(n_flights - 2):
+            window = range(start, start + 3)
+            m &= (sum(crew[f][p] for f in window) <= 1)
 
     # No objective: any assignment that meets the requirements is a solution.
     return m, {"crew": crew}

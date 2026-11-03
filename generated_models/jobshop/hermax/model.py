@@ -23,12 +23,16 @@ def create_model(instance):
 
     m = Model()
 
-    # start[j][t] is when task t of job j starts, somewhere in the horizon
-    start = [[m.int(f"start_{j}_{t}", 0, horizon) for t in range(len(job))]
+    # start[j][t] is when task t of job j starts. Its window follows from its own job: it cannot
+    # start before the earlier tasks of the job have run, and the task and the later tasks of the
+    # job must still fit before the horizon.
+    start = [[m.int(f"start_{j}_{t}", sum(d for _, d in job[:t]), horizon - sum(d for _, d in job[t:]))
+              for t in range(len(job))]
              for j, job in enumerate(jobs_data)]
 
-    # makespan is the time at which the last task finishes (the declared output)
-    makespan = m.int("makespan", 0, horizon)
+    # makespan is the time at which the last task finishes (the declared output); it is at
+    # least the total duration of the longest job
+    makespan = m.int("makespan", max(sum(d for _, d in job) for job in jobs_data), horizon)
 
     # A task starts only after the previous task of its job has finished.
     for j, job in enumerate(jobs_data):
@@ -39,9 +43,10 @@ def create_model(instance):
         m &= (start[j][last] + job[last][1] <= makespan)
 
     # A machine works on one task at a time: of any two tasks on the same machine, one
-    # finishes before the other starts. first[(a, b)] is true when task a goes first.
+    # finishes before the other starts. first is true when the earlier-listed task of the pair goes first.
     # (m.cumulative(..., [1] * k, 1) per machine says the same, but took 84 s against
     # 10 s with these pairwise orderings on a 10-job, 5-machine instance.)
+    # every task as (job, index in job)
     tasks = [(j, t) for j, job in enumerate(jobs_data) for t in range(len(job))]
     for x, (j1, t1) in enumerate(tasks):
         for (j2, t2) in tasks[x + 1:]:

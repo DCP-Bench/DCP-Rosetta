@@ -25,7 +25,7 @@ def create_model(instance):
 
     # Each tried set agrees with the account number in exactly num_correct positions.
     for tried in sets:
-        m &= (sum(1 * (account[i] == tried[i]) for i in range(n)) == num_correct)
+        m &= (sum((account[i] == tried[i]) for i in range(n)) == num_correct)
 
     # No objective: any account number that fits every set is a solution.
     return m, {"x": account}

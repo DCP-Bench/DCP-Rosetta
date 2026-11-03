@@ -11,7 +11,8 @@ def create_model(instance):
     """Hilary and Jocelyn, a married couple, invite some other couples to dinner. Everybody
     shakes hands with the others, except nobody shakes hands with themselves or with their
     own spouse. Afterwards Jocelyn asks how many hands each person shook, and all the answers
-    are different (except Hilary's, which is not compared). Find how many hands Hilary shook."""
+    are different (except Hilary's, which is not compared; leaving out Jocelyn's instead gives
+    the same answer). Find how many hands Hilary shook."""
     # num_couples: how many couples are invited, not counting Hilary and Jocelyn
     num_couples = instance["num_couples"]
     # People in all: person 0 is Hilary, person 1 is Jocelyn, and the couples are (2, 3), (4, 5), ...
@@ -37,7 +38,9 @@ def create_model(instance):
     for i in range(n):
         m &= (sum(partners(i)) == hands[i])
 
-    # Jocelyn asks everybody except Hilary: all these counts are different
+    # Everyone except Hilary has a different count. Hilary's count is left out as in the
+    # reference; leaving out Jocelyn's instead gives the same answer, since both spouses of
+    # the hosting couple shake num_couples hands.
     m &= m.vector([hands[i] for i in range(1, n)]).all_different()
 
     # Symmetry breaking (does not change Hilary's count): spouses are interchangeable, and so

@@ -19,8 +19,8 @@ def create_model(instance):
     max_shipping = instance["max_shipping"]      # max_shipping: most units one warehouse may ship per week
     demands = instance["demands"]                # demands[j]: units region j needs
     shipping_costs = instance["shipping_costs"]  # shipping_costs[i][j]: cost of one unit from warehouse i to region j
-    n_warehouses = len(names)
-    n_regions = len(demands)
+    n_warehouses = len(names)  # number of candidate warehouses
+    n_regions = len(demands)   # number of regions to supply
 
     # The rules name the cities, so their warehouses are found by name.
     new_york = names.index("New York")
@@ -41,19 +41,17 @@ def create_model(instance):
     # dominance rule below uses. It is defined from the warehouse's total shipment.
     full = [m.bool() for _ in range(n_warehouses)]
 
-    # A warehouse that is not opened ships nothing.
-    for i in range(n_warehouses):
-        for j in range(n_regions):
-            m &= (open_warehouse[i] | (ships[i][j] == 0))
-
-    # Every region receives exactly its demand, summed over all warehouses.
+    # Every region receives exactly its demand, summed over all warehouses. The statement
+    # only asks to meet the demand, so exact delivery is an implied restriction. It is safe
+    # because shipping costs are non-negative: extra units never lower the cost. The ship
+    # domain above relies on it.
     for j in range(n_regions):
         m &= (sum_expr(ships[i][j] for i in range(n_warehouses)) == demands[j])
 
-    # Each warehouse ships at most max_shipping units in total, and full[i] records
-    # whether it ships exactly that many.
+    # A warehouse that is not opened ships nothing, and an opened one ships at most
+    # max_shipping units in total. full[i] records whether it ships exactly that many.
     for i in range(n_warehouses):
-        m &= (sum_expr(ships[i]) <= max_shipping)
+        m &= (sum_expr(ships[i]) <= max_shipping * open_warehouse[i])
         m &= (sum_expr(ships[i]) >= max_shipping).iff(full[i])
 
     # Rule 1: if the New York warehouse is opened, the Los Angeles one must be opened too.
@@ -66,7 +64,7 @@ def create_model(instance):
     m &= (open_warehouse[atlanta] | open_warehouse[los_angeles])
 
     # Dominance (exchange argument): if warehouse k ships to region j while a strictly
-    # cheaper open warehouse i serves region j but is not full, moving one unit of region
+    # cheaper warehouse i is open and not full, moving one unit of region
     # j's supply from k to i keeps every demand and every limit, keeps the open set, and
     # lowers the cost. So such a solution is never optimal, and ruling it out keeps every
     # optimal solution. This is a speed-up only.

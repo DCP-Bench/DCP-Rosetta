@@ -14,7 +14,7 @@ def create_model(instance):
     weights = instance["weights"]    # weights[i]: the weight of item i
     capacity = instance["capacity"]  # the weight a single bin can hold
     num_bins = instance["num_bins"]  # how many bins are available, numbered 0..num_bins-1
-    n = len(weights)
+    n = len(weights)                 # the number of items
 
     m = Model()
 

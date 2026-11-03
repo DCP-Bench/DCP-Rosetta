@@ -26,15 +26,10 @@ def create_model(instance):
     lengths = []  # lengths[k]: the distance between the slots of the two devices of cable group k
     for k, (a, b, count) in enumerate(cables):
         ia, ib = index[a], index[b]
-        length = m.int(f"length_{k}", 0, n - 1)
-        # below[k] is true when device a sits below device b
-        below = m.bool(f"below_{k}")
-        # Since the slots are distinct, one device is below the other.
-        m &= (slot[ia] + 1 <= slot[ib]).only_if(below)
-        m &= (slot[ib] + 1 <= slot[ia]).only_if(~below)
-        # The cable length is the difference between the two slots, whichever device is higher.
-        m &= (length == slot[ib] - slot[ia]).only_if(below)
-        m &= (length == slot[ia] - slot[ib]).only_if(~below)
+        length = m.int(f"length_{k}", 1, n - 1)  # distinct slots are at least 1 apart
+        # Minimisation makes length equal to |slot[a] - slot[b]|: one of these two bounds is tight.
+        m &= (length >= slot[ib] - slot[ia])
+        m &= (length >= slot[ia] - slot[ib])
         lengths.append(length)
 
     # The total cable length: each cable group contributes its cable count times its length.

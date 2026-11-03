@@ -15,7 +15,7 @@ def create_model(instance):
     the square numbered 0, visits the squares in numerical order, each move a knight's
     move. The tour does not have to return to its start."""
     n = instance["n"]  # the board is n x n squares
-    squares = n * n    # so the move numbers run 0..n*n-1
+    squares = n * n    # the number of squares; the move numbers run 0..n*n-1
 
     m = Model()
 
@@ -26,7 +26,7 @@ def create_model(instance):
     # so the numbers are exactly 0..n*n-1: the knight visits each square once.
     m &= x.flatten().all_different()
 
-    cells = [(i, j) for i in range(n) for j in range(n)]
+    cells = [(i, j) for i in range(n) for j in range(n)]  # every square of the board as (row, column)
 
     def reach(cell):
         # the squares a knight can move to from a cell, in one move, on this board
@@ -41,8 +41,11 @@ def create_model(instance):
             # Tour: when the knight steps from a to b, b's move number is one more than a's.
             m &= (x[b[0]][b[1]] - x[a[0]][a[1]] == 1).only_if(step[(a, b)])
 
-    # Each square is left by exactly one step, except the last square of the tour,
-    # and entered by exactly one step, except the first square of the tour.
+    # Each square is left by exactly one step, except the last square of the tour.
+    # The matching rule that each square is entered by exactly one step, except the first,
+    # is implied (all_different plus the out-steps already fix every step as k -> k+1).
+    # It is kept because it helps propagation: without it the search did not finish
+    # within the 180 s evaluator timeout.
     for a in cells:
         out_steps = [step[(a, b)] for b in reach(a)]
         in_steps = [step[(b, a)] for b in reach(a)]

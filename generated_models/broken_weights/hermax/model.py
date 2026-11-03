@@ -14,34 +14,34 @@ def create_model(instance):
     total = instance["m"]  # total: the weight of the measuring weight before it broke, in pounds
     n = instance["n"]      # n: the number of pieces it broke into
 
-    m = Model()
+    model = Model()
 
     # weights[j] is the weight of piece j, a whole number of pounds from 1 to total
-    weights = m.int_vector("weights", n, 1, total)
+    weights = model.int_vector("weights", n, 1, total)
 
     # The pieces add up to the original weight.
-    m &= (sum(weights[j] for j in range(n)) == total)
+    model &= (sum(weights[j] for j in range(n)) == total)
 
     # Every target t from 1 to total must be weighable. For a target t, each piece j
-    # contributes to the balance: +weights[j] when it sits on the other pan (it adds to
-    # the object's weight), -weights[j] when it sits on the object's pan, and 0 when it
-    # is left off. The contributions must add up to exactly t.
+    # contributes to the balance: +weights[j] when it sits on the pan opposite the
+    # object (it counterbalances the object), -weights[j] when it sits on the object's pan
+    # (it adds to the object's side), and 0 when it is left off. The contributions must add up to exactly t.
     for t in range(1, total + 1):
         # contribution[j] is what piece j adds to the balance for target t
-        contribution = [m.int(f"contribution_{t}_{j}", -total, total) for j in range(n)]
+        contribution = [model.int(f"contribution_{t}_{j}", -total, total) for j in range(n)]
         for j in range(n):
             # pan[j][0]: piece j is on the other pan; pan[j][1]: on the object's pan;
             # pan[j][2]: piece j is left off. Exactly one of the three holds.
-            pan = m.bool_vector(f"pan_{t}_{j}", 3)
-            m &= pan.exactly_one()
+            pan = model.bool_vector(f"pan_{t}_{j}", 3)
+            model &= pan.exactly_one()
             # the contribution follows the pan the piece is on
-            m &= (contribution[j] == weights[j]).only_if(pan[0])
-            m &= (contribution[j] + weights[j] == 0).only_if(pan[1])
-            m &= (contribution[j] == 0).only_if(pan[2])
+            model &= (contribution[j] == weights[j]).only_if(pan[0])
+            model &= (contribution[j] + weights[j] == 0).only_if(pan[1])
+            model &= (contribution[j] == 0).only_if(pan[2])
         # the pieces balance the object of weight t
-        m &= (sum(contribution[j] for j in range(n)) == t)
+        model &= (sum(contribution[j] for j in range(n)) == t)
 
-    return m, {"weights": weights}
+    return model, {"weights": weights}
 
 
 if __name__ == "__main__":

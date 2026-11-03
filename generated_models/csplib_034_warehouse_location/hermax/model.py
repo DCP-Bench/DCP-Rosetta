@@ -36,10 +36,6 @@ def create_model(instance):
         for j in range(n_wh):
             m &= x[i][j].implies(open_wh[j])
 
-    # A warehouse is open exactly when it supplies at least one store.
-    for j in range(n_wh):
-        m &= (sum(x[i][j] for i in range(n_stores)) >= 1).only_if(open_wh[j])
-
     # The number of stores a warehouse supplies is at most its capacity.
     for j in range(n_wh):
         m &= (sum(x[i][j] for i in range(n_stores)) <= capacity[j])

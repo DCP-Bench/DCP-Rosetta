@@ -17,7 +17,7 @@ def create_model(instance):
     penalty_before = instance["penalty_before"]  # penalty_before[i]: cost per time unit early
     penalty_after = instance["penalty_after"]    # penalty_after[i]: cost per time unit late
     separation = instance["separation_time"]     # separation[i][j]: gap needed when i lands before j
-    n = len(earliest)
+    n = len(earliest)                            # number of aircraft
 
     m = Model()
 

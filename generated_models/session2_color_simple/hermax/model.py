@@ -11,7 +11,7 @@ def create_model(instance):
     """Colour the countries so that two neighbouring countries never share a colour,
     using as few colours as possible. Colours are integers starting from 1."""
     graph = instance["graph"]  # graph[k] = [a, b]: countries a and b (numbered from 1) are neighbours
-    # The countries are numbered 1..num_nodes, so the largest number in the edge list is the count.
+    # Every country appears in at least one border (true for the six listed countries), so the largest number in the edge list is the count.
     num_nodes = max(max(edge) for edge in graph)
 
     m = Model()

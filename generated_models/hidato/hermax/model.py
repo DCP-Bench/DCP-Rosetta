@@ -19,6 +19,7 @@ def create_model(instance):
     cols = len(puzzle[0])        # the number of columns of the grid
     total = rows * cols          # the numbers run from 1 to total, each once
 
+    # the given numbers as (row, col, value)
     givens = [(i, j, puzzle[i][j]) for i in range(rows) for j in range(cols) if puzzle[i][j] > 0]
 
     def neighbours(i, j):
@@ -43,20 +44,25 @@ def create_model(instance):
     m = Model()
 
     # x[i][j] is the number written in cell (i, j) (the declared output), with the
-    # tightest range of numbers that cell can hold.
+    # smallest range covering the numbers that cell can hold (the exact set is enforced below).
+    # A given cell can hold only its given number, so its range already fixes it.
     x = [[m.int(f"x_{i}_{j}", min(allowed[(i, j)]), max(allowed[(i, j)])) for j in range(cols)]
          for i in range(rows)]
 
-    # The given numbers stay where they are.
-    for i, j, v in givens:
-        m &= (x[i][j] == v)
+    # Rule out the holes: numbers inside the range of a cell but not allowed there.
+    for i in range(rows):
+        for j in range(cols):
+            for k in range(min(allowed[(i, j)]), max(allowed[(i, j)]) + 1):
+                if k not in allowed[(i, j)]:
+                    m &= (x[i][j] != k)
 
     # Every cell holds a different number: the numbers 1..total fill the grid exactly once.
     m &= m.vector([x[i][j] for i in range(rows) for j in range(cols)]).all_different()
 
     # Consecutive numbers touch. If a cell holds k (k < total), then one of the cells
-    # touching it holds k + 1. Since every number is used once, this chains 1, 2, ..., total
-    # through touching cells.
+    # touching it holds k + 1 (only allowed numbers are listed, the holes are excluded
+    # above). Since every number is used once, this chains 1, 2, ..., total through
+    # touching cells.
     for (i, j), ks in allowed.items():
         for k in ks:
             if k < total:

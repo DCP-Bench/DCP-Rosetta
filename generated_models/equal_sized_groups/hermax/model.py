@@ -37,7 +37,7 @@ def create_model(instance):
     # the last group ends at element N, and each other group runs between two break points.
     sizes = []
     for g in range(k):
-        s = m.int(f"size_{g}", 1, n)  # the number of elements in group g
+        s = m.int(f"size_{g}", 1, n - k + 1)  # the number of elements in group g (the other groups keep one each)
         if g == 0:
             m &= (s == x[0])
         elif g == k - 1:
@@ -51,7 +51,7 @@ def create_model(instance):
     # once the objective pushes it down.
     deviation = []
     for g in range(k):
-        d = m.int(f"deviation_{g}", 0, n)  # |size of group g - round(N / K)|
+        d = m.int(f"deviation_{g}", 0, max(target - 1, n - k + 1 - target))  # |size of group g - round(N / K)|
         m &= (d >= sizes[g] - target)
         m &= (d >= target - sizes[g])
         deviation.append(d)

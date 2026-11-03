@@ -14,7 +14,7 @@ def create_model(instance):
     are written here as constants."""
     # The four friends, numbered as in the statement.
     Debra, Janet, Hugh, Rick = 0, 1, 2, 3
-    n = 4
+    n = 4  # number of friends, allergens and surnames
 
     m = Model()
     # allergen[k] is the friend allergic to the k-th allergen (0 eggs, 1 mold, 2 nuts, 3 ragweed)

@@ -12,7 +12,7 @@ def create_model(instance):
     features (number, shading, colour, shape), the three cards show either the same
     value or three different values. Report the indices of the three cards."""
     cards = instance["cards_data"]  # cards[c] = [number, shading, colour, shape] of card c, 0-based
-    n_cards = len(cards)
+    n_cards = len(cards)  # number of cards on the table (12)
     n_features = 4  # number, shading (the fill field), colour, shape
 
     m = Model()

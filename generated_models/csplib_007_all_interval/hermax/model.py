@@ -27,9 +27,11 @@ def create_model(instance):
 
     # The interval between neighbours is the absolute difference of their pitch classes:
     # for every ordered pair of distinct pitch classes (a, b) at positions i and i+1,
-    # the interval at position i must be |a - b|. Written as one clause per pair of values
-    # rather than as a half-reified sum: at n=20 the half-reified form found nothing in 180 s,
-    # while these clauses tie the one-hot literals of x and diffs and solve at once.
+    # the interval at position i must be |a - b|. Written as one clause per pair of values,
+    # not as a half-reified sum nor as one m.table([x[i], x[i+1], diffs[i]], rows) per
+    # position. Measured at n=20: the half-reified form found nothing in 180 s, and the
+    # per-position table did not finish in 180 s either, while these clauses tie the
+    # one-hot literals of x and diffs directly and the whole check takes about 7 s.
     for i in range(n - 1):
         for a in range(n):
             for b in range(n):

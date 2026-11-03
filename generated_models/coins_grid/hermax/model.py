@@ -19,6 +19,7 @@ def create_model(instance):
 
     # x[i][j] is 1 when a coin sits in row i, column j, and 0 otherwise.
     # The output is declared as integers, so the cells are 0..1 integers.
+    # the 0..1 domain is condition 4: at most one coin per cell
     x = m.int_matrix("x", n, n, 0, 1)
 
     # Each row holds exactly c coins.
