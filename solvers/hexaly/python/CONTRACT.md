@@ -98,6 +98,16 @@ For an ad hoc run, `--entrypoint sh` bypasses `/opt/runner/run.py`.
   constraints for optimisation problems; keep lists and intervals for sequencing.
 - A satisfaction problem with no solution is `timeout`, not `unsat`, unless presolve proves
   it (`INCONSISTENT`).
+- The profile asks for two distinct solutions, or a proof that there is no second, so a
+  problem with one solution needs that proof. Booleans with linear sums give it: a Boolean
+  per (cell, value) proved a 12 x 12 hidato unique in 2.5 s and a quotient variable per prefix
+  proved the single number divisible by 1 to 9 in 8 s, where a list or a `%` found the
+  solution and timed out. Solutions that are isolated points (a season timetable, a
+  quasigroup of order 9) end as one solution and `timeout`.
+- An output may mix expressions and constants (`[digit_a, 5, digit_b, 0]`); a sum of Booleans
+  such as `sum(k * has[p][k] for k in range(n))` is an integer expression and reports as one.
+- A model that finds nothing may be unsatisfiable because of a rule the statement does not
+  give (a leading zero in a cryptarithm); check a small case in plain Python first.
 - Enumeration costs one solve per solution and each solve grows with the number found
   (8-queens, 92 solutions: about 100 s with an integer column per row, 4 to 48 s with a
   Boolean board, depending on the order the constraints are posted). A large

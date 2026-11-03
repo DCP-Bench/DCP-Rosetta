@@ -39,7 +39,7 @@ Other bindings (C++, C#, Java, and the Hexaly Modeler language) are not covered 
 - [All solutions](#all-solutions)
 - [Common issues](#common-issues)
 - [Further reading](#further-reading)
-- Per language: [Python](interfaces/python.md); sources in [sources.md](sources.md)
+- Per language: [Python](interfaces/python.md); [formulations](references/formulations.md); sources in [sources.md](sources.md)
 
 ## Modelling
 
@@ -67,13 +67,15 @@ or a full list decision. Scheduling uses interval decisions: `a < b` between int
 `end(a) <= start(b)`, and a machine's tasks are ordered by a list decision (see the
 scheduling example of each interface).
 
-**The formulation decides what can be proven.** Hexaly finds good solutions on set-based
-models, but its bounds come from the linear structure. Observed on a 4x4 assignment, 10
-second limit, 4 threads: Boolean assignment variables with linear constraints, or integers
-with pairwise `!=`, were proven optimal in 0.02 s; the same problem with
-`count(distinct(...)) == n` or a list decision found the optimum (13) and stayed unproven
-(bounds 10 and 4). Prefer Booleans, linear sums and pairwise constraints when the optimum
-must be proven; keep lists and intervals for sequencing and scheduling.
+**The formulation decides what can be proven, and often what can be found.** Hexaly's bounds come
+from linear structure. Observed on a 4x4 assignment, 10 second limit, 4 threads: Boolean assignment
+variables with linear constraints, or integers with pairwise `!=`, were proven optimal in 0.02 s; the
+same problem with `count(distinct(...)) == n` or a list decision found the optimum (13) and stayed
+unproven (bounds 10 and 4). Write a value in each cell as one Boolean per (cell, value) with linear
+sums ([one-hot](assets/python/one-hot/README.md)), a tour as Boolean arcs, a modulo as a quotient
+variable, and keep lists for sequencing. [references/formulations.md](references/formulations.md) has
+what was measured for each problem shape and what stalled. A model that finds nothing may have no
+solution: check the statement and a small case before changing the formulation.
 
 **Arithmetic.** `/` is real division. Integer division `//` rounds down (-7 // 2 is -4), while
 `%` keeps the sign of the dividend (-7 % 2 is -1), so `(a // b) * b + a % b == a` fails for a
@@ -154,12 +156,11 @@ Booleans that are true is enough: on n-queens it is 1 only for that placement. I
 when one solution's true Booleans can include another's: a knapsack selection {1} would then
 also exclude {0, 1}.
 
-Most of the time goes into the final proof. 8-queens, all 92 solutions with soft no-goods,
-4 threads on one CPU, a Boolean per square with linear row, column and diagonal sums: each
-new solution took under 0.1 s, and the proof that none was left took the rest. It took 4
-to 8 s in total with no-goods over the 8 queen squares, 31 s with no-goods over all 64
-squares, and 33 to 48 s when each row's and column's constraints were posted together
-instead of all rows first. An integer column per row with pairwise `!=` took 89 to 103 s.
+Most of the time goes into the final proof. 8-queens, all 92 solutions, soft no-goods, 4 threads on
+one CPU, a Boolean per square with linear row, column and diagonal sums: each new solution took under
+0.1 s. The whole run took 4 to 8 s with no-goods over the 8 queen squares, 31 s over all 64 squares,
+and 33 to 48 s when each row's and column's constraints were posted together instead of all rows
+first. An integer column per row with pairwise `!=` took 89 to 103 s.
 
 The loop shows that a problem has **no** solution only when presolve proves it
 (`INCONSISTENT`); otherwise its first solve ends `INFEASIBLE` at the time limit, which proves
@@ -181,6 +182,8 @@ as above.
 | enumeration never ends with a proof | hard no-goods | soft no-goods ([All solutions](#all-solutions)) |
 | enumeration ends with a long last solve | the proof that no solution is left: wide no-goods, an integer formulation | no-goods over the fewest decisions, a Boolean formulation with linear sums ([All solutions](#all-solutions)) |
 | enumeration of a problem with no solution ends without a proof | the first solve is `INFEASIBLE` | prove infeasibility first by minimising violations |
+| a solution at once, never a second, or no proof that none is left | a list, a modulo or free integers hide the structure; or the solutions are isolated | one Boolean per (cell, value) with linear sums, quotient variables ([formulations](references/formulations.md)) |
+| `INFEASIBLE` on a puzzle that should have a solution | the model may have none (a rule the statement does not give), or free integers under a tight equation | solve a small case in plain Python; candidate lists or one-hot digits ([formulations](references/formulations.md)) |
 | a negative remainder or quotient differs from your formula | `//` floors, `%` truncates | write the division with explicit decisions `q`, `r` and three constraints: `a == b * q + r`, `r >= 0`, `r <= b - 1` |
 | licence error at the first optimizer | no `license.dat` where Hexaly looks | see the install section of the interface file |
 
@@ -194,3 +197,4 @@ Binding-specific issues are in the interface files.
 - Modelling principles: https://www.hexaly.com/docs/last/modelingprinciples/modelingprinciples.html
 - Example tour (job shop and others): https://www.hexaly.com/docs/last/exampletour/index.html
 - Licences and installation: https://www.hexaly.com/docs/last/installation/index.html
+- Formulations that worked and stalled, measured: [references/formulations.md](references/formulations.md)

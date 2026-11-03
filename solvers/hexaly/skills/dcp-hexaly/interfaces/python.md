@@ -183,3 +183,6 @@ Runnable: [all-solutions](../assets/python/all-solutions/README.md),
 - [all-optimal](../assets/python/all-optimal/README.md): pin the optimum, then enumerate
 - [scheduling](../assets/python/scheduling/README.md): job shop with intervals and one list per machine
 - [json-data](../assets/python/json-data/README.md): reading a JSON file with ragged lists
+- [one-hot](../assets/python/one-hot/README.md): a Boolean per (letter, digit) with linear sums and column carries
+- [tsp](../assets/python/tsp/README.md): Boolean arcs and order variables, a tour proven optimal
+- [candidates](../assets/python/candidates/README.md): `model.at(model.array(candidates), choice)` for an exact product

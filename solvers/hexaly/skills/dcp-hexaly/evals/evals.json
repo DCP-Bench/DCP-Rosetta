@@ -106,6 +106,28 @@
   },
   {
    "id": 11,
+   "prompt": "With Hexaly in Python, solve a 9x9 sudoku given as a file, and tell me whether the solution is the only one.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A model with a Boolean per (cell, value) and linear sums, a constant objective, and a second solve (or soft no-good) to show that no other solution exists, with the gap limit 0 and 4 threads.",
+   "assertions": [
+    "Reads references/formulations.md or uses a Boolean per (cell, value) with sum == 1 per cell, row, column and box",
+    "Adds an objective (minimize(0)) before close()",
+    "Claims uniqueness only from a proven minimum of 1 or more in a soft no-good solve, never from an INFEASIBLE status"
+   ]
+  },
+  {
+   "id": 12,
+   "prompt": "Using Hexaly from Python, solve the cryptarithm CROSS + ROADS = DANGER (each letter a different digit, no leading zero) and say whether the answer is unique. My list-of-ten-digits model runs for minutes without an answer.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A one-hot Boolean model with one equation per column and a carry, instead of the permutation list.",
+   "assertions": [
+    "Replaces the permutation list by one Boolean per (letter, digit) with linear sums",
+    "Adds the sum as one equation per column with a small integer carry",
+    "Uses a proven result from a soft no-good solve to claim uniqueness"
+   ]
+  },
+  {
+   "id": 13,
    "prompt": "What does Hexaly's academic licence cost and how do I renew it?",
    "expected_skill": null,
    "expected_output": "The skill is not used; this is a licensing question, not modelling.",
