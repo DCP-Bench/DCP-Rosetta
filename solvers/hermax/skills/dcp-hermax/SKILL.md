@@ -64,7 +64,9 @@ when it states the arithmetic directly instead of building it from Booleans:
 **Help the solver.** Constraints that follow from the problem but are not needed for
 correctness can shorten the search a lot: a counting argument (when pieces fill a board
 exactly, every row and column of the board is filled exactly), a symmetry break between
-interchangeable objects, a bound on the objective. The objective may also be shifted by
+interchangeable objects, a bound on the objective. When one derived condition (the car at
+position `p` needs option `o`) appears in many sums, give it its own Boolean, tied to its
+definition once, and use that Boolean everywhere. The objective may also be shifted by
 a constant without changing which solutions are optimal: when every solution pays for a
 fixed quantity `q_j` of item `j` (an equality, not an at-least), and `c_j` is its cheapest
 unit cost, subtract `c_j` from each of `j`'s unit costs and add the constant

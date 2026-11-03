@@ -94,6 +94,10 @@ network in the container. For an ad hoc run, `--entrypoint sh` bypasses
   Tie it to an `IntVar` first.
 - Because enumeration blocks the literals and variables an expression output sums, every
   other combination with the same total costs a re-solve.
+- Enumeration blocks only the declared outputs, so with `solution_limit > 1` the second
+  solve has to prove that no other output value exists. Auxiliary variables with
+  interchangeable values (symmetric people, couples, colours) make that proof slow even
+  when the output is unique: break their symmetry (`execution_timeout` otherwise).
 - A `Literal` output is reported as a Boolean. For an output the brief declares as a
   0/1 integer, use `m.int(name, 0, 1)`.
 

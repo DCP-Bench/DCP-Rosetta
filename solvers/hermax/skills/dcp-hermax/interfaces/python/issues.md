@@ -10,10 +10,11 @@ Entry: [README.md](README.md).
 | `FutureWarning: add_soft() is deprecated` | A soft constraint posted with `add_soft` | Reify it, `m &= (constraint).iff(r)`, and `m.obj += w * ~r` |
 | `TypeError: Non-linear arithmetic is not supported` | `x * y` between two IntVars | Loop over the smaller factor, `(p == k * y).only_if(x == k)`, or a `table` |
 | Model long and slow, built from Boolean digits, adders or comparators | Integer arithmetic encoded by hand | Use `m.int` variables and write the linear constraint directly; hermax encodes it |
-| Wide `m.int` over millions, very slow or out of memory | Integers are encoded per value | Keep bounds tight (each variable its own window), or express the value as a sum of small variables: `sum(10**(9-i) * d[i])` over ten 0..9 integers |
+| Wide `m.int` over millions, very slow or out of memory | Integers are encoded per value | Keep bounds tight (each variable its own window), or express the value as a sum of small variables: `sum(10**(9-i) * d[i])` over ten 0..9 integers. For "the number is divisible by `n`", reduce each digit weight modulo `n` first (`w = 10**k % n`), so the quotient variable stays small |
 | `TypeError: bad operand type for abs()` | `abs` of an expression | Two one-sided slacks, see [The objective](modelling.md#the-objective) |
 | `TypeError: Unsupported decode target` on `r[expression]` | A plain Python `int` was returned | Use `m.as_int(c)` for a constant; sums decode directly |
-| `TypeError: Clause OR only supports Literal operands` | `|` between a literal and a non-literal, e.g. `(x | y) | False` | Combine only literals with `|`; post the rest as separate `m &=` lines |
+| `TypeError: Clause OR only supports Literal operands` | `|` between a literal and a non-literal, e.g. `(x | y) | False`, or between two clauses, `(a | b) | (c | d)` | Build one flat list of literals and OR it once (`functools.reduce(operator.or_, lits)`); post the rest as separate `m &=` lines |
+| `UnboundLocalError: ... 'm'` inside a helper function | `m &= ...` in a nested function makes `m` a local name there | Pass the model in as a parameter (`def link(m, ...)`) |
 | `TypeError: PBConstraint` on `|`, or `Literal == PBConstraint` | A constraint is not a literal | Reify it: `(constraint).iff(r)`, see [Combining constraints](modelling.md#combining-constraints-reify-with-iff); for `DivExpr` use `m.floor_div` |
 | A constraint has no effect | `iv.all_different()`, `m.table(...)`, `x.forbid_value(v)` called without `m &=` | Post it: `m &= iv.all_different()` |
 | `(consequent).only_if(condition)` has the wrong direction | The condition implies the consequent | Swap the two sides |

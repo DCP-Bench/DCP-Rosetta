@@ -76,6 +76,7 @@ m &= (r1 | r2)                       # (a + b <= 1) or (c != d)
 ### Tables of allowed combinations
 
 `m &= m.table([x, y, z], allowed=rows)` restricts the tuple `(x, y, z)` to the listed rows.
+The items may also be Boolean literals, with `True`/`False` in the rows.
 When a relation is awkward as arithmetic, compute the rows that satisfy it with a short
 Python loop and post them as a table:
 
