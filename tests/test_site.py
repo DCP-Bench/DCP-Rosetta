@@ -298,9 +298,10 @@ class RenderingHelperTests(unittest.TestCase):
         self.assertEqual(breakdown["by_paradigm"]["sat"], {"pysat": 2})
         self.assertEqual(breakdown["by_paradigm"]["maxsat"], {"pysat": 2})
 
-    def test_an_average_is_rounded_half_up_to_one_decimal(self):
-        self.assertEqual(generate_site.one_decimal(161.25), "161.3")
-        self.assertEqual(generate_site.one_decimal(138.0), "138")
+    def test_an_average_is_rounded_half_up_to_a_whole_number(self):
+        self.assertEqual(generate_site.rounded(146.5), "147")
+        self.assertEqual(generate_site.rounded(146.67), "147")
+        self.assertEqual(generate_site.rounded(163.2), "163")
 
     def test_previews_read_formulas_and_markdown_as_plain_text(self):
         plain = generate_site.plain_text
