@@ -185,6 +185,32 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
 - Leave out what `solvers/CONTRACT.md` already says and what the standalone skill teaches
   about the solver's API.
 
+### Entrypoint and standalone run
+
+Models are read by people on the catalogue site and run on their own machines, so design
+the entrypoint and the `## Standalone run` section (header and run block, see
+`solvers/CONTRACT.md`) for a reader, in the solver's own idiom:
+
+- `create_model(instance)` returns two values, the model and its outputs. The model
+  carries all of it, objective included, the way the library holds a model: a problem
+  object with its objective, a solver with the objective set, or a formula such as a
+  weighted CNF. Where the library cannot hand the objective back, the runner records it
+  (for example by wrapping the method that sets it) rather than asking for a third value.
+- A solver with no optimiser in its API takes satisfaction problems only: set
+  `"optimization": false` in `metadata.json` and record the optimisation problems as
+  blockers. Do not emulate an optimiser in the runner or the run block.
+- Write the run block from the library's own examples: create or load the solver, solve
+  once, print each output. No helper functions. Import only what the file uses, inside the
+  block; when the kind of model is fixed (satisfaction or optimisation, the type of its
+  outputs), the block may differ per model so that it imports and does no more than that
+  model needs. Read values with the library's call for a list of variables where it has
+  one, reshaped to the output's shape.
+- The header names everything a reader must install to run the file, and the commands
+  work on a clean machine: try them.
+- Before converting the models of an integration, show the person you work with one
+  satisfaction and one optimisation example in full, with what each prints, for
+  confirmation. Have independent reviewers read them first.
+
 ## 6. `readiness_test.py`
 
 Adapt `solvers/cpmpy/python/readiness_test.py`, which implements every check below with
