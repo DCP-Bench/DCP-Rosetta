@@ -12,7 +12,7 @@ from tests.test_evaluation import SOURCE, ROOT
 PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_sat.py",
           "ortools_cp_sat_cpp": "model.cpp", "chuffed_cpp": "model_chuffed.cpp", "minizinc_gecode": "model.mzn",
           "z3_python": "model_z3.py", "cvc5_python": "model_cvc5.py", "clingo_asp": "model_clingo.lp",
-          "swipl_clpfd": "model_swipl.pl", "pulp_cbc": "model_pulp.py", "mip_cbc": "model_mip.py",
+          "swipl_clpfd": "model_swipl.pl", "pulp_cbc": "model_pulp.py", "python_mip_cbc": "model_mip.py",
           "pumpkin_rust": "model.rs", "huub_rust": "model_huub.rs", "pindakaas_rust": "model_pindakaas.rs", "choco_python": "model_choco.py",
           "pysat": "model_pysat.py", "paramita_python": "model_paramita.py", "hermax": "model_hermax.py",
           "exact": "model_exact.py", "gurobipy_python": "model_gurobipy.py",
@@ -46,7 +46,7 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       "swipl_clpfd": ("min(", "max("),
                       "eclipse_clp": ("min(", "max("),
                       "pulp_cbc": ("LpMinimize", "LpMaximize"),
-                      "mip_cbc": ("mip.MINIMIZE", "mip.MAXIMIZE"),
+                      "python_mip_cbc": ("mip.MINIMIZE", "mip.MAXIMIZE"),
                       "pumpkin_rust": ("minimise", "maximise"),
                       "huub_rust": ("minimise", "maximise"),
                       "choco_python": ("minimize", "maximize"),
@@ -228,7 +228,8 @@ class MetadataTests(unittest.TestCase):
         and every model for them imported that rather than the framework, which
         no evaluator could notice: the answers were right, the models were not
         in the language they were advertised in. `framework` in metadata.json
-        matches the import name for every Python integration here.
+        is the import name for every Python integration here, except where
+        `module` gives it (python-mip, framework `python_mip`, imports `mip`).
 
         This only covers Python. The Rust, MiniZinc, Prolog and C++
         integrations have no equivalent one-line check, so they are still
@@ -236,7 +237,7 @@ class MetadataTests(unittest.TestCase):
         for solver, metadata in self.integrations.items():
             if metadata.get("language") != "python":
                 continue
-            module = metadata["framework"]
+            module = metadata.get("module", metadata["framework"])
             pattern = re.compile(rf"^\s*(?:import\s+{re.escape(module)}\b"
                                  rf"|from\s+{re.escape(module)}[\s.])", re.MULTILINE)
             for model in sorted((ROOT / "generated_models").glob(f"*/{solver}/model.py")):
