@@ -1,0 +1,2 @@
+- The hexagon has 15 lines: 5 rows, 5 down-right diagonals (x - y constant) and 5 down-left diagonals (x + y constant), with cells in A..S order. Written out as index lists, with a comment on each direction.
+- Alldifferent over the 19 cells (bounds) and a LinearInt per line. Solved in about 0.5 s; the evaluator found two solutions under the limit.

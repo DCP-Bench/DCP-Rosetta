@@ -16,9 +16,9 @@ this integration reaches, in both directions.
 was rebuilt to fix: submissions have to be written against `hermax.model`, and
 the objective belongs on `model.obj` rather than in the value returned.
 
-`memory_limit` checks that a solver worker killed at the memory limit ends as
-`memory_limit`, not as a solver error blamed on the model: hermax solves in a
-subprocess and reports that subprocess's death as a bare `error` status.
+`memory_limit` checks that a model killed at the memory limit while it solves
+ends as `memory_limit`, not as a solver error blamed on the model: hermax can
+solve in a subprocess and report that subprocess's death as a bare `error` status.
 
 `wide_output` declares a value above 2**32 as a sum of weighted Booleans, the
 way a number too wide for one IntVar has to be written, and
@@ -82,21 +82,26 @@ MALFORMED = (HEAD + "    m &= (x + y == n)\n"
              "    import os\n"
              "    os.write(1, b'this is not a protocol record\\n')\n" + EXPORT)
 UNSATISFIABLE = HEAD + "    m &= (x == 0)\n    m &= (x == 1)\n" + EXPORT
-# A pigeonhole big enough that the solver cannot refute it in two seconds.
-# The model has no soft clauses, so hermax hands it to Glucose 4.1 through PySAT,
-# which refutes 13 into 12 in under a second, where 16 into 15 runs past a minute.
-SLOW = (HEAD + "    m &= (x + y == n)\n"
-        '    birds = m.int_vector("birds", 16, 1, 15)\n'
-        "    m &= birds.all_different()\n" + EXPORT)
+# A random 3-SAT instance at the phase transition (4.26 clauses per variable) that
+# the solver cannot settle in two seconds. The model has no soft clauses, so hermax
+# hands it to Glucose 4.1 through PySAT. hermax 1.3.0 proves the pigeonhole used
+# before (16 into 15 with all_different) unsat at once; 400 random variables still
+# run past 20 seconds.
+SLOW = (HEAD.replace("from hermax", "import random\nfrom hermax") + "    m &= (x + y == n)\n"
+        "    rng = random.Random(7)\n"
+        '    v = m.bool_vector("v", 400)\n'
+        "    for _ in range(1704):\n"
+        "        a, b, c = rng.sample(range(400), 3)\n"
+        "        m &= ((v[a] if rng.random() < .5 else ~v[a]) | (v[b] if rng.random() < .5 else ~v[b])\n"
+        "              | (v[c] if rng.random() < .5 else ~v[c]))\n" + EXPORT)
 
-# A thousand distinctly weighted soft units under a cardinality bound. RC2
-# stratifies on the weights and builds totalizers until its worker passes a
-# 256 MB limit, about two seconds in, while the runner itself stays well under.
+# hermax encodes an IntVar with one literal per value, so one over five million
+# values passes a 256 MB limit while it is encoded. (hermax 1.3.0 needs far less
+# memory for weighted soft units than 1.2.9, so the thousand used before no
+# longer reach the limit.)
 HUNGRY = (HEAD + "    m &= (x + y == n)\n"
-          '    b = m.bool_vector("b", 1000)\n'
-          "    m &= (sum(b[i] for i in range(1000)) <= 500)\n"
-          "    for i in range(1000):\n"
-          "        m.obj[i + 1] += b[i]\n" + EXPORT)
+          '    wide = m.int("wide", 0, 5_000_000)\n'
+          "    m &= (wide >= 3)\n" + EXPORT)
 
 # An output wider than any one IntVar could hold, declared as a sum of
 # Booleans that the runner evaluates. 2**33 + n is above 32 bits.
@@ -153,7 +158,15 @@ def build(instance):
     import os
     import socket
 
-    assert os.getuid() != 0, "container runs as root"
+    def host_uid(uid):
+        for line in open("/proc/self/uid_map"):
+            inside, outside, count = map(int, line.split())
+            if inside <= uid < inside + count:
+                return outside + uid - inside
+
+    # Unprivileged on the host: Docker runs as nobody; rootless podman without a
+    # subuid range can only run as container root, which maps to the invoking user.
+    assert os.getuid() != 0 or host_uid(0) != 0, "container runs as root on the host"
     assert not os.path.exists("/dataset"), "dataset is visible to the candidate"
     assert sorted(os.listdir("/input")) == ["model.py", "request.json"], "unexpected /input"
     try:
@@ -181,11 +194,13 @@ def build(instance):
 
 # The image must carry the framework itself and nothing standing in for it.
 NATIVE = '''import hermax
-from hermax.model import BoolVector, IntVector, Model
+from hermax.model import BoolVector, IntVar, IntVector, Model, sum_expr
 
 
 def build(instance):
-    assert hermax.__version__ == "1.2.9", hermax.__version__
+    assert hermax.__version__ == "1.3.0", hermax.__version__
+    # 1.3.0 features the skill teaches.
+    assert callable(sum_expr) and hasattr(IntVar, "piecewise")
     # The modelling layer the submissions are written against, not a wrapper
     # shipped alongside the runner.
     assert Model.__module__.startswith("hermax."), Model.__module__
@@ -206,6 +221,18 @@ def build(instance):
     m &= (x + y == n)
     return m, {"x": x, "y": y}
 '''
+
+
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    result = model.solve()\n"
+    "    print(outputs)\n")
 
 
 def main():
@@ -246,6 +273,7 @@ def main():
         # hermax reports a worker the kernel killed for memory as a plain solver
         # error; the evaluator has to see through that to the memory limit.
         check("memory_limit", HUNGRY, expected={"memory_limit"}, memory_mb=256)
+        check("standalone_block", STANDALONE)
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})

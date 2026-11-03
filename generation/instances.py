@@ -220,7 +220,7 @@ def append(path, records):
 
 def retained_models(problem):
     """Every model retained for a problem on this evaluator's own acceptance."""
-    for record_path in sorted((GENERATED / problem).glob("*/*/record.json")):
+    for record_path in sorted((GENERATED / problem).glob("*/record.json")):
         try:
             record = json.loads(record_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):

@@ -47,12 +47,13 @@ GOOD = ("import z3\n"
         "    s.add(x >= 0, x <= n, y >= 0, y <= n, x + y == n)\n"
         "    return s, {'x': x, 'y': y}\n")
 OPTIMAL = ("import z3\n"
-           "def build(instance):\n"
+           "def create_model(instance):\n"
            "    n = instance['n']\n"
            "    x, y = z3.Ints('x y')\n"
-           "    s = z3.Solver()\n"
+           "    s = z3.Optimize()\n"
            "    s.add(x >= 0, x <= n, y >= 0, y <= n, x + y >= n)\n"
-           "    return s, {'x': x, 'y': y}, ('DIRECTION', x + y)\n")
+           "    s.DIRECTION(x + y)\n"
+           "    return s, {'x': x, 'y': y}\n")
 MALFORMED = "def build(instance):\n    return None, {}\n"
 UNSATISFIABLE = ("import z3\n"
                  "def build(instance):\n"
@@ -75,6 +76,16 @@ ISOLATED = ("import os, socket\n"
             "    s = z3.Solver()\n"
             "    s.add(x >= 0, x <= n, y >= 0, y <= n, x + y == n)\n"
             "    return s, {'x': x, 'y': y}\n")
+
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    solver, outputs = create_model(instances[0])\n"
+    "    print(outputs)\n")
 
 
 def main():
@@ -103,6 +114,7 @@ def main():
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
+        check("standalone_block", STANDALONE)
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})

@@ -1,0 +1,6 @@
+# Lessons: csplib_001_car_sequencing, jacop_java, attempt-008 (accepted, performance limit)
+
+- hints.md (coordinator's retry hints) was used; attempts 001-007 were read (they used Reified booleans, SmallestDomain, demand-ranked values, and none solved the 200-car instances).
+- What made the 200-car instances solvable: a rank variable per slot, with ranks renumbered so rank 0 is the type needing the most loaded options (load = need*q/(a*n)); GCC with constant counters for demand; Element.choose(rank, order, type, -1) for the output; per option a 0/1 variable per slot via Element.choose(rank, column, nd, -1); `Sequence(nd, IntervalDomain(1,1), q, 0, a)` posted with store.imposeDecomposition; implied prefix bounds as LinearInt; search `model.search(rank, null, null)` (input order, IndomainMin).
+- Result: 19 of 22 instances accepted (examples 1-13, 15-18, 21; up to 85 s for json:13 and 73 s for json:18). json:14, json:19 and json:20 give execution_timeout at 180 s, so the model is evidenced on 19 instances. A performance limit, not a reference problem.
+- evaluation.check stops at the first non-accepted instance and lists the rest as unperformed; run later instances with --instance-ids to see them.

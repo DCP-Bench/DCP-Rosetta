@@ -1,0 +1,3 @@
+- The brief shows packs as [2]int, but the json:4 instance has four pack sizes. The model sizes counts from packs.length, and the evaluator accepted all five instances.
+- Total is bounded by target + minPack - 1 (add copies of the smallest pack). Count bounds follow from that total bound.
+- LinearInt with a -1 weight on total encodes sum(packs*counts) == total against a constant 0.

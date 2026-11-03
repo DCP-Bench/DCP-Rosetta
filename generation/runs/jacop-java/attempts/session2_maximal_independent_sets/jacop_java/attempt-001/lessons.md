@@ -1,0 +1,1 @@
+- Adjacency lists are 1-based; the model shifts them to 0-based. Rows are read with their own length, so ragged input would also bind.

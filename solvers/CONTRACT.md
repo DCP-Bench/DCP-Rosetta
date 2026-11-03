@@ -84,6 +84,11 @@ So a submission **declares a model and nothing else**: it does not call the solv
 stdout, read or write files, take command-line arguments, or define its own `main`. Only the
 one submission file is staged in the container; it cannot import a helper file of its own.
 
+The one exception is a **standalone run**, where an integration's `CONTRACT.md` defines one
+under `## Standalone run`: a header comment saying how to run the file, and a run block at its
+end that the runner never executes. It makes the model a file a reader can copy from the
+catalogue and run on their own machine.
+
 ## What the reference does not license
 
 The reference is the specification, and translating its semantics is the work. But:

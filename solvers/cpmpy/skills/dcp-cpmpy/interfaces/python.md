@@ -55,7 +55,7 @@ Full list: [API catalogue](../references/python/api.md) and the
 |---|---|
 | integer variables | [`cp.intvar(lb, ub, shape=None, name=None)`](https://cpmpy.readthedocs.io/en/latest/api/expressions/variables.html) |
 | Boolean variables | [`cp.boolvar(shape=None, name=None)`](https://cpmpy.readthedocs.io/en/latest/api/expressions/variables.html) |
-| a model | [`cp.Model(*constraints)`](https://cpmpy.readthedocs.io/en/latest/api/model.html); `model += c` adds more |
+| a model | [`cp.Model(*constraints)`](https://cpmpy.readthedocs.io/en/latest/api/model.html); `model.add(c)` adds more |
 | all different | [`cp.AllDifferent(*args)`](https://cpmpy.readthedocs.io/en/latest/api/expressions/globalconstraints.html) |
 | element / table / cumulative / no-overlap | [`arr[idx]`](#modelling), [`cp.Table`](https://cpmpy.readthedocs.io/en/latest/api/expressions/globalconstraints.html), [`cp.Cumulative`](https://cpmpy.readthedocs.io/en/latest/api/expressions/globalconstraints.html), [`cp.NoOverlap`](https://cpmpy.readthedocs.io/en/latest/api/expressions/globalconstraints.html) |
 | reification / implication | [`a.implies(b)`](https://cpmpy.readthedocs.io/en/latest/api/expressions/variables.html); `(x >= 3).implies(b)` |
@@ -116,7 +116,7 @@ model.solve(solver="ortools", time_limit=10, num_workers=1, random_seed=7)
 ```
 
 [Solve parameters](https://cpmpy.readthedocs.io/en/latest/api/model.html). A model can
-also be extended after solving: `model += constraint` and solve again.
+also be extended after solving: `model.add(constraint)` and solve again.
 
 
 ## Scheduling and objectives
@@ -136,7 +136,7 @@ for j, job in enumerate(jobs):                  # job = [(machine, duration), ..
         tasks_on.setdefault(machine, []).append((start[j][k], duration, end[j][k]))
 for tasks in tasks_on.values():
     s, d, e = (list(column) for column in zip(*tasks))
-    model += cp.NoOverlap(s, d, e)
+    model.add(cp.NoOverlap(s, d, e))
 ```
 
 **Job order.** A job's operations run in sequence: `end[j][k] <= start[j][k + 1]`.
@@ -169,7 +169,7 @@ solutions = []
 while model.solve():
     values = tuple(int(v.value()) for v in outputs)
     solutions.append(values)
-    model += cp.any([v != x for v, x in zip(outputs, values)])
+    model.add(cp.any([v != x for v, x in zip(outputs, values)]))
 ```
 
 - **All optimal solutions**: solve with the objective to get `best`, then build

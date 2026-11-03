@@ -6,7 +6,7 @@ the gate — an integration appears as usable only when its readiness record
 still verifies.
 
 Eligibility uses this evaluator's own evidence only. A retained model counts
-when `generated_models/PROBLEM/SOLVER/*/record.json` was produced by the
+when `generated_models/PROBLEM/SOLVER/record.json` was produced by the
 container evaluator and accepted, and `generation/flags.json` does not record it
 failing an instance added since.
 """
@@ -59,7 +59,7 @@ def integrations():
 
 
 def _records():
-    for path in GENERATED.glob("*/*/*/record.json"):
+    for path in GENERATED.glob("*/*/record.json"):
         try:
             yield path, json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -87,7 +87,7 @@ def accepted_pairs():
     instances than the problem now has, and failed one of the others.
     """
     flagged = flagged_models()
-    return {(path.parents[2].name, path.parents[1].name) for path, record in _records()
+    return {(path.parents[1].name, path.parent.name) for path, record in _records()
             if record.get("verdict_source") == "container_evaluator"
             and record.get("evaluation", {}).get("accepted") is True
             and path.parent.relative_to(ROOT).as_posix() not in flagged}

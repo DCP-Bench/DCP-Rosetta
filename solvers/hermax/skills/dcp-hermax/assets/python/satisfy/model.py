@@ -1,12 +1,14 @@
 # Split 1..8 into two groups of four with equal sums.
 from hermax.model import Model
 
-VALUES = list(range(1, 9))
-HALF = sum(VALUES) // 2
+VALUES = list(range(1, 9))   # the numbers to split
+HALF = sum(VALUES) // 2      # the sum each group must reach
 
 m = Model()
-in_a = m.bool_vector("in_a", len(VALUES))  # True: the value goes to group A
+# in_a[i] is true when VALUES[i] goes to group A (otherwise to group B)
+in_a = m.bool_vector("in_a", len(VALUES))
 
+# Group A holds half of the numbers, and they add up to half of the total.
 m &= (sum(in_a[i] for i in range(len(VALUES))) == len(VALUES) // 2)
 m &= (sum(v * in_a[i] for i, v in enumerate(VALUES)) == HALF)
 

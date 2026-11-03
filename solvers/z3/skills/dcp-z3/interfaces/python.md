@@ -10,6 +10,7 @@ no global constraints, enumeration strategy) is in [SKILL.md](../SKILL.md).
 - [Solving](#solving)
 - [All solutions](#all-solutions)
 - [Program interface](#program-interface)
+- [Readable models](#readable-models)
 - [Common issues](#common-issues)
 - Runnable examples: `../assets/python/<example>/`, one folder per pattern (table under Quick start)
 
@@ -164,6 +165,49 @@ else:
 Print the values from the model (`.as_long()`, `z3.is_true`), not the raw `model()`, whose
 order and format are Z3's own. `sys.exit("message")` prints the message to stderr and exits
 with status 1.
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it (`z3.Sum([z3.If(xi, w, 0) for w, xi in zip(weights, x)])`
+  over index arithmetic), and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that creates the solver, adds the constraints with
+`solver.add(...)` and returns the solver with the variables to print. Use a `z3.Solver` for a
+satisfaction problem and a `z3.Optimize` for an optimisation problem, and set its one objective
+with `solver.minimize(expr)` or `solver.maximize(expr)`. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    solver = z3.Optimize()
+
+    # x[i] is true when the hiker packs item i
+    x = [z3.Bool(f"x_{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    solver.add(z3.Sum([z3.If(xi, w, 0) for w, xi in zip(weights, x)]) <= capacity)
+
+    # Pack the most valuable selection.
+    solver.maximize(z3.Sum([z3.If(xi, v, 0) for v, xi in zip(values, x)]))
+
+    return solver, {"x": x}
+```
+
+Print the values with `model.eval(e, model_completion=True)`; `numpy.vectorize` applies it
+to a nested list in one call. It fails on a plain Python integer or Boolean, so give a fixed
+value to print as `z3.IntVal(...)` or `z3.BoolVal(...)`.
 
 ## Common issues
 

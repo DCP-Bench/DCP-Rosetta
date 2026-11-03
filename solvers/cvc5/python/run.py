@@ -1,11 +1,12 @@
 """Runner protocol for the cvc5_python integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(constraints, outputs)`, or
-`(constraints, outputs, (direction, objective))` for an optimization problem
-where direction is "minimize" or "maximize". The submission uses cvc5's
-pythonic API (`cvc5.pythonic`). cvc5 has no optimiser, so the runner proves the
-optimum itself: it tightens the objective until unsat, enumerates distinct
-declared outputs by blocking, and never reports success on an unproven optimum.
+A submission defines `create_model(instance)` returning `(solver, outputs)`: solver is a
+`cvc5.pythonic.Solver` holding the constraints. Models retained before 2026-10-30 define
+`build(instance)` returning `(constraints, outputs)`, which is still accepted.
+
+The submission uses cvc5's pythonic API (`cvc5.pythonic`). cvc5 has no optimiser, so this
+integration is satisfaction-only: it takes no objective. The runner enumerates distinct
+declared outputs by blocking.
 """
 import contextlib
 import importlib.util
@@ -19,35 +20,28 @@ sys.path.insert(0, "/opt/runner")
 from runtime import emit, flatten, mapped  # noqa: E402
 from runtime import finish as runtime_finish  # noqa: E402
 
-import cvc5.pythonic as cz  # noqa: E402
+import cvc5.pythonic as c5  # noqa: E402
 STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
-DIRECTIONS = ("minimize", "maximize")
 
 
 def load(instance):
-    """Import the submission and normalise what it returned."""
+    """Import the submission and normalise what it returned. The file is loaded as module
+    "candidate", so its `if __name__ == "__main__":` run block never runs."""
     spec = importlib.util.spec_from_file_location("candidate", str(INPUT / "model.py"))
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
-    if not isinstance(returned, tuple) or len(returned) not in (2, 3):
-        raise ValueError("build(instance) must return (constraints, outputs) or "
-                         "(constraints, outputs, (direction, objective))")
-    constraints, outputs = returned[0], returned[1]
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
+    if not isinstance(returned, tuple) or len(returned) != 2:
+        raise ValueError("create_model(instance) must return (solver, outputs); cvc5_python "
+                         "is satisfaction-only and takes no objective")
+    constraints, outputs = returned
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
-    objective = returned[2] if len(returned) == 3 else None
-    if objective is not None:
-        if (not isinstance(objective, (tuple, list)) or len(objective) != 2
-                or objective[0] not in DIRECTIONS):
-            raise ValueError('The objective must be ("minimize", expression) or '
-                             '("maximize", expression)')
-        if isinstance(objective[1], int) and not isinstance(objective[1], bool):
-            objective = (objective[0], cz.IntVal(objective[1]))
-    return assertions(constraints), configuration(constraints), outputs, objective
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
+    return assertions(constraints), configuration(constraints), outputs
 
 
 # Options the runner sets itself: a returned Solver's values for these are not copied.
@@ -60,7 +54,7 @@ def configuration(constraints):
     The runner solves on fresh solvers, so it reproduces these on each of them.
     A list of constraints, or a Solver that sets nothing, gives (None, {}).
     """
-    if not isinstance(constraints, cz.Solver):
+    if not isinstance(constraints, c5.Solver):
         return None, {}
     native = constraints.solver
     logic = native.getLogic() if native.isLogicSet() else None
@@ -72,7 +66,7 @@ def configuration(constraints):
 def fresh(configuration):
     """A new pythonic Solver with the returned Solver's logic and options."""
     logic, options = configuration
-    solver = cz.Solver() if logic is None else cz.SolverFor(logic)
+    solver = c5.Solver() if logic is None else c5.SolverFor(logic)
     for name, value in options.items():
         solver.set(name, value)
     return solver
@@ -80,7 +74,7 @@ def fresh(configuration):
 
 def assertions(constraints):
     """Accept a cvc5 pythonic Solver, a sequence of constraints, or one constraint."""
-    if isinstance(constraints, cz.Solver):
+    if isinstance(constraints, c5.Solver):
         return list(constraints.assertions())
     if isinstance(constraints, (list, tuple)):
         return list(constraints)
@@ -94,11 +88,11 @@ def read(expression, model):
     if isinstance(expression, int):
         return expression
     value = model.eval(expression, model_completion=True)
-    if cz.is_true(value):
+    if c5.is_true(value):
         return True
-    if cz.is_false(value):
+    if c5.is_false(value):
         return False
-    if isinstance(value, cz.IntNumRef):
+    if isinstance(value, c5.IntNumRef):
         return value.as_long()
     raise ValueError("Declared outputs must be integer or Boolean values; no coercion "
                      f"from reals or other sorts (got {value} for {expression})")
@@ -110,7 +104,7 @@ def blocking(expressions, model):
               for expression in expressions if not isinstance(expression, (bool, int))]
     # With only constant outputs there is a single possible assignment, so
     # nothing further exists to find.
-    return cz.Or(*clause) if clause else cz.BoolVal(False)
+    return c5.Or(*clause) if clause else c5.BoolVal(False)
 
 
 def remaining(deadline):
@@ -126,41 +120,12 @@ def check(solver, deadline):
     # tlimit-per is the limit of one check() call; 0 would mean no limit.
     solver.set("tlimit-per", budget)
     result = solver.check()
-    if result == cz.unknown:
+    if result == c5.unknown:
         reason = str(solver.reason_unknown())
         if reason.endswith("TIMEOUT"):
             return None, ("timeout", "")
         return None, ("error", f"cvc5 returned unknown: {reason}")
     return result, None
-
-
-def optimum(constraints, setup, direction, objective, deadline):
-    """Prove the optimal objective value, or say why it could not be proven.
-
-    Each step asserts a strictly better objective on one incremental solver. The
-    last model found is the optimum once the next step is unsat; unknown or
-    running out of time before that is `timeout`.
-    """
-    solver = fresh(setup)
-    solver.add(constraints)
-    best = None
-    while True:
-        result, failure = check(solver, deadline)
-        if failure is not None:
-            return None, failure
-        if result == cz.unsat:
-            if best is None:
-                return None, ("unsat", "")
-            return best, None
-        model = solver.model()
-        value = model.eval(objective, model_completion=True)
-        if not isinstance(value, cz.IntNumRef):
-            return None, ("error", "Objective is not an integer expression")
-        best = value.as_long()
-        if direction == "minimize":
-            solver.add(objective < best)
-        else:
-            solver.add(objective > best)
 
 
 # Seconds the submission took to build the model (its cvc5 terms), and from STARTED until the
@@ -178,16 +143,9 @@ def solve(request):
     global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
     building = time.monotonic()
-    constraints, setup, outputs, objective = load(request["instance"])
+    constraints, setup, outputs = load(request["instance"])
     BUILD_SECONDS = time.monotonic() - building
     flat = flatten(outputs)
-
-    if objective is not None:
-        best, failure = optimum(constraints, setup, objective[0], objective[1], deadline)
-        if failure is not None:
-            return finish(failure[0], failure[1])
-        # Enumerate only assignments achieving the proven optimum.
-        constraints = constraints + [objective[1] == best]
 
     solver = fresh(setup)
     solver.add(constraints)
@@ -196,7 +154,7 @@ def solve(request):
         result, failure = check(solver, deadline)
         if failure is not None:
             return finish(failure[0], failure[1])
-        if result == cz.unsat:
+        if result == c5.unsat:
             return finish("complete" if count else "unsat")
         model = solver.model()
         emit({"type": "solution", "values": mapped(outputs, lambda e: read(e, model))})

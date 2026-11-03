@@ -95,12 +95,12 @@ skill works outside this repository; a skill in `skills/` works only inside it.
 | --- | --- |
 | `skills/` | Instructions an agent follows here: `model-generator` runs a "campaign", `solver-setup` adds a framework and writes its standalone solver skill, `instance-curator` adds instances to the problems in `bench/`. |
 | `solvers/<solver>/skills/dcp-<name>/` | The public, Rosetta-independent solver skills, mirrored to [DCP-Bench/DCP-skills](https://github.com/DCP-Bench/DCP-skills). |
-| `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, the record of past campaigns. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
+| `generation/` | The campaign harness — work queue, run ledger, readiness gate — and `runs/`, each campaign's local ledger. See [generation/README.md](generation/README.md); its agent-facing contract is [generation/AGENTS.md](generation/AGENTS.md). |
 
 
 ## Evaluation framework
 
-The container-based [evaluation package](evaluation/README.md) provides a Python API, a JSON CLI and configurable instance/solution counts. The certified integrations are CPMpy (Python), OR-Tools CP-SAT (Python), OR-Tools CP-SAT (C++), Chuffed (C++), Gecode (C++), HiGHS (C++), MiniZinc, Z3 (Python), cvc5 (Python), clingo, SWI-Prolog, PuLP (Python), Python-MIP (Python), Choco (Python), Choco (Java), MaxiCP (Java), PyCSP3 (Python), Pumpkin (Rust), Huub (Rust), Pindakaas (Rust), PySAT (Python), Paramita (Python), hermax (Python), Exact (Python), Gurobi (Python), CPLEX (Python), SCIP (Python), Hexaly (Python), Picat, ECLiPSe, JuMP (Julia), Essence' and FO(·), named here as the catalogue names them. Build their images explicitly with `python -m evaluation.build`. Hexaly needs a licence file, which never enters the repository: set `DCP_SECRET_HEXALY_LICENSE` to its path and the build copies it into the local image, which then must not be pushed. That is all the evaluator needs; the model-generation workflow additionally wants `python -m generation.readiness check` once per integration after a build, because a readiness record is tied to the exact image it was checked against.
+The container-based [evaluation package](evaluation/README.md) provides a Python API, a JSON CLI and configurable instance/solution counts. The certified integrations are CPMpy (Python), OR-Tools CP-SAT (Python), OR-Tools CP-SAT (C++), Chuffed (C++), Gecode (C++), HiGHS (C++), MiniZinc, Z3 (Python), cvc5 (Python), clingo, SWI-Prolog, PuLP (Python), Python-MIP (Python), Choco (Python), Choco (Java), MaxiCP (Java), JaCoP (Java), PyCSP3 (Python), Pumpkin (Rust), Huub (Rust), Pindakaas (Rust), PySAT (Python), Paramita (Python), hermax (Python), Exact (Python), Gurobi (Python), CPLEX (Python), SCIP (Python), Hexaly (Python), Picat, ECLiPSe, JuMP (Julia), Essence' and FO(·), named here as the catalogue names them. Build their images explicitly with `python -m evaluation.build`. Hexaly needs a licence file, which never enters the repository: set `DCP_SECRET_HEXALY_LICENSE` to its path and the build copies it into the local image, which then must not be pushed. That is all the evaluator needs; the model-generation workflow additionally wants `python -m generation.readiness check` once per integration after a build, because a readiness record is tied to the exact image it was checked against.
 
 A model is accepted by falsification rather than by comparison: the evaluator enumerates the candidate's solutions and looks for one the reference rejects. Finding none within the budget is what acceptance means, so a larger solution limit is a stronger test.
 
@@ -141,8 +141,9 @@ example cannot survive a second instance), writes a model from the reference,
 and submits it to the evaluator. A model is kept only when the evaluator
 accepts it.
 
-Every campaign leaves a ledger under `generation/runs/`: what was attempted,
+Every campaign keeps a local ledger under `generation/runs/`: what was attempted,
 what the evaluator said, and what was kept, including the attempts that failed.
+The repository keeps only the accepted models, each with its verdict in `record.json`.
 
 ## How to Contribute
 

@@ -1,0 +1,2 @@
+- Without redundant constraints, squares_1_to_8 (json:1) did not prove the optimum in 180 s. Two Cumulative constraints (x-starts with heights, y-starts with widths) plus lower bounds on total_x, total_y and the area brought it to about 150 s.
+- Still close to the 180 s execution timeout on the 8-square instance; a stronger search order may give headroom.

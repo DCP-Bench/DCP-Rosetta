@@ -1,0 +1,3 @@
+- Route as optional successor array: next[i]==i marks a skipped house, Alldifferent gives a permutation, and next[luigi]=mario closes the route.
+- Subtours are cut with MTZ position variables (pos[mario]=0, Implies(arc, pos[j]=pos[i]+1)), since JaCoP has no subcircuit constraint.
+- Fuel of a skipped house is 0 because the diagonal of arc_fuel is zeroed in the model; relies on staying put being free.

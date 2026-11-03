@@ -6,8 +6,9 @@ Documentation and package: see the links below; tested versions are under Python
 
 ## Python
 
-Tested with hermax 1.2.9 (with python-sat 1.9.dev17), Python 3.12.11, Linux, inside the
-`python:3.12.11-slim-bookworm` image with `pip install hermax==1.2.9`.
+Tested with hermax 1.3.0 (with python-sat 1.9.dev17), Python 3.12.11, Linux, inside the
+`python:3.12.11-slim-bookworm` image with `pip install hermax==1.3.0`. The earlier rounds
+below were run on hermax 1.2.9; the 1.3.0 round lists what changed.
 
 Documentation:
 
@@ -18,7 +19,35 @@ Documentation:
 - <https://pypi.org/project/hermax/> — package metadata (Apache-2.0)
 - <https://hermax.readthedocs.io/en/latest/acknowledgments.html> — backend solver credits
 
-Verified by running (inside the image):
+Verified on hermax 1.3.0 (inside the image):
+
+- `m.obj[w] += lit` raises `TypeError: obj[w] is no longer supported`; `m.obj += 5 * l`
+  leaves `l` false at cost 0, `m.obj += 5 * ~l` sets it true; `m.obj += -x`, `-1 * x` and
+  `-sum(...)` maximise (cost reported negated). `add_soft` warns `FutureWarning`
+  (deprecated); a reified constraint with `m.obj += w * ~r` is the soft form.
+- `Model.solve` defaults: `sat_solver_name="g4"`, `maxsat_backend="coretrail"`.
+- `cumulative(...)` returns a constraint ("post it with `model &=`"); called on its own line
+  it is dropped (all 30 random unit-demand and 30 general instances overlapped); posted with
+  `m &=` the scheduling example gives makespan 8 again (1.2.9: 8 without `m &=`).
+- Native linear constraints over IntVars: `189b + 180o + 175g == 15750` (each 0..100) solved
+  in 0.01 s (1.2.9 never finished building it); the four-fruit system
+  `b + o + m + a == 100`, `189b + 225o + 245m + 945a == 31500` minimising `b + a` in 0.57 s;
+  four constraints with coefficients 10..400 over six 0..20 IntVars in 2.2 s.
+- Objective through an auxiliary `IntVar` (`tot == cost`, `m.obj += tot`) on a random 12x12
+  assignment: 0.16 s, against 0.01 s with `m.obj += cost` (1.2.9: did not finish in 300 s on
+  4x4).
+- `x % 7` (a `ModExpr`) and `m.modulo(x, 7)` work; `abs(expr)` and `IntVar * IntVar` raise
+  `TypeError`; `(x != y).iff(r)` works; `m.vector(list_of_intvars).all_different()` works.
+- `x.piecewise(base_value=..., steps={t: v})`: the step value holds from `x >= t` on; with the
+  objective minimised it picks the cheapest case. `sum_expr` takes a generator.
+- `m.table([a, b, c, d], allowed=rows)` over 18 enumerated rows returns one of them.
+- `(s1 + 5 <= s2).only_if(o)` with the converse under `~o`: two tasks never overlap, makespan
+  is the sum of durations.
+- 3-SAT with 400 random variables at 4.26 clauses per variable is `interrupted` after a 20 s
+  limit; with 300 variables it is proven `unsat` in 17 s.
+- All seven assets give their README's expected output.
+
+Verified on hermax 1.2.9 (inside the image):
 
 - Soft-clause polarity: `m.obj[w] += literal` pays `w` when the literal is false
   (`minimise` example chooses the cheapest assignment; `maximise` reports the forgone weight).

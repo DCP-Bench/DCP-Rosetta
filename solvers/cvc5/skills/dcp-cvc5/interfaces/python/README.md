@@ -6,7 +6,7 @@ Shared concepts, statuses and strategies: [SKILL.md](../../SKILL.md).
 ## Contents
 - [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling)
 - [Solving](#solving) · [All solutions](#all-solutions) · [Optimisation](#optimisation)
-- [Common issues](#common-issues) · [Encodings and performance](encodings.md) · [Further reading](#further-reading)
+- [Readable models](#readable-models) · [Common issues](#common-issues) · [Encodings and performance](encodings.md) · [Further reading](#further-reading)
 
 ## Install
 
@@ -66,8 +66,9 @@ Full list: [cvc5 pythonic API](https://cvc5.github.io/docs/cvc5-1.4.2/api/python
 | quantifiers | `ForAll([i], body)`, `Exists([i], body)`; tested on small bounded cases only |
 
 Build constraints with the Python operators; they produce cvc5 terms, not Python booleans.
-Pass them to `Solver.add`, as separate arguments: `s.add(c1, c2)` or `s.add(*constraints)`.
-A Python list in `add` raises `SMTException` (see [Common issues](#common-issues)).
+Pass them to `Solver.add`, as separate arguments (`s.add(c1, c2)`) or as one list that is
+the only argument (`s.add([c1, c2])`). A list next to other arguments, a nested list or a
+generator raises `SMTException` (see [Common issues](#common-issues)).
 
 ## Solving
 
@@ -90,7 +91,7 @@ Options: [cvc5 options](https://cvc5.github.io/docs/cvc5-1.4.2/options.html). Se
 
 | Setting | Effect, as measured |
 |---|---|
-| `SolverFor("QF_LIA")` | linear integer logic. Faster than a plain `Solver()` on the models in [Performance](encodings.md#performance). Use it for linear models |
+| `SolverFor("QF_LIA")` | linear integer logic. Faster than a plain `Solver()` on the models in [Performance](encodings.md#performance) and on most linear integer models. Models made mostly of Booleans (a knight's tour, social golfers) ran faster with a plain `Solver()`, so measure both |
 | `SolverFor("QF_NIA")` | nonlinear integer logic, needed for products of variables |
 | `s.set("tlimit-per", ms)` | time limit per `check()`, in milliseconds; a run stopped by it returns `unknown` / `TIMEOUT` (measured: 60 s limit ended at 60.00 s) |
 | `s.set("arith-prop", "none")` | slower on n-queens n=40 (33 s against 13 s); keep the default |
@@ -122,6 +123,52 @@ Check that the last `check()` returned `unsat`, not `unknown`, before reporting 
 
 Tighten the objective as described in [SKILL.md](../../SKILL.md#optimisation); examples: [maximise-knapsack](../../assets/python/maximise-knapsack/README.md) and [minimise-jobshop](../../assets/python/minimise-jobshop/README.md).
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints;
+- the plainest expression that says it (`c5.Sum([c5.If(xi, w, 0) for w, xi in zip(weights, x)])`
+  over index arithmetic), and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that creates the solver (`c5.Solver()`, or `c5.SolverFor(logic)`
+with its options), adds the constraints with `solver.add(...)` and returns the solver and the
+variables to print. cvc5 has no optimiser, so a problem with an objective needs the loop of
+[Optimisation](#optimisation) around it. For example:
+
+```python
+def create_model(instance):
+    """Assign each item to one of several bins, each of a fixed capacity, so that the total
+    weight of the items in each bin does not exceed the capacity."""
+    weights = instance["weights"]    # weights[k]: the weight of item k
+    capacity = instance["capacity"]  # the most weight one bin can hold
+    n_bins = instance["num_bins"]    # the number of bins available
+
+    # bins[k]: the bin that item k goes into
+    bins = [c5.Int(f"bin_{k}") for k in range(len(weights))]
+
+    solver = c5.Solver()
+
+    # Each item goes into one of the bins, numbered 0 to n_bins - 1.
+    solver.add([c5.And(b >= 0, b <= n_bins - 1) for b in bins])
+
+    # The items in each bin weigh no more than the capacity.
+    for b in range(n_bins):
+        solver.add(
+            c5.Sum([c5.If(bin_k == b, w, 0) for bin_k, w in zip(bins, weights)]) <= capacity
+        )
+
+    return solver, {"bins": bins}
+```
+
+Print the values with `model.eval(e)`; `numpy.vectorize` applies it to a nested list in one
+call. It fails on a plain Python integer or Boolean, so give a fixed value to print as
+`c5.IntVal(...)` or `c5.BoolVal(...)`.
+
 ## Common issues
 
 See also the shared table in [SKILL.md](../../SKILL.md#common-issues).
@@ -133,7 +180,7 @@ See also the shared table in [SKILL.md](../../SKILL.md#common-issues).
 | `TypeError: unsupported operand type(s) for +: 'BoolRef' and 'BoolRef'` | `Sum` over Boolean terms | `Sum([If(b, 1, 0) for b in bs])` |
 | `NameError: name 'PbEq' is not defined` (also `AtMost`, `AtLeast`, `PbLe`) | no pseudo-Boolean helpers in `cvc5.pythonic` | `Sum([If(b, w, 0) ...]) == k` |
 | `NameError: name 'Max' is not defined` | no `Max` | `If`-fold |
-| `SMTException: True, False or SMT Boolean expression expected. Received [...] of type <class 'list'>` | a Python list passed to `add` | `s.add(*constraints)` |
+| `SMTException: True, False or SMT Boolean expression expected. Received [...] of type <class 'list'>` (or `'generator'`) | a list passed to `add` next to other arguments, a nested list, or a generator | one flat list as the only argument, `s.add([...])`, or `s.add(*constraints)` |
 | `RuntimeError: invalid kind 'AND', expected Terms with kind AND must have at least 2 children` (`'OR'` likewise) | `And` or `Or` with one argument | pass the constraint directly; `Or([...])` needs two or more |
 | `RuntimeError: invalid kind 'DISTINCT', ... must have at least 2 children` | `Distinct` with one argument | skip the constraint when there are fewer than two terms |
 | `SMTException: At least one of the arguments must be an SMT expression` | `Distinct([])` | skip the constraint |

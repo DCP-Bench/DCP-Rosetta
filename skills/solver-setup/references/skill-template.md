@@ -106,9 +106,18 @@ the docs use most, and why.> <With one binding: "Other bindings (<from the docs>
 exist (by concept, linked to the catalogue), reification, objectives. Exact calls live in the
 interface files.> Full list: [<global constraint catalogue>](<URL>)
 
-**Readable models.** Open the program with a comment that states the problem, and start
-each block of constraints with a comment in the words of the problem statement, not the
-API call.
+**Readable models.** Write for a student reading the model for the first time, in the
+words of the problem statement, not of the API:
+
+- a docstring or opening comment that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it: <this solver's direct forms, e.g. its array
+  arithmetic or native global constraints, over index loops and hand-built encodings>.
+
+<A short example in the solver's syntax: input fields, one variable, one constraint, the
+objective, each with its comment.>
 
 ## Solving
 

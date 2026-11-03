@@ -2,7 +2,7 @@ from pysat.formula import IDPool, WCNF
 from pysat.integer import Integer, IntegerEngine
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     pool = IDPool()
     x = Integer("x", 0, n, vpool=pool)

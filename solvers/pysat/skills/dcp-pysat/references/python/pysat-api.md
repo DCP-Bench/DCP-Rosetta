@@ -104,7 +104,10 @@ Out-of-range values raise `AssertionError: Value is outside the order domain` (o
 Passing a `LinearExpr` to `add_alldifferent`, `add_equal` or `add_not_equal` fails
 (`TypeError` or `AttributeError`). Put expressions through `add_linear`.
 
-A variable created after its engine needs `engine.add_var(v)`. Call `clausify()`
+A variable created after its engine needs `engine.add_var(v)`. The engine keeps the
+list passed as `vars` and `add_var` appends to it, so `IntegerEngine(vars=xs)` followed
+by `add_var(q)` makes `q` the last element of `xs` too. Pass a copy, `vars=list(xs)`,
+when `xs` is read afterwards (printed or decoded as the answer). Call `clausify()`
 once, after all constraints are added, and extend the returned CNF for anything
 outside the engine:
 

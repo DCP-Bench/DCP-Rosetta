@@ -25,7 +25,7 @@ python -m generation.next_work [--limit N] [--include-unready]
 Reports every integration with whether it is usable, the problem count, how many
 pairs already have a current-format accepted model, and the next candidate pairs.
 Only current evidence counts: a pair is covered when
-`generated_models/PROBLEM/SOLVER/*/record.json` was written by this evaluator and accepted.
+`generated_models/PROBLEM/SOLVER/record.json` was written by this evaluator and accepted.
 Legacy directories are counted separately and are never coverage. An integration
 without a current readiness record is reported with its blocker and contributes
 no eligible pairs unless `--include-unready` is given.

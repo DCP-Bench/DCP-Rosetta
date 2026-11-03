@@ -26,6 +26,7 @@ Verified by running inside that container:
 - **Brute-force cross-checks** in the examples agree: all-solutions (9 solutions), all-optimal (2 optimal covers), minimise (cost 7), maximise (profit 24), scheduling (makespan 11).
 - **`pysat.integer` is the framework's own integer layer.** `Integer(name, lb, ub, encoding=...)` and `IntegerEngine(vars=..., vpool=...)` clausify direct, order or coupled encodings; `add_linear(..., reified=True)` returns a selector literal.
 - **Encoding restrictions**: `equals()` raises `Direct encoding is disabled` on `order`; `ge()` raises `Order encoding is disabled` on `direct`; `add_not_equal` on the left side requires `direct` or `coupled`.
+- **`IntegerEngine` keeps the `vars` list it is given**: after `IntegerEngine(vars=xs)` with two Integers in `xs`, one `engine.add_var(q)` left three in `xs`; with `vars=list(ys)`, `ys` kept two.
 - **Expressions are not Integers**: `add_alldifferent`, `add_equal` and `add_not_equal` fail on a `LinearExpr`; `add_linear` takes it.
 - **`PBEnc` accepts negative weights**, and `PBEnc.equals`/`leq` produce clauses that respect them.
 - **`CNF.weighted()` makes every clause soft** (weight 1, no hard clauses), so a constraint becomes optional. `WCNF().extend(cnf.clauses)` makes them hard.

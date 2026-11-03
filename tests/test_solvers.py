@@ -28,7 +28,8 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
           "choco_java": "model_choco_java.java",
           "eclipse_clp": "model_eclipse.ecl",
           "maxicp_java": "model_maxicp_java.java",
-          "hexaly_python": "model_hexaly.py"}
+          "hexaly_python": "model_hexaly.py",
+          "jacop_java": "model_jacop_java.java"}
 
 # Integrations whose metadata says they cannot optimize. The pilot cases that
 # need an objective are not run for these, and they carry no MAXIMIZATION_SWAPS
@@ -77,6 +78,7 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       "highs_cpp": ("minimize(", "maximize("),
                       "choco_java": ("Model.MINIMIZE", "Model.MAXIMIZE"),
                       "maxicp_java": ("minimize", "maximize"),
+                      "jacop_java": ("minimize", "maximize"),
                       "paramita_python": ("minimize", "maximize"),
                       "scip_python": ("minimize", "maximize"),
                       "idp_z3": ("minimize", "maximize"),
@@ -248,8 +250,8 @@ class MetadataTests(unittest.TestCase):
             module = metadata["framework"]
             pattern = re.compile(rf"^\s*(?:import\s+{re.escape(module)}\b"
                                  rf"|from\s+{re.escape(module)}[\s.])", re.MULTILINE)
-            for model in sorted((ROOT / "generated_models").glob(f"*/{solver}/*/model.py")):
-                with self.subTest(solver=solver, model=model.parent.name):
+            for model in sorted((ROOT / "generated_models").glob(f"*/{solver}/model.py")):
+                with self.subTest(solver=solver, problem=model.parent.parent.name):
                     source = model.read_text(encoding="utf-8")
                     self.assertRegex(
                         source, pattern,

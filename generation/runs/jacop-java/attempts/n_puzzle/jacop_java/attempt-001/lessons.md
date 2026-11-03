@@ -1,0 +1,2 @@
+- Board side n and step count come from the instance; the brief's [13][3][3] is the example only (json instances are 2x2, 3x3 and 4x4).
+- Moves are encoded as a Table over (blank before, blank after, source cell) per cell, then Element copies the source tile. Labelling the blank positions alone fixes every board.
