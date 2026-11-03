@@ -843,10 +843,12 @@ def verified_models(generated: dict, integrations: dict):
                     yield problem, solver, entry
 
 
-# Paradigms that can only express one kind of problem: SAT has no objective,
-# so a model of an optimisation problem does not count towards it.
+# Paradigms that can only express one kind of problem: SAT has no objective, so
+# a model of an optimisation problem is labelled with another paradigm its
+# integration declares (MaxSAT for PySAT). The paradigms page counts every
+# model under each paradigm its integration declares; a solver that takes only
+# satisfaction problems is marked there instead (`satisfaction_only`).
 PARADIGM_SCOPE = {"sat": "satisfaction"}
-SCOPE_NOTES = {"sat": "SAT counts satisfaction problems only."}
 
 
 def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
@@ -1100,6 +1102,19 @@ def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, tot
     return "".join(cells)
 
 
+def satisfaction_only(solver: str) -> bool:
+    """A solver whose every binding declares `"optimization": false` takes only
+    satisfaction problems (cvc5 has no optimiser), so it is measured against them."""
+    return all(INTEGRATIONS[binding].get("optimization") is False
+               for binding in SOLVERS[solver]["bindings"])
+
+
+def one_decimal(value: float) -> str:
+    """One decimal, half up: 161.25 is 161.3, not the 161.2 binary floats give."""
+    tenths = int(value * 10 + 0.5)
+    return str(tenths // 10) if tenths % 10 == 0 else f"{tenths // 10}.{tenths % 10}"
+
+
 def coverage_count(count, total: int) -> str:
     """`163 / 164`: the count reads first, the catalogue size stays quiet."""
     return f'<span class="count">{count}</span><span class="of"> / {total}</span>'
@@ -1124,13 +1139,12 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 
     by_solvers = paradigm_order(ranked)
 
-    groups, notes = [], []
+    groups = []
     anchored: set = set()
     listed: set = set()
+    marked = False
     for item in by_solvers:
         tag = item["id"]
-        scope = PARADIGM_SCOPE.get(tag)
-        denominator = type_counts.get(scope, 0) if scope else len(types)
         found = breakdown["by_paradigm_solver"].get(tag, {})
         per_binding = breakdown["by_paradigm"].get(tag, {})
         # The solvers that model the most problems in this paradigm lead;
@@ -1138,14 +1152,17 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
         solvers = sorted(item["solvers"], key=lambda solver: (
             -found.get(solver, 0), solver_name(solver).lower()))
         counts = [found.get(solver, 0) for solver in solvers]
-
-        mark = ""
-        if tag in SCOPE_NOTES:
-            mark = f'<a class="note-mark" href="#note-{esc(tag)}" aria-label="Note on {esc(item["name"])}">*</a>'
-            notes.append(f'<p class="table-note" id="note-{esc(tag)}">* {esc(SCOPE_NOTES[tag])}</p>')
+        # A satisfaction-only solver is measured against the satisfaction problems.
+        totals = [type_counts.get("satisfaction", 0) if satisfaction_only(solver) else len(types)
+                  for solver in solvers]
 
         entries = []
-        for solver in solvers:
+        for solver, total in zip(solvers, totals):
+            mark = ""
+            if satisfaction_only(solver):
+                marked = True
+                mark = ('<a class="note-mark" href="#note-satisfaction-only" '
+                        'aria-label="Supports only satisfaction problems">*</a>')
             # A solver listed under two paradigms keeps its anchors on the first.
             anchor = "" if solver in anchored else f' id="solver-{esc(solver)}"'
             anchored.add(solver)
@@ -1153,7 +1170,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
             target, rows, kind = "", "", ""
             if len(SOLVERS[solver]["bindings"]) > 1:
-                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], denominator)
+                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], total)
                 kind = ' class="has-bindings"'
             elif bindings[0] not in anchored:
                 # The integration's own ID stays a target: older links use it.
@@ -1162,14 +1179,13 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             entries.append(
                 f'<li{anchor}{kind}><span class="solver-name">{esc(solver_name(solver))}'
                 f'{backend_label(bindings[0], tag)}{solver_skill_button(solver)}{target}</span>'
-                f'<span class="solver-count">{coverage_count(found.get(solver, 0), denominator)}</span>'
+                f'<span class="solver-count">{coverage_count(found.get(solver, 0), total)}{mark}</span>'
                 f'{browse_button(solver, solver_problems.get(solver, 0)) or "<span></span>"}{rows}</li>'
             )
 
-        average = sum(counts) / len(counts) if counts else 0
-        # One decimal, half up: 161.25 is 161.3, not the 161.2 binary floats give.
-        tenths = int(average * 10 + 0.5)
-        shown = str(tenths // 10) if tenths % 10 == 0 else f"{tenths // 10}.{tenths % 10}"
+        # The average of the counts over the average of the solvers' totals.
+        average = one_decimal(sum(counts) / len(counts)) if counts else "0"
+        average_total = one_decimal(sum(totals) / len(totals)) if totals else str(len(types))
         # The count, then a Show/Hide button; the CSS writes the button's
         # word from aria-expanded, so the two cannot disagree.
         toggle = f'<span class="count">{len(solvers)}</span>' + (
@@ -1179,10 +1195,10 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
         )
         head = (
             f'<tr class="paradigm-row"><td class="abbrev">{esc(item.get("abbrev", tag))}</td>'
-            f'<td>{esc(item["name"])}{mark}'
+            f'<td>{esc(item["name"])}'
             f'{info_tip("tip-" + esc(tag), item["name"], item.get("summary", ""))}</td>'
             f'<td class="num">{toggle}</td>'
-            f'<td class="num">{coverage_count(shown, denominator)}</td></tr>'
+            f'<td class="num">{coverage_count(average, average_total)}</td></tr>'
         )
         # The solvers sit in one full-width row of their own, so their layout
         # does not depend on the paradigm columns above them.
@@ -1195,7 +1211,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
       <button type="button" class="btn expand-all" aria-pressed="false">Show all</button></div>
       <table class="plain paradigm-table"><thead><tr><th>Abbrev.</th><th>Name</th>
       <th class="num">Solvers</th><th class="num">Avg. problems</th></tr></thead>{"".join(groups)}</table>
-      {"".join(notes)}
+      {'<p class="table-note" id="note-satisfaction-only">* supports only satisfaction problems</p>' if marked else ""}
     </div>
     """
     (OUTPUT_DIR / "paradigms.html").write_text(
@@ -1623,7 +1639,7 @@ def main() -> None:
     PARADIGM_ABBREVS = {item["id"]: item.get("abbrev", item["id"]) for item in vocabulary}
     breakdown = paradigm_breakdown(generated, INTEGRATIONS, vocabulary,
                                    problem_types={p["id"]: p["type"] for p in problems},
-                                   solver_of=SOLVER_OF)
+                                   scopes={}, solver_of=SOLVER_OF)
     PARADIGM_ORDER = [item["id"] for item in paradigm_order(breakdown["paradigms"])]
 
     # client-side index data (escaped so it can't break out of <script>)
