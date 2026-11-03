@@ -211,6 +211,7 @@ Expected output: `Value: 22`, then `x = [0, 1, 1]`. For a grid or matrix of vari
 |---|---|---|
 | Segmentation fault (exit 139) at `optimize()` | `addConsIndicator` without `binvar=` | always pass `binvar=b` |
 | `ValueError: expected inequality that has either only a left or right hand side` | equality in `addConsIndicator` | two indicators (`<=`, `>=`) on the same binary |
+| `AssertionError` from `addMatrixVar(3, ..., ub=np.array([...]))` | an integer shape together with an array bound | give the shape as a tuple: `addMatrixVar((3,), vtype="I", lb=0, ub=np.array([...]))` |
 | `NotImplementedError: can only support with '<=', '>=', or '=='` | `!=`, or `max`/`min` over variables | [encodings](../references/python/encodings.md) |
 | `TypeError: Can't evaluate constraints as booleans` | ranged `lo <= e <= hi` | `(lo <= e) <= hi`, or two constraints |
 | `TypeError: unsupported operand type(s) for //` or `%` | integer division on a variable | `x == d * q + r`, `0 <= r <= d - 1` |
