@@ -1,17 +1,19 @@
-"""Zebra (Einstein's puzzle): five houses in a row, each with a different colour, nationality,
-pet, drink and job. From the clues, find which house each belongs to.
+# zebra: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+# Run it (after `pip install pulp numpy`) with:
+#   python zebra.py
 
-The model reports, for each colour, nation, job, pet and drink, its house 0..4 (left to
-right).
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the puzzle has no instance data
+def create_model(instance):
+    """The Zebra puzzle: five houses in a row, each with a different color,
+    inhabitant nationality, pet, drink and job, fixed by a list of clues. Find the
+    house of every color, nationality, job, pet and drink."""
+    n_houses = 5  # the five houses in the row
+    houses = range(n_houses)
 
-    n = 5
-    houses = range(n)
+    # The five groups of attributes, five items in each.
     groups = {
         "colors": ["yellow", "green", "red", "white", "blue"],
         "nations": ["italy", "spain", "japan", "england", "norway"],
@@ -20,52 +22,74 @@ def build(instance):
         "drinks": ["milk", "water", "tea", "coffee", "juice"],
     }
 
-    problem = pulp.LpProblem("zebra", pulp.LpMinimize)  # satisfaction
+    problem = pulp.LpProblem("zebra", pulp.LpMinimize)
 
-    # at[item][h] = 1 if the colour, nation, job, pet or drink belongs to house h; within a
-    # group every item has a different house
-    at = {item: [pulp.LpVariable(f"at_{item}_{h}", cat="Binary") for h in houses]
-          for items in groups.values() for item in items}
+    # in_house[item][h] is 1 when the item belongs to house h.
+    in_house = {item: [pulp.LpVariable(f"in_house_{item}_{h}", cat="Binary") for h in houses]
+                for items in groups.values() for item in items}
+
+    # Each item belongs to exactly one house.
     for items in groups.values():
         for item in items:
-            problem += pulp.lpSum(at[item]) == 1
-        for h in houses:
-            problem += pulp.lpSum(at[item][h] for item in items) == 1
+            problem += pulp.lpSum(in_house[item]) == 1
 
-    def same(x, y):
-        """x and y belong to the same house"""
+    # Each house has exactly one item from each group.
+    for items in groups.values():
         for h in houses:
-            problem.addConstraint(at[x][h] == at[y][h])
+            problem += pulp.lpSum(in_house[item][h] for item in items) == 1
+
+    def same_house(x, y):
+        """x and y belong to the same house."""
+        for h in houses:
+            problem.addConstraint(in_house[x][h] == in_house[y][h])
 
     def right_of(x, y):
-        """x is in the house immediately to the right of y's"""
-        problem.addConstraint(at[x][0] == 0)
-        for h in houses:
-            if h + 1 < n:
-                problem.addConstraint(at[x][h + 1] == at[y][h])
+        """x belongs to the house immediately to the right of y's house."""
+        problem.addConstraint(in_house[x][0] == 0)
+        for h in range(n_houses - 1):
+            problem.addConstraint(in_house[x][h + 1] == in_house[y][h])
 
     def next_to(x, y):
-        """x is in a house next to y's: if x is in house h, y is in house h - 1 or h + 1"""
+        """x and y belong to neighbouring houses."""
         for h in houses:
-            problem.addConstraint(at[x][h] <= pulp.lpSum(at[y][g] for g in (h - 1, h + 1)
-                                                         if 0 <= g < n))
+            problem.addConstraint(
+                in_house[x][h] <= pulp.lpSum(in_house[y][g] for g in (h - 1, h + 1)
+                                             if 0 <= g < n_houses))
 
-    same("painter", "horse")       # the painter owns the horse
-    same("diplomat", "coffee")     # the diplomat drinks coffee
-    same("white", "milk")          # the one who drinks milk lives in the white house
-    same("spain", "painter")       # the Spaniard is a painter
-    same("england", "red")         # the Englishman lives in the red house
-    same("snails", "sculptor")     # the snails are owned by the sculptor
-    right_of("red", "green")       # the green house is immediately left of the red one
-    right_of("norway", "blue")     # the Norwegian lives immediately right of the blue house
-    same("doctor", "milk")         # the doctor drinks milk
-    same("japan", "diplomat")      # the diplomat is Japanese
-    same("norway", "zebra")        # the Norwegian owns the zebra
-    next_to("green", "white")      # the green house is next to the white one
-    next_to("horse", "diplomat")   # the horse is owned by the neighbour of the diplomat
-    # the Italian lives in the red, white or green house
+    same_house("painter", "horse")       # the painter owns the horse
+    same_house("diplomat", "coffee")     # the diplomat drinks coffee
+    same_house("white", "milk")          # the one who drinks milk lives in the white house
+    same_house("spain", "painter")       # the Spaniard is a painter
+    same_house("england", "red")         # the Englishman lives in the red house
+    same_house("snails", "sculptor")     # the snails are owned by the sculptor
+    right_of("red", "green")             # the green house is immediately left of the red one
+    right_of("norway", "blue")           # the Norwegian lives immediately right of the blue house
+    same_house("doctor", "milk")         # the doctor drinks milk
+    same_house("japan", "diplomat")      # the diplomat is Japanese
+    same_house("norway", "zebra")        # the Norwegian owns the zebra
+    next_to("green", "white")            # the green house is next to the white one
+    next_to("horse", "diplomat")         # the horse is owned by the neighbour of the diplomat
+
+    # The Italian lives in the red, white or green house.
     for h in houses:
-        problem += at["italy"][h] <= at["red"][h] + at["white"][h] + at["green"][h]
+        problem += (in_house["italy"][h]
+                    <= in_house["red"][h] + in_house["white"][h] + in_house["green"][h])
 
-    return problem, {key: [pulp.lpSum(h * var for h, var in enumerate(at[item])) for item in items]
+    # The house of each color, nationality, job, pet and drink.
+    return problem, {key: [pulp.lpSum(h * flag for h, flag in enumerate(in_house[item]))
+                           for item in items]
                      for key, items in groups.items()}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

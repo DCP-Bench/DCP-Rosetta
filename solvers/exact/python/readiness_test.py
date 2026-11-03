@@ -65,6 +65,12 @@ GOOD = HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n, True, n)\
 # `n` is a maximum here, so the objective has room to move in both directions.
 OPTIMAL = (HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n)\n'
            '    return solver, {"x": "x", "y": "y"}, ("DIRECTION", [(1, "x"), (1, "y")])\n')
+# The objective set on the solver inside create_model, as Exact's own examples do. The
+# runner records it; the offset must not shift the optimum it pins.
+ON_SOLVER = (HEAD.replace("def build", "def create_model")
+             + '    solver.addConstraint([(1, "x"), (1, "y")], True, n)\n'
+             '    solver.setObjective([(1, "x"), (1, "y")], minimize=MINIMIZE, offset=5)\n'
+             + EXPORT)
 # Solves, then corrupts the protocol stream the runner owns.
 MALFORMED = (HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n, True, n)\n'
              "    import os\n"
@@ -123,7 +129,8 @@ from exact import Exact
 
 
 def build(instance):
-    assert Exact.__module__.startswith("exact"), Exact.__module__
+    # The runner wraps exact.Exact to record the objective; the class underneath is Exact's.
+    assert any(c.__module__ == "exact" for c in Exact.__mro__), Exact.__mro__
     for absent in ("dcp_pb", "dcp_sat", "dcp_maxsat"):
         try:
             __import__(absent)
@@ -167,6 +174,8 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        check("objective_on_solver_min", ON_SOLVER.replace("MINIMIZE", "True"), reference=OPTIMIZING)
+        check("objective_on_solver_max", ON_SOLVER.replace("MINIMIZE", "False"), reference=MAXIMIZING)
         check("native_api", NATIVE)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})

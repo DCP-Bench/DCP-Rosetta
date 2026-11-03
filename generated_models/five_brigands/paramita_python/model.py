@@ -1,45 +1,64 @@
-"""Five Spanish brigands and their doubloons.
+# five_brigands: a Paramita (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/five_brigands.html
+# Install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python five_brigands.py
 
-Alfonso (A), Benito (B), Carlos (C), Diego (D) and Esteban (E) captured exactly
-200 doubloons altogether. Had Alfonso twelve times as much, Benito three times,
-Carlos the same, Diego half and Esteban one third, the total would still be 200.
-Each brigand has at least one doubloon. Output: the doubloons of A, B, C, D, E.
-
-Encoding: each count is an integer in 1..200, written in unary (order Bools
-x_ge_k meaning "count >= k", for k = 2..200, chained so x_ge_k implies
-x_ge_{k-1}). The 200 bound is the total from the description.
-"""
-
-from paramita.modelling import Bool, If
-
-TOTAL = 200
-NAMES = ["A", "B", "C", "D", "E"]
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_container, to_cnf
 
 
-def unary_count(name):
-    """Unary integer in 1..TOTAL: value = 1 + sum of order Bools."""
-    ge = {k: Bool(f"{name}_ge_{k}") for k in range(2, TOTAL + 1)}
-    cons = [If(ge[k], ge[k - 1]) for k in range(3, TOTAL + 1)]
-    value = 1 + sum(ge.values())
-    return value, cons
+def create_model(instance):
+    """Five Spanish brigands captured exactly 200 doubloons altogether. Had
+    Alfonso twelve times as much, Benito three times, Carlos the same, Diego
+    half and Esteban a third, they would still have 200 doubloons altogether.
+    Each brigand has at least one doubloon. How many doubloons has each?"""
+    total = 200                   # the doubloons the brigands captured altogether
+    n_bits = total.bit_length()   # the bits that write a count up to total
+
+    def doubloons(name):
+        # bits[k] is true when 2 ** k is counted in the doubloons of this brigand beyond the first
+        bits = [Bool(f"{name}_bit_{k}") for k in range(n_bits)]
+        # Every brigand has one doubloon, plus the bits that are set.
+        return 1 + sum(2 ** k * b for k, b in enumerate(bits))
+
+    # A, B, C, D and E are the doubloons of Alfonso, Benito, Carlos, Diego and Esteban
+    A, B, C, D, E = (doubloons(name) for name in "ABCDE")
+
+    # Together they have 200 doubloons.
+    constraints = [A + B + C + D + E == total]
+    # With the changed amounts they still have 200 doubloons. Multiplied by 6 to
+    # clear the fractions: 12A + 3B + C + D/2 + E/3 = 200 becomes 72A + 18B + 6C + 3D + 2E = 1200.
+    constraints.append(72 * A + 18 * B + 6 * C + 3 * D + 2 * E == 6 * total)
+
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {"A": A, "B": B, "C": C, "D": D, "E": E}
 
 
-def build(instance):
-    cons = []
-    value = {}
-    for name in NAMES:
-        value[name], c = unary_count(name)
-        cons += c
-    A, B, C, D, E = (value[n] for n in NAMES)
+if __name__ == "__main__":
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
 
-    # the five captured together exactly 200 doubloons
-    cons.append(A + B + C + D + E == TOTAL)
+    (formula, pool), outputs = create_model({})
 
-    # with Alfonso x12, Benito x3, Carlos x1, Diego x1/2, Esteban x1/3 the total is still 200;
-    # multiplied by 6 so every coefficient is an integer: 72A + 18B + 6C + 3D + 2E = 1200
-    cons.append(72 * A + 18 * B + 6 * C + 3 * D + 2 * E == 6 * TOTAL)
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
 
-    # no brigand had less than one doubloon: unary_count starts at 1, so every
-    # count is at least 1 by construction (no extra constraint)
-
-    return cons, {"A": A, "B": B, "C": C, "D": D, "E": E}
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

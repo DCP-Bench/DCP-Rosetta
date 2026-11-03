@@ -1,66 +1,91 @@
-"""Hidato: a grid is partly filled with numbers. Fill the empty cells so that the grid holds
-each of the numbers 1..(rows * columns) once and every number k is next to the number k + 1,
-horizontally, vertically or diagonally (the numbers form a path through the grid).
+# hidato: a PuLP (Python) model from DCP Rosetta.
+# Download the `hidato.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python hidato.py hidato.json
 
-The model reports the filled grid.
-"""
 import pulp
 
 
-def build(instance):
-    puzzle = instance["puzzle"]  # puzzle[r][c] > 0 is a given number, 0 means empty
+def create_model(instance):
+    """A hidato puzzle is a grid partly filled with numbers. Fill the empty cells with the
+    numbers 1 to rows * columns, each once, so that every number is next to the next one,
+    horizontally, vertically or diagonally."""
+    puzzle = instance["puzzle"]  # puzzle[r][c] is the number printed in row r, column c, 0 when empty
     rows, cols = len(puzzle), len(puzzle[0])
-    total = rows * cols  # the numbers are 1..total
+    n_cells = rows * cols  # the numbers are 1 to n_cells
+
+    # The cells of the grid, and each given cell with its number.
     squares = [(r, c) for r in range(rows) for c in range(cols)]
     givens = [((r, c), puzzle[r][c]) for r, c in squares if puzzle[r][c] > 0]
 
-    problem = pulp.LpProblem("hidato", pulp.LpMinimize)  # satisfaction: no objective
+    # A satisfaction problem: any filling that follows the rules will do.
+    problem = pulp.LpProblem("hidato", pulp.LpMinimize)
 
-    # Which numbers a cell can hold. Consecutive numbers touch, so from number k to number g
-    # the path makes |k - g| steps of one cell (diagonals included): two cells holding k and g
-    # are at most |k - g| apart in that sense (the larger of the row and column distances).
-    # A cell can only hold k if this holds for every given number; a given cell holds its own
-    # number only. This follows from the rules and only leaves out impossible placements.
+    # The number of moves from cell p to cell q, when a move goes to any touching cell.
     def apart(p, q):
         return max(abs(p[0] - q[0]), abs(p[1] - q[1]))
 
+    # Cell p can hold the number k only if p is the given cell holding k. An empty cell
+    # can hold k only if it is within reach of every given number g: consecutive numbers
+    # touch, so the cell is at most |k - g| moves from the cell of g.
     def possible(p, k):
         if puzzle[p[0]][p[1]] > 0:
             return k == puzzle[p[0]][p[1]]
         return all(apart(p, q) <= abs(k - g) for q, g in givens)
 
-    # put[(p, k)] = 1 if cell p holds the number k, for the possible placements only. Every cell
-    # holds one number and every number is in one cell (all numbers are different and there are
-    # as many numbers as cells). x reads the number of a cell back.
+    # put[(p, k)] is 1 when cell p holds the number k, for each placement the rules allow.
     put = {(p, k): pulp.LpVariable(f"put_{p[0]}_{p[1]}_{k}", cat="Binary")
-           for p in squares for k in range(1, total + 1) if possible(p, k)}
-    x = [[pulp.LpVariable(f"x_{r}_{c}", 1, total, cat="Integer") for c in range(cols)]
+           for p in squares for k in range(1, n_cells + 1) if possible(p, k)}
+    # x[r][c] is the number in row r, column c.
+    x = [[pulp.LpVariable(f"x_{r}_{c}", 1, n_cells, cat="Integer") for c in range(cols)]
          for r in range(rows)]
+
+    # Each cell holds exactly one number, and x is that number.
     for p in squares:
-        options = [k for k in range(1, total + 1) if (p, k) in put]
+        options = [k for k in range(1, n_cells + 1) if (p, k) in put]
         problem += pulp.lpSum(put[(p, k)] for k in options) == 1
         problem += x[p[0]][p[1]] == pulp.lpSum(k * put[(p, k)] for k in options)
-    for k in range(1, total + 1):
+
+    # Each number from 1 to n_cells is in exactly one cell.
+    for k in range(1, n_cells + 1):
         problem += pulp.lpSum(put[(p, k)] for p in squares if (p, k) in put) == 1
 
-    # the given numbers are fixed
+    # The given numbers stay in their cells.
     for p, g in givens:
         problem += put[(p, g)] == 1
 
-    # the (up to eight) cells next to a cell
+    # The cells touching cell (r, c), horizontally, vertically or diagonally: up to eight.
     def neighbours(r, c):
         return [(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)
                 if (dr, dc) != (0, 0) and 0 <= r + dr < rows and 0 <= c + dc < cols]
 
-    # Consecutive numbers touch: if a cell holds k (k < total), a neighbouring cell holds k + 1;
-    # and if it holds k (k > 1), a neighbouring cell holds k - 1. (The second follows from the
-    # first once every number is placed; it is stated as well because it tightens the
-    # relaxation.)
+    # Consecutive numbers touch. If cell p holds k, one cell next to p holds k + 1, and
+    # one cell next to p holds k - 1.
     for (p, k), var in put.items():
         near = neighbours(*p)
-        if k < total:
+        if k < n_cells:
             problem += var <= pulp.lpSum(put[(q, k + 1)] for q in near if (q, k + 1) in put)
         if k > 1:
             problem += var <= pulp.lpSum(put[(q, k - 1)] for q in near if (q, k - 1) in put)
 
     return problem, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

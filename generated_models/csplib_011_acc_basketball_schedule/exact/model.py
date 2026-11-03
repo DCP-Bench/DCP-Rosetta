@@ -1,54 +1,85 @@
-# ACC basketball schedule (CSPLib prob011): a double round-robin timetable for the nine teams of the
-# 1997/98 Atlantic Coast Conference over 18 dates, with mirroring, home/away/bye pattern, weekend,
-# rival and opponent-sequence rules. config[d][t] is the opponent of team t on date d (t itself
-# for a bye) and where[d][t] says whether team t plays at home (0), has a bye (1) or is away (2).
+# csplib_011_acc_basketball_schedule: an Exact (Python) model from DCP Rosetta.
+# Download the `csplib_011_acc_basketball_schedule.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python csplib_011_acc_basketball_schedule.py csplib_011_acc_basketball_schedule.json
+
+from itertools import permutations
+
 from exact import Exact
 
 
-def build(instance):
-    n_teams = instance["n_teams"]
-    n_days = instance["n_days"]
+def create_model(instance):
+    """Schedule the 1997/98 Atlantic Coast Conference basketball season: over the dates, each
+    team plays every other team once at home and once away, subject to the rules below."""
+    n_teams = instance["n_teams"]  # number of teams
+    n_days = instance["n_days"]    # number of dates in the season
     teams = range(n_teams)
     days = range(n_days)
+    last = n_days - 1              # the last date
 
-    # The teams and the rules below are those of the ACC problem (9 teams, 18 dates), taken from
-    # the problem statement and the reference rather than from the instance.
-    CLEM, DUKE, FSU, GT, UMD, UNC, NCSt, UVA, WAKE = range(9)
-    HOME, BYE, AWAY = 0, 1, 2
-    rivals = [GT, UNC, FSU, CLEM, UVA, DUKE, WAKE, UMD, NCSt]  # rivals[t]; FSU has none
-    # Nemhauser and Trick's mirroring scheme: dates (r1, r2) with the same pairings, 0-based.
+    # Clemson, Duke, Florida State, Georgia Tech, Maryland, North Carolina, North Carolina State,
+    # Virginia and Wake Forest.
+    CLEM, DUKE, FSU, GT, UMD, UNC, NCSt, UVA, WAKE = teams
+    HOME, BYE, AWAY = 0, 1, 2  # the three ways a team can be placed on a date
+    # rivals[t] is the traditional rival of team t. Florida State has none.
+    rivals = [GT, UNC, FSU, CLEM, UVA, DUKE, WAKE, UMD, NCSt]
+    # Nemhauser and Trick's mirroring scheme: each pair of dates has the same pairings, with home
+    # and away swapped.
     mirrored = [(0, 7), (1, 8), (2, 11), (3, 12), (4, 13), (5, 14), (6, 15), (9, 16), (10, 17)]
-    weekends = [d for d in days if d % 2 == 1]  # the second and every later even date
+    # The second, fourth, ... and eighteenth dates are weekends; the others are weekdays.
+    weekends = [d for d in days if d % 2 == 1]
 
     solver = Exact()
 
-    # Variables are 0/1 indicators of the schedule, from which the integer outputs are derived.
-    #   meet[d][a][b] (a < b): teams a and b play each other on date d (one variable for both
-    #                          directions, so "if i plays j then j plays i" holds by construction)
-    #   hosts[d][t][o]       : on date d team t plays team o at home (in t's venue)
-    #   bye[d][t], at_home[d][t], away[d][t]: team t has a bye / plays at home / plays away on date d
+    # meet_name(d, a, b) is 1 when teams a and b play each other on date d. One variable covers
+    # both teams, so they always agree on the match.
     def meet_name(d, a, b):
         return f"meet_{d}_{min(a, b)}_{max(a, b)}"
 
+    # hosts_name(d, t, o) is 1 when team t plays team o at home on date d.
     def hosts_name(d, t, o):
         return f"hosts_{d}_{t}_{o}"
+
+    # plays(d, t, o) is 1 when team t meets team o on date d. For o equal to t it is the bye
+    # variable: 1 when team t has a bye on date d.
+    def plays(d, t, o):
+        return f"bye_{d}_{t}" if o == t else meet_name(d, t, o)
+
+    # The statement fixes these values on particular dates. A variable listed here has only that
+    # value.
+    fixed = {
+        meet_name(10, UNC, DUKE): 1,   # UNC plays Duke on date 11
+        meet_name(last, UNC, DUKE): 1, # UNC plays Duke on the last date
+        meet_name(1, UNC, CLEM): 1,    # UNC plays Clemson on the second date
+        f"bye_15_{DUKE}": 1,           # Duke has a bye on date 16
+        f"at_home_16_{WAKE}": 0,       # Wake Forest does not play at home on date 17
+        f"bye_0_{WAKE}": 1,            # Wake Forest has a bye on the first date
+        f"bye_0_{UNC}": 0,             # UNC does not have a bye on the first date
+    }
+    fixed.update({f"away_{last}_{t}": 0 for t in (CLEM, DUKE, UMD, WAKE)})  # no away game on the last date
+    fixed.update({f"away_0_{t}": 0 for t in (CLEM, FSU, GT, WAKE)})         # no away game on the first date
+    fixed.update({f"bye_{last}_{t}": 0 for t in (FSU, NCSt)})               # no bye on the last date
+
+    # Exact identifies its variables by name.
+    # A variable the statement fixes has that single value. Every other variable is 0 or 1.
+    def declare(name):
+        lo, hi = (fixed[name],) * 2 if name in fixed else (0, 1)
+        solver.addVariable(name, lo, hi)
 
     for d in days:
         for a in teams:
             for b in range(a + 1, n_teams):
-                solver.addVariable(meet_name(d, a, b), 0, 1)
+                declare(meet_name(d, a, b))
             for o in teams:
                 if o != a:
-                    solver.addVariable(hosts_name(d, a, o), 0, 1)
+                    declare(hosts_name(d, a, o))
             for kind in ("bye", "at_home", "away"):
-                solver.addVariable(f"{kind}_{d}_{a}", 0, 1)
+                declare(f"{kind}_{d}_{a}")
 
-    def plays(d, t, o):
-        """name of the variable that is 1 when team t's opponent on date d is o (o == t: bye)"""
-        return f"bye_{d}_{t}" if o == t else meet_name(d, t, o)
-
-    # config[d][t] and where[d][t] are the declared outputs; both are channelled below.
+    # config[d][t] is the opponent of team t on date d, or team t itself on a bye.
     config = [[f"config_{d}_{t}" for t in teams] for d in days]
+    # where[d][t] is HOME, BYE or AWAY for team t on date d.
     where = [[f"where_{d}_{t}" for t in teams] for d in days]
     for d in days:
         for t in teams:
@@ -57,17 +88,15 @@ def build(instance):
 
     for d in days:
         for t in teams:
-            # On each date a team plays exactly one team or has a bye. Because meet is shared by
-            # the two teams, the opponents of all teams on a date are different, and if i plays j
-            # then j plays i.
+            # Each team plays exactly one opponent on each date, or has a bye.
             solver.addConstraint([(1, plays(d, t, o)) for o in teams], True, 1, True, 1)
 
-            # When two teams meet, one is at home and the other away: meet = hosts[t][o] + hosts[o][t]
+            # When two teams meet on a date, one hosts the other.
             for o in teams:
                 if o > t:
                     solver.addConstraint([(1, meet_name(d, t, o)), (-1, hosts_name(d, t, o)),
                                           (-1, hosts_name(d, o, t))], True, 0, True, 0)
-            # A team is at home when it hosts someone, and away when someone hosts it.
+            # A team is at home on a date when it hosts someone, and away when someone hosts it.
             solver.addConstraint([(1, f"at_home_{d}_{t}")] +
                                  [(-1, hosts_name(d, t, o)) for o in teams if o != t],
                                  True, 0, True, 0)
@@ -75,21 +104,20 @@ def build(instance):
                                  [(-1, hosts_name(d, o, t)) for o in teams if o != t],
                                  True, 0, True, 0)
 
-            # config[d][t] is the opponent (t itself for a bye); where[d][t] is 0 at home, 1 on a
-            # bye, 2 away.
-            solver.addConstraint([(1, config[d][t])] + [(-o, plays(d, t, o)) for o in teams if o != 0],
+            # config and where report the opponent and the placement of team t on date d.
+            solver.addConstraint([(1, config[d][t])] + [(-o, plays(d, t, o)) for o in teams],
                                  True, 0, True, 0)
             solver.addConstraint([(1, where[d][t]), (-BYE, f"bye_{d}_{t}"), (-AWAY, f"away_{d}_{t}")],
                                  True, 0, True, 0)
 
-    # Double round-robin: each team plays each other team twice, once at home and once away.
+    # Each team hosts each other team once over the season: every pair plays once at each venue.
     for t in teams:
         for o in teams:
             if o != t:
                 solver.addConstraint([(1, hosts_name(d, t, o)) for d in days], True, 1, True, 1)
 
-    # 1. Mirroring: the dates are grouped in pairs (r1, r2) that have the same pairings, with home
-    # and away exchanged (where[r1] = 2 - where[r2], so a bye stays a bye).
+    # Mirroring: the dates of a pair have the same pairings, with home and away swapped. A bye
+    # stays a bye.
     for r1, r2 in mirrored:
         for t in teams:
             solver.addConstraint([(1, f"bye_{r1}_{t}"), (-1, f"bye_{r2}_{t}")], True, 0, True, 0)
@@ -101,14 +129,14 @@ def build(instance):
                     solver.addConstraint([(1, hosts_name(r1, t, o)), (-1, hosts_name(r2, o, t))],
                                          True, 0, True, 0)
 
-    # 2. No two final aways: no team plays away on both of the last two dates.
+    # No team plays away on both of the last two dates.
     for t in teams:
-        solver.addConstraint([(1, f"away_{n_days - 2}_{t}"), (1, f"away_{n_days - 1}_{t}")],
+        solver.addConstraint([(1, f"away_{n_days - 2}_{t}"), (1, f"away_{last}_{t}")],
                              False, 0, True, 1)
 
-    # 3. Home/away/bye pattern constraints
+    # Home, away and bye runs over consecutive dates.
     for t in teams:
-        # No team has more than two home matches in a row, nor more than two away matches in a row.
+        # No team has more than two home matches in a row, or more than two away matches in a row.
         for d in range(n_days - 2):
             solver.addConstraint([(1, f"at_home_{k}_{t}") for k in range(d, d + 3)],
                                  False, 0, True, 2)
@@ -123,69 +151,64 @@ def build(instance):
             solver.addConstraint([(1, f"{kind}_{k}_{t}") for k in range(d, d + 5)
                                   for kind in ("at_home", "bye")], False, 0, True, 4)
 
-    # 4. Weekend pattern: of the weekends, each team plays four at home, four away and one bye.
+    # Weekend pattern: over the weekends, each team plays four matches at home, four away and has
+    # one bye.
     for t in teams:
         for kind, count in (("at_home", 4), ("away", 4), ("bye", 1)):
             solver.addConstraint([(1, f"{kind}_{d}_{t}") for d in weekends], True, count, True, count)
 
-    # 5. First weekends: each team has a home match or a bye on at least two of the first five weekends.
+    # First weekends: each team has a home match or a bye on at least two of the first five weekends.
     for t in teams:
         solver.addConstraint([(1, f"{kind}_{d}_{t}") for d in weekends[:5]
                               for kind in ("at_home", "bye")], True, 2)
 
-    # 6. Rival matches: on the last date every team except FSU plays its rival, unless it plays FSU
-    # or has a bye. The three cases exclude each other, so their sum must be at least 1.
-    last = n_days - 1
+    # Rival matches: on the last date every team except Florida State plays its rival, unless it
+    # plays Florida State or has a bye. These three cases exclude each other, so at least one holds.
     for t in teams:
         if t != FSU:
             solver.addConstraint([(1, plays(last, t, rivals[t])), (1, plays(last, t, FSU)),
                                   (1, plays(last, t, t))], True, 1)
 
-    # 7. Constrained matches: Wake-UNC, Wake-Duke, GT-UNC and GT-Duke are each played at least once
-    # in dates 11 to 18 (0-based 10..17).
+    # Constrained matches: Wake Forest-UNC, Wake Forest-Duke, Georgia Tech-UNC and Georgia
+    # Tech-Duke each take place at least once on dates 11 to 18.
     for a, b in ((WAKE, UNC), (WAKE, DUKE), (GT, UNC), (GT, DUKE)):
         solver.addConstraint([(1, meet_name(d, a, b)) for d in range(10, n_days)], True, 1)
 
-    # 8. Opponent sequence constraints
+    # Opponent sequences.
     for t in teams:
-        # No team plays two dates in a row away against UNC and Duke (in either order).
+        # Apart from Duke and UNC, no team plays away against UNC and Duke on two consecutive
+        # dates, in either order.
         if t not in (DUKE, UNC):
             for d in range(n_days - 1):
                 for first, second in ((UNC, DUKE), (DUKE, UNC)):
                     solver.addConstraint([(1, meet_name(d, t, first)), (1, f"away_{d}_{t}"),
                                           (1, meet_name(d + 1, t, second)),
                                           (1, f"away_{d + 1}_{t}")], False, 0, True, 3)
-        # No team plays three dates in a row against UNC, Duke and Wake in any order
-        # (home or away).
+        # Apart from UNC, Duke and Wake Forest, no team meets UNC, Duke and Wake Forest on three
+        # consecutive dates, in any order, home or away.
         if t not in (UNC, DUKE, WAKE):
             for d in range(n_days - 2):
-                for x, y, z in ((UNC, DUKE, WAKE), (UNC, WAKE, DUKE), (DUKE, UNC, WAKE),
-                                (DUKE, WAKE, UNC), (WAKE, UNC, DUKE), (WAKE, DUKE, UNC)):
+                for x, y, z in permutations((UNC, DUKE, WAKE)):
                     solver.addConstraint([(1, meet_name(d, t, x)), (1, meet_name(d + 1, t, y)),
                                           (1, meet_name(d + 2, t, z))], False, 0, True, 2)
 
-    # 9. Other constraints
-    # UNC plays its rival Duke on the last date and on date 11.
-    solver.addConstraint([(1, meet_name(10, UNC, DUKE))], True, 1, True, 1)
-    solver.addConstraint([(1, meet_name(last, UNC, DUKE))], True, 1, True, 1)
-    # UNC plays Clem on the second date.
-    solver.addConstraint([(1, meet_name(1, UNC, CLEM))], True, 1, True, 1)
-    # Duke has a bye on date 16.
-    solver.addConstraint([(1, f"bye_15_{DUKE}")], True, 1, True, 1)
-    # Wake does not play home on date 17.
-    solver.addConstraint([(1, f"at_home_16_{WAKE}")], True, 0, True, 0)
-    # Wake has a bye on the first date.
-    solver.addConstraint([(1, f"bye_0_{WAKE}")], True, 1, True, 1)
-    # Clem, Duke, UMD and Wake do not play away on the last date.
-    for t in (CLEM, DUKE, UMD, WAKE):
-        solver.addConstraint([(1, f"away_{last}_{t}")], True, 0, True, 0)
-    # Clem, FSU, GT and Wake do not play away on the first date.
-    for t in (CLEM, FSU, GT, WAKE):
-        solver.addConstraint([(1, f"away_0_{t}")], True, 0, True, 0)
-    # Neither FSU nor NCSt has a bye on the last date.
-    for t in (FSU, NCSt):
-        solver.addConstraint([(1, f"bye_{last}_{t}")], True, 0, True, 0)
-    # UNC does not have a bye on the first date.
-    solver.addConstraint([(1, f"bye_0_{UNC}")], True, 0, True, 0)
-
     return solver, {"config": config, "where": where}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

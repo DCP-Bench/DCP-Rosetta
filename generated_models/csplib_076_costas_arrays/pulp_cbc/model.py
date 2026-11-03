@@ -1,49 +1,77 @@
-"""Costas array: place n marks on an n x n grid, one per row and one per column, so that the
-n(n-1)/2 vectors between pairs of marks are all different. With costas[i] the column of
-the mark in row i, this says: for every lag l, the differences costas[i + l] - costas[i]
-are all different.
+# csplib_076_costas_arrays: a PuLP (Python) model from DCP Rosetta.
+# Download the `csplib_076_costas_arrays.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python csplib_076_costas_arrays.py csplib_076_costas_arrays.json
 
-The model reports the column of the mark in each row (1-based).
-"""
 import pulp
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """Place n marks on an n-by-n grid, one per row and one per column, so that the
+    n(n-1)/2 vectors between pairs of marks are all different (a Costas array)."""
+    n = instance["n"]  # size of the grid and number of marks
+    columns = range(1, n + 1)
 
     problem = pulp.LpProblem("costas_array", pulp.LpMinimize)  # satisfaction: no objective
 
-    # costas[i] = column of the mark in row i. A permutation of 1..n, stated as an
-    # assignment matrix: put[i][v] = 1 if the mark of row i is in column v.
-    columns = range(1, n + 1)
-    put = pulp.LpVariable.dicts("put", (range(n), columns), cat="Binary")
+    # put[i][v] is 1 when the mark in row i is in column v, and 0 when not
+    put = {i: {v: pulp.LpVariable(f"put_{i}_{v}", cat="Binary") for v in columns} for i in range(n)}
+
+    # costas[i] is the column of the mark in row i, counting columns from 1
     costas = [pulp.LpVariable(f"costas_{i}", 1, n, cat="Integer") for i in range(n)]
+
+    # Each row has one mark, and costas[i] is its column.
     for i in range(n):
         problem += pulp.lpSum(put[i][v] for v in columns) == 1
         problem += costas[i] == pulp.lpSum(v * put[i][v] for v in columns)
+
+    # Each column has one mark.
     for v in columns:
         problem += pulp.lpSum(put[i][v] for i in range(n)) == 1
 
-    # For every lag l = 1..n-2 the differences costas[i + l] - costas[i] are all different
-    # (lag n-1 has a single difference). The pair of rows (i, i + l) has marks in columns
-    # (u, v) and its difference is v - u. pair[(i, u, v)] = 1 if the marks
-    # of rows i and i + l are in columns u and v. It is tied to the two rows (the pairs that
-    # start in column u add up to put[i][u], those that end in column v to put[i + l][v]),
-    # which keeps the relaxation tight; it is continuous, since once put is 0/1 these sums
-    # leave a single pair with value 1.
-    column_pairs = [(u, v) for u in columns for v in columns]
-    for l in range(1, n - 1):
+    # For each row gap gap from 1 to n - 2, the differences between the columns of the marks
+    # in rows i and i + gap are all different.
+    for gap in range(1, n - 1):
+        # pair[(i, u, v)] is 1 when the marks in rows i and i + gap are in columns u and v,
+        # and 0 when not. The constraints below make each one 0 or 1.
         pair = {}
-        for i in range(n - l):
-            for (u, v) in column_pairs:
-                pair[(i, u, v)] = pulp.LpVariable(f"pair_{l}_{i}_{u}_{v}", 0, 1)
+        for i in range(n - gap):
+            for u in columns:
+                for v in columns:
+                    pair[(i, u, v)] = pulp.LpVariable(f"pair_{gap}_{i}_{u}_{v}", 0, 1)
+
+            # The pairs that start in column u add up to whether row i has its mark in column u.
             for u in columns:
                 problem += pulp.lpSum(pair[(i, u, v)] for v in columns) == put[i][u]
+
+            # The pairs that end in column v add up to whether row i + gap has its mark in column v.
             for v in columns:
-                problem += pulp.lpSum(pair[(i, u, v)] for u in columns) == put[i + l][v]
-        # all differences of this lag are different: each difference d is made by at most one pair of rows
+                problem += pulp.lpSum(pair[(i, u, v)] for u in columns) == put[i + gap][v]
+
+        # Each difference of columns is taken by at most one pair of rows for this gap.
         for d in range(-(n - 1), n):
             problem += pulp.lpSum(
-                pair[(i, u, v)] for i in range(n - l) for (u, v) in column_pairs if v - u == d) <= 1
+                pair[(i, u, v)] for i in range(n - gap) for u in columns for v in columns
+                if v - u == d) <= 1
 
     return problem, {"costas": costas}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

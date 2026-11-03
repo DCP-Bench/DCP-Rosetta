@@ -1,8 +1,9 @@
-"""Runner protocol for the mip_cbc integration. Runs inside the image only.
+"""Runner protocol for the python_mip_cbc integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(model, outputs)`, where `model` is a
-`mip.Model` (Python-MIP, default solver CBC) and `outputs` maps each declared output to a
-variable, a linear expression, an integer or Boolean, or a nested list/tuple/dict of these.
+A submission defines `create_model(instance)` (`build` in models retained earlier)
+returning `(model, outputs)`, where `model` is a `mip.Model` (Python-MIP, default solver
+CBC) and `outputs` maps each declared output to a variable, a linear expression, an
+integer or Boolean, or a nested list/tuple/dict of these.
 Whether the model optimises is read from its objective: a model with no objective terms
 and a zero constant is a satisfaction problem, whatever its `sense`.
 
@@ -126,14 +127,15 @@ def load(instance):
     spec = importlib.util.spec_from_file_location("candidate", str(INPUT / "model.py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    returned = module.build(instance)
+    create_model = getattr(module, "create_model", None) or module.build
+    returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("build(instance) must return (model, outputs)")
+        raise ValueError("create_model(instance) must return (model, outputs)")
     model, outputs = returned
     if not isinstance(model, mip.Model):
-        raise ValueError("build(instance) must return a mip.Model")
+        raise ValueError("create_model(instance) must return a mip.Model")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return model, outputs
 
 
@@ -294,7 +296,7 @@ def main():
         request = json.loads((INPUT / "request.json").read_text())
         READ_SECONDS = time.monotonic() - STARTED
         if request.get("legacy"):
-            return finish("unsupported", "Legacy submissions are not supported by mip_cbc")
+            return finish("unsupported", "Legacy submissions are not supported by python_mip_cbc")
         signal.signal(signal.SIGALRM, expired)
         signal.setitimer(signal.ITIMER_REAL, request["execution_timeout"] + 5)
         solve(request)

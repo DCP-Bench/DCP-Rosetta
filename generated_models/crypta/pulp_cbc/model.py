@@ -1,47 +1,71 @@
+# crypta: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+# Run it (after `pip install pulp numpy`) with:
+#   python crypta.py
+
 import pulp
 
 
-def build(instance):
-    """Crypta: a twenty-letter cryptarithmetic addition over ten distinct
-    digits, checked seven digits at a time with two carries between blocks.
-    """
-    del instance
+def create_model(instance):
+    """Cryptarithmetic puzzle: each of the letters A to J stands for a different
+    digit from 0 to 9, no number starts with a zero, and the addition of the two
+    twenty-letter numbers must give the third."""
+
+    def number(digits):
+        """The number written by a list of digits, most significant digit first."""
+        return pulp.lpSum(value * 10 ** k for k, value in enumerate(reversed(digits)))
 
     names = "ABCDEFGHIJ"
-    n = 10
     problem = pulp.LpProblem("crypta", pulp.LpMinimize)
 
-    # All-different over the ten digits as a permutation matrix.
-    pick = pulp.LpVariable.dicts("pick", (range(n), range(n)), cat="Binary")
-    letter = {}
-    for i, name in enumerate(names):
-        letter[name] = pulp.LpVariable(name, 0, 9, cat="Integer")
-        problem += pulp.lpSum(pick[i][d] for d in range(n)) == 1
-        problem += letter[name] == pulp.lpSum(d * pick[i][d] for d in range(n))
-    for d in range(n):
-        problem += pulp.lpSum(pick[i][d] for i in range(n)) == 1
+    # digit[name] is the digit that the letter stands for. B, D and G start the three numbers, so they are not zero.
+    digit = {name: pulp.LpVariable(name, 1 if name in "BDG" else 0, 9, cat="Integer")
+             for name in names}
 
-    a, b, c, d_, e, f, g, h, i_, j = (letter[x] for x in names)
+    # pick[name][d] is 1 when the letter stands for the digit d.
+    pick = {name: {d: pulp.LpVariable(f"pick_{name}_{d}", cat="Binary") for d in range(10)}
+            for name in names}
+    for name in names:
+        # Each letter stands for exactly one digit.
+        problem += pulp.lpSum(pick[name].values()) == 1
+        # The digit of the letter is the digit it picks.
+        problem += digit[name] == pulp.lpSum(d * pick[name][d] for d in range(10))
+    # Different letters stand for different digits: each digit is taken by exactly one letter.
+    for d in range(10):
+        problem += pulp.lpSum(pick[name][d] for name in names) == 1
+
+    A, B, C, D, E, F, G, H, I, J = (digit[name] for name in names)
+
+    # carry1 is 1 when the lowest seven digits carry into the middle seven digits, and
+    # carry2 is 1 when the middle seven digits carry into the top six digits.
     carry1 = pulp.LpVariable("carry1", cat="Binary")
     carry2 = pulp.LpVariable("carry2", cat="Binary")
 
-    # No number may start with a zero.
-    problem += b >= 1
-    problem += d_ >= 1
-    problem += g >= 1
+    # The lowest seven digits of the two added numbers, plus nothing, give the lowest
+    # seven digits of the sum, with carry1 going into the middle block.
+    problem += (number([F, E, B, B, J, E, A]) + number([F, A, G, F, E, J, E])
+                == number([B, F, I, H, E, E, F]) + 10 ** 7 * carry1)
+    # The middle seven digits of the two added numbers, plus carry1, give the middle seven
+    # digits of the sum, with carry2 going into the top block.
+    problem += (number([J, I, I, A, H, F, C]) + number([C, D, I, D, B, I, F]) + carry1
+                == number([D, D, H, F, A, F, J]) + 10 ** 7 * carry2)
+    # The top six digits of the two added numbers, plus carry2, give the top six digits
+    # of the sum, with nothing carried out.
+    problem += (number([B, A, I, J, J, A]) + number([D, H, F, G, A, B]) + carry2
+                == number([G, J, E, G, A, C]))
 
-    problem += (a + 10 * e + 100 * j + 1000 * b + 10000 * b + 100000 * e
-                + 1000000 * f + e + 10 * j + 100 * e + 1000 * f + 10000 * g
-                + 100000 * a + 1000000 * f
-                == f + 10 * e + 100 * e + 1000 * h + 10000 * i_ + 100000 * f
-                + 1000000 * b + 10000000 * carry1)
-    problem += (c + 10 * f + 100 * h + 1000 * a + 10000 * i_ + 100000 * i_
-                + 1000000 * j + f + 10 * i_ + 100 * b + 1000 * d_ + 10000 * i_
-                + 100000 * d_ + 1000000 * c + carry1
-                == j + 10 * f + 100 * a + 1000 * f + 10000 * h + 100000 * d_
-                + 1000000 * d_ + 10000000 * carry2)
-    problem += (a + 10 * j + 100 * j + 1000 * i_ + 10000 * a + 100000 * b + b
-                + 10 * a + 100 * g + 1000 * f + 10000 * h + 100000 * d_ + carry2
-                == c + 10 * a + 100 * g + 1000 * e + 10000 * j + 100000 * g)
+    return problem, {name: digit[name] for name in names}
 
-    return problem, {name: letter[name] for name in names}
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

@@ -2,7 +2,11 @@
   "attempt": {
     "agent": "claude-opus-5 / model-generator campaign (100 models, five thinnest integrations, solution_limit 10)",
     "attempt_id": "attempt-001",
-    "created_at": 1789558850.1093187,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/pulp/python/CONTRACT.md": "e86159499f7e679c3b2d7fbd9209c998bf67e20192b9c82f2810fc9fd7cfc12b"
+    },
+    "created_at": 1793659682.825946,
     "problem_id": "fifty_puzzle",
     "profile": {
       "compilation_timeout": 120,
@@ -11,33 +15,54 @@
       "instance_count": 99,
       "memory_mb": 2048,
       "reference_timeout": 180,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "317bfd75316a3d8d14054e7969cfe5b1649026b0fdf8c512affefa34bd36cc07",
-    "run_id": "20260916T112106-8a52",
-    "schema": 2,
-    "skill_bundle_hash": "4691959542f86349cdad4ef164c8c798ae089f8f2e77edc164a79b77a7d30fb2",
-    "skill_source": "solvers\\pulp_cbc\\skills\\pulp-cbc",
+    "readiness_hash": "6448d514caf75b83bc8666101e9df2d23afb79654085df535c78cb0bdb537ee9",
+    "run_id": "pulp-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "0b486b8faa05763f01b73d79ba4f24f4a93d2df7",
+      "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
       "modified": false,
-      "path": "solvers/pulp_cbc/skills/pulp-cbc"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b71e3bb22dc1c35363f948461e671aff1a0904f42c8dd88a885950e500d79127",
+        "source": "solvers/pulp/skills/dcp-pulp",
+        "version": {
+          "commit": "62aa7d4a1977b8351696d36b62fcfc7b1a364622",
+          "modified": false,
+          "path": "solvers/pulp/skills/dcp-pulp"
+        }
+      }
+    ],
     "solver_id": "pulp_cbc"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:ca4aac137e9cea374b23272d4faaf82184ecc724a5a7e431504e2c6b88078800",
+      "id": "sha256:a6bc246dd25ba8281d66531eb8f410eb5113d6b0d8414573020b51bb92a53b5e",
+      "recipe": "sha256:31eb5f47721802817b1a13d9b044d8864d135284f1500b02cbb9316ede479075",
       "tag": "dcp-eval/pulp_cbc:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.00421659997664392,
-        "execution_wall_seconds": 2.3643144000088796,
+        "checking_seconds": 0.0016551041044294834,
+        "execution_wall_seconds": 0.39821736700832844,
         "first_solution": {
           "dummies": [
             false,
@@ -55,14 +80,188 @@
         "id": "example",
         "instance_hash": "a2dc95b505850f570fa38760b448ee02c3a7572e170f9ac3d6c75d07697f30f7",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "dummies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.471337700029835,
+        "reference_setup_seconds": 0.42840649106074125,
         "runner_status": {
+          "build_seconds": 0.0009304030099883676,
           "detail": "",
+          "main_seconds": 0.03566575993318111,
+          "read_seconds": 0.00015295296907424927,
+          "status": "complete",
+          "type": "status"
+        },
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.002865376998670399,
+        "execution_wall_seconds": 0.3482871270971373,
+        "first_solution": {
+          "dummies": [
+            false,
+            true,
+            true,
+            false,
+            true,
+            true,
+            true,
+            false,
+            false,
+            true
+          ]
+        },
+        "id": "json:1",
+        "instance_hash": "96cedb5dc4fe5aef069577fad2cf1c5f2e085c23a9743f16fc438119b30e17a0",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "dummies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4373125130077824,
+        "runner_status": {
+          "build_seconds": 0.0008198540890589356,
+          "detail": "",
+          "main_seconds": 0.014732173993252218,
+          "read_seconds": 0.00012053805403411388,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.004288933938369155,
+        "execution_wall_seconds": 0.4493745240615681,
+        "first_solution": {
+          "dummies": [
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false
+          ]
+        },
+        "id": "json:2",
+        "instance_hash": "951154ebf8e3197724f89466a06e469660dfffbb3de14ffedf02f439cf409ca4",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "dummies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.45959602599032223,
+        "runner_status": {
+          "build_seconds": 0.0009573400020599365,
+          "detail": "",
+          "main_seconds": 0.05336982908193022,
+          "read_seconds": 0.00012738804798573256,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.003530226065777242,
+        "execution_wall_seconds": 0.4489761959994212,
+        "first_solution": {
+          "dummies": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false,
+            false
+          ]
+        },
+        "id": "json:3",
+        "instance_hash": "68e4e263a87e9d10b1b7ad78fbe3f150c6f763e144cdcd04335613ef7d3d4def",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "dummies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4159193980740383,
+        "runner_status": {
+          "build_seconds": 0.0009971209801733494,
+          "detail": "",
+          "main_seconds": 0.07167527405545115,
+          "read_seconds": 0.0001321360468864441,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.0018622779753059149,
+        "execution_wall_seconds": 0.3479667690116912,
+        "first_solution": {
+          "dummies": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        },
+        "id": "json:4",
+        "instance_hash": "d02fe86b6149a58c135f22579ae62c25cb9ee35a2a8e1cdc1deab1dc98f14305",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "dummies"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.4260086480062455,
+        "runner_status": {
+          "build_seconds": 0.0009208259871229529,
+          "detail": "",
+          "main_seconds": 0.00982736807782203,
+          "read_seconds": 0.00015743006952106953,
           "status": "complete",
           "type": "status"
         },
@@ -71,8 +270,8 @@
         "stderr": ""
       }
     ],
-    "instances_available": 1,
-    "instances_checked": 1,
+    "instances_available": 5,
+    "instances_checked": 5,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -80,26 +279,26 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "0979d7cca9050fdc86fe4b9c98e0a6e1fa04628bed06486aa4705d0c5ec8f40d",
+    "model_hash": "d4efa4fe6cd8ed33696f09b28a196a850e6d30f50538263b89ad5fd40f9fd4c0",
     "problem_id": "fifty_puzzle",
     "reason": "accepted",
     "reference_hash": "2965715615ca9c1aa3faf0bccb8fb790c9ac64042c65c75c9dcee7c56995353d",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
       "instance_ids": null,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 1,
+    "solutions_checked": 8,
     "solver_id": "pulp_cbc",
-    "total_wall_seconds": 4.417648399947211,
+    "total_wall_seconds": 4.45771170896478,
     "unperformed_instances": []
   },
   "generated_by": {

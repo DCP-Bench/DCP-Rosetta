@@ -1,49 +1,88 @@
-from paramita.modelling import Bool
+# isbn: a Paramita (Python) model from DCP Rosetta.
+# Download the `isbn.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/isbn.html
+# Then install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python isbn.py isbn.json
 
-# ISBN-13 validation and check digit calculation.
-# Each of the 13 digits is one-hot over 0..9. Given digits are fixed by a unit constraint.
-
-DIGITS = range(10)
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_container, to_cnf
 
 
-def build(instance):
-    given = instance["isbn_init"]
-    n = len(given)
+def create_model(instance):
+    """Fill in the unknown digits of a 13-digit ISBN so that it is valid: it starts with
+    978 or 979, and its last digit is the check digit of the first 12 digits, which are
+    weighted alternately by 1 and 3."""
+    given = instance["isbn_init"]  # the digits of the ISBN, -1 for an unknown digit
+    n_digits = len(given)
 
-    # one-hot encoding of each digit position
-    x = [{v: Bool(f"d_{i}_{v}") for v in DIGITS} for i in range(n)]
+    # digit[i][v] is true when digit i of the ISBN is v
+    digit = [{v: Bool(f"digit_{i}_{v}") for v in range(10)} for i in range(n_digits)]
 
-    cons = []
+    # Each position of the ISBN holds exactly one digit from 0 to 9.
+    constraints = [sum(digit[i].values()) == 1 for i in range(n_digits)]
 
-    # each position holds exactly one digit 0..9
-    for i in range(n):
-        cons.append(sum(x[i].values()) == 1)
-
-    # the given digits of the ISBN are fixed
-    # (-1 marks an unknown digit, so no constraint is added for it)
+    # The known digits keep their value.
     for i, g in enumerate(given):
         if g >= 0:
-            cons.append(x[i][g] == 1)
+            constraints.append(digit[i][g] == 1)
 
-    value = [sum(v * x[i][v] for v in DIGITS) for i in range(n)]
+    # value[i] is digit i of the ISBN as a number
+    value = [sum(v * digit[i][v] for v in range(10)) for i in range(n_digits)]
 
-    # the number starts with 978 or 979
-    # (digit 0 is 9, digit 1 is 7, digit 2 is 8 or 9)
-    cons.append(x[0][9] == 1)
-    cons.append(x[1][7] == 1)
-    cons.append(x[2][8] + x[2][9] == 1)
+    # An ISBN-13 starts with 978 or 979.
+    constraints.append(digit[0][9] == 1)
+    constraints.append(digit[1][7] == 1)
+    constraints.append(digit[2][8] + digit[2][9] == 1)
 
-    # check digit: multiply the first 12 digits alternately by 1 and 3 (starting with 1),
-    # then sum the products
-    weighted = sum((1 if i % 2 == 0 else 3) * value[i] for i in range(n - 1))
+    # weighted is the sum of the first 12 digits, weighted alternately by 1 and 3.
+    weights = [1 if i % 2 == 0 else 3 for i in range(n_digits - 1)]
+    weighted = sum(w * value[i] for i, w in enumerate(weights))
 
-    # check digit = (10 - (sum % 10)) % 10, so weighted + check digit is a multiple of 10
-    # (the check digit is a digit 0..9, so it is determined by the sum modulo 10)
-    max_sum = sum((1 if i % 2 == 0 else 3) * 9 for i in range(n - 1)) + 9
-    qs = {q: Bool(f"q_{q}") for q in range(1, max_sum // 10 + 1)}
-    # exactly one multiple of 10 is taken
-    cons.append(sum(qs.values()) == 1)
-    cons.append(weighted + value[n - 1] == sum(10 * q * qs[q] for q in qs))
+    # The check digit is 0 to 9, so the weighted sum plus the check digit is a multiple
+    # of 10. multiple[q] is true when that total is 10 * q.
+    max_sum = sum(9 * w for w in weights) + 9
+    multiple = {q: Bool(f"multiple_{q}") for q in range(1, max_sum // 10 + 1)}
 
-    outputs = {"isbn": value}
-    return cons, outputs
+    # Exactly one such multiple of 10 is taken.
+    constraints.append(sum(multiple.values()) == 1)
+
+    # The weighted sum plus the check digit is that multiple of 10.
+    constraints.append(weighted + value[n_digits - 1] == sum(10 * q * multiple[q] for q in multiple))
+
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {"isbn": value}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs = create_model(instances[index])
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

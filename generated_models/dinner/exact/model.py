@@ -1,25 +1,43 @@
-# Dinner: a party of grandparents, parents and children goes out; there are 20 people in total and
-# the bill is exactly $20. Find how many of each go.
+# dinner: an Exact (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/dinner.html
+# Run it (after `pip install exact numpy`) with:
+#   python dinner.py
+
 from exact import Exact
 
 
-def build(instance):
-    # This problem has no instance data. The head-count ranges, the prices and the totals belong to
-    # the problem statement.
-    people, budget = 20, 20
-
+def create_model(instance):
+    """Twenty people go to dinner, grandparents, parents and children, and the
+    bill is $20: how many of each go?"""
     solver = Exact()
-    # "taking 1-6 grandparents, 1-10 parents and/or 1-40 children"
+
+    # Exact identifies its variables by name.
+    # The number of grandparents going to dinner is 1 to 6.
     solver.addVariable("grandparents", 1, 6)
+    # The number of parents going to dinner is 1 to 10.
     solver.addVariable("parents", 1, 10)
+    # The number of children going to dinner is 1 to 40.
     solver.addVariable("children", 1, 40)
 
-    # There must be 20 people at dinner.
-    solver.addConstraint([(1, "grandparents"), (1, "parents"), (1, "children")],
-                         True, people, True, people)
-    # The bill is $20. Grandparents cost $3, parents $2 and children $0.50; every price is doubled
-    # (6, 4, 1) so that all coefficients are integers, which makes the right-hand side 2 * 20.
-    solver.addConstraint([(6, "grandparents"), (4, "parents"), (1, "children")],
-                         True, 2 * budget, True, 2 * budget)
+    # Twenty people go to dinner in all.
+    solver.addConstraint([(1, "grandparents"), (1, "parents"), (1, "children")], True, 20, True, 20)
+
+    # The bill is $20, which is 40 half dollars. A grandparent costs $3 (6 half dollars), a parent
+    # $2 (4) and a child $0.50 (1).
+    solver.addConstraint([(6, "grandparents"), (4, "parents"), (1, "children")], True, 40, True, 40)
 
     return solver, {"grandparents": "grandparents", "parents": "parents", "children": "children"}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    solver, outputs = create_model({})
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

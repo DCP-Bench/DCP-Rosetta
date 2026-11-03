@@ -1,29 +1,56 @@
-"""Chess sets: a joinery makes small and large boxwood chess sets under limits on lathe hours
-and boxwood, and chooses how many of each to make per week to maximize profit.
+# chess_set: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/chess_set.html
+# Run it (after `pip install pulp numpy`) with:
+#   python chess_set.py
 
-The model reports the number of small and large sets and the maximum profit.
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the problem has no instance data; its figures are below
+def create_model(instance):
+    """A small joinery makes small and large boxwood chess sets from limited lathe hours and
+    boxwood. Decide how many sets of each kind to make each week to maximize profit."""
+    lathe_hours = 4 * 40                # four lathes, 40 hours each a week
+    boxwood_kg = 200                    # boxwood available each week
+    small_lathe, large_lathe = 3, 2     # lathe hours for a small / large set
+    small_wood, large_wood = 1, 3       # kg of boxwood for a small / large set
+    small_profit, large_profit = 5, 20  # profit from a small / large set
+
+    # No more sets of a kind can be made than either resource allows on its own.
+    max_small = min(lathe_hours // small_lathe, boxwood_kg // small_wood)
+    max_large = min(lathe_hours // large_lathe, boxwood_kg // large_wood)
 
     problem = pulp.LpProblem("chess_set", pulp.LpMaximize)
 
-    # sets made per week; the bounds 0..100 and 0..10000 are the reference's domains
-    small_set = pulp.LpVariable("small_set", 0, 100, cat="Integer")
-    large_set = pulp.LpVariable("large_set", 0, 100, cat="Integer")
-    max_profit = pulp.LpVariable("max_profit", 0, 10000, cat="Integer")
+    # small_set and large_set are the numbers of small and large sets made per week
+    small_set = pulp.LpVariable("small_set", 0, max_small, cat="Integer")
+    large_set = pulp.LpVariable("large_set", 0, max_large, cat="Integer")
+    # max_profit is the weekly profit
+    max_profit = pulp.LpVariable(
+        "max_profit", 0, max_small * small_profit + max_large * large_profit, cat="Integer"
+    )
 
-    # boxwood: a small set uses 1 kg and a large set 3 kg, of 200 kg per week
-    problem += small_set + 3 * large_set <= 200
-    # lathes: a small set takes 3 hours and a large set 2 hours, of 160 lathe-hours
-    problem += 3 * small_set + 2 * large_set <= 160
-    # profit: $5 per small set and $20 per large set
-    problem += max_profit == 5 * small_set + 20 * large_set
+    # The boxwood used does not exceed the boxwood available.
+    problem += small_wood * small_set + large_wood * large_set <= boxwood_kg
+    # The lathe hours used do not exceed the hours available.
+    problem += small_lathe * small_set + large_lathe * large_set <= lathe_hours
+    # The profit is the profit of the small sets plus that of the large sets.
+    problem += max_profit == small_profit * small_set + large_profit * large_set
 
-    # maximize the profit
+    # Maximize the profit.
     problem += max_profit
 
     return problem, {"small_set": small_set, "large_set": large_set, "max_profit": max_profit}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

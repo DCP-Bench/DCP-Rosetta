@@ -1,60 +1,88 @@
-# Flow Free: a board has some cells already holding a colour (the pipe ends) and empty cells. Colour
-# every cell so that pipes of one colour form paths: an end cell touches exactly one cell of its
-# colour, any other cell touches exactly two cells of its colour.
+# flow_free_game: an Exact (Python) model from DCP Rosetta.
+# Download the `flow_free_game.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flow_free_game.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python flow_free_game.py flow_free_game.json
+
 from exact import Exact
 
 
-def build(instance):
-    board = instance["board"]  # board[i][j] is the colour at row i, column j, or 0 when empty
-    rows, cols = len(board), len(board[0])
-    colours = range(1, 11)  # the reference lets every cell take a colour from 1 to 10
+def create_model(instance):
+    """Flow Free: colour every cell of the board, so that each colour forms one pipe running
+    between the two cells given that colour, and the pipes cover the whole board."""
+    board = instance["board"]  # board[i][j]: the colour of cell (i, j), or 0 when the cell is empty
+    n_rows, n_cols = len(board), len(board[0])  # the size of the board
+    n_colours = max(max(row) for row in board)  # the number of colours, the largest colour on the board
+    colours = range(1, n_colours + 1)  # the colour numbers
 
     solver = Exact()
 
-    # B[i][j] is the colour of the cell; is_colour[i][j][c] = 1 when the cell has colour c.
-    B = [[f"B_{i}_{j}" for j in range(cols)] for i in range(rows)]
-    is_colour = [[{c: f"B_{i}_{j}_is_{c}" for c in colours} for j in range(cols)]
-                 for i in range(rows)]
-    for i in range(rows):
-        for j in range(cols):
-            solver.addVariable(B[i][j], 1, 10)
+    # Exact identifies its variables by name.
+    # B[i][j] is the colour of cell (i, j)
+    B = [[f"B_{i}_{j}" for j in range(n_cols)] for i in range(n_rows)]
+    # is_colour[i][j][c] is 1 when cell (i, j) has colour c, and 0 when not
+    is_colour = [[{c: f"B_{i}_{j}_is_{c}" for c in colours} for j in range(n_cols)]
+                 for i in range(n_rows)]
+    for i in range(n_rows):
+        for j in range(n_cols):
+            solver.addVariable(B[i][j], 1, n_colours)
             for c in colours:
                 solver.addVariable(is_colour[i][j][c], 0, 1)
-            # the cell has exactly one colour, and the indicators give its value
+
+    # edges: each pair of neighbouring cells on the board, listed once
+    edges = [(i, j, k, l) for i in range(n_rows) for j in range(n_cols)
+             for k, l in ((i + 1, j), (i, j + 1)) if k < n_rows and l < n_cols]
+    # same[(i, j, k, l)] is 1 when the neighbouring cells (i, j) and (k, l) have the same colour
+    same = {}
+    for i, j, k, l in edges:
+        same[(i, j, k, l)] = same[(k, l, i, j)] = f"same_{i}_{j}_{k}_{l}"
+        solver.addVariable(same[(i, j, k, l)], 0, 1)
+
+    # A cell has exactly one colour, and B[i][j] is that colour.
+    for i in range(n_rows):
+        for j in range(n_cols):
             solver.addConstraint([(1, is_colour[i][j][c]) for c in colours], True, 1, True, 1)
             solver.addConstraint([(c, is_colour[i][j][c]) for c in colours] + [(-1, B[i][j])],
                                  True, 0, True, 0)
-            # a cell that starts with a colour keeps it
+            # A cell given a colour keeps that colour.
             if board[i][j] != 0:
                 solver.addConstraint([(1, is_colour[i][j][board[i][j]])], True, 1, True, 1)
 
-    # same[(cell, neighbour)] = 1 exactly when two neighbouring cells have the same colour. For each
-    # colour, both cells having it forces the variable up, and only one of them having it forces
-    # it down.
-    same = {}
-    for i in range(rows):
-        for j in range(cols):
-            for k, l in ((i + 1, j), (i, j + 1)):
-                if k < rows and l < cols:
-                    name = f"same_{i}_{j}_{k}_{l}"
-                    solver.addVariable(name, 0, 1)
-                    for c in colours:
-                        here, there = is_colour[i][j][c], is_colour[k][l][c]
-                        solver.addConstraint([(1, name), (-1, here), (-1, there)], True, -1)
-                        solver.addConstraint([(1, name), (1, here), (-1, there)], False, 0, True, 1)
-                        solver.addConstraint([(1, name), (-1, here), (1, there)], False, 0, True, 1)
-                    same[(i, j, k, l)] = name
-                    same[(k, l, i, j)] = name
+    # Each same flag follows the colours of its two cells.
+    for i, j, k, l in edges:
+        for c in colours:
+            here, there = is_colour[i][j][c], is_colour[k][l][c]
+            solver.addConstraint([(1, same[(i, j, k, l)]), (-1, here), (-1, there)], True, -1)
+            solver.addConstraint([(1, same[(i, j, k, l)]), (1, here), (-1, there)], False, 0, True, 1)
+            solver.addConstraint([(1, same[(i, j, k, l)]), (-1, here), (1, there)], False, 0, True, 1)
 
-    # The number of neighbours with the same colour: exactly 1 for a cell that starts with a
-    # colour (a pipe end), exactly 2 for an empty cell. The reference also allows colour 0 for an
-    # empty cell, but 0 is outside the colour range 1..10, so that alternative never applies.
-    for i in range(rows):
-        for j in range(cols):
+    # A cell given a colour is a pipe end, and has exactly one neighbour of its colour. Any other
+    # cell has exactly two.
+    for i in range(n_rows):
+        for j in range(n_cols):
             neighbours = [(k, l) for k, l in ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1))
-                          if 0 <= k < rows and 0 <= l < cols]
-            wanted = 1 if board[i][j] != 0 else 2
+                          if 0 <= k < n_rows and 0 <= l < n_cols]  # the cells next to (i, j)
+            n_same = 1 if board[i][j] != 0 else 2  # how many neighbours of its colour the cell has
             solver.addConstraint([(1, same[(i, j, k, l)]) for k, l in neighbours],
-                                 True, wanted, True, wanted)
+                                 True, n_same, True, n_same)
 
     return solver, {"B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

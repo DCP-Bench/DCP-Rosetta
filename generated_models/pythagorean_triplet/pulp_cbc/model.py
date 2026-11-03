@@ -1,35 +1,37 @@
-"""Pythagorean triplet (Project Euler 9): natural numbers a, b, c with a^2 + b^2 = c^2 and
-a + b + c = 1000.
+# pythagorean_triplet: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/pythagorean_triplet.html
+# Run it (after `pip install pulp numpy`) with:
+#   python pythagorean_triplet.py
 
-The model reports a, b and c.
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the problem has no instance data; its constants are below
-
-    total = 1000  # a + b + c
-    top = 500     # each number lies in 1..500, as in the reference
+def create_model(instance):
+    """Pythagorean triplet (Project Euler 9): natural numbers a, b, c with a^2 + b^2 = c^2 and
+    a + b + c = 1000."""
+    total = 1000  # the sum a + b + c
+    top = 500     # the largest value of each number: each is less than the sum of the other two, so less than half of 1000
     values = range(1, top + 1)
 
-    problem = pulp.LpProblem("pythagorean_triplet", pulp.LpMinimize)  # satisfaction
+    # The puzzle asks for numbers that meet the conditions, so nothing is optimised.
+    problem = pulp.LpProblem("pythagorean_triplet", pulp.LpMinimize)
 
+    # a, b, c: the three numbers, each from 1 to top
     a = pulp.LpVariable("a", 1, top, cat="Integer")
     b = pulp.LpVariable("b", 1, top, cat="Integer")
     c = pulp.LpVariable("c", 1, top, cat="Integer")
 
-    # the three numbers add up to 1000
+    # The three numbers add up to 1000.
     problem += a + b + c == total
 
-    # a^2 + b^2 = c^2. With c = 1000 - a - b this becomes
-    #   a^2 + b^2 = (1000 - a - b)^2, that is  a * b = 1000 * (a + b) - 500000,
-    # which leaves a single product instead of three squares.
-    # The product is linearized by choosing a from its range: is_a[v] = 1 if a = v, and
-    # share[v] is b when a = v and 0 otherwise, so that a * b = sum of v * share[v].
+    # is_a[v] is 1 when a equals v. Exactly one value is chosen, and a is that value.
     is_a = {v: pulp.LpVariable(f"a_is_{v}", cat="Binary") for v in values}
     problem += pulp.lpSum(is_a.values()) == 1
     problem += a == pulp.lpSum(v * var for v, var in is_a.items())
+
+    # Substituting c = 1000 - a - b into a^2 + b^2 = c^2 gives a * b = 1000 * (a + b) - 500000,
+    # which has one product in place of three squares. share[v] is b when a equals v, and 0
+    # otherwise. Then a * b is the sum of v * share[v].
     share = {v: pulp.LpVariable(f"share_{v}", 0, top) for v in values}
     for v, var in is_a.items():
         problem += share[v] <= top * var
@@ -39,3 +41,17 @@ def build(instance):
                 == total * (a + b) - (total * total) // 2)
 
     return problem, {"a": a, "b": b, "c": c}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

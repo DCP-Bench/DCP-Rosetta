@@ -1,29 +1,34 @@
-"""Divisible by 1 through 9 (and 10): find a 10-digit number that uses each digit 0..9 once,
-where the number formed by its first n digits is divisible by n for every n.
+# divisible_by_1_through_9: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/divisible_by_1_through_9.html
+# Run it (after `pip install pulp numpy`) with:
+#   python divisible_by_1_through_9.py
 
-The model reports the ten digits of the number, read from left to right.
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the puzzle has no instance data
+def create_model(instance):
+    """Find a 10-digit number that uses each digit 0 to 9 exactly once, where the
+    number formed by its first n digits is divisible by n, for n = 1 to 10."""
+    problem = pulp.LpProblem("divisible_by_1_through_9", pulp.LpMinimize)
 
+    # The puzzle states its own length, so the instance holds no data.
     length = 10
     places = range(length)
-    digits = range(10)
+    digit_values = range(10)
 
-    problem = pulp.LpProblem("divisible_by_1_through_9", pulp.LpMinimize)  # satisfaction
-
-    # is_digit[i][v] = 1 if the digit at place i (from the left) is v; every place has one
-    # digit and every digit is used exactly once
-    is_digit = [[pulp.LpVariable(f"is_digit_{i}_{v}", cat="Binary") for v in digits]
+    # is_digit[i][v] is 1 if the digit at place i (from the left) is v.
+    is_digit = [[pulp.LpVariable(f"is_digit_{i}_{v}", cat="Binary") for v in digit_values]
                 for i in places]
+    # digits[i] is the digit at place i, read from left to right.
+    digits = [pulp.lpSum(v * is_digit[i][v] for v in digit_values) for i in places]
+
+    # Every place holds one digit.
     for i in places:
         problem += pulp.lpSum(is_digit[i]) == 1
-    for v in digits:
+
+    # Each of the digits 0 to 9 is used exactly once.
+    for v in digit_values:
         problem += pulp.lpSum(is_digit[i][v] for i in places) == 1
-    x = [pulp.lpSum(v * is_digit[i][v] for v in digits) for i in places]
 
     # The number formed by the first i + 1 digits is divisible by i + 1. Only its remainder
     # matters, so each digit is weighted by 10^(i - j) mod (i + 1) rather than 10^(i - j);
@@ -34,7 +39,20 @@ def build(instance):
         weights = [pow(10, i - j, divisor) for j in range(i + 1)]
         largest = sum(w * 9 for w in weights)
         multiple = pulp.LpVariable(f"multiple_{i}", 0, largest // divisor, cat="Integer")
-        problem += pulp.lpSum(w * x[j] for j, w in enumerate(weights)) == divisor * multiple
+        problem += pulp.lpSum(w * digits[j] for j, w in enumerate(weights)) == divisor * multiple
 
-    # x[i] is the digit at place i, read from left to right
-    return problem, {"digits": x}
+    return problem, {"digits": digits}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

@@ -1,46 +1,73 @@
-# Costas arrays: place n marks on an n x n grid, one per row and one per column, so that the
-# n(n-1)/2 vectors between pairs of marks are all different.
+# csplib_076_costas_arrays: an Exact (Python) model from DCP Rosetta.
+# Download the `csplib_076_costas_arrays.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python csplib_076_costas_arrays.py csplib_076_costas_arrays.json
+
 from exact import Exact
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """Place n marks on an n by n grid, one mark in each row and one in each column, so that
+    the n(n-1)/2 vectors between pairs of marks are all different (a Costas array)."""
+    n_marks = instance["n"]  # the grid is n_marks by n_marks
 
     solver = Exact()
 
-    # costas[i] is the column (1..n) of the mark in row i
-    costas = [f"costas_{i}" for i in range(n)]
+    # Exact identifies its variables by name.
+    # costas[i] is the column (1 to n_marks) of the mark in row i
+    costas = [f"costas_{i}" for i in range(n_marks)]
     for name in costas:
-        solver.addVariable(name, 1, n)
+        solver.addVariable(name, 1, n_marks)
 
-    # at[i][v] = 1 when costas[i] == v. The columns form a permutation of 1..n; Exact has no
-    # all-different constraint, so it is posted through these indicators: one value per row and
-    # at most (here exactly) one row per value.
-    at = [[f"row_{i}_at_{v}" for v in range(1, n + 1)] for i in range(n)]
-    for i in range(n):
-        for name in at[i]:
+    # at[i][v] is 1 when the mark in row i is in column v, and 0 otherwise
+    at = [{v: f"at_{i}_{v}" for v in range(1, n_marks + 1)} for i in range(n_marks)]
+    for i in range(n_marks):
+        for name in at[i].values():
             solver.addVariable(name, 0, 1)
-        solver.addConstraint([(1, name) for name in at[i]], True, 1, True, 1)
-        solver.addConstraint([(v, at[i][v - 1]) for v in range(1, n + 1)] + [(-1, costas[i])],
-                             True, 0, True, 0)
-    for v in range(n):
-        solver.addConstraint([(1, at[i][v]) for i in range(n)], True, 1, True, 1)
+        # each row has exactly one mark, and costas[i] is its column
+        solver.addConstraint([(1, name) for name in at[i].values()], True, 1, True, 1)
+        solver.addConstraint([(v, at[i][v]) for v in range(1, n_marks + 1)] + [(-1, costas[i])], True, 0, True, 0)
+    # each column has exactly one mark
+    for v in range(1, n_marks + 1):
+        solver.addConstraint([(1, at[i][v]) for i in range(n_marks)], True, 1, True, 1)
 
-    # For each distance l, the differences costas[i + l] - costas[i] of the pairs of marks l rows
-    # apart must all be different. diff_is[l][i][d] = 1 when that difference equals d, and each
-    # difference value d is taken by at most one pair. The difference lies in -(n-1)..(n-1).
-    for l in range(1, n - 1):  # distance n-1 has a single pair, so nothing to compare
-        pairs = n - l
-        diff_is = [[f"diff_{l}_{i}_is_{d}" for d in range(-(n - 1), n)] for i in range(pairs)]
-        for i in range(pairs):
-            for name in diff_is[i]:
+    # For each gap between rows, the differences between the columns of the marks that many
+    # rows apart are all different.
+    max_diff = n_marks - 1
+    for gap in range(1, n_marks - 1):
+        n_pairs = n_marks - gap
+        # diff[i][d] is 1 when the column of the mark in row i + gap minus the column of the mark in row i is d
+        diff = [{d: f"diff_{gap}_{i}_{d}" for d in range(-max_diff, max_diff + 1)} for i in range(n_pairs)]
+        for i in range(n_pairs):
+            for name in diff[i].values():
                 solver.addVariable(name, 0, 1)
-            # each pair has exactly one difference value, and the value matches the two marks
-            solver.addConstraint([(1, name) for name in diff_is[i]], True, 1, True, 1)
-            solver.addConstraint([(d, diff_is[i][d + n - 1]) for d in range(-(n - 1), n) if d != 0]
-                                 + [(-1, costas[i + l]), (1, costas[i])], True, 0, True, 0)
-        # no difference value is used by two pairs at this distance
-        for d in range(-(n - 1), n):
-            solver.addConstraint([(1, diff_is[i][d + n - 1]) for i in range(pairs)], False, 0, True, 1)
+            # each pair of marks has exactly one difference
+            solver.addConstraint([(1, name) for name in diff[i].values()], True, 1, True, 1)
+            # the difference is the one just defined; two marks in different rows share no column, so it is never 0
+            solver.addConstraint([(d, diff[i][d]) for d in range(-max_diff, max_diff + 1) if d != 0]
+                                 + [(-1, costas[i + gap]), (1, costas[i])], True, 0, True, 0)
+        # no difference occurs for two pairs at this gap
+        for d in range(-max_diff, max_diff + 1):
+            solver.addConstraint([(1, diff[i][d]) for i in range(n_pairs)], False, 0, True, 1)
 
     return solver, {"costas": costas}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

@@ -1,27 +1,34 @@
-# Resource-constrained project scheduling: start each job so that the precedence constraints hold,
-# the jobs running at any time never need more of a resource than its capacity, and the project
-# finishes as early as possible (the latest start time is minimal).
+# resource_constrained_project_scheduling: an Exact (Python) model from DCP Rosetta.
+# Download the `resource_constrained_project_scheduling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/resource_constrained_project_scheduling.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python resource_constrained_project_scheduling.py resource_constrained_project_scheduling.json
+
 from exact import Exact
 
 
-def build(instance):
-    durations = instance["durations_data"]  # duration of each job (dummy jobs have 0)
-    needs = instance["resource_needs_data"]  # needs[j][r] = units of resource r used by job j
-    capacities = instance["resource_capacities_data"]  # capacity of each resource
-    links = instance["successors_link_data"]  # [a, b]: job b can start only after job a ends
-    n = len(durations)
-    n_res = len(capacities)
+def create_model(instance):
+    """Start each job so that every precedence holds, the jobs running at any time need no
+    more of each resource than its capacity, and the project finishes as early as possible,
+    which means the latest start time is as small as possible."""
+    durations = instance["durations_data"]              # durations[j]: how long job j runs
+    needs = instance["resource_needs_data"]             # needs[j][r]: units of resource r that job j uses while it runs
+    capacities = instance["resource_capacities_data"]   # capacities[r]: units of resource r available at any time
+    links = instance["successors_link_data"]            # [a, b]: job b can start only after job a has finished
+    n_jobs = len(durations)
+    n_resources = len(capacities)
 
-    preds = [[] for _ in range(n)]
-    succs = [[] for _ in range(n)]
+    # preds[j] are the jobs that must finish before job j starts, and succs[j] the jobs that wait for job j
+    preds = [[] for _ in range(n_jobs)]
+    succs = [[] for _ in range(n_jobs)]
     for a, b in links:
         succs[a].append(b)
         preds[b].append(a)
 
-    # jobs in an order where every job comes after its predecessors
+    # order lists the jobs so that each job comes after its predecessors
     order = []
-    waiting = [len(preds[j]) for j in range(n)]
-    ready = [j for j in range(n) if waiting[j] == 0]
+    waiting = [len(preds[j]) for j in range(n_jobs)]  # waiting[j]: predecessors of job j not yet in order
+    ready = [j for j in range(n_jobs) if waiting[j] == 0]
     while ready:
         j = ready.pop()
         order.append(j)
@@ -30,96 +37,111 @@ def build(instance):
             if waiting[s] == 0:
                 ready.append(s)
 
-    # earliest start of each job from the precedence constraints alone
-    earliest = [0] * n
+    # earliest[j] is the earliest time job j can start when only the precedences are counted
+    earliest = [0] * n_jobs
     for j in order:
         for s in succs[j]:
             earliest[s] = max(earliest[s], earliest[j] + durations[j])
-    # tail[j] = length of the longest chain of jobs that has to start after job j starts, up to
-    # the start (not the end) of the last job, because the objective is the latest start time
-    tail = [0] * n
+
+    # tail[j] is the longest time from the start of job j to the start of a job that must follow it
+    tail = [0] * n_jobs
     for j in reversed(order):
         for s in succs[j]:
             tail[j] = max(tail[j], durations[j] + tail[s])
 
-    # Horizon: the latest start of a greedy schedule (jobs placed one by one at the earliest time
-    # where precedence and capacities allow, longest chain first). It is a schedule, so the optimal
-    # latest start is at most this value, and no job needs to start later than it.
-    profile = [[0] * (2 * sum(durations) + 2) for _ in range(n_res)]
-    start = [None] * n
-    for _ in range(n):
-        eligible = [j for j in range(n)
-                    if start[j] is None and all(start[p] is not None for p in preds[j])]
+    # Greedy schedule. Jobs are placed one at a time, the job with the longest tail first, each
+    # at the earliest time that its predecessors allow and at which its resources are free.
+    # used[r][u] is the amount of resource r taken at time u by the jobs placed so far.
+    used = [[0] * (2 * sum(durations) + 2) for _ in range(n_resources)]
+    greedy_start = [None] * n_jobs
+    for _ in range(n_jobs):
+        eligible = [j for j in range(n_jobs)
+                    if greedy_start[j] is None and all(greedy_start[p] is not None for p in preds[j])]
         j = max(eligible, key=lambda k: (tail[k], -k))
-        t = max([start[p] + durations[p] for p in preds[j]], default=0)
-        while any(profile[r][u] + needs[j][r] > capacities[r]
-                  for r in range(n_res) for u in range(t, t + durations[j])):
+        t = max([greedy_start[p] + durations[p] for p in preds[j]], default=0)
+        while any(used[r][u] + needs[j][r] > capacities[r]
+                  for r in range(n_resources) for u in range(t, t + durations[j])):
             t += 1
-        for r in range(n_res):
+        for r in range(n_resources):
             for u in range(t, t + durations[j]):
-                profile[r][u] += needs[j][r]
-        start[j] = t
-    horizon = max(start)
-    latest = [horizon - tail[j] for j in range(n)]  # a job cannot start after this and still
-    # leave room for the chain of jobs behind it
+                used[r][u] += needs[j][r]
+        greedy_start[j] = t
+
+    # horizon is the latest start in that schedule, so no optimal project starts a job later
+    horizon = max(greedy_start)
+    # latest[j] is the latest time job j can start and still leave time for the jobs that follow it
+    latest = [horizon - tail[j] for j in range(n_jobs)]
 
     solver = Exact()
 
-    # start_time[j] = start time of job j. The reference allows 0..sum of durations; the window
-    # [earliest, latest] only drops start times that cannot be part of an optimal schedule.
-    start_time = [f"start_{j}" for j in range(n)]
-    for j in range(n):
+    # Exact identifies its variables by name.
+    # start_time[j] is the time job j starts, within its earliest and latest start
+    start_time = [f"start_{j}" for j in range(n_jobs)]
+    for j in range(n_jobs):
         solver.addVariable(start_time[j], earliest[j], latest[j])
 
-    # Order encoding of the start times: before[j][t] = 1 exactly when job j starts at time t or
-    # earlier. Times before the earliest start are fixed to 0 and times from the latest start on
-    # to 1. With these 0/1 variables "job j is running at time t" is the difference
-    # before[j][t] - before[j][t - duration[j]], so the capacities become plain linear constraints.
-    before = [[f"before_{j}_{t}" for t in range(horizon + 1)] for j in range(n)]
-    for j in range(n):
+    # started_by[j][t] is 1 when job j has started by time t, and 0 before that.
+    # It is 0 before the earliest start and 1 from the latest start on.
+    started_by = [[f"job_{j}_started_by_{t}" for t in range(horizon + 1)] for j in range(n_jobs)]
+    for j in range(n_jobs):
         for t in range(horizon + 1):
-            if t < earliest[j]:
-                solver.addVariable(before[j][t], 0, 0)
-            elif t >= latest[j]:
-                solver.addVariable(before[j][t], 1, 1)
-            else:
-                solver.addVariable(before[j][t], 0, 1)
-        # once a job has started it stays started
+            solver.addVariable(started_by[j][t], 1 if t >= latest[j] else 0, 0 if t < earliest[j] else 1)
+        # once started, a job stays started
         for t in range(earliest[j], latest[j]):
-            solver.addConstraint([(1, before[j][t]), (-1, before[j][t + 1])], False, 0, True, 0)
-        # the start time is the number of time points at which the job has not started yet
-        solver.addConstraint([(1, start_time[j])] + [(1, before[j][t]) for t in
-                                                     range(earliest[j], latest[j])],
+            solver.addConstraint([(1, started_by[j][t]), (-1, started_by[j][t + 1])], False, 0, True, 0)
+        # the job is started at every time from its start on, so the start time and the number of
+        # times in its window at which it has started add up to the latest start
+        solver.addConstraint([(1, start_time[j])] + [(1, started_by[j][t]) for t in range(earliest[j], latest[j])],
                              True, latest[j], True, latest[j])
 
-    # precedence: job b can start only when job a has ended, i.e. if b has started by time t
-    # then a has started by time t - duration[a]
+    # job b starts only after job a has finished: if b has started by time t, then a has started
+    # by time t minus the duration of a
     for a, b in links:
         for t in range(earliest[b], latest[b]):
-            solver.addConstraint([(1, before[b][t]), (-1, before[a][t - durations[a]])],
+            solver.addConstraint([(1, started_by[b][t]), (-1, started_by[a][t - durations[a]])],
                                  False, 0, True, 0)
 
-    # cumulative resource constraint: at each time the jobs that are running (started, and not
-    # ended yet) need at most the capacity of every resource. A running set is largest at some
-    # start time, and every start time is at most the horizon, so these times are enough.
-    for r in range(n_res):
+    # at every time, the jobs running then use no more of each resource than its capacity.
+    # Job j is running at time t when it started within the durations[j] times up to t.
+    for r in range(n_resources):
         for t in range(horizon + 1):
             terms = []
-            for j in range(n):
+            for j in range(n_jobs):
                 if durations[j] == 0 or needs[j][r] == 0:
                     continue
                 if not earliest[j] <= t <= latest[j] + durations[j] - 1:
-                    continue  # job j cannot be running at time t
-                terms.append((needs[j][r], before[j][t]))
+                    continue
+                terms.append((needs[j][r], started_by[j][t]))
                 if t - durations[j] >= 0:
-                    terms.append((-needs[j][r], before[j][t - durations[j]]))
+                    terms.append((-needs[j][r], started_by[j][t - durations[j]]))
             if sum(c for c, _ in terms if c > 0) > capacities[r]:
                 solver.addConstraint(terms, False, 0, True, capacities[r])
 
-    # makespan = the latest start time over all jobs
+    # the makespan is the project end, which is the latest start over all jobs
     solver.addVariable("makespan", max(earliest), horizon)
-    for j in range(n):
+    for j in range(n_jobs):
         solver.addConstraint([(1, "makespan"), (-1, start_time[j])], True, 0)
 
-    # minimise the makespan
-    return solver, {"start_time": start_time}, ("minimize", [(1, "makespan")])
+    # Finish the project as early as possible.
+    solver.setObjective([(1, "makespan")], minimize=True)
+
+    return solver, {"start_time": start_time}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

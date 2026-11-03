@@ -1,64 +1,93 @@
-from paramita.modelling import Bool
+# hanging_weights: a Paramita (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+# Install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python hanging_weights.py
 
-# Hanging weights: thirteen weights A-M hang from a system of bars. Each
-# weight is an integer between 1 and 13. The weights on either side of a
-# pivot balance when weighted by their distance from the pivot, and a bar
-# hanging beneath another contributes its total weight as one weight.
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_container, to_cnf
 
+# The thirteen weights, named by letter.
 LETTERS = "abcdefghijklm"
+# Each weight is an integer from LO to HI.
 LO, HI = 1, 13
 
 
-def build(instance):
-    cons = []
+def create_model(instance):
+    """Thirteen weights A to M, each an integer from 1 to 13, hang from a system of bars.
+    The weights on either side of a pivot balance when weighted by their distance from
+    the pivot, and a bar hanging beneath another counts as its total weight. Find the
+    weights that make the diagram balance."""
+    constraints = []
 
-    # Each weight is an integer 1..13: one-hot Bools, exactly one is true.
-    val = {}
+    # weight[n] is the value of weight n. is_value[n][v] is true when weight n is v.
+    weight = {}
     for n in LETTERS:
-        bits = {v: Bool(f"w_{n}_{v}") for v in range(LO, HI + 1)}
-        cons.append(sum(bits.values()) == 1)
-        val[n] = sum(v * b for v, b in bits.items())
+        is_value = {v: Bool(f"w_{n}_{v}") for v in range(LO, HI + 1)}
+        # Each weight has exactly one value.
+        constraints.append(sum(is_value.values()) == 1)
+        weight[n] = sum(v * b for v, b in is_value.items())
 
-    A, B, C, D, E, F, G = (val[x] for x in "abcdefg")
-    H, I, J, K, L, M = (val[x] for x in "hijklm")
+    A, B, C, D, E, F, G = (weight[x] for x in "abcdefg")
+    H, I, J, K, L, M = (weight[x] for x in "hijklm")
 
-    # Subtree weights: a bar hanging beneath another contributes its total weight.
-    W5 = E + F          # bar holding E and F
-    W3 = H + I + W5     # bar holding H and I, and the E-F bar beneath it
-    W2 = W3 + L + M     # bar holding L and M, and the H-I bar beneath it
-    X = A + B           # bar holding A and B
-    Y = C + D           # bar holding C and D
-    W6 = G + Y          # bar holding G, and the C-D bar beneath it
-    W4 = X + J + K + W6 # bar holding J and K, and the A-B and G bars beneath it
+    # The total weight on each bar, including the bars hanging beneath it.
+    bar_ef = E + F  # the bar holding E and F
+    bar_hi = H + I + bar_ef  # the bar holding H and I, with the E-F bar beneath it
+    bar_lm = bar_hi + L + M  # the bar holding L and M, with the H-I bar beneath it
+    bar_ab = A + B  # the bar holding A and B
+    bar_cd = C + D  # the bar holding C and D
+    bar_g = G + bar_cd  # the bar holding G, with the C-D bar beneath it
+    bar_jk = bar_ab + J + K + bar_g  # the bar holding J and K, with the A-B and G bars beneath it
 
-    # Top bar, hung at the stem: the L-M bar at distance 12 left, the J-K bar at distance 9 right.
-    cons.append(12 * W2 == 9 * W4)
+    # The top bar balances: the L-M bar at distance 12 on the left, the J-K bar at distance 9 on the right.
+    constraints.append(12 * bar_lm == 9 * bar_jk)
+    # The bar holding L and M: the H-I bar at distance 3 on the left, L at distance 3 and M at distance 12 on the right.
+    constraints.append(3 * bar_hi == 3 * L + 12 * M)
+    # The bar holding H and I: H at distance 9 on the left, the E-F bar at distance 6 and I at distance 9 on the right.
+    constraints.append(9 * H == 6 * bar_ef + 9 * I)
+    # The bar holding E and F: E at distance 9 on the left, F at distance 6 on the right.
+    constraints.append(9 * E == 6 * F)
+    # The bar holding J and K: the A-B bar at distance 9 and J at distance 6 on the left, K at distance 3 and the G bar at distance 6 on the right.
+    constraints.append(9 * bar_ab + 6 * J == 3 * K + 6 * bar_g)
+    # The bar holding A and B: A at distance 12 on the left, B at distance 3 on the right.
+    constraints.append(12 * A == 3 * B)
+    # The bar holding G: G at distance 9 on the left, the C-D bar at distance 6 on the right.
+    constraints.append(9 * G == 6 * bar_cd)
+    # The bar holding C and D: C at distance 15 on the left, D at distance 3 on the right.
+    constraints.append(15 * C == 3 * D)
 
-    # Bar holding L and M, hung from the top bar: the H-I bar at distance 3 left,
-    # L at distance 3 right, M at distance 12 right.
-    cons.append(3 * W3 == 3 * L + 12 * M)
+    # The weight of each letter.
+    outputs = {n: weight[n] for n in LETTERS}
 
-    # Bar holding H and I, hung at column 9: H at distance 9 left, the E-F bar at
-    # distance 6 right, I at distance 9 right.
-    cons.append(9 * H == 6 * W5 + 9 * I)
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
 
-    # Bar holding E and F: E at distance 9 left, F at distance 6 right.
-    cons.append(9 * E == 6 * F)
+    return (formula, pool), outputs
 
-    # Bar holding J and K, hung at column 33: the A-B bar at distance 9 left,
-    # J at distance 6 left, K at distance 3 right, the G bar at distance 6 right.
-    cons.append(9 * X + 6 * J == 3 * K + 6 * W6)
 
-    # Bar holding A and B: A at distance 12 left, B at distance 3 right.
-    cons.append(12 * A == 3 * B)
+if __name__ == "__main__":
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
 
-    # Bar holding G, hung from the J-K bar: G at distance 9 left, the C-D bar
-    # at distance 6 right. Description: 3*G = 2*(C+D).
-    cons.append(9 * G == 6 * Y)
+    (formula, pool), outputs = create_model({})
 
-    # Bar holding C and D: C at distance 15 left, D at distance 3 right.
-    # Description: 5*C = D.
-    cons.append(15 * C == 3 * D)
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
 
-    outputs = {n: val[n] for n in LETTERS}
-    return cons, outputs
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

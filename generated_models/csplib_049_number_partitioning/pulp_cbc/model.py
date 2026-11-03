@@ -1,49 +1,72 @@
-"""Number partitioning: split the numbers 1..n (n even) into two sets A and B with the same
-number of elements, the same sum and the same sum of squares.
+# csplib_049_number_partitioning: a PuLP (Python) model from DCP Rosetta.
+# Download the `csplib_049_number_partitioning.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python csplib_049_number_partitioning.py csplib_049_number_partitioning.json
 
-The model reports the elements of the two sets, A and B, as two lists of n / 2 numbers.
-"""
 import pulp
 
 
-def build(instance):
-    n = instance["n"]  # the numbers are 1..n, n is even
-    half = n // 2  # number of elements of each set
+def create_model(instance):
+    """Split the numbers 1 to n into two sets A and B of the same size, with the same sum and
+    the same sum of squares."""
+    n = instance["n"]              # the numbers 1 to n are split, n is even
+    n_per_set = n // 2             # the number of elements in each set
+    numbers = range(1, n + 1)      # the numbers to split
 
-    problem = pulp.LpProblem("number_partitioning", pulp.LpMinimize)  # satisfaction: no objective
+    problem = pulp.LpProblem("number_partitioning", pulp.LpMinimize)  # the puzzle asks for the sets only: no objective
 
-    # in_a[v - 1] = 1 if the number v is in the set A, 0 if it is in the set B. Every number is
-    # in exactly one of the two sets.
-    in_a = [pulp.LpVariable(f"in_a_{v}", cat="Binary") for v in range(1, n + 1)]
+    # in_a[v - 1] is 1 when the number v is in set A, and 0 when it is in set B.
+    in_a = [pulp.LpVariable(f"in_a_{v}", cat="Binary") for v in numbers]
 
-    # the two sets have the same number of elements
-    problem += pulp.lpSum(in_a) == half
+    # The two sets have the same number of elements.
+    problem += pulp.lpSum(in_a) == n_per_set
 
-    # the sum of the numbers is equal in both sets
-    problem += pulp.lpSum(v * in_a[v - 1] for v in range(1, n + 1)) == pulp.lpSum(
-        v * (1 - in_a[v - 1]) for v in range(1, n + 1))
+    # The two sets have the same sum.
+    problem += pulp.lpSum(v * in_a[v - 1] for v in numbers) == pulp.lpSum(
+        v * (1 - in_a[v - 1]) for v in numbers)
 
-    # the sum of the squares of the numbers is equal in both sets
-    problem += pulp.lpSum(v * v * in_a[v - 1] for v in range(1, n + 1)) == pulp.lpSum(
-        v * v * (1 - in_a[v - 1]) for v in range(1, n + 1))
+    # The two sets have the same sum of squares.
+    problem += pulp.lpSum(v * v * in_a[v - 1] for v in numbers) == pulp.lpSum(
+        v * v * (1 - in_a[v - 1]) for v in numbers)
 
-    # The sets are reported as lists A and B of n / 2 numbers each, A[i] and B[i] being the
-    # number in place i of the list. Each place holds one number, and each number of the set
-    # is in one place of its list (the places are filled in any order). a_has[i][v - 1] = 1 if
-    # A[i] = v, and b_has likewise for B.
-    a_has = pulp.LpVariable.dicts("a_has", (range(half), range(1, n + 1)), cat="Binary")
-    b_has = pulp.LpVariable.dicts("b_has", (range(half), range(1, n + 1)), cat="Binary")
-    A = [pulp.LpVariable(f"A_{i}", 1, n, cat="Integer") for i in range(half)]
-    B = [pulp.LpVariable(f"B_{i}", 1, n, cat="Integer") for i in range(half)]
-    for i in range(half):
-        problem += pulp.lpSum(a_has[i][v] for v in range(1, n + 1)) == 1
-        problem += pulp.lpSum(b_has[i][v] for v in range(1, n + 1)) == 1
-        problem += A[i] == pulp.lpSum(v * a_has[i][v] for v in range(1, n + 1))
-        problem += B[i] == pulp.lpSum(v * b_has[i][v] for v in range(1, n + 1))
-    for v in range(1, n + 1):
-        # a number of A is in one place of A, a number of B in one place of B, and no number
-        # appears in a list that it does not belong to
-        problem += pulp.lpSum(a_has[i][v] for i in range(half)) == in_a[v - 1]
-        problem += pulp.lpSum(b_has[i][v] for i in range(half)) == 1 - in_a[v - 1]
+    # a_has[i][v] is 1 when place i of the list A holds the number v, and 0 when not. b_has is the same for B.
+    a_has = pulp.LpVariable.dicts("a_has", (range(n_per_set), numbers), cat="Binary")
+    b_has = pulp.LpVariable.dicts("b_has", (range(n_per_set), numbers), cat="Binary")
+    # A[i] and B[i] are the numbers in place i of the lists A and B.
+    A = [pulp.LpVariable(f"A_{i}", 1, n, cat="Integer") for i in range(n_per_set)]
+    B = [pulp.LpVariable(f"B_{i}", 1, n, cat="Integer") for i in range(n_per_set)]
+
+    # Each place of A and each place of B holds exactly one number.
+    for i in range(n_per_set):
+        problem += pulp.lpSum(a_has[i][v] for v in numbers) == 1
+        problem += pulp.lpSum(b_has[i][v] for v in numbers) == 1
+        problem += A[i] == pulp.lpSum(v * a_has[i][v] for v in numbers)
+        problem += B[i] == pulp.lpSum(v * b_has[i][v] for v in numbers)
+
+    # Each number of A sits in exactly one place of A, each number of B in exactly one place of B,
+    # and no number sits in the list of the set it is not in.
+    for v in numbers:
+        problem += pulp.lpSum(a_has[i][v] for i in range(n_per_set)) == in_a[v - 1]
+        problem += pulp.lpSum(b_has[i][v] for i in range(n_per_set)) == 1 - in_a[v - 1]
 
     return problem, {"A": A, "B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

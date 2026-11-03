@@ -1109,10 +1109,9 @@ def satisfaction_only(solver: str) -> bool:
                for binding in SOLVERS[solver]["bindings"])
 
 
-def one_decimal(value: float) -> str:
-    """One decimal, half up: 161.25 is 161.3, not the 161.2 binary floats give."""
-    tenths = int(value * 10 + 0.5)
-    return str(tenths // 10) if tenths % 10 == 0 else f"{tenths // 10}.{tenths % 10}"
+def rounded(value: float) -> str:
+    """A whole number, half up: 146.5 is 147, not the 146 Python's round() gives."""
+    return str(int(value + 0.5))
 
 
 def coverage_count(count, total: int) -> str:
@@ -1184,8 +1183,8 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             )
 
         # The average of the counts over the average of the solvers' totals.
-        average = one_decimal(sum(counts) / len(counts)) if counts else "0"
-        average_total = one_decimal(sum(totals) / len(totals)) if totals else str(len(types))
+        average = rounded(sum(counts) / len(counts)) if counts else "0"
+        average_total = rounded(sum(totals) / len(totals)) if totals else str(len(types))
         # The count, then a Show/Hide button; the CSS writes the button's
         # word from aria-expanded, so the two cannot disagree.
         toggle = f'<span class="count">{len(solvers)}</span>' + (

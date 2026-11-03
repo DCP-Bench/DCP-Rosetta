@@ -1,70 +1,90 @@
-"""Four islands: four islands A, B (north) and C, D (south), with bridges A-B, C-D, A-C and
-B-D. Find each island's name (Pwana, Quero, Rayou, Skern), export (alabaster, bananas,
-coconuts, durian fruit) and tourist attraction (hotel, ice skating rink, jai alai stadium,
-koala preserve) from the clues.
+# four_islands: a PuLP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install pulp numpy`) with:
+#   python four_islands.py
 
-The model reports, for every name, export and attraction, its map position (A=0, B=1,
-C=2, D=3).
-"""
 import pulp
 
 
-def build(instance):
-    del instance  # the puzzle has no instance data
+def create_model(instance):
+    """Four islands, each with its own name, primary export and tourist attraction.
+    Find the name, export and attraction of each island on the map from six clues."""
+    n_islands = 4
+    A, B, C, D = range(n_islands)  # map positions: A top left, B top right, C bottom left, D bottom right
 
-    n = 4
-    A, B, C, D = range(n)
     groups = {
         "island": ["Pwana", "Quero", "Rayou", "Skern"],
         "export": ["alabaster", "bananas", "coconuts", "durian_fruit"],
         "attraction": ["resort_hotel", "ice_skating_rink", "jai_alai_stadium", "koala_preserve"],
     }
 
-    problem = pulp.LpProblem("four_islands", pulp.LpMinimize)  # satisfaction
+    problem = pulp.LpProblem("four_islands", pulp.LpMinimize)
 
-    # at[item][pos] = 1 if the name, export or attraction is on the island at map position
-    # pos; within each group every item has a different island
-    at = {item: [pulp.LpVariable(f"at_{item}_{pos}", cat="Binary") for pos in range(n)]
+    # at[item][pos] is 1 when the name, export or attraction item belongs to the island at map position pos, and 0 when not
+    at = {item: [pulp.LpVariable(f"at_{item}_{pos}", cat="Binary") for pos in range(n_islands)]
           for items in groups.values() for item in items}
+
+    # A clue holds when one of its cases holds. A case holds when all its (item, position) pairs hold.
+    def one_of(clue, cases):
+        picks = []
+        for k, case in enumerate(cases):
+            pick = pulp.LpVariable(f"clue_{clue}_case_{k}", cat="Binary")
+            for item, pos in case:
+                problem.addConstraint(pick <= at[item][pos])
+            picks.append(pick)
+        problem.addConstraint(pulp.lpSum(picks) >= 1)
+
+    # Each name, export and attraction belongs to exactly one island.
     for items in groups.values():
         for item in items:
             problem += pulp.lpSum(at[item]) == 1
-        for pos in range(n):
+
+    # Each island has exactly one name, one export and one attraction.
+    for items in groups.values():
+        for pos in range(n_islands):
             problem += pulp.lpSum(at[item][pos] for item in items) == 1
 
-    count = [0]
+    # The koala preserve is due south of Pwana.
+    one_of(1, [[("Pwana", A), ("koala_preserve", C)], [("Pwana", B), ("koala_preserve", D)]])
 
-    def one_of(cases):
-        """At least one case holds; a case is a list of (item, position) that all hold.
-        Each case gets an indicator that can only be 1 when all its parts are."""
-        chosen = []
-        for case in cases:
-            count[0] += 1
-            var = pulp.LpVariable(f"case_{count[0]}", cat="Binary")
-            for item, pos in case:
-                problem.addConstraint(var <= at[item][pos])
-            chosen.append(var)
-        problem.addConstraint(pulp.lpSum(chosen) >= 1)
+    # The island with the largest alabaster quarry is due west of Quero.
+    one_of(2, [[("alabaster", A), ("Quero", B)], [("alabaster", C), ("Quero", D)]])
 
-    # 1. The island noted for its koala preserve is due south of Pwana.
-    one_of([[("Pwana", A), ("koala_preserve", C)], [("Pwana", B), ("koala_preserve", D)]])
-    # 2. The island with the largest alabaster quarry is due west of Quero.
-    one_of([[("alabaster", A), ("Quero", B)], [("alabaster", C), ("Quero", D)]])
-    # 3. The island with the resort hotel is due east of the one that exports durian fruit.
-    one_of([[("durian_fruit", A), ("resort_hotel", B)], [("durian_fruit", C), ("resort_hotel", D)]])
-    # 4. Skern and the island with the jai alai stadium are connected by a north-south
-    #    bridge.
-    one_of([[("Skern", A), ("jai_alai_stadium", C)], [("Skern", C), ("jai_alai_stadium", A)],
-            [("Skern", B), ("jai_alai_stadium", D)], [("Skern", D), ("jai_alai_stadium", B)]])
-    # 5. Rayou and the island that exports bananas are connected by an east-west bridge.
-    one_of([[("Rayou", A), ("bananas", B)], [("Rayou", B), ("bananas", A)],
-            [("Rayou", C), ("bananas", D)], [("Rayou", D), ("bananas", C)]])
-    # 6. The islands with the ice skating rink and with the jai alai stadium are not
-    #    connected by a bridge: they are diagonally opposite.
-    one_of([[("ice_skating_rink", A), ("jai_alai_stadium", D)],
-            [("ice_skating_rink", D), ("jai_alai_stadium", A)],
-            [("ice_skating_rink", B), ("jai_alai_stadium", C)],
-            [("ice_skating_rink", C), ("jai_alai_stadium", B)]])
+    # The island with the resort hotel is due east of the island that exports durian fruit.
+    one_of(3, [[("durian_fruit", A), ("resort_hotel", B)], [("durian_fruit", C), ("resort_hotel", D)]])
 
-    position = {item: pulp.lpSum(pos * var for pos, var in enumerate(at[item])) for item in at}
-    return problem, {key: [position[item] for item in items] for key, items in groups.items()}
+    # Skern and the island with the jai alai stadium are connected by a north-south bridge.
+    one_of(4, [[("Skern", A), ("jai_alai_stadium", C)], [("Skern", C), ("jai_alai_stadium", A)],
+               [("Skern", B), ("jai_alai_stadium", D)], [("Skern", D), ("jai_alai_stadium", B)]])
+
+    # Rayou and the island that exports bananas are connected by an east-west bridge.
+    one_of(5, [[("Rayou", A), ("bananas", B)], [("Rayou", B), ("bananas", A)],
+               [("Rayou", C), ("bananas", D)], [("Rayou", D), ("bananas", C)]])
+
+    # The islands with the ice skating rink and the jai alai stadium are not connected by a bridge.
+    one_of(6, [[("ice_skating_rink", A), ("jai_alai_stadium", D)],
+               [("ice_skating_rink", D), ("jai_alai_stadium", A)],
+               [("ice_skating_rink", B), ("jai_alai_stadium", C)],
+               [("ice_skating_rink", C), ("jai_alai_stadium", B)]])
+
+    # The map position of each island, export and attraction, in the order listed above.
+    outputs = {
+        key: [pulp.lpSum(pos * at[item][pos] for pos in range(n_islands)) for item in items]
+        for key, items in groups.items()
+    }
+
+    return problem, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    problem, outputs = create_model({})
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])

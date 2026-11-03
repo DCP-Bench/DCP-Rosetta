@@ -1,32 +1,60 @@
-# Kidney exchange: people on a waiting list can donate a kidney to some compatible people. Choose
-# the transplants so that anyone who gives a kidney also receives one, nobody gives or receives
-# more than one, and as many people as possible receive a new kidney.
+# session3_kidney_exchange: an Exact (Python) model from DCP Rosetta.
+# Download the `session3_kidney_exchange.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+# Then run it on the first instance (after `pip install exact numpy`):
+#   python session3_kidney_exchange.py session3_kidney_exchange.json
+
 from exact import Exact
 
 
-def build(instance):
-    num_people = instance["num_people"]
-    compatible = instance["compatible"]  # compatible[i] = people (1-based) that person i can donate to
-    n = num_people
+def create_model(instance):
+    """At a hospital, n people wait for a kidney transplant, and some of them can
+    donate to others. Choose the donations so that anyone who gives a kidney also
+    receives one and nobody receives more than one. Maximize the number of people
+    who receive a kidney."""
+    n_people = instance["num_people"]    # the number of people on the waiting list, numbered 1 up to n_people
+    compatible = instance["compatible"]  # compatible[i]: the people (1-based) that person i + 1 can donate to
 
     solver = Exact()
 
-    # transplants[i][j] = 1 if person i donates to person j. A donation that is not compatible is
-    # not possible, so that variable is fixed to 0 (its domain is 0..0).
-    transplants = [[f"transplant_{i}_{j}" for j in range(n)] for i in range(n)]
-    for i in range(n):
-        for j in range(n):
+    # Exact identifies its variables by name.
+    # transplants[i][j] is 1 when person i donates a kidney to person j, and 0 otherwise.
+    # Pairs that are not compatible are fixed to 0.
+    transplants = [[f"transplant_{i}_{j}" for j in range(n_people)] for i in range(n_people)]
+    for i in range(n_people):
+        for j in range(n_people):
             solver.addVariable(transplants[i][j], 0, 1 if (j + 1) in compatible[i] else 0)
 
-    for i in range(n):
-        gives = [(1, transplants[i][j]) for j in range(n)]
-        receives = [(1, transplants[j][i]) for j in range(n)]
-        # each person can donate to at most one person and receive from at most one person
+    for i in range(n_people):
+        gives = [(1, transplants[i][j]) for j in range(n_people)]
+        receives = [(1, transplants[j][i]) for j in range(n_people)]
+        # Person i donates at most one kidney.
         solver.addConstraint(gives, False, 0, True, 1)
+        # Person i receives at most one kidney.
         solver.addConstraint(receives, False, 0, True, 1)
-        # anyone who gives a kidney must receive one: since gives is 0 or 1, gives <= receives
+        # Anyone who donates a kidney also receives one.
         solver.addConstraint(gives + [(-c, name) for c, name in receives], False, 0, True, 0)
 
-    # maximise the number of transplants
-    return (solver, {"transplants": transplants},
-            ("maximize", [(1, transplants[i][j]) for i in range(n) for j in range(n)]))
+    # The number of kidneys given is the number of people who receive one.
+    solver.setObjective([(1, transplants[i][j]) for i in range(n_people) for j in range(n_people)], minimize=False)
+
+    return solver, {"transplants": transplants}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    solver, outputs = create_model(instances[index])
+    solver.runFull()  # with an objective, searches until no better solution exists
+
+    if solver.hasSolution():
+        for name, output in outputs.items():
+            values = solver.getLastSolutionFor(list(np.ravel(output)))
+            print(name, "=", np.reshape(values, np.shape(output)))
+    else:
+        print("No solution")

@@ -1,60 +1,84 @@
-"""Grocery: a kid buys a number of items. The cashier multiplies the prices (in cents)
-instead of adding them, and gets the same total as when adding them: the sum of the prices is
-the total price, and the product of the prices, in euros, is the total price too. What are the
-prices of the items?
+# session5_grocery: a PuLP (Python) model from DCP Rosetta.
+# Download the `session5_grocery.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_grocery.html
+# Then run it on the first instance (after `pip install pulp numpy`):
+#   python session5_grocery.py session5_grocery.json
 
-The model reports the prices in cents.
-"""
 import pulp
 
 
-def build(instance):
-    total_price = instance["total_price"]  # total price in cents
-    k = instance["num_items"]  # number of items
+def create_model(instance):
+    """A kid buys several items. The cashier first multiplies the item prices and
+    then adds them, and both give the same total price. Find the prices of the items, in cents."""
+    total_price = instance["total_price"]  # the total price, in cents
+    n_items = instance["num_items"]  # the number of items bought
 
-    # The product of the prices in cents is the total price in cents times 100 for each of the
-    # k - 1 multiplications beyond the first (the total in euros is the product in euros).
-    target = total_price * 100 ** (k - 1)
+    # The product of the prices in cents. Multiplied in euros, the prices give the total price,
+    # and each item after the first adds a factor of 100 in cents.
+    product = total_price * 100 ** (n_items - 1)
 
-    problem = pulp.LpProblem("grocery", pulp.LpMinimize)  # satisfaction: no objective
+    # A price is a whole number of cents, at most the total price, and it divides the product.
+    candidates = [v for v in range(1, total_price + 1) if product % v == 0]
 
-    # A price is a whole number of cents from 1 to the total price. The product of the prices is
-    # `target`, so every price divides `target`; only those divisors are possible prices.
-    candidates = [v for v in range(1, total_price + 1) if target % v == 0]
-
-    # pick[i][v] = 1 if item i costs v cents; an item has exactly one price
-    pick = pulp.LpVariable.dicts("pick", (range(k), candidates), cat="Binary")
-    prices = [pulp.LpVariable(f"price_{i}", 1, total_price, cat="Integer") for i in range(k)]
-    for i in range(k):
-        problem += pulp.lpSum(pick[i][v] for v in candidates) == 1
-        problem += prices[i] == pulp.lpSum(v * pick[i][v] for v in candidates)
-
-    # the prices add up to the total price
-    problem += pulp.lpSum(prices) == total_price
-
-    # The prices multiply to `target`. A product is not linear, but whole numbers are equal
-    # exactly when every prime occurs equally often in them. Every prime of `target` must occur
-    # in the prices as often as in `target` (a prime factor of `target` is a prime factor of the
-    # price it belongs to, and a price has no other prime factors since it divides `target`).
+    # How many times the prime p divides number.
     def exponent(p, number):
-        """how many times the prime p divides number"""
         count = 0
         while number % p == 0:
             number //= p
             count += 1
         return count
 
+    # The primes that divide the product.
     primes = []
-    rest = target
+    remaining = product
     p = 2
-    while rest > 1:
-        if rest % p == 0:
+    while remaining > 1:
+        if remaining % p == 0:
             primes.append(p)
-            while rest % p == 0:
-                rest //= p
+            while remaining % p == 0:
+                remaining //= p
         p += 1
+
+    problem = pulp.LpProblem("session5_grocery", pulp.LpMinimize)  # no objective: any prices that fit are an answer
+
+    # pick[i][v] is 1 when item i costs v cents.
+    pick = {i: {v: pulp.LpVariable(f"pick_{i}_{v}", cat="Binary") for v in candidates}
+            for i in range(n_items)}
+
+    # prices[i] is the price of item i, in cents.
+    prices = [pulp.LpVariable(f"price_{i}", 1, total_price, cat="Integer") for i in range(n_items)]
+
+    # Each item costs exactly one of the candidate prices, and prices[i] is that price.
+    for i in range(n_items):
+        problem += pulp.lpSum(pick[i][v] for v in candidates) == 1
+        problem += prices[i] == pulp.lpSum(v * pick[i][v] for v in candidates)
+
+    # The prices add up to the total price.
+    problem += pulp.lpSum(prices) == total_price
+
+    # The prices multiply to the product when each prime divides them as often as it divides
+    # the product. A price cannot have a prime that the product lacks, since it divides the product.
     for p in primes:
         problem += pulp.lpSum(exponent(p, v) * pick[i][v]
-                              for i in range(k) for v in candidates) == exponent(p, target)
+                              for i in range(n_items) for v in candidates) == exponent(p, product)
 
     return problem, {"prices": prices}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    problem, outputs = create_model(instances[index])
+    problem.solve(pulp.PULP_CBC_CMD(msg=False))
+
+    if problem.status == pulp.LpStatusOptimal:
+        value = np.vectorize(lambda var: round(pulp.value(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", pulp.LpStatus[problem.status])
