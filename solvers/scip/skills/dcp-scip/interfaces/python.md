@@ -56,13 +56,14 @@ Reference: [Model API](https://pyscipopt.readthedocs.io/en/latest/api/model.html
 | Need | API |
 |---|---|
 | variable | [`m.addVar(name=, vtype="B"\|"I"\|"C", lb=, ub=)`](https://pyscipopt.readthedocs.io/en/latest/api/model.html); `lb` defaults to **0**, `ub=None` is infinity. Give every integer tight finite bounds from the data |
-| array of variables | [`x = m.addMatrixVar((n, k), vtype="B", name="x")`](https://pyscipopt.readthedocs.io/en/latest/tutorials/matrix.html): a NumPy-shaped array (also `lb=`, `ub=`). Constraints over whole rows or columns in one call: `m.addMatrixCons(x.sum(axis=1) == 1)`; products with data `(w * x).sum()`, `x @ v`. A plain list of `addVar` works as well; use the matrix form where the problem is a grid or table |
+| array of variables | [`x = m.addMatrixVar((n, k), vtype="B", name="x")`](https://pyscipopt.readthedocs.io/en/latest/tutorials/matrix.html): a NumPy-shaped array (also `lb=`, `ub=`, a number or a nested list with one bound per entry, e.g. `ub=free` to forbid the cells where `free` is 0). Constraints over whole rows or columns in one call: `m.addMatrixCons(x.sum(axis=1) == 1)` (one row each), `m.addMatrixCons(x <= limits)`; products with data `(w * x).sum()`, `x @ v`. Once a table is a matrix variable, post its row and column constraints this way rather than in index loops. A plain list of `addVar` works as well; use the matrix form where the problem is a grid or table |
 | linear constraint | `m.addCons(expr <= rhs)`, `>=`, `==`; sums with `quicksum(c * x[i] for i in I)` |
 | ranged `lo <= e <= hi` | `m.addCons((lo <= e) <= hi)` with the parentheses, or two constraints; without them `TypeError: Can't evaluate constraints as booleans` |
 | discrete choice, all-different, element | one-hot binaries: [encodings](../references/python/encodings.md#discrete-choices-and-all-different) |
+| strict `x < y` | not supported on linear constraints; on integers write `x <= y - 1` |
 | `x != y` | not supported (`NotImplementedError`); [encoding](../references/python/encodings.md#not-equal) |
 | conditional constraint | [`m.addConsIndicator(ineq, binvar=b, activeone=True)`](https://pyscipopt.readthedocs.io/en/latest/tutorials/constypes.html): `<=`/`>=` only, **always pass `binvar`** |
-| and / or / xor | `addConsAnd(bs, r)`, `addConsOr(bs, r)`, `addConsXor(bs, True)` (rhs a Python bool) |
+| and / or / xor | `addConsAnd(bs, r)`, `addConsOr(bs, r)`, `addConsXor(bs, True)` (rhs a Python bool); `r` equals the and/or in both directions, unlike a hand-written `r >= a + b - 1`, which only forces `r` up |
 | at most k nonzero, SOS | `addConsCardinality(xs, k)`, `addConsSOS1(xs)`, `addConsSOS2(xs)` |
 | scheduling | `addConsCumulative(starts, durations, demands, capacity)`: integer starts, constant durations and demands ([example](../assets/python/scheduling/README.md)) |
 | no-overlap (one machine, disjunctive) | `addConsCumulative(starts, durations, [1] * k, 1)` per machine; no big-M pairwise disjunctions needed |
@@ -157,10 +158,18 @@ statement, not of the API:
 - a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
 - a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
 - a comment on each group of constraints and on the objective;
+- a sentence wherever an encoding stands in for something SCIP lacks, naming it: one-hot
+  binaries because there is no all-different, two indicators on one binary because an
+  indicator takes no equality, `x <= y - 1` because there is no strict `<`;
+- a comment that stays true for every input: sizes taken from the data are not "six" or
+  "9 x 9" in the text, and a bound says where it comes from (the data, the statement, or
+  an assumption, said as such);
 - the plainest expression that says it: a general constraint where SCIP has one
   (`addConsIndicator`, `addConsAnd`, `addConsCumulative`, ...), `quicksum` over the data,
   or a matrix variable with `addMatrixCons` for a grid; variables kept as lists, nested
-  lists or matrices so they print as a whole.
+  lists or matrices so they print as a whole. A one-hot sum such as
+  `quicksum(v * b[i, v] for v in values)` can be printed as it is, with no extra integer
+  variable tied to it by `==`.
 
 For example:
 

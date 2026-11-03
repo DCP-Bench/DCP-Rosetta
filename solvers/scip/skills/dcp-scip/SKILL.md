@@ -50,6 +50,10 @@ Lessons that turned timeouts into solves:
   a sign binary with indicators was fast ([encoding](references/python/encodings.md#absolute-value)).
 - **Symmetry breaking and implied constraints** derived from the data
   ([details](references/python/encodings.md#search-help-symmetry-and-implied-constraints)).
+- **Tight bounds matter most on variables linked by indicators**: with a generic
+  ceiling of 10**6 on the values of a chain of indicator-linked equalities, one model
+  found no solution in 180 s; with the bound derived from the data (about 1000) it solved
+  in about 1 s.
 - **Large coefficients in one linear equality are fine**: a cryptarithm's
   `SEND + MORE == MONEY` with `10**k` weights solved in milliseconds; no need to split it
   into column-wise carries.
