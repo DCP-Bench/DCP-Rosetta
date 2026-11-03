@@ -1,8 +1,16 @@
+# diet: a hermax (Python) model from DCP Rosetta.
+# Download the `diet.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python diet.py diet.json
+
 from hermax.model import Model
 
-# Nutrition per unit of each food, from the problem description.
-# Rows: calories, chocolate (ounces), sugar (ounces), fat (ounces).
-# Columns: chocolate cake, chocolate ice cream, cola, pineapple cheesecake.
+# Nutrition content of one unit of each food, from the problem statement's table.
+# NUTRITION[j][i] is the amount of nutrient j in one unit of food i.
+# Nutrients (rows): calories, chocolate (ounces), sugar (ounces), fat (ounces).
+# Foods (columns): chocolate cake (1 slice), chocolate ice cream (1 scoop),
+# cola (1 bottle), pineapple cheesecake (1 piece).
 NUTRITION = [
     [400, 200, 150, 500],
     [3, 2, 0, 0],
@@ -11,26 +19,49 @@ NUTRITION = [
 ]
 
 
-def build(instance):
-    price = instance["price"]
-    limits = instance["limits"]
-    n = len(price)
+def create_model(instance):
+    """Choose whole units of each food so that the diet reaches the minimum amount of every
+    nutrient, at the lowest total price."""
+    n = instance["n"]            # n: number of foods (4, matching the table above)
+    price = instance["price"]    # price[i]: cost of one unit of food i
+    limits = instance["limits"]  # limits[j]: minimum amount of nutrient j the diet must provide
 
-    # Whole units of each food, written as binary digits so every
-    # weighted sum is a linear expression over Booleans.
-    bits_needed = max(limits).bit_length()
+    # Upper bound on the units of each food. An optimal diet never needs more than max(limits)
+    # units of one food: with one unit removed, that food still covers every nutrient it
+    # contributes to, because each nutrient's requirement is at most max(limits). Prices are
+    # positive, so the removal never raises the cost.
+    most_needed = max(limits)
 
     m = Model()
-    bits = []
-    for i in range(n):
-        b = m.bool_vector(f"xb{i}", bits_needed)
-        bits.append(sum(2 ** k * b[k] for k in range(bits_needed)))
 
-    # Each nutrition type must reach at least its requirement.
+    # count[i] is the number of units of food i in the diet
+    count = m.int_vector("count", n, 0, most_needed)
+
+    # Each nutrient must reach at least its minimum requirement.
     for j in range(len(limits)):
-        m &= (sum(NUTRITION[j][i] * bits[i] for i in range(n)) >= limits[j])
+        m &= (sum(NUTRITION[j][i] * count[i] for i in range(n)) >= limits[j])
 
-    # Minimise the total price paid.
-    m.obj += sum(price[i] * bits[i] for i in range(n))
+    # The total price of the diet: the cost of every food times the units bought.
+    total_cost = sum(price[i] * count[i] for i in range(n))
 
-    return m, {"cost": sum(price[i] * bits[i] for i in range(n))}
+    # Minimise the total cost of the diet.
+    m.obj += total_cost
+
+    return m, {"cost": total_cost}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

@@ -1,34 +1,51 @@
-# De Bruijn sequence B(base, n): a cyclic sequence over an alphabet of `base`
-# symbols, of length base**n, in which every string of n symbols occurs exactly
-# once. Modelled as a cycle through all base**n windows of n consecutive symbols.
+# de_bruijn_sequence: a hermax (Python) model from DCP Rosetta.
+# Download the `de_bruijn_sequence.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python de_bruijn_sequence.py de_bruijn_sequence.json
+
 from hermax.model import Model
 
 
-def build(instance):
-    base = instance["base"]  # size of the alphabet
-    n = instance["n"]  # order: length of the strings that must all appear
-    length = base**n  # length of the sequence = number of distinct strings
+def create_model(instance):
+    """A de Bruijn sequence B(base, n): a cyclic sequence of `base` symbols, of length
+    base**n, in which every string of n symbols occurs exactly once as a run of
+    consecutive symbols (reading on past the end wraps around to the start)."""
+    base = instance["base"]  # the size of the alphabet: the symbols are 0..base-1
+    n = instance["n"]        # the order: the length of the strings that must all appear
+    length = base ** n       # the sequence length, which is also the number of strings
 
     m = Model()
-    # x[i] = the number (in the given base) read from the window starting at position i
-    x = m.int_vector("x", length, 0, length - 1)
-    # binary[i][j] = j-th symbol (most significant first) of the window starting at position i
-    binary = m.int_matrix("binary", length, n, 0, base - 1)
 
-    # every possible string occurs exactly once, i.e. all window numbers differ
-    m &= x.all_different()
+    # symbol[p] is the symbol at position p of the cyclic sequence
+    symbol = m.int_vector("symbol", length, 0, base - 1)
 
-    # link each window number to its symbols
+    # window[i] is the n symbols starting at position i (wrapping around), read as a
+    # number in base `base`; two windows are the same string exactly when their numbers match
+    window = m.int_vector("window", length, 0, base ** n - 1)
     for i in range(length):
-        m &= (sum(base ** (n - j - 1) * binary[i][j] for j in range(n)) == x[i])
+        m &= (window[i] == sum(base ** (n - 1 - j) * symbol[(i + j) % length]
+                               for j in range(n)))
 
-    # consecutive windows overlap: window i shifted by one symbol is window i-1 ...
-    for i in range(1, length):
-        for j in range(1, n):
-            m &= (binary[i - 1][j] == binary[i][j - 1])
-    # ... and the last window continues into the first one, closing the cycle
-    for j in range(1, n):
-        m &= (binary[length - 1][j] == binary[0][j - 1])
+    # Every string of n symbols occurs exactly once: all the windows are different.
+    m &= window.all_different()
 
-    # the sequence is the first symbol of every window
-    return m, {"de_bruijn": [binary[i][0] for i in range(length)]}
+    # No objective: any sequence meeting the constraints is a de Bruijn sequence.
+    return m, {"de_bruijn": symbol}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

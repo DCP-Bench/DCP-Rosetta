@@ -1,50 +1,56 @@
-from hermax.model import Model
+# csplib_049_number_partitioning: a hermax (Python) model from DCP Rosetta.
+# Download the `csplib_049_number_partitioning.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python csplib_049_number_partitioning.py csplib_049_number_partitioning.json
+
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    N = instance["n"]          # the numbers are 1..N
-    h = N // 2                 # A and B have the same cardinality
-    S = N * (N + 1) // 2       # sum of 1..N
-    Q = N * (N + 1) * (2 * N + 1) // 6   # sum of squares of 1..N
+def create_model(instance):
+    """Split the numbers 1..N into two sets A and B of equal size such that A and B
+    have the same sum and the same sum of squares. Output the members of A and of B,
+    each in increasing order."""
+    N = instance["n"]          # n: the numbers to split are 1..n
+    h = N // 2                 # A and B must have the same cardinality, so each holds half of them
 
     m = Model()
-    # x[i-1] is true when the number i is in A, and false when it is in B.
-    x = m.bool_vector("x", N)
 
-    # Same cardinality: A holds half of the numbers.
-    m &= (sum(x) == h)
-    # Same sum: twice the sum over A equals the total.
-    m &= (2 * sum((i + 1) * x[i] for i in range(N)) == S)
-    # Same sum of squares: twice the sum of squares over A equals the total.
-    m &= (2 * sum((i + 1) * (i + 1) * x[i] for i in range(N)) == Q)
-
-    # Output: the members of A and of B as sorted lists of integers.
+    # A[k] is the k-th smallest number in A, and B[k] the k-th smallest number in B
     A = m.int_vector("A", h, 1, N)
     B = m.int_vector("B", N - h, 1, N)
+
+    # Every number from 1 to N is used exactly once, in A or in B.
+    m &= m.vector([A[k] for k in range(h)] + [B[k] for k in range(N - h)]).all_different()
+    # Listing each set in increasing order gives one output per partition.
     m &= A.increasing()
     m &= B.increasing()
 
-    # Link the lists to x: i is in A exactly when x[i-1] holds.
-    for i in range(1, N + 1):
-        xi = x[i - 1]
-        in_A = [(A[k] == i) for k in range(h)]
-        in_B = [(B[k] == i) for k in range(N - h)]
+    # The sum of the numbers in A equals the sum of the numbers in B.
+    m &= (sum(A) == sum(B))
 
-        any_A = in_A[0]
-        for lit in in_A[1:]:
-            any_A = any_A | lit
-        any_B = in_B[0]
-        for lit in in_B[1:]:
-            any_B = any_B | lit
+    # The square of a number v: a step function of the number, equal to v*v.
+    def square(x):
+        return x.piecewise(base_value=1, steps={v: v * v for v in range(2, N + 1)})
 
-        # i in A  -> i appears in the A list
-        m &= (~xi) | any_A
-        # i in B  -> i appears in the B list
-        m &= xi | any_B
-        # a number listed in A is in A, and a number listed in B is in B
-        for lit in in_A:
-            m &= (~lit) | xi
-        for lit in in_B:
-            m &= (~lit) | (~xi)
+    # The sum of squares of the numbers in A equals the sum of squares of the numbers in B.
+    m &= (sum_expr(square(A[k]) for k in range(h)) == sum_expr(square(B[k]) for k in range(N - h)))
 
     return m, {"A": A, "B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

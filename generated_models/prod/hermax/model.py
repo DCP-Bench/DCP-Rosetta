@@ -1,44 +1,60 @@
+# prod: a hermax (Python) model from DCP Rosetta.
+# Download the `prod.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/prod.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python prod.py prod.json
+
 from math import lcm
 
-from hermax.model import Model
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    a = instance["a"]
-    b = instance["b"]
-    c = instance["c"]
-    u = instance["u"]
+def create_model(instance):
+    """Production planning: choose how many units X[j] of each product j to make, within
+    the time available, so that the total profit is as large as possible. Product j needs
+    1/a[j] hours of the shared time per unit, product j earns c[j] per unit, and it can be
+    made at most u[j] times."""
+    a = instance["a"]  # a[j]: the number of units of product j made per hour
+    b = instance["b"]  # b: the total hours available for production
+    c = instance["c"]  # c[j]: the profit of one unit of product j
+    u = instance["u"]  # u[j]: the most units of product j that can be made
     n = len(a)
 
-    # Scale the time constraint sum(X[j] / a[j]) <= b by L = lcm(a) so every
-    # coefficient is an integer: sum((L // a[j]) * X[j]) <= b * L.
+    # Time is measured in units of 1/L hour, with L = lcm(a), so that every
+    # product's time per unit, 1/a[j] hours, is the whole number L // a[j].
     L = lcm(*a)
-    time_weight = [L // a[j] for j in range(n)]
-    time_budget = b * L
 
     m = Model()
 
-    # Production quantities: integers from 0 to u[j].
-    max_u = max(u)
-    X = m.int_vector("x", n, 0, max_u)
+    # X[j] is the number of units of product j to make, from 0 to u[j]
+    X = m.int_vector("x", n, 0, max(u))
     for j in range(n):
         m &= (X[j] <= u[j])
 
-    # The weighted time sum has large coefficients, so channel each quantity to
-    # bits before writing the weighted constraint over them.
-    bits_per = max(1, max_u.bit_length())
-    bit_expr = []
-    for j in range(n):
-        bits = m.bool_vector(f"xb{j}", bits_per)
-        expr = sum(2 ** k * bits[k] for k in range(bits_per))
-        m &= (X[j] == expr)
-        bit_expr.append(expr)
+    # The time spent on all products must fit in the b hours available (b * L units of 1/L hour).
+    m &= (sum((L // a[j]) * X[j] for j in range(n)) <= b * L)
 
-    # The total time spent must not exceed the available time b.
-    m &= (sum(time_weight[j] * bit_expr[j] for j in range(n)) <= time_budget)
-
-    # Maximise total profit, sum(c[j] * X[j]), by minimising its negation.
+    # The total profit of the units made: the sum of c[j] * X[j].
     total_profit = sum(c[j] * X[j] for j in range(n))
-    m.obj += 0 - total_profit
+
+    # Maximise the total profit, by minimising its negation.
+    m.obj += -total_profit
 
     return m, {"x": X, "total_profit": total_profit}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

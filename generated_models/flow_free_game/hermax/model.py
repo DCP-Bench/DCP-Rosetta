@@ -1,56 +1,71 @@
-# Flow Free: colour every cell of the board so that each pair of equal clue colours is joined
-# by a pipe. A clue cell has exactly one neighbour of its colour (the pipe ends there), and
-# every other cell has exactly two (the pipe passes through).
+# flow_free_game: a hermax (Python) model from DCP Rosetta.
+# Download the `flow_free_game.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flow_free_game.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python flow_free_game.py flow_free_game.json
+
 from hermax.model import Model
 
-# Colours range over 1..10, the domain the problem's own model gives every cell.
-MAX_COLOUR = 10
 
-
-def build(instance):
-    board = instance["board"]  # board[i][j] = clue colour of cell (i, j), 0 if it is to be filled
+def create_model(instance):
+    """Flow Free: colour every cell of the board so that each pair of equal clue colours is
+    joined by one pipe. The pipe starts and ends at the two clue cells of its colour and
+    passes through every empty cell once, so that every cell has a pipe colour and no two
+    pipes cross."""
+    board = instance["board"]  # board[i][j]: clue colour of cell (i, j), 0 if the cell is empty
     rows, cols = len(board), len(board[0])
-    colours = range(1, MAX_COLOUR + 1)
+    # Each colour has a pair of clue cells, so the colours are 1..the largest clue colour.
+    n_colours = max(max(row) for row in board)
 
     m = Model()
-    # B[i][j] = the colour of cell (i, j)
-    B = m.int_matrix("B", rows, cols, 1, MAX_COLOUR)
-    # has[i][j][c] = cell (i, j) has colour c (one-hot view of B)
-    has = [[{c: m.bool(f"has_{i}_{j}_{c}") for c in colours} for j in range(cols)]
-           for i in range(rows)]
+    # B[i][j] is the pipe colour of cell (i, j), from 1 to n_colours
+    B = m.int_matrix("B", rows, cols, 1, n_colours)
+
+    # A clue cell keeps its own colour.
     for i in range(rows):
         for j in range(cols):
-            for c in colours:
-                m &= (~has[i][j][c] | (B[i][j] == c))
-                m &= (has[i][j][c] | ~(B[i][j] == c))
+            if board[i][j] != 0:
+                m &= (B[i][j] == board[i][j])
 
-    # same[(a, b)] = neighbouring cells a and b have the same colour
+    # same[(a, b)] is true when the neighbouring cells a and b have the same colour
     same = {}
     for i in range(rows):
         for j in range(cols):
             for k, l in ((i + 1, j), (i, j + 1)):
                 if k < rows and l < cols:
-                    eq = m.bool(f"same_{i}_{j}_{k}_{l}")
-                    for c in colours:
-                        # same colour: whatever colour one has, the other has too
-                        m &= (~eq | ~has[i][j][c] | has[k][l][c])
-                        # different colours: they do not share any colour
-                        m &= (eq | ~has[i][j][c] | ~has[k][l][c])
-                    same[(i, j), (k, l)] = eq
-                    same[(k, l), (i, j)] = eq
+                    same_colour = m.bool(f"same_{i}_{j}_{k}_{l}")
+                    m &= (B[i][j] == B[k][l]).iff(same_colour)
+                    same[(i, j), (k, l)] = same_colour
+                    same[(k, l), (i, j)] = same_colour
 
     for i in range(rows):
         for j in range(cols):
-            neighbours = [same[(i, j), (k, l)] for k, l in
-                          ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1))
-                          if 0 <= k < rows and 0 <= l < cols]
+            # the neighbours of cell (i, j) that are on the same pipe colour
+            same_neighbours = [same[(i, j), (k, l)] for k, l in
+                               ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1))
+                               if 0 <= k < rows and 0 <= l < cols]
             if board[i][j] != 0:
-                # a clue cell keeps its colour and is the end of its pipe: exactly one
-                # neighbour of the same colour
-                m &= (B[i][j] == board[i][j])
-                m &= (sum(neighbours) == 1)
+                # a clue cell is an end of its pipe: exactly one neighbour of its colour
+                m &= (sum(same_neighbours) == 1)
             else:
-                # any other cell lies on a pipe: exactly two neighbours of the same colour
-                m &= (sum(neighbours) == 2)
+                # an empty cell lies inside a pipe: exactly two neighbours of its colour
+                m &= (sum(same_neighbours) == 2)
 
     return m, {"B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

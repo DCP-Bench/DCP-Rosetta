@@ -1,19 +1,38 @@
-# Dinner: take 1-6 grandparents ($3 each), 1-10 parents ($2 each) and 1-40 children
-# ($0.50 each) out to dinner, 20 people in all for $20. How many of each go?
+# dinner: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/dinner.html
+# Run it (after `pip install hermax`) with:
+#   python dinner.py
+
 from hermax.model import Model
 
 
-def build(instance):
-    # The prices, ranges and totals are fixed by the problem; the instance carries no data.
+def create_model(instance):
+    """Choose how many grandparents, parents and children go out to dinner: 1-6 grandparents,
+    1-10 parents and 1-40 children, 20 people in all, costing exactly $20 in total, with
+    grandparents at $3, parents at $2 and children at $0.50 each."""
+    # The instance carries no data: every number here is fixed by the problem statement.
     m = Model()
-    # "1-6 grandparents, 1-10 parents and/or 1-40 children"
-    grandparents = m.int("grandparents", 1, 6)
-    parents = m.int("parents", 1, 10)
-    children = m.int("children", 1, 40)
 
-    # it must cost $20: $3, $2 and $0.50 a head, doubled to avoid the half dollar
-    m &= (6 * grandparents + 4 * parents + children == 20 * 2)
-    # there must be 20 people at dinner
+    # How many of each kind go to dinner; the ranges are the ones in the statement.
+    grandparents = m.int("grandparents", 1, 6)  # grandparents going to dinner
+    parents = m.int("parents", 1, 10)           # parents going to dinner
+    children = m.int("children", 1, 40)         # children going to dinner
+
+    # There must be 20 people at dinner in all.
     m &= (grandparents + parents + children == 20)
+    # The dinner must cost exactly $20. Prices are in cents to stay integral:
+    # $3 = 300 cents, $2 = 200 cents, $0.50 = 50 cents.
+    m &= (300 * grandparents + 200 * parents + 50 * children == 2000)
 
     return m, {"grandparents": grandparents, "parents": parents, "children": children}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

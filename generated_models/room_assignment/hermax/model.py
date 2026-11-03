@@ -1,33 +1,60 @@
-# Room assignment: give every booking (a request for a room from a start date
-# up to, but not including, an end date) one of the rooms for its whole stay,
-# so that no room hosts two bookings on the same night. Some bookings already
-# have their room fixed.
+# room_assignment: a hermax (Python) model from DCP Rosetta.
+# Download the `room_assignment.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/room_assignment.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python room_assignment.py room_assignment.json
+
 from datetime import date
 
 from hermax.model import Model
 
 
-def build(instance):
-    n_rooms = instance["max_rooms"]
-    starts = [date.fromisoformat(d) for d in instance["start_data"]]
-    ends = [date.fromisoformat(d) for d in instance["end_data"]]
-    preassigned = instance["preassigned_room_data"]  # -1 when the room is not fixed
+def create_model(instance):
+    """Give every booking one room for its whole stay, so that no room hosts two bookings
+    on the same night. A booking covers the nights from its start date up to, but not
+    including, its end date. Some bookings already have their room fixed. Find a valid
+    assignment of rooms to bookings."""
+    n_rooms = instance["max_rooms"]  # the number of rooms; rooms are numbered 0 .. max_rooms - 1
+    # starts[i]: the first night of booking i, as a day number
+    starts = [date.fromisoformat(d).toordinal() for d in instance["start_data"]]
+    # ends[i]: the checkout day of booking i, the first day it no longer covers
+    ends = [date.fromisoformat(d).toordinal() for d in instance["end_data"]]
+    # preassigned[i]: the room booking i must use, or -1 when no room is fixed
+    preassigned = instance["preassigned_room_data"]
     n = len(starts)
 
     m = Model()
-    # room_assignments[i] = the room given to booking i
-    room_assignments = m.int_vector("room", n, 0, n_rooms - 1)
+    # room[i] is the room given to booking i
+    room = m.int_vector("room", n, 0, n_rooms - 1)
 
-    # bookings whose room is already fixed
+    # A booking whose room is already fixed keeps that room.
     for i in range(n):
         if preassigned[i] != -1:
-            m &= (room_assignments[i] == preassigned[i])
+            m &= (room[i] == preassigned[i])
 
-    # a room serves one booking at a time: two bookings that share a night,
-    # that is, that both cover some day d with start <= d < end, need different rooms
+    # A room serves one booking at a time: two bookings that share a night must get
+    # different rooms. They share a night when the later of their starts comes before
+    # the earlier of their ends.
     for i in range(n):
         for j in range(i + 1, n):
             if max(starts[i], starts[j]) < min(ends[i], ends[j]):
-                m &= (room_assignments[i] != room_assignments[j])
+                m &= (room[i] != room[j])
 
-    return m, {"room_assignments": room_assignments}
+    return m, {"room_assignments": room}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

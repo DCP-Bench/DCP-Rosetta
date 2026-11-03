@@ -1,36 +1,53 @@
+# csplib_003_quasigroup_existence: a hermax (Python) model from DCP Rosetta.
+# Download the `csplib_003_quasigroup_existence.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_003_quasigroup_existence.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python csplib_003_quasigroup_existence.py csplib_003_quasigroup_existence.json
+
 from hermax.model import Model
 
 
-def build(instance):
-    # Quasigroup (Latin square) with QG3 property: (a*b)*(b*a) = a
-    m = instance["m"]
+def create_model(instance):
+    """Find an order m quasigroup (an m-by-m Latin square whose entries are 0..m-1, each
+    value once per row and once per column) with the QG3 property (a*b)*(b*a) = a for all
+    a and b, where x*y is the entry in row x and column y. Satisfaction problem."""
+    m_size = instance["m"]  # m: the order of the quasigroup, so the table is m-by-m with values 0..m-1
 
-    m_model = Model()
+    m = Model()
 
-    # The quasigroup table: entry [i][j] represents i * j
-    table = m_model.int_matrix("table", m, m, 0, m - 1)
+    # table[x][y] is the value of x*y (the entry in row x, column y)
+    table = m.int_matrix("table", m_size, m_size, 0, m_size - 1)
 
-    # Latin square constraints: each row and column contains 0 to m-1 exactly once
-    for i in range(m):
-        m_model &= table.row(i).all_different()
-        m_model &= table.col(i).all_different()
+    # Latin square: every row and every column contains each value 0..m-1 exactly once.
+    for i in range(m_size):
+        m &= table.row(i).all_different()
+        m &= table.col(i).all_different()
 
-    # QG3 property: (a*b)*(b*a) = a for all a, b
-    # We need to express table[table[a][b]][table[b][a]] == a
-    # Since we can't use dynamic indexing in hermax, we use implication:
-    # For each possible value v1 of table[a][b] and v2 of table[b][a],
-    # if those are the actual values, then table[v1][v2] must equal a.
+    # QG3 property (a*b)*(b*a) = a. hermax cannot index a matrix by a variable, so for each
+    # a, b and each pair of values (p, q) we post: if a*b is p and b*a is q, then p*q is a.
+    for a in range(m_size):
+        for b in range(m_size):
+            ab = table.row(a)[b]  # the value of a*b
+            ba = table.row(b)[a]  # the value of b*a
+            for p in range(m_size):
+                for q in range(m_size):
+                    m &= ((ab != p) | (ba != q) | (table.row(p)[q] == a))
 
-    for a in range(m):
-        for b in range(m):
-            for v1 in range(m):
-                for v2 in range(m):
-                    # Implication: if table[a][b] == v1 and table[b][a] == v2,
-                    # then table[v1][v2] == a
-                    # Encoded as: (~(table[a][b] == v1) | ~(table[b][a] == v2) | (table[v1][v2] == a))
-                    ab = table.row(a)[b]
-                    ba = table.row(b)[a]
-                    result = table.row(v1)[v2]
-                    m_model &= ((ab != v1) | (ba != v2) | (result == a))
+    return m, {"quasigroup": table}
 
-    return m_model, {"quasigroup": table}
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

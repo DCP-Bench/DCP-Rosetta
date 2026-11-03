@@ -1,66 +1,61 @@
-# Broken weights: a measuring weight broke into n pieces of whole-pound
-# weights adding up to the original weight. Using the pieces on both pans of a
-# balance, every whole weight from 1 up to the original weight can be weighed.
-# What are the weights of the pieces?
+# broken_weights: a hermax (Python) model from DCP Rosetta.
+# Download the `broken_weights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python broken_weights.py broken_weights.json
 from hermax.model import Model
 
 
-def build(instance):
-    total = instance["m"]  # the weight before it broke
-    n = instance["n"]  # number of pieces
+def create_model(instance):
+    """A measuring weight of `total` pounds broke into `n` pieces, each a whole number of
+    pounds. Find the weights of the pieces so that they add up to the original weight and,
+    on a balance (a piece may go on the object's pan, on the other pan, or be left off),
+    every whole weight from 1 up to `total` can be weighed."""
+    total = instance["m"]  # total: the weight of the measuring weight before it broke, in pounds
+    n = instance["n"]      # n: the number of pieces it broke into
 
     m = Model()
-    # weights[j] = the weight of piece j, a whole number of pounds between 1 and total
+
+    # weights[j] is the weight of piece j, a whole number of pounds from 1 to total
     weights = m.int_vector("weights", n, 1, total)
 
-    # the pieces add up to the original weight
+    # The pieces add up to the original weight.
     m &= (sum(weights[j] for j in range(n)) == total)
 
-    # Every weight 1..total can be weighed. A piece goes on the same pan as the
-    # object, on the other pan, or stays off, so a weighable weight is a signed
-    # sum of some of the pieces. Instead of giving every target its own signs
-    # (which multiplies a variable weight by a variable sign), track which
-    # differences can be made: reach[j][v] is true only if v is the signed sum
-    # of some of the first j pieces. v ranges over -total..total, shifted by
-    # `total` to index the vector. Only the "true implies justified" direction
-    # is posted, which is all that is needed because the targets below demand
-    # that entries are true, never false.
-    reach = [m.bool_vector(f"reach_{j}", 2 * total + 1) for j in range(n + 1)]
-    # with no pieces, only the difference 0 can be made
-    for v in range(-total, total + 1):
-        if v == 0:
-            m &= reach[0][total]
-        else:
-            m &= ~reach[0][v + total]
-
-    for j in range(n):
-        for v in range(-total, total + 1):
-            # reach[j+1][v] needs a reason: piece j stays off, or it is used with
-            # weight d on one pan or the other starting from a difference that
-            # the first j pieces can make
-            reasons = [reach[j][v + total]]
-            for d in range(1, total + 1):
-                sources = []
-                if v - d >= -total:
-                    sources.append(reach[j][v - d + total])  # piece j adds d
-                if v + d <= total:
-                    sources.append(reach[j][v + d + total])  # piece j subtracts d
-                if not sources:
-                    continue
-                used = m.bool(f"used_{j}_{v}_{d}")
-                m &= (~used | (weights[j] == d))
-                clause = ~used
-                for source in sources:
-                    clause = clause | source
-                m &= clause
-                reasons.append(used)
-            clause = ~reach[j + 1][v + total]
-            for reason in reasons:
-                clause = clause | reason
-            m &= clause
-
-    # every weight from 1 to the original weight can be weighed with all pieces
-    for target in range(1, total + 1):
-        m &= reach[n][target + total]
+    # Every target t from 1 to total must be weighable. For a target t, each piece j
+    # contributes to the balance: +weights[j] when it sits on the other pan (it adds to
+    # the object's weight), -weights[j] when it sits on the object's pan, and 0 when it
+    # is left off. The contributions must add up to exactly t.
+    for t in range(1, total + 1):
+        # contribution[j] is what piece j adds to the balance for target t
+        contribution = [m.int(f"contribution_{t}_{j}", -total, total) for j in range(n)]
+        for j in range(n):
+            # pan[j][0]: piece j is on the other pan; pan[j][1]: on the object's pan;
+            # pan[j][2]: piece j is left off. Exactly one of the three holds.
+            pan = m.bool_vector(f"pan_{t}_{j}", 3)
+            m &= pan.exactly_one()
+            # the contribution follows the pan the piece is on
+            m &= (contribution[j] == weights[j]).only_if(pan[0])
+            m &= (contribution[j] + weights[j] == 0).only_if(pan[1])
+            m &= (contribution[j] == 0).only_if(pan[2])
+        # the pieces balance the object of weight t
+        m &= (sum(contribution[j] for j in range(n)) == t)
 
     return m, {"weights": weights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

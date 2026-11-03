@@ -1,42 +1,63 @@
-# Cabling: put devices one above another in a rack (one device per slot) so
-# that the total cable length is as small as possible. A cable joining two
-# devices, or several identical cables between them, costs the distance between
-# their slots times the number of cables.
-from hermax.model import Model
+# cabling: a hermax (Python) model from DCP Rosetta.
+# Download the `cabling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python cabling.py cabling.json
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    n = instance["n"]  # number of devices and rack slots
-    devices = instance["devices"]  # device names
-    cables = instance["cable_struct"]  # [device a, device b, number of cables]
+def create_model(instance):
+    """Place each device in its own slot of a rack, one device per slot, so that the total
+    length of the cables is as small as possible. A cable group joining two devices costs
+    the number of cables in it times the distance between their slots."""
+    n = instance["n"]                  # number of devices, which is also the number of rack slots
+    devices = instance["devices"]      # devices[i]: the name of device i
+    cables = instance["cable_struct"]  # cables[k]: [device a, device b, number of cables between them]
 
-    index = {name: i for i, name in enumerate(devices)}
-    links = [(index[a], index[b], count) for a, b, count in cables]
+    index = {name: i for i, name in enumerate(devices)}  # index[name]: the position of a device by its name
 
     m = Model()
-    # x[d] = the slot of device d; every device gets its own slot
-    x = m.int_vector("x", n, 0, n - 1)
-    m &= x.all_different()
 
-    # distance[k] = the distance between the slots of the two devices of cable group k:
-    # for every pair of slots p != q it is |p - q|
-    distance = []
-    for k, (a, b, count) in enumerate(links):
-        d = m.int(f"distance_{k}", 1, n - 1)
-        for p in range(n):
-            for q in range(n):
-                if p != q:
-                    m &= (~(x[a] == p) | ~(x[b] == q) | (d == abs(p - q)))
-        distance.append(d)
+    # slot[d] is the rack slot of device d (0 is the bottom slot)
+    slot = m.int_vector("slot", n, 0, n - 1)
+    # Every device sits in its own slot, so no two devices share a slot.
+    m &= slot.all_different()
 
-    # Minimise the total cable length. A cable group pays its cable count once for every
-    # unit of distance above 1 (the distance is at least 1 whatever the slots, which adds a
-    # constant), that is when distance >= t holds for t = 2, 3, ...
-    for k, (a, b, count) in enumerate(links):
-        for t in range(2, n):
-            m.obj[count] += ~(distance[k] >= t)
+    lengths = []  # lengths[k]: the distance between the slots of the two devices of cable group k
+    for k, (a, b, count) in enumerate(cables):
+        ia, ib = index[a], index[b]
+        length = m.int(f"length_{k}", 0, n - 1)
+        # below[k] is true when device a sits below device b
+        below = m.bool(f"below_{k}")
+        # Since the slots are distinct, one device is below the other.
+        m &= (slot[ia] + 1 <= slot[ib]).only_if(below)
+        m &= (slot[ib] + 1 <= slot[ia]).only_if(~below)
+        # The cable length is the difference between the two slots, whichever device is higher.
+        m &= (length == slot[ib] - slot[ia]).only_if(below)
+        m &= (length == slot[ia] - slot[ib]).only_if(~below)
+        lengths.append(length)
 
-    # final_sum is a declared output: the cable length as a sum of scaled distances
-    final_sum = m.sum_var([m.scale(distance[k], links[k][2]) for k in range(len(links))])
+    # The total cable length: each cable group contributes its cable count times its length.
+    total_length = sum_expr(count * lengths[k] for k, (_, _, count) in enumerate(cables))
 
-    return m, {"final_sum": final_sum}
+    # Minimise the total cable length.
+    m.obj += total_length
+
+    return m, {"final_sum": total_length}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

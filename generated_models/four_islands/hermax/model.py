@@ -1,59 +1,76 @@
-# Four islands: four islands on a 2x2 map joined by bridges each have a name, an export and
-# a tourist attraction. Place each name, export and attraction on the map from six clues.
-import functools
-import operator
+# four_islands: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install hermax`) with:
+#   python four_islands.py
 
 from hermax.model import Model
 
-# Map positions, fixed by the problem: A is north-west, B north-east, C south-west,
-# D south-east; bridges join A-B and C-D (east-west) and A-C and B-D (north-south).
+# Map positions are fixed by the statement and are not instance data:
+# A is north-west, B north-east, C south-west, D south-east.
+# The bridges are A-B and C-D (east-west), and A-C and B-D (north-south).
 A, B, C, D = range(4)
 
 
-def one_of(m, x, y, placements):
-    """Post: (x, y) sits at one of the (position of x, position of y) pairs."""
-    options = []
-    for px, py in placements:
-        option = m.bool()
-        m &= (~option | (x == px))
-        m &= (~option | (y == py))
-        options.append(option)
-    m &= functools.reduce(operator.or_, options)
-
-
-def build(instance):
-    # The clues are fixed by the problem; the instance carries no data.
-    n = 4
+def create_model(instance):
+    """Four islands on a 2x2 map (A B / C D), joined by bridges, each with a name, a primary
+    export and a tourist attraction. Place every name, export and attraction on the map from
+    six clues, so that each island gets a different name, export and attraction."""
+    # The clues are fixed by the problem, so the instance carries no data.
+    n = 4  # four islands, four exports, four attractions
 
     m = Model()
-    # map position of each island name: Pwana, Quero, Rayou, Skern
+
+    # island[k] is the map position of the island named k: Pwana, Quero, Rayou, Skern
     island = m.int_vector("island", n, 0, n - 1)
     pwana, quero, rayou, skern = (island[k] for k in range(n))
-    # map position of each export: alabaster, bananas, coconuts, durian fruit
+
+    # export[k] is the map position of the island exporting k:
+    # alabaster, bananas, coconuts, durian fruit
     export = m.int_vector("export", n, 0, n - 1)
     alabaster, bananas, coconuts, durian_fruit = (export[k] for k in range(n))
-    # map position of each attraction: resort hotel, ice skating rink, jai alai stadium,
-    # koala preserve
+
+    # attraction[k] is the map position of the island with attraction k:
+    # resort hotel, ice skating rink, jai alai stadium, koala preserve
     attraction = m.int_vector("attraction", n, 0, n - 1)
     resort_hotel, ice_skating_rink, jai_alai_stadium, koala_preserve = (attraction[k] for k in range(n))
 
-    # each island has a different name, export and attraction
+    # Each island has a different name, export and attraction, so each vector is a permutation.
     m &= island.all_different()
     m &= export.all_different()
     m &= attraction.all_different()
 
-    # 1. The island with the koala preserve is due south of Pwana.
-    one_of(m, pwana, koala_preserve, [(A, C), (B, D)])
-    # 2. The island with the alabaster quarry is due west of Quero.
-    one_of(m, alabaster, quero, [(A, B), (C, D)])
-    # 3. The island with the resort hotel is due east of the one that exports durian fruit.
-    one_of(m, durian_fruit, resort_hotel, [(A, B), (C, D)])
-    # 4. Skern and the island with the jai alai stadium are joined by a north-south bridge.
-    one_of(m, skern, jai_alai_stadium, [(A, C), (C, A), (B, D), (D, B)])
-    # 5. Rayou and the island that exports bananas are joined by an east-west bridge.
-    one_of(m, rayou, bananas, [(A, B), (B, A), (C, D), (D, C)])
-    # 6. The islands with the ice skating rink and the jai alai stadium are not joined by a
-    #    bridge, so they are diagonally opposite.
-    one_of(m, ice_skating_rink, jai_alai_stadium, [(A, D), (D, A), (B, C), (C, B)])
+    # 1. The island with the koala preserve is due south of Pwana:
+    #    Pwana at A and koala at C, or Pwana at B and koala at D.
+    m &= m.table([pwana, koala_preserve], allowed=[(A, C), (B, D)])
 
+    # 2. The island with the alabaster quarry is due west of Quero:
+    #    alabaster at A and Quero at B, or alabaster at C and Quero at D.
+    m &= m.table([alabaster, quero], allowed=[(A, B), (C, D)])
+
+    # 3. The island with the resort hotel is due east of the durian fruit exporter:
+    #    durian at A and hotel at B, or durian at C and hotel at D.
+    m &= m.table([durian_fruit, resort_hotel], allowed=[(A, B), (C, D)])
+
+    # 4. Skern and the jai alai stadium are joined by a north-south bridge (A-C or B-D).
+    m &= m.table([skern, jai_alai_stadium], allowed=[(A, C), (C, A), (B, D), (D, B)])
+
+    # 5. Rayou and the banana exporter are joined by an east-west bridge (A-B or C-D).
+    m &= m.table([rayou, bananas], allowed=[(A, B), (B, A), (C, D), (D, C)])
+
+    # 6. The ice skating rink and the jai alai stadium are not joined by a bridge,
+    #    so they sit on diagonally opposite corners (A-D or B-C).
+    m &= m.table([ice_skating_rink, jai_alai_stadium], allowed=[(A, D), (D, A), (B, C), (C, B)])
+
+    # The problem asks for the placement only; there is no objective to optimise.
     return m, {"island": island, "export": export, "attraction": attraction}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

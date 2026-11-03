@@ -1,47 +1,69 @@
-from hermax.model import Model
+# cell_tower: a hermax (Python) model from DCP Rosetta.
+# Download the `cell_tower.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cell_tower.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python cell_tower.py cell_tower.json
+
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    # Read instance data
-    delta = instance["delta"]  # coverage matrix: delta[site][region]
-    cost = instance["cost"]  # cost for each site
-    population = instance["population"]  # population in each region
-    budget = instance["budget"]  # budget constraint
+def create_model(instance):
+    """Choose which candidate cell towers to build, without spending more than the budget,
+    so that the total population covered by at least one built tower is as large as possible.
 
-    num_sites = len(delta)
-    num_regions = len(delta[0])
+    A region counts as covered only when at least one tower that reaches it is built."""
+    delta = instance["delta"]            # delta[s][r] = 1 when a tower at site s reaches region r
+    cost = instance["cost"]              # cost[s]: the price of building a tower at site s
+    population = instance["population"]  # population[r]: the inhabitants of region r
+    budget = instance["budget"]          # the most money that may be spent on towers
+
+    num_sites = len(cost)
+    num_regions = len(population)
 
     m = Model()
 
-    # Decision variables: whether to build a tower at each site
+    # build_tower[s] is true when a tower is built at site s
     build_tower = m.bool_vector("build_tower", num_sites)
-
-    # Coverage variables: whether each region is covered
+    # covered[r] is true when region r has signal
     covered = m.bool_vector("covered", num_regions)
 
-    # Budget constraint: total cost must not exceed budget
-    # sum(cost[s] * build_tower[s]) <= budget
+    # The towers built cost no more than the budget.
     m &= (sum(cost[s] * build_tower[s] for s in range(num_sites)) <= budget)
 
-    # Coverage constraints: a region is covered iff at least one tower covering it is built
-    # covered[r] -> exists s: delta[s][r] == 1 and build_tower[s] == 1
-    # Equivalently: if covered[r] is true, at least one covering tower must be built
-    # And if covered[r] is false, no region coverage is gained
+    # A region can be covered only if at least one tower that reaches it is built.
     for r in range(num_regions):
-        # covered[r] can only be true if at least one site covering region r is built
-        # This is: covered[r] <= sum(delta[s][r] * build_tower[s])
-        coverage_sum = sum(delta[s][r] * build_tower[s] for s in range(num_sites))
-        m &= (covered[r] <= coverage_sum)
+        # the literals of the sites whose towers reach region r
+        reaching = [build_tower[s] for s in range(num_sites) if delta[s][r] == 1]
+        # "not covered, or one of the reaching towers is built" as one clause
+        clause = ~covered[r]
+        for tower in reaching:
+            clause = clause | tower
+        m &= clause
 
-    # Objective: maximize total population covered
-    # Pay when region is NOT covered, so minimizing cost maximizes coverage
-    for r in range(num_regions):
-        m.obj[population[r]] += covered[r]
+    # Minimise the population left without signal, which maximises the population covered.
+    m.obj += sum(population[r] * ~covered[r] for r in range(num_regions))
 
-    # Output: total_population_covered as a sum of covered populations
-    total_population_covered = sum(population[r] * covered[r] for r in range(num_regions))
+    # The total population covered: the populations of the covered regions added up.
+    total_population_covered = sum_expr(population[r] * covered[r] for r in range(num_regions))
 
     return m, {
         "build_tower": build_tower,
-        "total_population_covered": total_population_covered
+        "total_population_covered": total_population_covered,
     }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

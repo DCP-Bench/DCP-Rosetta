@@ -1,33 +1,52 @@
-# Averbach's card-passing riddle: three players X, Y, Z of three different
-# nationalities (American, English, French) sit round a table, each passing
-# three cards to the person on their right. Y passed to the American, and X
-# passed to the person who passed to the Frenchwoman. Find who is who.
-# A seat is 0, 1 or 2 and seat b+1 (mod 3) is to the right of seat b.
+# circular_table_averbach_1_2: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circular_table_averbach_1_2.html
+# Run it (after `pip install hermax`) with:
+#   python circular_table_averbach_1_2.py
+
 from hermax.model import Model
 
 
-def build(instance):
-    # The riddle fixes everything; the instance carries no data.
+def create_model(instance):
+    """Three players X, Y, Z of three nationalities (American, English, French) sit round a
+    circular table, seats 0, 1, 2, with seat b+1 to the right of seat b. Each player passed
+    three cards to the person on their right. Y passed to the American, and X passed to the
+    person who passed to the Frenchwoman. Find the seat of every player and every nationality.
+    The statement fixes all the data, so the instance carries nothing the model reads."""
     m = Model()
 
-    # seats of the three players, all different
-    x, y, z = (m.int(name, 0, 2) for name in "xyz")
+    # The seats of the players X, Y, Z: each seat 0..2 is taken by exactly one player.
+    x = m.int("x", 0, 2)  # x: the seat of player X
+    y = m.int("y", 0, 2)  # y: the seat of player Y
+    z = m.int("z", 0, 2)  # z: the seat of player Z
     m &= m.vector([x, y, z]).all_different()
 
-    # seats of the three nationalities, all different: the same seat number in
-    # the player and nationality outputs denotes the same person
-    american, english, french = (m.int(name, 0, 2) for name in ("american", "english", "french"))
+    # The seats of the nationalities: each seat 0..2 is taken by exactly one nationality.
+    # The same seat number in the player and nationality outputs denotes the same person.
+    american = m.int("american", 0, 2)  # american: the seat of the American
+    english = m.int("english", 0, 2)    # english: the seat of the Englishman
+    french = m.int("french", 0, 2)      # french: the seat of the Frenchwoman
     m &= m.vector([american, english, french]).all_different()
 
-    def right_to(a, b):
-        """The seat a is immediately to the right of the seat b: for each seat of b, a is the next one."""
-        nonlocal m
-        for seat in range(3):
-            m &= (~(b == seat) | (a == (seat + 1) % 3))
+    # A seat pair (b, a) where a is immediately to the right of b: seat b+1 is right of seat b.
+    right_of = [(0, 1), (1, 2), (2, 0)]
 
-    # the American sits to the right of Y, since Y passed to the American
-    right_to(american, y)
-    # X sits to the right of the Frenchwoman, since X passed to the person who passed to her
-    right_to(x, french)
+    # Y passed three cards to the American, so the American sits immediately to the right of Y.
+    m &= m.table([y, american], allowed=right_of)
 
+    # X passed to the person who passed to the Frenchwoman. That person sits immediately to the
+    # left of the Frenchwoman, so X sits immediately to the right of the Frenchwoman.
+    m &= m.table([french, x], allowed=right_of)
+
+    # There is no objective: the statement asks only for the seating.
     return m, {"x": x, "y": y, "z": z, "american": american, "english": english, "french": french}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

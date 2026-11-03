@@ -1,51 +1,59 @@
-"""
-Model for csplib_010_social_golfers_problem.
+# csplib_010_social_golfers_problem: a hermax (Python) model from DCP Rosetta.
+# Download the `csplib_010_social_golfers_problem.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_010_social_golfers_problem.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python csplib_010_social_golfers_problem.py csplib_010_social_golfers_problem.json
 
-Schedule golfers to play in groups each week such that no two golfers
-play in the same group more than once.
-
-Constraints:
-1. Each week, golfers are divided into n_groups groups of group_size each
-2. No pair of golfers meets in the same group more than once across weeks
-"""
-from hermax.model import Model
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    n_weeks = instance["n_weeks"]
-    n_groups = instance["n_groups"]
-    group_size = instance["group_size"]
-    n_golfers = n_groups * group_size
+def create_model(instance):
+    """Social golfers problem: golfers play once a week, in groups of a fixed size, so that
+    every golfer plays in exactly one group each week, and no two golfers are in the same
+    group on more than one occasion. Report the group of each golfer in each week."""
+    group_size = instance["group_size"]  # the number of golfers in each group
+    n_groups = instance["n_groups"]      # the number of groups played in each week
+    n_weeks = instance["n_weeks"]        # the number of weeks of play
+    n_golfers = n_groups * group_size    # every golfer plays each week, so the golfers fill all groups
 
     m = Model()
 
-    # Decision variable: assign[golfer][week] = group number (0 to n_groups-1)
+    # assign[i][w] is the group (0-based) that golfer i plays in during week w
     assign = m.int_matrix("assign", n_golfers, n_weeks, 0, n_groups - 1)
 
-    # Constraint: Each group in each week has exactly group_size golfers
-    # For each week and group, count golfers assigned to that group
+    # Each week, every group holds exactly group_size golfers.
     for w in range(n_weeks):
         for g in range(n_groups):
-            # Use all-different-like constraint: for each position in the group,
-            # exactly group_size golfers should have assign[golfer][w] == g
-            # We count by creating a sum of boolean variables
-            golfers_in_group = [m.bool(f"in_group_{w}_{g}_{golfer}")
-                               for golfer in range(n_golfers)]
-            for golfer in range(n_golfers):
-                # golfers_in_group[golfer] is true iff assign[golfer][w] == g
-                m &= (golfers_in_group[golfer] == (assign[golfer][w] == g))
-            # Sum of booleans should equal group_size
-            m &= (sum(golfers_in_group) == group_size)
+            m &= (sum_expr(assign[i][w] == g for i in range(n_golfers)) == group_size)
 
-    # Constraint: No pair of golfers meets in the same group more than once
-    for g1 in range(n_golfers):
-        for g2 in range(g1 + 1, n_golfers):
-            # Create auxiliary booleans for each week: do they meet in week w?
-            meet_bools = [m.bool(f"meet_{g1}_{g2}_week{w}") for w in range(n_weeks)]
+    # Two golfers meet in a week when they are in the same group that week.
+    # No two golfers may meet in more than one week.
+    for i in range(n_golfers):
+        for j in range(i + 1, n_golfers):
+            # meets[w] is true when golfers i and j share a group in week w
+            meets = []
             for w in range(n_weeks):
-                # They meet in week w if assign[g1][w] == assign[g2][w]
-                m &= (meet_bools[w] == (assign[g1][w] == assign[g2][w]))
-            # They can meet in at most 1 week
-            m &= (sum(meet_bools) <= 1)
+                meet = m.bool()
+                m &= (assign[i][w] == assign[j][w]).iff(meet)
+                meets.append(meet)
+            # golfers i and j meet in at most one week
+            m &= (sum_expr(meets) <= 1)
 
     return m, {"assign": assign}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

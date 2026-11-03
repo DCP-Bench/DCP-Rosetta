@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790710387.3193293,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/hermax/python/CONTRACT.md": "f52af42db823537ce54fbf203d7c06b26ec1cad19f08528d3f89d17d02b66e8e"
+    },
+    "created_at": 1793666838.9266274,
     "problem_id": "csplib_053_graceful_graphs",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,58 +18,79 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6c842b3666ae0c4d4a45bcd81329ef2b2ec980f1992475bbc951827cc3ccab85",
-    "run_id": "20260929T1914Z-hermax-exact-pysat-clingo-c5e1",
-    "schema": 2,
-    "skill_bundle_hash": "c6081126151f9075134cf685a0ca344af3f15f06c459f14a0da84d0aa64b5188",
-    "skill_source": "solvers\\hermax\\skills\\hermax",
+    "readiness_hash": "76a4f2435640874af1b16def521b49b502c7529e4a6b55ba85f95cf5dff831ab",
+    "run_id": "hermax-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "81f2696c2938bf040591d134c7438ec0ec4baf4b",
+      "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
       "modified": false,
-      "path": "solvers/hermax/skills/hermax"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "214d641da524cdbab0c48cbc1c0700a74e6138886217db52964bb2ad9fd6915c",
+        "source": "solvers/hermax/skills/dcp-hermax",
+        "version": {
+          "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
+          "modified": false,
+          "path": "solvers/hermax/skills/dcp-hermax"
+        }
+      }
+    ],
     "solver_id": "hermax"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e54bc99f391cfd94bee0e72fe748f1e80c23e1d5ad6e18c4f66865515cc82384",
+      "id": "sha256:dc369d3de479a3539848840d558f9fdc9345f3df351f2558f8b288162fee203e",
+      "recipe": "sha256:4e04f9e3ba11a8c1ecaecc7cd46f285ae66893d1fe9a64586a5d6e0a61df8c3d",
       "tag": "dcp-eval/hermax:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.015596799901686609,
-        "execution_wall_seconds": 5.357689499971457,
+        "checking_seconds": 0.0043619779899017885,
+        "execution_wall_seconds": 0.8314229780080495,
         "first_solution": {
           "edges": [
-            4,
+            3,
             12,
-            5,
-            16,
+            10,
             9,
             7,
-            10,
-            11,
-            3,
-            1,
-            13,
-            14,
-            8,
             2,
+            16,
             15,
-            6
+            11,
+            1,
+            5,
+            4,
+            13,
+            6,
+            14,
+            8
           ],
           "nodes": [
-            4,
-            0,
+            3,
+            6,
+            15,
+            13,
             16,
-            9,
-            12,
-            2,
+            0,
             1,
-            15
+            5
           ]
         },
         "id": "example",
@@ -78,10 +103,13 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1929970999481156,
+        "reference_setup_seconds": 0.3484163469984196,
         "runner_status": {
+          "build_seconds": 0.03773622699372936,
           "detail": "",
-          "solve_seconds": 0.5586642609996488,
+          "main_seconds": 0.35871688899351284,
+          "read_seconds": 8.810099097900093e-05,
+          "solve_seconds": 0.35862644799635746,
           "status": "limit",
           "type": "status"
         },
@@ -91,21 +119,21 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0113001000136137,
-        "execution_wall_seconds": 4.567294899956323,
+        "checking_seconds": 0.003015146008692682,
+        "execution_wall_seconds": 0.5296804469980998,
         "first_solution": {
           "edges": [
-            3,
             2,
+            3,
             4,
             5,
-            1,
-            6
+            6,
+            1
           ],
           "nodes": [
             4,
-            1,
             6,
+            1,
             0
           ]
         },
@@ -119,10 +147,13 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.8462778999237344,
+        "reference_setup_seconds": 0.320781740010716,
         "runner_status": {
+          "build_seconds": 0.006703170001856051,
           "detail": "",
-          "solve_seconds": 0.06263021099948674,
+          "main_seconds": 0.008516635003616102,
+          "read_seconds": 9.509199298918247e-05,
+          "solve_seconds": 0.008419136007432826,
           "status": "limit",
           "type": "status"
         },
@@ -132,36 +163,36 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02133649995084852,
-        "execution_wall_seconds": 5.403454300016165,
+        "checking_seconds": 0.004050083996844478,
+        "execution_wall_seconds": 0.8314314159943024,
         "first_solution": {
           "edges": [
-            9,
-            2,
-            7,
-            10,
-            15,
             5,
-            3,
-            11,
-            8,
             13,
+            8,
+            3,
+            12,
+            15,
             6,
             4,
-            12,
+            2,
+            11,
+            9,
+            14,
             1,
-            14
+            10,
+            7
           ],
           "nodes": [
-            13,
-            4,
-            11,
-            0,
-            10,
-            15,
-            12,
+            14,
             9,
-            1
+            1,
+            3,
+            0,
+            15,
+            4,
+            10,
+            8
           ]
         },
         "id": "json:2",
@@ -174,10 +205,13 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.6424295000033453,
+        "reference_setup_seconds": 0.4176429849903798,
         "runner_status": {
+          "build_seconds": 0.03508241100644227,
           "detail": "",
-          "solve_seconds": 0.852635403000022,
+          "main_seconds": 0.25630067399470136,
+          "read_seconds": 9.179499465972185e-05,
+          "solve_seconds": 0.2562065030069789,
           "status": "limit",
           "type": "status"
         },
@@ -187,36 +221,36 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02009919995907694,
-        "execution_wall_seconds": 6.011388799990527,
+        "checking_seconds": 0.004062890002387576,
+        "execution_wall_seconds": 0.8684744920028606,
         "first_solution": {
           "edges": [
-            13,
+            1,
+            6,
+            2,
+            4,
+            5,
+            10,
+            7,
             8,
-            3,
+            14,
             9,
             11,
-            7,
+            13,
+            3,
             15,
-            4,
-            10,
-            12,
-            6,
-            14,
-            2,
-            5,
-            1
+            12
           ],
           "nodes": [
-            2,
-            15,
-            7,
-            4,
-            13,
-            9,
-            0,
-            3,
+            5,
+            6,
+            12,
             14,
+            10,
+            15,
+            13,
+            4,
+            0,
             1
           ]
         },
@@ -230,10 +264,13 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.795449799974449,
+        "reference_setup_seconds": 0.30397250899113715,
         "runner_status": {
+          "build_seconds": 0.03469663100258913,
           "detail": "",
-          "solve_seconds": 0.7984587659993849,
+          "main_seconds": 0.3145370099955471,
+          "read_seconds": 9.294399933423847e-05,
+          "solve_seconds": 0.3144413469999563,
           "status": "limit",
           "type": "status"
         },
@@ -243,32 +280,32 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.018212200026027858,
-        "execution_wall_seconds": 3.8559444000711665,
+        "checking_seconds": 0.006336048012599349,
+        "execution_wall_seconds": 0.5320298790029483,
         "first_solution": {
           "edges": [
-            7,
-            6,
-            9,
-            5,
-            10,
-            4,
+            1,
             8,
-            3,
-            12,
-            11,
+            7,
             2,
-            1
+            4,
+            9,
+            12,
+            3,
+            10,
+            11,
+            5,
+            6
           ],
           "nodes": [
-            3,
-            10,
-            9,
+            4,
             5,
             12,
-            0,
+            3,
+            11,
             1,
-            2
+            0,
+            6
           ]
         },
         "id": "json:4",
@@ -281,10 +318,13 @@
           "edges"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.104575900011696,
+        "reference_setup_seconds": 0.307702997000888,
         "runner_status": {
+          "build_seconds": 0.022879488009493798,
           "detail": "",
-          "solve_seconds": 0.30025731999921845,
+          "main_seconds": 0.03322327398927882,
+          "read_seconds": 9.028799831867218e-05,
+          "solve_seconds": 0.03313072200398892,
           "status": "limit",
           "type": "status"
         },
@@ -296,21 +336,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "02c3d45e5982beb2d0fe548a1af8a96e422087246defd89e4479d4b0217a526f",
+    "model_hash": "44eeb55098868f8e118ad31f54b2bab3e0036609484fb5785ee74676c4b68343",
     "problem_id": "csplib_053_graceful_graphs",
     "reason": "accepted",
     "reference_hash": "a9c24d746350d14f4a6dd166f242d5bd55951e2d4fd896849ce161926d7ce236",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -321,11 +361,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "hermax",
-    "total_wall_seconds": 43.21697680000216,
+    "total_wall_seconds": 6.752770987994154,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

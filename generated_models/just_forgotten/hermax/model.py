@@ -1,22 +1,48 @@
-# Just forgotten: Joe's account number uses each digit 0 to n-1 once. In each of
-# several tried sets exactly some given number of digits are in the right place.
+# just_forgotten: a hermax (Python) model from DCP Rosetta.
+# Download the `just_forgotten.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/just_forgotten.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python just_forgotten.py just_forgotten.json
+
 from hermax.model import Model
 
 
-def build(instance):
-    sets = instance["sets"]  # the digit sequences Joe tried
-    num_correct = instance["num_correct_digits"]  # digits in the right place in each set
-    n = len(sets[0])
+def create_model(instance):
+    """Joe's forgotten account number uses each digit 0 to n-1 exactly once. Each set he
+    tried has a fixed number of digits in the same position as the account number, and
+    those counts determine the account number. Find it."""
+    sets = instance["sets"]  # sets[k] is the k-th digit sequence Joe tried
+    num_correct = instance["num_correct_digits"]  # how many digits of each set are in the right place
+    n = len(sets[0])  # number of digits in the account number, read from the data
 
     m = Model()
-    # x[i] = the digit at position i of the account number
-    x = m.int_vector("x", n, 0, n - 1)
 
-    # each digit is used exactly once
-    m &= m.vector([x[i] for i in range(n)]).all_different()
+    # account[i] is the digit at position i of the account number
+    account = m.int_vector("account", n, 0, n - 1)
 
-    # every tried set has exactly num_correct digits in the position they have in the number
+    # The account number uses each digit from 0 to n-1 exactly once.
+    m &= account.all_different()
+
+    # Each tried set agrees with the account number in exactly num_correct positions.
     for tried in sets:
-        m &= (sum(1 * (x[i] == tried[i]) for i in range(n)) == num_correct)
+        m &= (sum(1 * (account[i] == tried[i]) for i in range(n)) == num_correct)
 
-    return m, {"x": x}
+    # No objective: any account number that fits every set is a solution.
+    return m, {"x": account}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

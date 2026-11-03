@@ -1,33 +1,46 @@
-# Curious number: 48 has the peculiarity that adding 1 to it gives a square and
-# adding 1 to its half gives a square. Find another number, from 1 to 10000, with it.
+# cur_num: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install hermax`) with:
+#   python cur_num.py
 from hermax.model import Model
 
 
-def build(instance):
-    # The puzzle is fixed by the problem; the instance carries no data.
-    limit = 10000  # the number and every number derived from it is at most 10000
-    m = Model()
-    # peculiar + 1 is at most 10000
-    peculiar = m.int("peculiar", 1, limit - 1)
-    # the square roots of peculiar + 1 and of peculiar / 2 + 1, at most 100 since the squares are at most 10000
-    root_of_number = m.int("root_of_number", 1, 100)
-    root_of_half = m.int("root_of_half", 1, 100)
+def create_model(instance):
+    """Find a number, from 1 to 10000, other than 48, that has the peculiarity: adding 1 to it
+    gives a square number, and adding 1 to its half also gives a square number.
 
-    # 48 is already known
+    The statement fixes all the data, so the instance (an empty object) is not read."""
+    m = Model()
+
+    # peculiar: the number to print, from 1 to 10000
+    peculiar = m.int("peculiar", 1, 10000)
+    # root_plus_one: the root r such that peculiar + 1 = r * r (roots 2..100, since 100 * 100 - 1 = 9999)
+    root_plus_one = m.int("root_plus_one", 2, 100)
+    # root_half_plus_one: the root s such that peculiar / 2 + 1 = s * s (roots 2..70, since 2 * (70 * 70 - 1) = 9798)
+    root_half_plus_one = m.int("root_half_plus_one", 2, 70)
+
+    # Rows (root, peculiar) where peculiar + 1 is the square of the root.
+    square_rows = [(r, r * r - 1) for r in range(2, 101)]
+    # Rows (root, peculiar) where peculiar is twice a number c with c + 1 the square of the root.
+    half_rows = [(s, 2 * (s * s - 1)) for s in range(2, 71)]
+
+    # The number plus one is a square.
+    m &= m.table([root_plus_one, peculiar], allowed=square_rows)
+    # The half of the number plus one is a square (the number is even, so the half is exact).
+    m &= m.table([root_half_plus_one, peculiar], allowed=half_rows)
+    # Print another number: 48 is the example given in the statement.
     m &= (peculiar != 48)
 
-    for root in range(1, 101):
-        # peculiar + 1 is the square of root_of_number
-        value = root * root - 1
-        if 1 <= value <= limit - 1:
-            m &= (root_of_number == root).implies(peculiar == value)
-        else:
-            m &= (root_of_number != root)
-        # peculiar is twice a number c >= 1 and c + 1 is the square of root_of_half
-        value = 2 * (root * root - 1)
-        if 1 <= value <= limit - 1:
-            m &= (root_of_half == root).implies(peculiar == value)
-        else:
-            m &= (root_of_half != root)
-
+    # No cost to minimise: any number with the peculiarity will do.
     return m, {"peculiar": peculiar}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

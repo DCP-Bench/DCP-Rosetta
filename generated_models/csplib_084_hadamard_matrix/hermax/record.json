@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-4-5-20251001)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1792652271.6951656,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/hermax/python/CONTRACT.md": "f52af42db823537ce54fbf203d7c06b26ec1cad19f08528d3f89d17d02b66e8e"
+    },
+    "created_at": 1793666998.8891947,
     "problem_id": "csplib_084_hadamard_matrix",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,50 +18,71 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "d17cc3ce515cbeb5e213748b3d94dd21358301cf7138da5cedaf0d0274be0d23",
-    "run_id": "20261022T0900Z-hermax129-r1",
-    "schema": 2,
-    "skill_bundle_hash": "913beeef71ca0eaf3683d33a908e90361f19199f55a738e1b0054f21f9dc0b4f",
-    "skill_source": "solvers/hermax/skills/hermax",
+    "readiness_hash": "76a4f2435640874af1b16def521b49b502c7529e4a6b55ba85f95cf5dff831ab",
+    "run_id": "hermax-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "f3c1e6d19bae6bf5a6fe7cb8e57742c3782f0fec",
+      "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
       "modified": false,
-      "path": "solvers/hermax/skills/hermax"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "214d641da524cdbab0c48cbc1c0700a74e6138886217db52964bb2ad9fd6915c",
+        "source": "solvers/hermax/skills/dcp-hermax",
+        "version": {
+          "commit": "278987a4c124cdebf68dd27c4a57c78a35ec9796",
+          "modified": false,
+          "path": "solvers/hermax/skills/dcp-hermax"
+        }
+      }
+    ],
     "solver_id": "hermax"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:d57e5dc4cf0b1115e98fde8c6de3c30f6191705fa2c7145d0fba3460b336729f",
+      "id": "sha256:dc369d3de479a3539848840d558f9fdc9345f3df351f2558f8b288162fee203e",
+      "recipe": "sha256:4e04f9e3ba11a8c1ecaecc7cd46f285ae66893d1fe9a64586a5d6e0a61df8c3d",
       "tag": "dcp-eval/hermax:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.2642640999983996,
-        "execution_wall_seconds": 1.6117635830305517,
+        "checking_seconds": 0.011357498005963862,
+        "execution_wall_seconds": 0.5810270060028415,
         "first_solution": {
           "a": [
             -1,
-            -1,
             1,
             -1,
             1,
             1,
             1,
             1,
+            -1,
             -1
           ],
           "b": [
-            1,
-            1,
-            -1,
             -1,
             1,
             1,
             -1,
+            1,
+            -1,
+            1,
             1,
             -1
           ]
@@ -72,10 +97,13 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.576231336919591,
+        "reference_setup_seconds": 0.378525410007569,
         "runner_status": {
+          "build_seconds": 0.00652414200885687,
           "detail": "",
-          "solve_seconds": 0.09887531003914773,
+          "main_seconds": 0.011078253999585286,
+          "read_seconds": 9.122600022237748e-05,
+          "solve_seconds": 0.010984970009303652,
           "status": "limit",
           "type": "status"
         },
@@ -85,33 +113,33 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0900404320564121,
-        "execution_wall_seconds": 1.6211298239650205,
+        "checking_seconds": 0.008143054001266137,
+        "execution_wall_seconds": 0.5300201560021378,
         "first_solution": {
           "a": [
-            1,
-            -1,
-            -1,
-            1,
-            1,
             -1,
             1,
             -1,
-            -1,
             1,
+            1,
+            1,
+            1,
+            -1,
+            -1,
+            -1,
             1
           ],
           "b": [
-            1,
-            1,
-            1,
             -1,
+            1,
             1,
             -1,
             -1,
             -1,
             1,
+            1,
             -1,
+            1,
             1
           ]
         },
@@ -125,10 +153,13 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2076346109388396,
+        "reference_setup_seconds": 0.28518799699668307,
         "runner_status": {
+          "build_seconds": 0.008746709994738922,
           "detail": "",
-          "solve_seconds": 0.16791764798108488,
+          "main_seconds": 0.014485245003015734,
+          "read_seconds": 9.0967005235143e-05,
+          "solve_seconds": 0.01439193899568636,
           "status": "limit",
           "type": "status"
         },
@@ -138,17 +169,17 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07529347098898143,
-        "execution_wall_seconds": 2.6122432521078736,
+        "checking_seconds": 0.009182189998682588,
+        "execution_wall_seconds": 0.530692463988089,
         "first_solution": {
           "a": [
+            1,
+            1,
             -1,
             -1,
             1,
             -1,
             -1,
-            1,
-            1,
             -1,
             1,
             1,
@@ -157,10 +188,6 @@
             -1
           ],
           "b": [
-            1,
-            -1,
-            1,
-            1,
             -1,
             1,
             -1,
@@ -169,7 +196,11 @@
             1,
             1,
             1,
-            -1
+            -1,
+            1,
+            -1,
+            1,
+            1
           ]
         },
         "id": "json:2",
@@ -182,10 +213,13 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.902258946094662,
+        "reference_setup_seconds": 0.3355693439953029,
         "runner_status": {
+          "build_seconds": 0.010880158995860256,
           "detail": "",
-          "solve_seconds": 1.1125301310094073,
+          "main_seconds": 0.030826304995571263,
+          "read_seconds": 8.798499766271561e-05,
+          "solve_seconds": 0.030735730004380457,
           "status": "limit",
           "type": "status"
         },
@@ -195,42 +229,42 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.1258368290727958,
-        "execution_wall_seconds": 5.134012638009153,
+        "checking_seconds": 0.011241517990129068,
+        "execution_wall_seconds": 0.630735309998272,
         "first_solution": {
           "a": [
-            1,
-            -1,
-            -1,
-            1,
-            1,
-            -1,
-            1,
-            1,
             -1,
             1,
             -1,
             -1,
             -1,
+            1,
+            -1,
+            1,
+            -1,
+            -1,
+            1,
+            1,
+            1,
             1,
             1
           ],
           "b": [
-            -1,
-            1,
-            -1,
             1,
             1,
-            1,
-            1,
-            1,
-            -1,
-            -1,
             -1,
             1,
             -1,
             -1,
-            1
+            1,
+            1,
+            1,
+            -1,
+            1,
+            1,
+            -1,
+            -1,
+            -1
           ]
         },
         "id": "json:3",
@@ -243,10 +277,13 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 4.088511501904577,
+        "reference_setup_seconds": 0.30517840600805357,
         "runner_status": {
+          "build_seconds": 0.014161184008116834,
           "detail": "",
-          "solve_seconds": 3.7551993320230395,
+          "main_seconds": 0.08496672099863645,
+          "read_seconds": 9.199499618262053e-05,
+          "solve_seconds": 0.0848726710100891,
           "status": "limit",
           "type": "status"
         },
@@ -256,46 +293,46 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4709857039852068,
-        "execution_wall_seconds": 6.662365567986853,
+        "checking_seconds": 0.013481790010700934,
+        "execution_wall_seconds": 1.4341998900054023,
         "first_solution": {
           "a": [
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-            -1,
-            1,
-            -1,
-            -1,
-            1,
-            1,
             1,
             1,
             1,
             1,
             -1,
+            1,
+            -1,
+            -1,
+            -1,
+            1,
+            -1,
+            -1,
+            1,
+            -1,
+            1,
+            1,
             -1
           ],
           "b": [
-            1,
-            -1,
             -1,
             1,
             1,
             1,
-            1,
-            -1,
             -1,
             1,
             1,
             -1,
             -1,
-            1,
             -1,
             1,
-            -1
+            1,
+            1,
+            -1,
+            -1,
+            -1,
+            1
           ]
         },
         "id": "json:4",
@@ -308,10 +345,13 @@
           "b"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 5.148869397002272,
+        "reference_setup_seconds": 0.7022510480019264,
         "runner_status": {
+          "build_seconds": 0.01702445799310226,
           "detail": "",
-          "solve_seconds": 4.627034033997916,
+          "main_seconds": 0.9115521930070827,
+          "read_seconds": 9.240199869964272e-05,
+          "solve_seconds": 0.911457360998611,
           "status": "limit",
           "type": "status"
         },
@@ -323,21 +363,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "9149fd87af1e295b4d82cfd3961704f0304b1285eba3d317bf4080436e39d517",
+    "model_hash": "f78acc105ce5e7b4c980ffe4f1e3a3379cc4ae535326d70b934f028b15cbce3f",
     "problem_id": "csplib_084_hadamard_matrix",
     "reason": "accepted",
     "reference_hash": "63b004e92106207f3f3f41fb14ec888ae8a498631d2476578a30a0f6b5a377f2",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -348,11 +388,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "hermax",
-    "total_wall_seconds": 37.22610483597964,
+    "total_wall_seconds": 6.971724885996082,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-4-5-20251001)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

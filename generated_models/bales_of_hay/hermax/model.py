@@ -1,55 +1,55 @@
+# bales_of_hay: a hermax (Python) model from DCP Rosetta.
+# Download the `bales_of_hay.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/bales_of_hay.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python bales_of_hay.py bales_of_hay.json
+
 from hermax.model import Model
 
 
-def build(instance):
-    n = instance["n"]
-    weights = instance["weights"]
+def create_model(instance):
+    """Recover the weight of each of n hay bales. The bales were weighed in every
+    combination of two, and the n(n-1)/2 pair weights were written down in numerical
+    order without saying which pair gave which weight. Find bale weights that make
+    the pair weights, as a list, exactly those written down."""
+    n = instance["n"]              # n: the number of bales
+    weights = instance["weights"]  # weights: the pair weights, one per pair of bales, in numerical order
 
     m = Model()
 
-    # Create integer variables for each bale weight
-    max_weight = max(weights)
-    bales = m.int_vector("bales", n, 1, max_weight)
+    # bales[i] is the weight of bale i (a weight is never negative, and no bale outweighs the heaviest pair)
+    bales = m.int_vector("bales", n, 0, max(weights))
 
-    # Symmetry breaking: enforce sorted order
-    for i in range(n - 1):
-        m &= (bales[i] <= bales[i + 1])
-
-    # Create list of all pairs (i, j) where i < j
+    # The pairs of bales, in a fixed order: (0, 1), (0, 2), ..., (n-2, n-1).
     pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
-    num_pairs = len(pairs)
-    num_weights = len(weights)
 
-    # Bipartite matching: assign each pair to a weight
-    # match[p][w] = true means pair p produces weight at index w
-    match = m.bool_matrix("match", num_pairs, num_weights)
-
-    # Each pair is matched to exactly one weight
-    for p in range(num_pairs):
-        m &= match[p].exactly_one()
-
-    # Each weight is used by exactly one pair
-    for w in range(num_weights):
-        m &= match.col(w).exactly_one()
-
-    # For each assignment: if match[p][w] is true,
-    # then bales[i] + bales[j] = weights[w]
+    # pair_weight[p] is the combined weight of the p-th pair of bales.
+    # It is one of the written-down weights, so it lies between the smallest and the largest.
+    pair_weight = m.int_vector("pair_weight", len(pairs), min(weights), max(weights))
     for p, (i, j) in enumerate(pairs):
-        for w, weight in enumerate(weights):
-            # When match[p][w] is selected, the sum must equal weight
-            # Use indicator constraints: match[p][w] implies bales[i]+bales[j] == weight
-            # Contrapositive: if bales[i]+bales[j] != weight, then match[p][w] = false
-            # Split inequality into two directions for the MaxSAT solver
+        # The weight of a pair is the sum of the weights of its two bales.
+        m &= (pair_weight[p] == bales[i] + bales[j])
 
-            # Create a sum variable
-            s = bales[i] + bales[j]
-
-            # match[p][w] -> (s == weight)
-            # Equivalent to: ~match[p][w] OR (s == weight)
-            # We cannot directly post (s == weight) in a disjunction
-            # So we decompose: ~match[p][w] OR ((s <= weight) AND (s >= weight))
-            # Which gives us: (~match[p][w] OR s <= weight) AND (~match[p][w] OR s >= weight)
-            m &= (~match[p, w] | (s <= weight))
-            m &= (~match[p, w] | (s >= weight))
+    # The pair weights are exactly the written-down list: each value occurs among the pairs
+    # as many times as it occurs in the list (the values need not be distinct).
+    for value in sorted(set(weights)):
+        m &= (sum(pair_weight[p] == value for p in range(len(pairs))) == weights.count(value))
 
     return m, {"bales": bales}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

@@ -1,44 +1,57 @@
-# Langford's problem: arrange two copies of each of the numbers 1..k in a
-# sequence of length 2k so that the two copies of i have exactly i numbers
-# between them (they sit i + 1 places apart).
+# csplib_024_langford: a hermax (Python) model from DCP Rosetta.
+# Download the `csplib_024_langford.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_024_langford.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python csplib_024_langford.py csplib_024_langford.json
+
 from hermax.model import Model
 
 
-def build(instance):
-    k = instance["k"]
-    length = 2 * k  # two copies of every number 1..k
+def create_model(instance):
+    """Langford's problem: arrange two copies of each number 1..k in one sequence of
+    length 2k so that the two copies of number i have exactly i numbers between them,
+    that is they sit i + 1 places apart. Report the sequence as sol."""
+    k = instance["k"]  # k: the largest number; each of 1..k appears twice
+    length = 2 * k     # the sequence has 2k places, numbered 0..2k-1
 
     m = Model()
-    # sol[q] = the number placed at position q of the sequence
+
+    # sol[p] is the number standing at place p of the sequence
     sol = m.int_vector("sol", length, 1, k)
 
-    # first[i][p] = the first copy of number i sits at position p, which puts
-    # the second copy at position p + i + 1. Both copies must fit in the
-    # sequence, so p ranges over 0 .. 2k - i - 2.
-    first = {i: m.bool_vector(f"first_{i}", length - i - 1) for i in range(1, k + 1)}
+    # first[i-1] is the place of the first copy of number i; the copy must fit, so it
+    # starts no later than place 2k - i - 2
+    first = [m.int(f"first_{i}", 0, length - i - 2) for i in range(1, k + 1)]
+    # second[i-1] is the place of the second copy of number i
+    second = [m.int(f"second_{i}", i + 1, length - 1) for i in range(1, k + 1)]
 
-    # each number has exactly one place for its first copy
+    # The second copy of number i sits i + 1 places after its first copy.
     for i in range(1, k + 1):
-        m &= first[i].exactly_one()
+        m &= (second[i - 1] == first[i - 1] + i + 1)
 
-    # Each position of the sequence holds exactly one copy: either the first copy
-    # of some number or the second copy of some number. (Stating "at most one"
-    # would be enough, since 2k copies fill 2k positions; "exactly one" is the
-    # statement of the problem.)
-    for q in range(length):
-        copies_here = []
-        for i in range(1, k + 1):
-            if q <= length - i - 2:  # a first copy of i may start at q
-                copies_here.append(first[i][q])
-            if q - i - 1 >= 0:  # a second copy of i may end at q
-                copies_here.append(first[i][q - i - 1])
-        m &= (sum(copies_here) == 1)
+    # Every place of the sequence holds exactly one copy: the 2k copy positions are all different.
+    m &= m.vector(first + second).all_different()
 
-    # The sequence shows the number at both of its positions. This ties the
-    # integer output sol to the placement above.
+    # Both places of each number's copies show that number in sol.
     for i in range(1, k + 1):
-        for p in range(length - i - 1):
-            m &= (~first[i][p] | (sol[p] == i))
-            m &= (~first[i][p] | (sol[p + i + 1] == i))
+        m &= (sol[first[i - 1]] == i)
+        m &= (sol[second[i - 1]] == i)
 
     return m, {"sol": sol}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

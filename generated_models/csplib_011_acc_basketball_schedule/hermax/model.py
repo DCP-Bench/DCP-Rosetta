@@ -1,162 +1,173 @@
-# ACC basketball schedule (CSPLib 11): a double round-robin timetable for the nine teams of
-# the 1997/98 Atlantic Coast Conference over 18 dates, with mirroring, home/away/bye
-# pattern, weekend, rival and opponent-sequence rules.
-import functools
-import operator
+# csplib_011_acc_basketball_schedule: a hermax (Python) model from DCP Rosetta.
+# Download the `csplib_011_acc_basketball_schedule.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python csplib_011_acc_basketball_schedule.py csplib_011_acc_basketball_schedule.json
+
+from itertools import permutations
 
 from hermax.model import Model
 
-# The teams, the rivalries, the mirroring scheme and the special rules are fixed by the
-# problem (Nemhauser and Trick); the instance gives the number of teams and dates.
+# The nine teams of the 1997/98 Atlantic Coast Conference, numbered in the order the
+# problem statement lists them (fixed by the problem, not by the instance).
 CLEM, DUKE, FSU, GT, UMD, UNC, NCST, UVA, WAKE = range(9)
-RIVAL = [GT, UNC, FSU, CLEM, UVA, DUKE, WAKE, UMD, NCST]  # FSU has no rival
-# date d is mirrored by date MIRROR[d] (0-based form of the pairs (1, 8), (2, 9), (3, 12),
-# (4, 13), (5, 14), (6, 15), (7, 16), (10, 17), (11, 18))
-MIRROR = [7, 8, 11, 12, 13, 14, 15, 0, 1, 16, 17, 2, 3, 4, 5, 6, 9, 10]
+
+# RIVAL[t] is the traditional rival of team t. FSU has no rival.
+RIVAL = {CLEM: GT, GT: CLEM, DUKE: UNC, UNC: DUKE, NCST: WAKE, WAKE: NCST, UMD: UVA, UVA: UMD}
+
+# The codes of where[d][i], as the problem statement gives them.
 HOME, BYE, AWAY = 0, 1, 2
 
+# The mirroring scheme (Nemhauser and Trick) on the 1-based dates (1, 8), (2, 9), ...,
+# written with 0-based dates: (0, 7), (1, 8), ...
+MIRROR_PAIRS = [(0, 7), (1, 8), (2, 11), (3, 12), (4, 13), (5, 14), (6, 15), (9, 16), (10, 17)]
 
-def any_of(lits):
-    return functools.reduce(operator.or_, lits)
 
+def create_model(instance):
+    """Schedule a double round-robin of the nine ACC basketball teams over 18 dates.
 
-def build(instance):
-    n = instance["n_teams"]
-    days = instance["n_days"]
-    weekends = [d for d in range(days) if d % 2 == 1]  # the second, fourth, ... dates
-    last = days - 1
+    Each team plays every other team once at home and once away. Each date is a
+    weekday or a weekend fixture, and the schedule must follow the mirroring scheme,
+    the home/away/bye patterns, the weekend and rival rules, and the opponent-sequence
+    and fixed-date rules of the problem statement."""
+    n = instance["n_teams"]    # n: the number of teams (9)
+    days = instance["n_days"]  # days: the number of dates (18)
+    last = days - 1            # the 0-based index of the last date
+
+    # The second, fourth, ... dates are weekend fixtures (0-based: the odd indices).
+    weekends = [d for d in range(days) if d % 2 == 1]
 
     m = Model()
-    # config[d][i] = the team that team i plays on date d; i itself means a bye
-    config = m.int_matrix("config", days, n, 0, n - 1)
-    # where[d][i] = 0 if team i plays at home on date d, 1 if it has a bye, 2 if it plays away
-    where = m.int_matrix("where", days, n, 0, 2)
+    # opp[d][i] is the team that team i plays on date d; it is i itself when team i has a bye
+    opp = m.int_matrix("opp", days, n, 0, n - 1)
+    # loc[d][i] is HOME, BYE or AWAY: where team i is on date d
+    loc = m.int_matrix("loc", days, n, HOME, AWAY)
 
-    # meets[d][i][j] = team i plays team j on date d (meets[d][i][i] = team i has a bye)
-    meets = [m.bool_matrix(f"meets_{d}", n, n) for d in range(days)]
-    home = m.bool_matrix("home", days, n)
-    bye = m.bool_matrix("bye", days, n)
-    away = m.bool_matrix("away", days, n)
+    # Opponents pair up: if team i plays team j on a date, team j plays team i on it.
+    # A bye is exactly when a team is its own opponent.
     for d in range(days):
         for i in range(n):
-            for j in range(n):
-                m &= (~meets[d][i][j] | (config[d][i] == j))
-                m &= (meets[d][i][j] | ~(config[d][i] == j))
-            for lit, value in ((home[d][i], HOME), (bye[d][i], BYE), (away[d][i], AWAY)):
-                m &= (~lit | (where[d][i] == value))
-                m &= (lit | ~(where[d][i] == value))
-
-    for d in range(days):
-        # a team cannot have different opponents on the same date, and no two teams have
-        # the same opponent
-        for j in range(n):
-            for i in range(n):
-                for k in range(i + 1, n):
-                    m &= (~meets[d][i][j] | ~meets[d][k][j])
-        for i in range(n):
-            # if team i plays team j, then team j plays team i
-            for j in range(i + 1, n):
-                m &= (~meets[d][i][j] | meets[d][j][i])
-                m &= (meets[d][i][j] | ~meets[d][j][i])
-            # a team has a bye exactly when it is its own opponent
-            m &= (~bye[d][i] | meets[d][i][i])
-            m &= (bye[d][i] | ~meets[d][i][i])
-            # when two teams play each other, one is at home and the other away
+            m &= (~(opp[d][i] == i) | (loc[d][i] == BYE))
+            m &= (~(loc[d][i] == BYE) | (opp[d][i] == i))
             for j in range(n):
                 if j != i:
-                    m &= (~meets[d][i][j] | ~home[d][i] | away[d][j])
-                    m &= (~meets[d][i][j] | ~away[d][i] | home[d][j])
+                    m &= (~(opp[d][i] == j) | (opp[d][j] == i))
+                    # two teams that play each other: one is at home and the other is away
+                    m &= (~(opp[d][i] == j) | (loc[d][i] == HOME) | (loc[d][j] == HOME))
+                    m &= (~(opp[d][i] == j) | ~(loc[d][i] == HOME) | ~(loc[d][j] == HOME))
 
-    # Double round-robin: each team plays each other team exactly once at home.
+    # Double round-robin: each team hosts each other team exactly once. (The away game
+    # against that team is then implied, because the other team hosts it.)
     for t in range(n):
         for o in range(n):
             if o != t:
-                at_home = []
+                hosted = []
                 for d in range(days):
-                    lit = m.bool(f"home_game_{t}_{o}_{d}")
-                    m &= (~lit | meets[d][t][o])
-                    m &= (~lit | home[d][t])
-                    m &= (lit | ~meets[d][t][o] | ~home[d][t])
-                    at_home.append(lit)
-                m &= (sum(at_home) == 1)
+                    # hosts[d] is true when team t hosts team o on date d
+                    hosts = m.bool()
+                    m &= (~hosts | (opp[d][t] == o))
+                    m &= (~hosts | (loc[d][t] == HOME))
+                    m &= (hosts | ~(opp[d][t] == o) | ~(loc[d][t] == HOME))
+                    hosted.append(hosts)
+                m &= (sum(hosted) == 1)
 
-    # 1. Mirroring: on mirrored dates every team meets the same opponent, and home and away
-    #    swap (a bye stays a bye).
-    for d in range(days):
-        e = MIRROR[d]
+    # 1. Mirroring: the two dates of a pair have the same opponent for every team. A team
+    #    that is home on one of them is away on the other; a bye stays a bye (the codes
+    #    HOME=0 and AWAY=2 add up to 2, and BYE=1 added to itself gives 2 too).
+    for d, e in MIRROR_PAIRS:
         for i in range(n):
-            for j in range(n):
-                m &= (~meets[d][i][j] | meets[e][i][j])
-            m &= (~home[d][i] | away[e][i])
-            m &= (~away[d][i] | home[e][i])
-            m &= (~bye[d][i] | bye[e][i])
+            m &= (opp[d][i] == opp[e][i])
+            m &= (loc[d][i] + loc[e][i] == 2)
 
     for t in range(n):
-        # 2. No team plays away on both last dates.
-        m &= (~away[last - 1][t] | ~away[last][t])
-        # 3. No more than two home matches in a row, no more than two away matches in a row,
-        #    no more than three away matches or byes in a row (so one home match in any four
-        #    dates), no more than four home matches or byes in a row (so one away match in
-        #    any five dates).
+        # 2. No team plays away on both of the last two dates.
+        m &= (~(loc[last - 1][t] == AWAY) | ~(loc[last][t] == AWAY))
+
+        # 3. Home/away/bye patterns, read as windows of consecutive dates.
+        #    No more than two home matches in a row, and no more than two away matches in a row.
         for d in range(days - 2):
-            m &= (~home[d][t] | ~home[d + 1][t] | ~home[d + 2][t])
-            m &= (~away[d][t] | ~away[d + 1][t] | ~away[d + 2][t])
+            m &= (sum(loc[d + k][t] == HOME for k in range(3)) <= 2)
+            m &= (sum(loc[d + k][t] == AWAY for k in range(3)) <= 2)
+        #    No more than three away matches or byes in a row: four dates hold a home match.
         for d in range(days - 3):
-            m &= any_of([home[d + k][t] for k in range(4)])
+            m &= (sum(loc[d + k][t] != HOME for k in range(4)) <= 3)
+        #    No more than four home matches or byes in a row: five dates hold an away match.
         for d in range(days - 4):
-            m &= any_of([away[d + k][t] for k in range(5)])
+            m &= (sum(loc[d + k][t] != AWAY for k in range(5)) <= 4)
+
         # 4. Of the weekends, each team plays four at home, four away, and has one bye.
-        m &= (sum(home[d][t] for d in weekends) == 4)
-        m &= (sum(away[d][t] for d in weekends) == 4)
-        m &= (sum(bye[d][t] for d in weekends) == 1)
-        # 5. Home matches or byes on at least two of the first five weekends, which is at
-        #    most three away matches there.
-        m &= (sum(away[d][t] for d in weekends[:5]) <= 3)
-        # 6. On the last date every team except FSU plays its rival, unless it plays FSU or
-        #    has a bye.
+        m &= (sum(loc[d][t] == HOME for d in weekends) == 4)
+        m &= (sum(loc[d][t] == AWAY for d in weekends) == 4)
+        m &= (sum(loc[d][t] == BYE for d in weekends) == 1)
+
+        # 5. First weekends: home matches or byes on at least two of the first five weekends.
+        m &= (sum(loc[d][t] != AWAY for d in weekends[:5]) >= 2)
+
+        # 6. Rival matches: on the last date every team except FSU plays its rival, unless it
+        #    plays FSU or has a bye.
         if t != FSU:
-            m &= (meets[last][t][RIVAL[t]] | meets[last][t][FSU] | bye[last][t])
+            m &= ((opp[last][t] == RIVAL[t]) | (opp[last][t] == FSU) | (loc[last][t] == BYE))
 
-    # 7. These pairings occur at least once in dates 11 to 18: Wake-UNC, Wake-Duke, GT-UNC
-    #    and GT-Duke.
+    # 7. Constrained matches: these pairs meet at least once in dates 11 to 18.
     for a, b in ((WAKE, UNC), (WAKE, DUKE), (GT, UNC), (GT, DUKE)):
-        m &= any_of([meets[d][a][b] for d in range(10, days)])
+        m &= (sum(opp[d][a] == b for d in range(10, days)) >= 1)
 
-    # 8. No team plays away against UNC and Duke on two consecutive dates (in either order),
-    #    and no team plays UNC, Duke and Wake on three consecutive dates (in any order).
+    # 8. Opponent sequences. No team plays away against UNC and against Duke on two
+    #    consecutive dates, in either order (the rule does not apply to UNC and Duke).
+    #    No team plays UNC, Duke and Wake on three consecutive dates, in any order,
+    #    whatever the home/away.
     for t in range(n):
         if t not in (UNC, DUKE):
             for d in range(days - 1):
                 for x, y in ((UNC, DUKE), (DUKE, UNC)):
-                    m &= (~meets[d][t][x] | ~away[d][t] | ~meets[d + 1][t][y] | ~away[d + 1][t])
+                    m &= (~(opp[d][t] == x) | ~(loc[d][t] == AWAY)
+                          | ~(opp[d + 1][t] == y) | ~(loc[d + 1][t] == AWAY))
         if t not in (UNC, DUKE, WAKE):
             for d in range(days - 2):
-                for x, y, z in ((UNC, DUKE, WAKE), (UNC, WAKE, DUKE), (DUKE, UNC, WAKE),
-                                (DUKE, WAKE, UNC), (WAKE, UNC, DUKE), (WAKE, DUKE, UNC)):
-                    m &= (~meets[d][t][x] | ~meets[d + 1][t][y] | ~meets[d + 2][t][z])
+                for x, y, z in permutations((UNC, DUKE, WAKE)):
+                    m &= (~(opp[d][t] == x) | ~(opp[d + 1][t] == y) | ~(opp[d + 2][t] == z))
 
-    # 9. Other constraints.
-    # UNC plays its rival Duke in the last date and in date 11
-    m &= meets[10][UNC][DUKE]
-    m &= meets[last][UNC][DUKE]
-    # UNC plays Clem in the second date
-    m &= meets[1][UNC][CLEM]
-    # Duke has a bye in date 16
-    m &= bye[15][DUKE]
-    # Wake does not play home in date 17
-    m &= ~home[16][WAKE]
-    # Wake has a bye in the first date
-    m &= bye[0][WAKE]
-    # Clem, Duke, UMD and Wake do not play away in the last date
+    # 9. Other constraints, with the dates 0-based (date 11 is index 10).
+    # UNC plays its rival Duke on the last date and on date 11.
+    m &= (opp[10][UNC] == DUKE)
+    m &= (opp[last][UNC] == DUKE)
+    # UNC plays Clemson on the second date.
+    m &= (opp[1][UNC] == CLEM)
+    # Duke has a bye on date 16.
+    m &= (loc[15][DUKE] == BYE)
+    # Wake does not play at home on date 17.
+    m &= (loc[16][WAKE] != HOME)
+    # Wake has a bye on the first date.
+    m &= (loc[0][WAKE] == BYE)
+    # Clemson, Duke, Maryland and Wake do not play away on the last date.
     for t in (CLEM, DUKE, UMD, WAKE):
-        m &= ~away[last][t]
-    # Clem, FSU, GT and Wake do not play away in the first date
+        m &= (loc[last][t] != AWAY)
+    # Clemson, FSU, Georgia Tech and Wake do not play away on the first date.
     for t in (CLEM, FSU, GT, WAKE):
-        m &= ~away[0][t]
-    # Neither FSU nor NCSt have a bye in the last date
+        m &= (loc[0][t] != AWAY)
+    # Neither FSU nor NC State has a bye on the last date.
     for t in (FSU, NCST):
-        m &= ~bye[last][t]
-    # UNC does not have a bye in the first date
-    m &= ~bye[0][UNC]
+        m &= (loc[last][t] != BYE)
+    # UNC does not have a bye on the first date.
+    m &= (loc[0][UNC] != BYE)
 
-    return m, {"config": config, "where": where}
+    # Satisfaction problem: no objective. config[d][i] is the opponent of team i on date d
+    # (its own number for a bye); where[d][i] is HOME, BYE or AWAY.
+    return m, {"config": opp, "where": loc}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

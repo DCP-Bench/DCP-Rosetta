@@ -1,72 +1,48 @@
-# Hardy 1729 (squares): find four different numbers a, b, c, d between 1 and 100 with
-# a^2 + b^2 = c^2 + d^2.
-import functools
-import itertools
-import operator
+# session5_hardy_1729_square: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_hardy_1729_square.html
+# Run it (after `pip install hermax`) with:
+#   python session5_hardy_1729_square.py
 
 from hermax.model import Model
 
 
-def define(m, inputs, function):
-    """A new literal that equals function(*inputs) for 0/1 inputs, as clauses."""
-    out = m.bool()
-    for values in itertools.product((0, 1), repeat=len(inputs)):
-        clause = [~lit if value else lit for lit, value in zip(inputs, values)]
-        clause.append(out if function(*values) else ~out)
-        m &= functools.reduce(operator.or_, clause)
-    return out
-
-
-def add_bits(m, xs, ys):
-    """Binary sum of two numbers given as lists of literals, least significant
-    bit first."""
-    result = []
-    carry = None
-    for i in range(max(len(xs), len(ys))):
-        terms = [t for t in (xs[i] if i < len(xs) else None,
-                             ys[i] if i < len(ys) else None, carry) if t is not None]
-        if len(terms) == 1:
-            result.append(terms[0])
-            carry = None
-        elif len(terms) == 2:
-            result.append(define(m, terms, lambda a, b: a ^ b))
-            carry = define(m, terms, lambda a, b: a & b)
-        else:
-            result.append(define(m, terms, lambda a, b, c: a ^ b ^ c))
-            carry = define(m, terms, lambda a, b, c: (a & b) | (a & c) | (b & c))
-    if carry is not None:
-        result.append(carry)
-    return result
-
-
-def square(m, x, name, low, high, width):
-    """Bits of x * x for an integer variable x in low..high: when x is v, the bits spell
-    v * v. Squaring an integer variable has no direct form here, so it is a table."""
-    bits = m.bool_vector(name, width)
-    for v in range(low, high + 1):
-        for k in range(width):
-            m &= (~(x == v) | (bits[k] if (v * v >> k) & 1 else ~bits[k]))
-    return list(bits)
-
-
-def build(instance):
-    # The range is fixed by the problem; the instance carries no data.
-    range_min, range_max = 1, 100
+def create_model(instance):
+    """Hardy's 1729 squares: find four different numbers a, b, c, d between 1 and 100
+    with a^2 + b^2 = c^2 + d^2, and report them as (a, b, c, d)."""
+    # The statement fixes the range 1..100 and the instance carries no data, so the
+    # instance argument is not read.
+    low, high = 1, 100   # the four numbers each lie between 1 and 100
 
     m = Model()
-    a, b, c, d = (m.int(name, range_min, range_max) for name in "abcd")
 
-    # the four numbers are different
+    # a, b, c, d: the four numbers of the statement
+    a, b, c, d = (m.int(name, low, high) for name in ("a", "b", "c", "d"))
+
+    # The four numbers are different.
     m &= m.vector([a, b, c, d]).all_different()
 
-    # a^2 + b^2 = c^2 + d^2, built as binary adders over the squares and compared bit by bit
-    width = (range_max * range_max).bit_length()
-    left = add_bits(m, square(m, a, "a_squared", range_min, range_max, width),
-                    square(m, b, "b_squared", range_min, range_max, width))
-    right = add_bits(m, square(m, c, "c_squared", range_min, range_max, width),
-                     square(m, d, "d_squared", range_min, range_max, width))
-    for p, q in zip(left, right):
-        m &= (~p | q)
-        m &= (p | ~q)
+    # sq_x is the square of x. Squaring is not arithmetic hermax can post directly, so
+    # each pair (x, x * x) is listed as an allowed row of a table.
+    squares = {}
+    for name, number in (("a", a), ("b", b), ("c", c), ("d", d)):
+        # sq_x: the square of x, between 1 and 10000
+        sq = m.int(f"square_{name}", low * low, high * high)
+        m &= m.table([number, sq], allowed=[(v, v * v) for v in range(low, high + 1)])
+        squares[name] = sq
+
+    # a^2 + b^2 = c^2 + d^2: the sum of the squares of the first two numbers equals
+    # the sum of the squares of the other two.
+    m &= (squares["a"] + squares["b"] == squares["c"] + squares["d"])
 
     return m, {"a": a, "b": b, "c": c, "d": d}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

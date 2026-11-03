@@ -1,98 +1,84 @@
-# N-puzzle: a sliding-tile puzzle on a square grid with one empty cell (0). Starting
-# from the given board, move tiles into the empty cell, one move per step and never
-# standing still, so that the board after N_STEPS - 1 moves is the given end board.
-# The answer is the board at every step, start and end included.
-import functools
-import operator
+# n_puzzle: a hermax (Python) model from DCP Rosetta.
+# Download the `n_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/n_puzzle.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python n_puzzle.py n_puzzle.json
 
 from hermax.model import Model
 
 
-def clause(*lits):
-    """The disjunction of the given literals."""
-    return functools.reduce(operator.or_, lits)
-
-
-def exactly_one(m, lits, name):
-    """Post "exactly one of lits is true" with a ladder encoding.
-
-    prefix[i] says that one of lits[0..i] is true; each literal sets its prefix,
-    prefixes carry on, and a literal after a set prefix is forbidden. That takes
-    three clauses per literal, where forbidding every pair takes a quadratic number.
-    """
-    if len(lits) == 1:
-        m &= lits[0]
-        return
-    prefix = m.bool_vector(name, len(lits))
-    for i, lit in enumerate(lits):
-        m &= (~lit | prefix[i])
-        if i + 1 < len(lits):
-            m &= (~prefix[i] | prefix[i + 1])
-            m &= (~lits[i + 1] | ~prefix[i])
-    m &= clause(*lits)
-
-
-def build(instance):
-    start = instance["puzzle_start"]  # start[i][j] = tile on the first board, 0 = empty cell
-    end = instance["puzzle_end"]  # end[i][j] = tile on the last board
-    n_steps = instance["N_STEPS"]  # number of boards, start and end included
-    dim = len(start)
-    n_cells = dim * dim
-    n_tiles = n_cells - 1  # tiles are 1..n_tiles, 0 is the empty cell
-    values = range(n_tiles + 1)
+def create_model(instance):
+    """The N-puzzle: a square board of numbered tiles with one empty cell (value 0).
+    Starting from the start board, slide a tile into the empty cell one move per step,
+    every step changing the board, so that after N_STEPS - 1 moves the board is the end
+    board. The answer is the board at every step, start and end included."""
+    start = instance["puzzle_start"]  # start[i][j]: the value in row i, column j of the first board, 0 = empty
+    end = instance["puzzle_end"]      # end[i][j]: the value in row i, column j of the last board, 0 = empty
+    n_steps = instance["N_STEPS"]     # number of boards to print, start and end included
+    dim = len(start)                  # the board is dim by dim
+    n_cells = dim * dim               # cells are numbered row by row, 0 .. n_cells - 1
+    n_tiles = n_cells - 1             # tiles are numbered 1 .. n_tiles; 0 is the empty cell
 
     m = Model()
-    # holds[t][c][v] = at step t, cell c (numbered row by row) holds value v
-    holds = [[[m.bool(f"holds_{t}_{c}_{v}") for v in values] for c in range(n_cells)]
-             for t in range(n_steps)]
-    # steps[t][i][j] = value of cell (i, j) at step t (the declared output)
-    steps = [[[m.int(f"steps_{t}_{i}_{j}", 0, n_tiles) for j in range(dim)] for i in range(dim)]
+
+    # board[t][c] is the value in cell c at step t (0 = the empty cell)
+    board = [[m.int(f"board_{t}_{c}", 0, n_tiles) for c in range(n_cells)]
              for t in range(n_steps)]
 
-    # Every board is a full arrangement: each cell holds one value and each value
-    # (every tile and the empty cell) sits in exactly one cell. This is the reference's
-    # "all cells are different" invariant.
+    # Every board is a full arrangement: each tile and the empty cell appears exactly once.
     for t in range(n_steps):
-        for c in range(n_cells):
-            exactly_one(m, [holds[t][c][v] for v in values], f"cell_{t}_{c}")
-        for v in values:
-            exactly_one(m, [holds[t][c][v] for c in range(n_cells)], f"value_{t}_{v}")
+        m &= m.vector(board[t]).all_different()
 
-    # steps shows what is held: holding v means steps >= v and not steps >= v + 1
-    # (comparisons that fall outside the range 0..n_tiles are already settled)
-    for t in range(n_steps):
-        for c in range(n_cells):
-            i, j = divmod(c, dim)
-            for v in values:
-                if v > 0:
-                    m &= (~holds[t][c][v] | (steps[t][i][j] >= v))
-                if v < n_tiles:
-                    m &= (~holds[t][c][v] | ~(steps[t][i][j] >= v + 1))
-
-    # the first board is the start state and the last board is the end state
+    # The first board is the start board and the last board is the end board.
     for c in range(n_cells):
         i, j = divmod(c, dim)
-        m &= holds[0][c][start[i][j]]
-        m &= holds[n_steps - 1][c][end[i][j]]
+        m &= (board[0][c] == start[i][j])
+        m &= (board[n_steps - 1][c] == end[i][j])
 
-    # The cells a move of the empty cell can reach: the cell itself or a side neighbour.
-    def reach(c):
+    def neighbours(c):
+        """The cells sharing a side with cell c."""
         i, j = divmod(c, dim)
-        return [(i + di) * dim + (j + dj) for di, dj in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)]
+        return [(i + di) * dim + (j + dj) for di, dj in ((-1, 0), (1, 0), (0, -1), (0, 1))
                 if 0 <= i + di < dim and 0 <= j + dj < dim]
 
     for t in range(n_steps - 1):
+        # Exactly one move per step: the empty cell slides from cell c to a neighbouring cell d.
+        moves = [(c, d) for c in range(n_cells) for d in neighbours(c)]
+        # move[k] is true when the step is moves[k]
+        move = m.bool_vector(f"move_{t}", len(moves))
+        m &= move.exactly_one()
+        for k, (c, d) in enumerate(moves):
+            # the empty cell is in c before the move and in d after it
+            m &= (~move[k] | (board[t][c] == 0))
+            m &= (~move[k] | (board[t + 1][d] == 0))
+            # the tile that was in d slides into c
+            m &= (board[t + 1][c] == board[t][d]).only_if(move[k])
+
+        # Every other cell keeps its tile: it is unchanged, or it is one of the two cells of the move.
         for c in range(n_cells):
-            # the empty cell moves one cell sideways: if it is in cell c after the
-            # move, it was in c or a neighbour of c before it
-            m &= (~holds[t + 1][c][0] | clause(*[holds[t][d][0] for d in reach(c)]))
-            # only the empty cell moves: a tile v in cell c stays there, unless the
-            # empty cell moves into c (then c is empty afterwards)
-            for v in range(1, n_tiles + 1):
-                m &= (~holds[t][c][v] | holds[t + 1][c][v] | holds[t + 1][c][0])
-            # The board must change at every step (no standing still). Given the rules
-            # above a board changes exactly when the empty cell changes place, so the
-            # empty cell may not be in the same cell before and after the move.
-            m &= (~holds[t][c][0] | ~holds[t + 1][c][0])
+            same = m.bool()
+            m &= (board[t + 1][c] == board[t][c]).iff(same)
+            m &= (same | (board[t][c] == 0) | (board[t + 1][c] == 0))
+
+    # steps[t][i][j]: the value in row i, column j of the board at step t (the declared output)
+    steps = [[[board[t][i * dim + j] for j in range(dim)] for i in range(dim)]
+             for t in range(n_steps)]
 
     return m, {"steps": steps}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

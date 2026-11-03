@@ -1,49 +1,65 @@
-# Thick as thieves: six suspects, at most two of them guilty. The innocent tell
-# the truth and the guilty lie in what they said.
-from itertools import combinations
+# session1_thick_as_thieves: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+# Run it (after `pip install hermax`) with:
+#   python session1_thick_as_thieves.py
 
 from hermax.model import Model
 
 SUSPECTS = ["artie", "bill", "crackitt", "dodgy", "edgy", "fingers"]
 
 
-def build(instance):
-    # The puzzle is fixed by the problem; the instance carries no data.
+def create_model(instance):
+    """Six suspects were interviewed after a robbery. The getaway car held at most two
+    of them, so at least four are innocent. The innocent tell the truth and the guilty
+    lie, so each suspect is guilty exactly when his statement is false. Who is guilty?
+
+    The instance carries no data: the puzzle is fixed by the problem statement, so
+    `instance` is not read.
+    """
     m = Model()
-    # guilty[name] is true when the suspect took part
+
+    # guilty[name] is true when that suspect took part in the robbery
     guilty = {name: m.bool(name) for name in SUSPECTS}
     artie, bill, crackitt, dodgy, edgy, fingers = (guilty[name] for name in SUSPECTS)
 
-    # the getaway car held two, so at most two are guilty
+    # The getaway car held two, so at most two suspects are guilty.
     m &= (sum(1 * guilty[name] for name in SUSPECTS) <= 2)
 
-    # A suspect is guilty exactly when what he said is false.
-    # Artie: "It wasn't me." and Crackitt: "No I wasn't." Each is guilty exactly when
-    # he says something false about himself, which holds for either value, so
-    # neither statement restricts anything.
-    # Bill: "Crackitt was in it up to his neck." Bill is guilty exactly when Crackitt is not.
+    # Artie: "It wasn't me." He is guilty exactly when that is false, that is exactly
+    # when he is guilty, which holds for either value: the statement adds no constraint.
+    # Crackitt: "No I wasn't." Likewise, exactly when he is guilty: no constraint.
+
+    # Bill: "Crackitt was in it up to his neck." False exactly when Crackitt is innocent,
+    # so Bill is guilty exactly when Crackitt is innocent.
     m &= (bill | crackitt)
     m &= (~bill | ~crackitt)
-    # Dodgy: "If Crackitt did it, Bill did it with him." False exactly when Crackitt
-    # is guilty and Bill is not, and then Dodgy is guilty.
+
+    # Dodgy: "If Crackitt did it, Bill did it with him." False exactly when Crackitt is
+    # guilty and Bill is innocent. Dodgy is guilty exactly then.
     m &= (~dodgy | crackitt)
     m &= (~dodgy | ~bill)
     m &= (dodgy | ~crackitt | bill)
+
     # Edgy: "Nobody did it alone." False exactly when at most one suspect is guilty.
-    # If Edgy is guilty at most one is; if not, at least two are (each suspect has
-    # another guilty one beside him).
-    for a, b in combinations(SUSPECTS, 2):
-        m &= (~edgy | ~guilty[a] | ~guilty[b])
-    for name in SUSPECTS:
-        others = [guilty[o] for o in SUSPECTS if o != name]
-        clause = edgy
-        for lit in others:
-            clause = clause | lit
-        m &= clause
-    # Fingers: "That's right: it was Artie and Dodgy together." False exactly when
-    # Artie and Dodgy are not both guilty.
+    # Edgy is guilty exactly when at most one suspect is guilty.
+    m &= ((sum(1 * guilty[name] for name in SUSPECTS) <= 1).iff(edgy))
+
+    # Fingers: "That's right: it was Artie and Dodgy together." False exactly when Artie
+    # and Dodgy are not both guilty. Fingers is guilty exactly when that is the case.
     m &= (~fingers | ~artie | ~dodgy)
     m &= (fingers | artie)
     m &= (fingers | dodgy)
 
+    # No objective: the puzzle asks for the guilty suspects, so it is a satisfaction problem.
     return m, guilty
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)

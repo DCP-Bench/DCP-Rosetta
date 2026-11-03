@@ -1,45 +1,36 @@
-# Hidato: fill a grid with the numbers 1..rows*cols, each once, keeping the
-# given numbers, so that consecutive numbers sit in cells that touch
-# horizontally, vertically or diagonally.
-import functools
-import operator
+# hidato: a hermax (Python) model from DCP Rosetta.
+# Download the `hidato.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python hidato.py hidato.json
+
+from functools import reduce
+from operator import or_
 
 from hermax.model import Model
 
 
-def exactly_one(m, lits, name):
-    """Post "exactly one of lits is true" with a ladder encoding.
+def create_model(instance):
+    """Hidato: fill a grid with the numbers 1..rows*cols, each used once, keeping the
+    given numbers, so that consecutive numbers sit in cells that touch horizontally,
+    vertically or diagonally."""
+    puzzle = instance["puzzle"]  # puzzle[i][j]: the given number in cell (i, j), 0 for an empty cell
+    rows = len(puzzle)           # the number of rows of the grid
+    cols = len(puzzle[0])        # the number of columns of the grid
+    total = rows * cols          # the numbers run from 1 to total, each once
 
-    prefix[i] says that one of lits[0..i] is true; each literal sets its prefix,
-    prefixes carry on, and a literal after a set prefix is forbidden. That takes
-    three clauses per literal, where forbidding every pair takes a quadratic number,
-    which matters here because the vectors have one entry per cell of the grid.
-    """
-    if len(lits) == 1:
-        m &= lits[0]
-        return
-    prefix = m.bool_vector(name, len(lits))
-    for i, lit in enumerate(lits):
-        m &= (~lit | prefix[i])
-        if i + 1 < len(lits):
-            m &= (~prefix[i] | prefix[i + 1])
-            m &= (~lits[i + 1] | ~prefix[i])
-    m &= functools.reduce(operator.or_, lits)
-
-
-def build(instance):
-    puzzle = instance["puzzle"]  # puzzle[i][j] = given number, 0 for a cell to fill in
-    rows = len(puzzle)
-    cols = len(puzzle[0])
-    total = rows * cols  # numbers run from 1 to total
     givens = [(i, j, puzzle[i][j]) for i in range(rows) for j in range(cols) if puzzle[i][j] > 0]
 
-    # Which numbers each cell can hold. A given number stays in its cell. Any
-    # other cell can hold k only if it is compatible with every given number v:
-    # consecutive numbers sit at most one cell apart, so numbers k and v sit at
-    # most |k - v| cells apart, and a cell at distance d from the cell of v can
-    # only hold numbers that differ from v by at least d. This follows from the
-    # rules and keeps the number of variables small on a large grid.
+    def neighbours(i, j):
+        # the cells touching (i, j), diagonals included, inside the grid
+        return [(i + di, j + dj)
+                for di in (-1, 0, 1) for dj in (-1, 0, 1)
+                if (di, dj) != (0, 0) and 0 <= i + di < rows and 0 <= j + dj < cols]
+
+    # Which numbers each cell can hold. A given number stays in its cell. Any other
+    # cell at Chebyshev distance d from the cell of a given number v can only hold a
+    # number k with |k - v| >= d, because consecutive numbers touch and each step moves
+    # at most one cell. This is a consequence of the rules that keeps domains small.
     allowed = {}
     for i in range(rows):
         for j in range(cols):
@@ -50,55 +41,45 @@ def build(instance):
                                    if all(max(abs(i - gi), abs(j - gj)) <= abs(k - v) for gi, gj, v in givens)]
 
     m = Model()
-    # holds[(i, j, k)] = cell (i, j) contains number k (only for numbers the cell can hold)
-    holds = {(i, j, k): m.bool(f"holds_{i}_{j}_{k}")
-             for (i, j), ks in allowed.items() for k in ks}
-    # x[i][j] = the number written in cell (i, j) (the declared output). Its range
-    # is the range of numbers the cell can hold; a cell with one candidate gets a
-    # range of two values and is fixed to the candidate below.
-    low = {c: min(ks) for c, ks in allowed.items()}
-    high = {c: max(ks) if len(ks) > 1 else ks[0] + 1 for c, ks in allowed.items()}
-    x = [[m.int(f"x_{i}_{j}", low[(i, j)], high[(i, j)]) for j in range(cols)] for i in range(rows)]
 
-    # every cell holds one number
-    for (i, j), ks in allowed.items():
-        exactly_one(m, [holds[(i, j, k)] for k in ks], f"cell_{i}_{j}")
-    # every number is in one cell
-    for k in range(1, total + 1):
-        exactly_one(m, [holds[(i, j, k)] for (i, j) in allowed if (i, j, k) in holds], f"number_{k}")
-    # x shows the number held: holding k means x >= k and not x >= k + 1 (the
-    # comparison that would fall outside the range of x is already settled)
-    for (i, j), ks in allowed.items():
-        for k in ks:
-            if k > low[(i, j)]:
-                m &= (~holds[(i, j, k)] | (x[i][j] >= k))
-            if k < high[(i, j)]:
-                m &= (~holds[(i, j, k)] | ~(x[i][j] >= k + 1))
+    # x[i][j] is the number written in cell (i, j) (the declared output), with the
+    # tightest range of numbers that cell can hold.
+    x = [[m.int(f"x_{i}_{j}", min(allowed[(i, j)]), max(allowed[(i, j)])) for j in range(cols)]
+         for i in range(rows)]
 
-    # The cells touching (i, j), diagonals included (and inside the grid).
-    def neighbours(i, j):
-        return [(i + di, j + dj)
-                for di in (-1, 0, 1) for dj in (-1, 0, 1)
-                if (di, dj) != (0, 0) and 0 <= i + di < rows and 0 <= j + dj < cols]
+    # The given numbers stay where they are.
+    for i, j, v in givens:
+        m &= (x[i][j] == v)
 
-    # Consecutive numbers touch: if a cell holds k, then one of the cells around
-    # it holds k + 1 (the next number is never in the same cell, as each cell
-    # holds one number). The same is stated backwards, a cell holding k + 1 has k
-    # next to it; this is implied by the forward form but helps the solver.
+    # Every cell holds a different number: the numbers 1..total fill the grid exactly once.
+    m &= m.vector([x[i][j] for i in range(rows) for j in range(cols)]).all_different()
+
+    # Consecutive numbers touch. If a cell holds k (k < total), then one of the cells
+    # touching it holds k + 1. Since every number is used once, this chains 1, 2, ..., total
+    # through touching cells.
     for (i, j), ks in allowed.items():
-        around = neighbours(i, j)
         for k in ks:
             if k < total:
-                following = [holds[(a, b, k + 1)] for a, b in around if (a, b, k + 1) in holds]
-                if following:
-                    m &= (~holds[(i, j, k)] | functools.reduce(operator.or_, following))
-                else:  # no cell around can hold k + 1
-                    m &= ~holds[(i, j, k)]
-            if k > 1:
-                preceding = [holds[(a, b, k - 1)] for a, b in around if (a, b, k - 1) in holds]
-                if preceding:
-                    m &= (~holds[(i, j, k)] | functools.reduce(operator.or_, preceding))
-                else:  # no cell around can hold k - 1
-                    m &= ~holds[(i, j, k)]
+                # the literals that say the cell is not k, or a touching cell is k + 1
+                options = [x[i][j] != k] + [x[a][b] == k + 1 for a, b in neighbours(i, j)
+                                            if k + 1 in allowed[(a, b)]]
+                m &= reduce(or_, options)
 
     return m, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)
