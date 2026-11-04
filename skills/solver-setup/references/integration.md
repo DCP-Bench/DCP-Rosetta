@@ -182,7 +182,7 @@ licence is on a machine or what it contains:
 | `target` | Under `/run/licence/`. Point the solver at it with `env`, or with the runner's own call (Hexaly `HxVersion.set_license_path`, docplex `execfile`). |
 | `env` | Variables the solver reads (`HX_LICENSE_PATH`, `GRB_LICENSE_FILE`). |
 | `without` | `unavailable`, or `size-limited` when a free edition runs without it. |
-| `errors` | Substrings of the solver's own licence-refusal messages, read off real runs: without the licence, and with an expired or wrong one when you can. Any message mentioning a licence (`licen`) counts anyway; list the ones that don't (a bare `Cannot open file [...]`). Make them specific: a model error must never match. |
+| `errors` | Substrings of the solver's own licence-refusal messages, read off real runs: without the licence, and with an expired or wrong one when you can. Any failure message (status detail, or a crash's last stderr line; never a banner) mentioning a licence (`licen`) counts anyway; list the ones that don't (a bare `Cannot open file [...]`). Make them specific: a model error must never match. |
 
 A `server` licence also needs `runner/licence_relay.py` copied into the image, with
 `licence_relay.start()` called in `run.py` before the solver reads its licence.
@@ -275,8 +275,9 @@ bugs real models hit:
 
 **Licensed integrations** (any level) also need `licence_missing`: run a valid model with
 `DCP_LICENCE_<ID>=none` in the environment, so the solver runs without its licence. It
-passes when the result's reason is `licence_unavailable`. This check runs without a
-licence, so do it while the licence is still pending ([licences](licences.md#5-readiness-check-licence_missing)).
+passes when the run does what `without` declares: for `unavailable`, the result's reason is
+`licence_unavailable`; for `size-limited`, the model is accepted and the result's `licence`
+is `size-limited`. This check runs without a licence, so do it while the licence is still pending ([licences](licences.md#5-readiness-check-licence_missing)).
 
 Full list: *Integration readiness* in `generation/AGENTS.md`.
 

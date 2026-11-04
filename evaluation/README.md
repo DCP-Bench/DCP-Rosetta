@@ -183,6 +183,12 @@ python -m evaluation.licences check hexaly            # file checks, then a pilo
 `set` saves the path in `.dcp-licences.json` (per checkout, like `.dcp-engine.json`), and
 `DCP_LICENCE_<ID>` overrides it. Keep the file at mode 600.
 
+Configure only a licence that works in a container. A named-user licence tied to one host
+fails with a host-ID mismatch, because a run has no network and so no host ID. Gurobi's WLS
+needs internet while it runs. A size-limited solver such as Gurobi falls back to its free
+edition when nothing is configured, so leave it unset rather than point it at such a licence.
+`solvers/<solver>/LICENCE.md` says which licences work for that solver and how to get them.
+
 [`licences.py`](licences.py) binds each run its licence read-only, with the solver's
 variables:
 - a key file as a per-run copy in a private temporary directory;

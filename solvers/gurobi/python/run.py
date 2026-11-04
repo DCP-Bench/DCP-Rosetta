@@ -19,7 +19,10 @@ say; a continuous variable must itself be integral within 1e-6.
 
 The licence bundled with the gurobipy wheel refuses a model above 2000 variables
 or 2000 linear constraints. That is reported as `unsupported` with the model's
-size, never as a timeout or as a fault in the model.
+size, never as a timeout or as a fault in the model. Where the machine has a Gurobi
+token server, the evaluator binds a client licence file naming 127.0.0.1 and a Unix
+socket relayed to the server; `licence_relay.start()` listens on that loopback port
+before any Gurobi environment exists, and the container keeps no network.
 
 Gurobi returns one solution rather than a stream, so enumeration pins the
 objective to the proven optimum and adds a no-good over the integer variables
@@ -42,6 +45,7 @@ import time
 
 sys.path.insert(0, "/opt/runner")
 from runtime import emit, finish  # noqa: E402
+import licence_relay  # noqa: E402
 
 import gurobipy as gp  # noqa: E402
 from gurobipy import GRB  # noqa: E402
@@ -331,6 +335,7 @@ def solve(request):
 
 def main():
     protocol_stream()
+    licence_relay.start()  # a no-op unless the evaluator relays a token server
     try:
         request = json.loads((INPUT / "request.json").read_text())
         if request.get("legacy"):

@@ -75,6 +75,14 @@ information`. Its banner (`Restricted license - for non-production use only - ex
 own copy of that descriptor and sends fd 1, and everything the submission prints, to
 stderr. For an ad hoc run, `--entrypoint sh` bypasses `/opt/runner/run.py`.
 
+On a machine configured with a Gurobi token server (`python -m evaluation.licences set
+gurobi FILE`), the evaluator binds a client licence at `/run/licence/gurobi.lic`
+(`GRB_LICENSE_FILE`) and relays the server through a socket. The container still has no
+network, and the size limit is lifted. A model must work either way: everything
+above holds without the server, and the result's `licence` says which edition ran
+(`licensed` or `size-limited`). If the server refuses or cannot be reached, the result is
+`licence_unavailable`, which says nothing about the model.
+
 ## Traps
 
 - The licence size limit (see Environment) is reported as `unsupported`, which the

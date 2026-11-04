@@ -150,7 +150,7 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
                                                           f"limit; the runner reported {status['status']}: "
                                                           f"{status.get('detail', '')}")
                 # A licence the solver refused says nothing about the model.
-                if status["status"] == "error" and licence_error(metadata, status.get("detail"), timing.get("stderr")):
+                if status["status"] == "error" and licence_error(metadata, status.get("detail")):
                     raise EvaluationError("licence_unavailable", status.get("detail", "error"))
                 if status["status"] in failure:
                     raise EvaluationError(failure[status["status"]], status.get("detail", status["status"]))
