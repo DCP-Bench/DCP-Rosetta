@@ -271,9 +271,25 @@ class ExecuteTests(Machine):
     def test_any_message_naming_a_licence_counts(self):
         """Hexaly's message for an expired licence matched none of the declared substrings."""
         self.assertTrue(licences.licence_error(METADATA, "ERROR [hx_create_optimizer]: This license is no longer valid."))
-        self.assertTrue(licences.licence_error(METADATA, "", "Licence check failed"))
+        self.assertTrue(licences.licence_error(METADATA, "Licence check failed"))
         self.assertFalse(licences.licence_error(METADATA, "Int boundaries are inconsistent"))
         self.assertFalse(licences.licence_error({"id": "free"}, "invalid license"))  # declares none
+
+    def test_only_the_failure_message_counts_not_banners(self):
+        """gurobipy prints 'Restricted license' on every run; a model's error must stay its own."""
+        stderr = ("Restricted license - for non-production use only - expires 2027-11-29\n"
+                  "Traceback (most recent call last):\n  ...\n"
+                  "ValueError: Declared outputs must be integer valued (got 0.5)\n")
+        self.assertEqual(licences.failure_message(stderr), "ValueError: Declared outputs must be integer valued (got 0.5)")
+        self.assertFalse(licences.licence_error(METADATA, licences.failure_message(stderr)))
+        self.assertTrue(licences.licence_error(METADATA, licences.failure_message(stderr + "GurobiError: No Gurobi license found\n")))
+
+    def test_a_model_error_after_a_licence_banner_stays_the_models(self):
+        self.use(self.licence)
+        status = json.dumps({"type": "status", "status": "error", "detail": "Declared outputs must be integer valued"})
+        fake = FakeEngine(0, f"{status}\n", "Restricted license - for non-production use only\n")
+        records, timing = ExecuteTests.execute(self, fake)
+        self.assertEqual(records[-1]["status"], "error")
 
     def test_unconfigured_never_starts_a_container(self):
         fake = FakeEngine(0, "", "")

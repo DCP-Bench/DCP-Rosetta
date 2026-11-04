@@ -214,7 +214,7 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
         code, stdout, stderr = run.code, run.stdout, run.stderr
         if licence is not None:
             stdout, stderr = licence.redact(stdout), licence.redact(stderr)
-        if code and licences.licence_error(metadata, stderr):
+        if code and licences.licence_error(metadata, licences.failure_message(stderr)):
             raise EvaluationError("licence_unavailable", f"The solver refused its licence: {stderr[-4000:]}")
         if code:
             exited = f"exited {code}" + (f" ({run.readings})" if run.readings else "")

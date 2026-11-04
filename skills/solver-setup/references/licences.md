@@ -141,6 +141,9 @@ declares:
   for example).
 
 For an `unavailable` licence, read the refusal message from the failed run. If it is not caught, add a substring of it to
-`errors`. Any message that mentions a licence (`licen`) is caught anyway, because the solver's
-wording is hard to guess. Hexaly says `This license is no longer valid` for an expired licence,
+`errors`. Any failure message that mentions a licence (`licen`) is caught anyway,
+because the solver's wording is hard to guess. Only the failure message counts: the
+runner's status detail, or the last stderr line of a crash. A banner that names the
+licence on every run, such as gurobipy's "Restricted license", never makes a model's
+error a licence failure. Hexaly says `This license is no longer valid` for an expired licence,
 but a bare `Cannot open file [...]` when the licence is missing. Keep each substring specific to licences, so that a model error never matches.

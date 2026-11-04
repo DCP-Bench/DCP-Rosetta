@@ -18,9 +18,11 @@ An integration that needs a licence declares it in its metadata.json:
   the server through a relay, see `Relay`, and the container keeps no network).
 - `target`: where the container sees it. `env`: variables set in the container.
 - `without`: `unavailable` (no run without it) or `size-limited` (a free edition runs).
-- `errors`: substrings of the solver's own licence messages. A run that fails with one,
-  or with any message naming a licence (`licen`, either spelling), is
-  `licence_unavailable`, which says nothing about the model. The fallback is deliberate:
+- `errors`: substrings of the solver's own licence messages. A run whose failure message
+  (the runner's status detail, or a crash's last stderr line) holds one, or names a
+  licence at all (`licen`, either spelling), is `licence_unavailable`, which says nothing
+  about the model. Banners and logs are not failure messages: gurobipy's wheel prints
+  "Restricted license" on every run. The fallback is deliberate:
   a licence failure taken for a model's costs attempts and blocks pairs, while the
   reverse only withholds a verdict. (Hexaly's "This license is no longer valid" for an
   expired licence matched no substring guessed from its docs.)
@@ -236,15 +238,24 @@ def available(solver_id):
     return False, licence.reason
 
 
-def licence_error(metadata, *texts):
-    """Whether a failed run of a licensed integration names its licence: one of its declared
-    messages, or any mention of a licence (`licen`, licence or license, any case)."""
+def failure_message(stderr):
+    """A crashed run's own message: the last non-empty line of its stderr (the exception).
+    The lines before it are logs and banners, which can name the licence on every run."""
+    return next((line.strip() for line in reversed((stderr or "").splitlines()) if line.strip()), "")
+
+
+def licence_error(metadata, message):
+    """Whether a licensed integration's failure message names its licence: one of its declared
+    messages, or any mention of a licence (`licen`, licence or license, any case).
+
+    Only the failure message counts (a runner's status detail, or `failure_message` of a
+    crash), never the whole output: gurobipy's wheel prints "Restricted license" on every
+    run, so a model's own error would otherwise pass for a licence failure."""
     spec = metadata.get("licence")
-    if not isinstance(spec, dict):
+    if not isinstance(spec, dict) or not message:
         return False
     patterns = [pattern for pattern in spec.get("errors", []) if isinstance(pattern, str) and pattern]
-    return any(pattern in (text or "") for pattern in patterns for text in texts) or \
-        any(LICENCE_WORD.search(text or "") for text in texts)
+    return any(pattern in message for pattern in patterns) or bool(LICENCE_WORD.search(message))
 
 
 # ---- Supplying a licence to one run -----------------------------------------------------
