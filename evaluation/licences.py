@@ -142,8 +142,22 @@ def unusable(path, kind):
         return None if path.is_dir() else f"{path} is not a directory"
     if not path.is_file():
         return f"{path} is not a file"
-    if path.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-        return f"{path} is readable by others; run `chmod 600 {path}`"
+    if not os.access(path, os.R_OK):
+        return f"{path} is not readable by {os.environ.get('USER', 'this user')}"
+    return None
+
+
+def exposed(path):
+    """A warning when other users of this machine can read a licence file, or None.
+
+    Not a refusal: a solver installed system-wide keeps its licence world-readable (Hexaly's
+    /opt/hexaly_*/license.dat), and who may read it there is the administrator's call.
+    """
+    try:
+        if path.is_file() and path.stat().st_mode & stat.S_IROTH:
+            return f"{path} is readable by every user of this machine; a copy of your own at mode 600 is safer"
+    except OSError:
+        pass
     return None
 
 
@@ -392,8 +406,11 @@ def _status(licence_id, users):
         return "missing", "not configured"
     if value == "none":
         return "off", f"{variable(licence_id)}=none"
-    reason = unusable(Path(value).expanduser(), users[0][2]["kind"])
-    return ("unusable", reason) if reason else ("configured", "configured")
+    path = Path(value).expanduser()
+    reason = unusable(path, users[0][2]["kind"])
+    if reason:
+        return "unusable", reason
+    return "configured", exposed(path) or "configured"
 
 
 def command_status(_args):
@@ -435,6 +452,8 @@ def command_set(args):
     if reason:
         print(f"evaluation.licences: {reason}", file=sys.stderr)
         return 1
+    if exposed(path):
+        print(f"evaluation.licences: warning: {exposed(path)}", file=sys.stderr)
     config = saved()
     config[args.licence] = str(path)
     CONFIG.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")

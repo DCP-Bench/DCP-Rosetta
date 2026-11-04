@@ -90,12 +90,21 @@ class ResolutionTests(Machine):
         self.assertTrue(licence.forced_off)
         self.assertIsNone(licence.source)
 
-    def test_a_file_others_can_read_is_refused(self):
+    def test_a_file_others_can_read_is_used_with_a_warning(self):
+        """A system-wide install (Hexaly's /opt/hexaly_*/license.dat) is world-readable."""
         self.licence.chmod(0o644)
         self.use(self.licence)
-        self.assertIn("chmod 600", licences.resolve(METADATA).reason)
-        with self.assertRaises(EvaluationError):
-            licences.require(METADATA)
+        self.assertEqual(licences.require(METADATA).source, self.licence.resolve())
+        self.assertIn("readable by every user", licences.exposed(self.licence))
+        self.licence.chmod(0o600)
+        self.assertIsNone(licences.exposed(self.licence))
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads every file")
+    def test_a_file_this_user_cannot_read_is_refused(self):
+        self.licence.chmod(0o000)
+        self.use(self.licence)
+        self.assertIn("not readable", licences.resolve(METADATA).reason)
+        self.licence.chmod(0o600)
 
     def test_a_file_inside_the_repository_is_refused(self):
         with tempfile.NamedTemporaryFile(dir=execution.ROOT, suffix=".dat") as inside:
