@@ -205,8 +205,17 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
         for path in staging.iterdir():
             path.chmod(0o644)
         budget = execution_timeout + (compilation_timeout if metadata.get("compilation", False) else 0) + 10
-        run = _engine().run(metadata, image, staging, memory_mb=memory_mb, cpus=cpus, timeout=budget)
+        from . import licences
+        # The licence is bound read-only for this run only, and what the run printed is
+        # redacted before anything reads it: the submission can read the licence too.
+        with licences.supply(metadata) as licence:
+            run = _engine().run(metadata, image, staging, memory_mb=memory_mb, cpus=cpus, timeout=budget,
+                                licence=licence)
         code, stdout, stderr = run.code, run.stdout, run.stderr
+        if licence is not None:
+            stdout, stderr = licence.redact(stdout), licence.redact(stderr)
+        if code and licences.licence_error(metadata, stderr):
+            raise EvaluationError("licence_unavailable", f"The solver refused its licence: {stderr[-4000:]}")
         if code:
             exited = f"exited {code}" + (f" ({run.readings})" if run.readings else "")
             if run.oom_killed:

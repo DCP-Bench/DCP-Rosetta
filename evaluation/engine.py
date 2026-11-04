@@ -211,7 +211,14 @@ class Docker:
     def user(self):
         return "--user=65534:65534"
 
-    def run_command(self, name, image, staging, memory_mb, cpus, entrypoint, args):
+    def licence_options(self, licence):
+        """Read-only binds and variables for a run's licence (evaluation.licences.Mount)."""
+        if licence is None:
+            return []
+        return [*(f"--mount=type=bind,source={source},target={target},readonly" for source, target in licence.binds),
+                *(f"--env={key}={value}" for key, value in licence.env.items())]
+
+    def run_command(self, name, image, staging, memory_mb, cpus, entrypoint, args, licence=None):
         return [self.command, "run", "--pull=never", "--name", name,
                 "--network=none", "--read-only", self.user(), "--cap-drop=ALL",
                 "--security-opt=no-new-privileges", f"--pids-limit={PIDS_LIMIT}", "--log-driver=none",
@@ -219,18 +226,20 @@ class Docker:
                 "--tmpfs", f"/tmp:rw,exec,nosuid,size={TMP_BYTES},mode=1777",
                 "--mount", f"type=bind,source={staging},target=/input,readonly",
                 "--workdir=/tmp", "--env=HOME=/tmp", "--env=PYTHONDONTWRITEBYTECODE=1",
+                *self.licence_options(licence),
                 *(["--entrypoint", entrypoint] if entrypoint else []), image, *args]
 
     def cpu_options(self, cpus):
         return ["--cpus", str(cpus)]
 
-    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=()):
+    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=(), licence=None):
         """Run `image` (the identity image_identity returned, so exactly the bytes a result
         names) on the files in `staging`, mounted read-only at /input, under the evaluator's
-        isolation and limits. `entrypoint`/`args` replace the image's own."""
+        isolation and limits. `entrypoint`/`args` replace the image's own; `licence` is the
+        evaluation.licences.Mount to bind read-only, if any."""
         name = NAME_PREFIX + uuid.uuid4().hex
         # No --rm: the container has to outlive its exit so killed_for_memory can inspect it.
-        command = self.run_command(name, image, staging, memory_mb, cpus, entrypoint, list(args))
+        command = self.run_command(name, image, staging, memory_mb, cpus, entrypoint, list(args), licence)
         try:
             return self._run(command, name, timeout)
         finally:
@@ -317,14 +326,14 @@ class Podman(Docker):
     def cpu_options(self, cpus):
         return ["--cpus", str(cpus)] if self.cpu_limit() == "quota" else []
 
-    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=()):
+    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=(), licence=None):
         if self.cpu_limit() == "quota":
             return super().run(metadata, image, staging, memory_mb=memory_mb, cpus=cpus, timeout=timeout,
-                               entrypoint=entrypoint, args=args)
+                               entrypoint=entrypoint, args=args, licence=licence)
         claim = CoreClaim(cpus)
         try:
             name = NAME_PREFIX + uuid.uuid4().hex
-            command = self.run_command(name, image, staging, memory_mb, cpus, entrypoint, list(args))
+            command = self.run_command(name, image, staging, memory_mb, cpus, entrypoint, list(args), licence)
             # The seccomp profile keeps the candidate on its cores: podman's default
             # without sched_setaffinity, which then fails with EPERM.
             command[2:2] = [f"--security-opt=seccomp={self.seccomp_profile()}"]
@@ -513,21 +522,28 @@ class Apptainer:
                            "SystemCallErrorNumber=EPERM"]
         return [option for value in properties for option in ("-p", value)]
 
-    def run_command(self, unit, sif, staging, scratch, properties, entrypoint, args, network=False):
+    def licence_options(self, licence):
+        if licence is None:
+            return []
+        return [option for source, target in licence.binds for option in ("--bind", f"{source}:{target}:ro")] + \
+               [option for key, value in licence.env.items() for option in ("--env", f"{key}={value}")]
+
+    def run_command(self, unit, sif, staging, scratch, properties, entrypoint, args, network=False, licence=None):
         return ["systemd-run", "--user", "--quiet", "--pipe", "--wait", "--unit", unit, *properties,
                 self.command, "exec" if entrypoint else "run", "--containall", "--cleanenv", "--no-home",
                 *([] if network else ["--net", "--network", "none"]),
                 "--workdir", str(scratch), "--bind", f"{staging}:/input:ro", "--pwd", "/tmp", "--home", "/tmp",
-                "--env", "PYTHONDONTWRITEBYTECODE=1", str(sif), *([entrypoint] if entrypoint else []), *args]
+                "--env", "PYTHONDONTWRITEBYTECODE=1", *self.licence_options(licence),
+                str(sif), *([entrypoint] if entrypoint else []), *args]
 
-    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=()):
+    def run(self, metadata, image, staging, *, memory_mb, cpus, timeout, entrypoint=None, args=(), licence=None):
         sif = self.sif(metadata)
         claim = None if self.cpu_limit() == "quota" else CoreClaim(cpus)
         unit = NAME_PREFIX + uuid.uuid4().hex
         scratch = Path(tempfile.mkdtemp(prefix="dcp_scratch_"))
         try:
             command = self.run_command(unit, sif, staging, scratch, self.unit_properties(memory_mb, cpus, claim),
-                                       entrypoint, list(args))
+                                       entrypoint, list(args), licence=licence)
             code, stdout, stderr = run_process(command, timeout)
             result, loaded = self.unit_state(unit)
             if code and not loaded and result == "success":
