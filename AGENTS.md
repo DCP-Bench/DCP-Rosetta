@@ -23,12 +23,30 @@ certify on Docker. Details: `evaluation/README.md`.
 
 ## Solver licences
 
-A commercial solver's licence lives outside the repository and outside every image:
-the integration declares it in `metadata.json`, each machine configures it with
-`python -m evaluation.licences set`, and the evaluator binds it into each run. Never
-open, print or copy a licence file; `python -m evaluation.licences check ID` says
-whether one works. A missing licence never halts work: ask the user for it early,
-without waiting, and carry on with everything else (`skills/solver-setup/references/licences.md`).
+A commercial solver's licence lives outside the repository and outside every image.
+The integration declares in `metadata.json` what it needs, and the evaluator binds it
+read-only into each run, which keeps no network. Details: `evaluation/README.md`
+and `skills/solver-setup/references/licences.md`.
+
+**Each machine has its own licences.** `DCP_LICENCE_<ID>` sets one, which overrides
+`.dcp-licences.json` at the checkout root. That file is gitignored, written by
+`python -m evaluation.licences set ID PATH`, and holds paths only. `make licences`
+shows what this machine has. `python -m evaluation.licences todo` lists what is
+missing, with `solvers/<solver>/LICENCE.md` on how to get it.
+
+**Configure only a licence that works in a container.** A named-user licence tied to a
+host fails with a host-ID mismatch, and Gurobi's WLS needs internet. A size-limited solver
+such as Gurobi falls back to its free edition when nothing is configured, so leave it
+unset rather than point it at such a licence.
+
+**Never open, print or copy a licence file**: `python -m evaluation.licences check ID`
+says whether one works.
+
+**A licence failure says nothing about the model.** `licence_unavailable` costs no
+attempt, and `next_work` withholds the integration's pairs until the licence works.
+
+**A missing licence never halts work.** Ask the user for it early, without waiting, and
+carry on with everything else.
 
 ## Writing models for this benchmark
 
