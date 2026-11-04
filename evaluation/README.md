@@ -167,6 +167,39 @@ passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's
 `solve_seconds`.
 
+### Solver licences
+
+A commercial solver's licence is never built into an image. The integration declares it
+under `licence` in `metadata.json` (see `skills/solver-setup/references/integration.md`),
+and each machine says where its own copy is, outside the repository:
+
+```sh
+make licences                                         # which licences this machine has
+python -m evaluation.licences todo                    # the missing ones, and how to get them
+python -m evaluation.licences set hexaly ~/.config/dcp-rosetta/licences/hexaly/license.dat
+python -m evaluation.licences check hexaly            # file checks, then a pilot solve
+```
+
+`set` saves the path in `.dcp-licences.json` (per checkout, like `.dcp-engine.json`), and
+`DCP_LICENCE_<ID>` overrides it. Keep the file at mode 600.
+
+[`licences.py`](licences.py) binds each run its licence read-only, with the solver's
+variables:
+- a key file as a per-run copy in a private temporary directory;
+- a licensed install directly;
+- a licence server through a Unix-socket relay, so the run keeps `--network=none`.
+
+What a run prints is redacted before it is parsed or stored: the licence's lines and its
+host path become `[licence redacted]`. A submission can read the licence, but cannot
+carry it into a result. Results name only the edition: `licence` is `licensed` or
+`size-limited`.
+
+A licence failure is never the model's fault. Without the licence configured, an
+integration that needs one stops with `licence_unavailable` before any container
+starts. When the solver refuses its licence (a message listed under `errors`), the
+reason is also `licence_unavailable`. `generation` then neither counts the attempt nor
+offers the integration's pairs until the licence works.
+
 ## Submitting a model
 
 Pick an integration: any integration folder (`solvers/<solver>/<interface>/`) with a `metadata.json`. What a model

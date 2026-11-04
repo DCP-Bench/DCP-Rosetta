@@ -8,7 +8,7 @@ into the skill.
 |---|---|
 | Identity | Package / import name? Solver or modelling framework? Which **native** interfaces does it ship (C++, Python bindings, Java, …), and which do its own docs and examples use? For a framework: which backends, and which is the default? |
 | Paradigm | CP / CLP / SAT / MaxSAT / SMT / MIP / ASP / PB? What does a model look like? For SAT/MaxSAT: which integer, cardinality and PB encodings ship with it? |
-| Licence | Open source? A free edition without key or account (size-limited, community)? Needs a key, account or registration → **stop and ask the user** |
+| Licence | Open source? A free edition without key or account (size-limited, community)? Otherwise: key file, licensed install or licence server, and how to get each (trial, academic)? Does it need internet at run time, or lock to a host? Terms on publishing benchmarks? Triaged first, at step 0b: see [licences](licences.md) |
 | Docs | `llms.txt` / `llms-full.txt`? Markdown pages? API reference? Examples directory? |
 | Install | Official route for this language? Platform limits (OS, arch, Python/JDK/compiler)? System dependencies? |
 | Verify | Smallest command proving the install works? Installed version? |

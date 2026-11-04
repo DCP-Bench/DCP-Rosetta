@@ -15,6 +15,7 @@ import json
 import sys
 
 from evaluation.execution import ROOT, integration, integration_folders
+from evaluation.licences import available as licence_available
 from evaluation.results import EvaluationError
 
 from .brief import RECTANGULAR_UNIFORM, RESHAPED, runner_refusals, unbindable
@@ -47,6 +48,11 @@ def integrations():
             metadata = integration(solver_id)
             record["enumeration"] = bool(metadata.get("enumeration"))
             record["instance_binding"] = metadata.get("instance_binding", "any")
+            # A licence this machine lacks makes the integration unusable here, ready or not.
+            licensed, reason = licence_available(solver_id)
+            if not licensed:
+                record["licence_pending"] = True
+                raise ReadinessError(f"Licence pending: {reason}")
             if not readiness.is_file():
                 raise ReadinessError("No readiness record: run the readiness checklist for this "
                                      "integration, then generation.readiness check")
@@ -178,7 +184,9 @@ def report(limit=20, include_unready=False):
                     "without new information, and add an entry when you block a pair. Pairs under "
                     "unbindable_pairs are withheld because the instance field named cannot be bound "
                     "by that integration's own binding rules (ragged or mixed fields it refuses); "
-                    "run generation.brief PROBLEM to see the shapes."}
+                    "run generation.brief PROBLEM to see the shapes. An integration whose blocker is "
+                    "\"Licence pending\" needs a solver licence on this machine: "
+                    "`python -m evaluation.licences todo` says how to get it; work on the others."}
 
 
 def main(argv=None):
