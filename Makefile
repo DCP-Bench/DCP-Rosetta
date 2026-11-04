@@ -54,7 +54,7 @@ clean: ## Remove the built website
 
 test: ## Run the tests that need no Docker
 	$(PYTHON) -m unittest tests.test_evaluation tests.test_generation tests.test_skill_workflow \
-		tests.test_readiness tests.test_site tests.test_podman
+		tests.test_readiness tests.test_site tests.test_engine
 
 test-containers: ## Run the tests against the built solver images (needs Docker and `make build`)
 	$(PYTHON) -m unittest tests.test_solvers tests.test_generation_containers

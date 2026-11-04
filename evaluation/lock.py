@@ -9,8 +9,8 @@ machine installs the same files or fails.
 """
 import argparse
 from pathlib import Path
-import subprocess
 
+from .engine import current
 from .execution import integration, integration_folder
 
 # Runs inside the image, so pip selects files for exactly its Python and platform.
@@ -38,8 +38,7 @@ def lock(solver_id, output=None):
     metadata = integration(solver_id)
     output = Path(output) if output else integration_folder(solver_id) / "requirements.txt"
     # Root and network only here, to read the image and fetch its wheels; never for a submission.
-    done = subprocess.run(["docker", "run", "--rm", "--pull=never", "--user=0", "--entrypoint", "python",
-                           metadata["image"], "-c", SCRIPT], capture_output=True, text=True)
+    done = current().tool(metadata, "python", ["-c", SCRIPT], network=True, root=True)
     if done.returncode:
         raise SystemExit(f"{solver_id}: freezing or downloading failed (a package with no wheel?):\n"
                          f"{done.stderr[-2000:]}")

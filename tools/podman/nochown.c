@@ -1,4 +1,4 @@
-/* Preloaded during builds by tools/podman/docker. In a single-uid rootless namespace a
+/* Preloaded during podman builds by evaluation.engine.Podman. In a single-uid rootless namespace a
  * chown to any other owner fails with EINVAL, which breaks tar and some dpkg scripts.
  * Ownership is squashed to root anyway, so every chown variant succeeds as a no-op.
  * Built without libc (-nostdlib) so the same file loads in any glibc image. */
