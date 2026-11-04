@@ -47,8 +47,17 @@ python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver c
 
 ### Container engines: Docker, podman, Apptainer
 
-[`engine.py`](engine.py) runs the images on one of three engines. `DCP_ENGINE` picks it
-(`docker`, `podman` or `apptainer`); unset, the first one on `PATH` is used. Each
+On a new machine, run `make engine` once. It checks the three engines, sets up the one
+you pick, and saves the choice for this checkout in `.dcp-engine.json`. For Apptainer
+it installs an unprivileged Apptainer from the Apptainer PPA (Ubuntu, no root) and
+enables lingering. For podman it writes the configuration below. Then it lists which
+images are current and how to get the rest, and runs a smoke test.
+`make engine-check` only reports.
+
+[`engine.py`](engine.py) runs the images on one of the three engines. `DCP_ENGINE` picks it
+(`docker`, `podman` or `apptainer`); unset, the saved choice applies, else the first one on
+`PATH`. `DCP_APPTAINER`, `DCP_APPTAINER_IMAGES` and `DCP_TASKSET` override saved
+settings the same way. Each
 result's `engine` field records the engine, its version, and how it enforced the CPU
 limit: `cpu_limit` is `quota` (a CPU-time quota, as Docker sets) or `cores`. With
 `cores`, the run gets `ceil(cpus)` whole cores of its own, and its affinity can't be

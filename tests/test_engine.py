@@ -59,6 +59,19 @@ class SelectionTests(unittest.TestCase):
             with patch.dict(os.environ, {"DCP_ENGINE": name}):
                 self.assertIs(type(engine.current()), kind)
 
+    def test_saved_choice_applies_unless_the_environment_overrides_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / ".dcp-engine.json"
+            config.write_text('{"engine": "apptainer", "taskset": "2-3"}')
+            with patch.object(engine, "CONFIG", config), patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("DCP_ENGINE", None)
+                os.environ.pop("DCP_TASKSET", None)
+                self.assertIs(type(engine.current()), engine.Apptainer)
+                self.assertEqual(engine.setting("DCP_TASKSET"), "2-3")
+                engine.current.cache_clear()
+                os.environ["DCP_ENGINE"] = "podman"
+                self.assertIs(type(engine.current()), engine.Podman)
+
     def test_unknown_engine_is_an_infrastructure_error(self):
         with patch.dict(os.environ, {"DCP_ENGINE": "lxc"}), self.assertRaises(EvaluationError) as caught:
             engine.current()

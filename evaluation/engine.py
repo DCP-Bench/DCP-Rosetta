@@ -1,7 +1,8 @@
 """The container engines that build and run the integration images.
 
-`DCP_ENGINE` picks one; unset, the first of docker, podman and apptainer found on
-PATH is used.
+`DCP_ENGINE` picks one; unset, the choice `make engine` saved for this checkout
+(.dcp-engine.json), else the first of docker, podman and apptainer found on PATH.
+Every DCP_* setting below reads the same way: the environment, then that file.
 
 - `docker`: the reference. Every limit is Docker's own.
 - `podman`: rootless podman, also for a user without an /etc/subuid range or `cpu`
@@ -40,14 +41,31 @@ PIDS_LIMIT = 128
 TMP_BYTES = 536870912
 PODMAN_ASSETS = ROOT / "tools" / "podman"
 CACHE = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "dcp-rosetta"
+# Per checkout, not per user: a home on NFS is shared by machines that need different engines.
+CONFIG = ROOT / ".dcp-engine.json"
+SETTINGS = {"DCP_ENGINE": "engine", "DCP_APPTAINER": "apptainer", "DCP_APPTAINER_IMAGES": "apptainer_images",
+            "DCP_TASKSET": "taskset"}
+
+
+def saved():
+    """The settings `make engine` saved for this checkout."""
+    try:
+        return json.loads(CONFIG.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def setting(variable):
+    """A DCP_* setting: the environment's, else the saved one, else None."""
+    return os.environ.get(variable) or saved().get(SETTINGS[variable]) or None
 
 
 @functools.cache
 def current():
-    """The engine this process uses: `DCP_ENGINE`, else the first one installed."""
-    name = os.environ.get("DCP_ENGINE")
+    """The engine this process uses: `DCP_ENGINE`, the saved choice, else the first one installed."""
+    name = setting("DCP_ENGINE")
     if not name:
-        name = next((n for n in ENGINES if shutil.which(os.environ.get("DCP_APPTAINER", n) if n == "apptainer" else n)),
+        name = next((n for n in ENGINES if shutil.which(setting("DCP_APPTAINER") or n if n == "apptainer" else n)),
                     "docker")
     if name not in ENGINES:
         raise EvaluationError("infrastructure_error", f"DCP_ENGINE={name!r}; use one of {', '.join(ENGINES)}")
@@ -97,8 +115,7 @@ class CoreClaim:
 
     def __init__(self, cpus):
         count = max(1, math.ceil(cpus))
-        pool = parse_cpu_list(os.environ["DCP_TASKSET"]) if os.environ.get("DCP_TASKSET") \
-            else sorted(os.sched_getaffinity(0))
+        pool = parse_cpu_list(setting("DCP_TASKSET")) if setting("DCP_TASKSET") else sorted(os.sched_getaffinity(0))
         folder = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"dcp-cores-{os.getuid()}"
         folder.mkdir(parents=True, exist_ok=True)
         self.cores, self._files = [], []
@@ -419,8 +436,8 @@ class Apptainer:
     TASKS_OVERHEAD = 32
 
     def __init__(self):
-        self.command = os.environ.get("DCP_APPTAINER", "apptainer")
-        self.images = Path(os.environ.get("DCP_APPTAINER_IMAGES") or ROOT / "images")
+        self.command = setting("DCP_APPTAINER") or "apptainer"
+        self.images = Path(setting("DCP_APPTAINER_IMAGES") or ROOT / "images")
         # ssh sessions on some servers get no systemd session; the user manager is still
         # reachable on its runtime directory when lingering is enabled.
         runtime = f"/run/user/{os.getuid()}"
