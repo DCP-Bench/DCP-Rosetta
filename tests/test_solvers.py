@@ -58,7 +58,7 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       # pysat states its objective as soft-clause weights, so
                       # the swap pays the shortfall n - v instead of v.
                       "pysat": ("(v, v)", "(v, n - v)"),
-                      "exact": ("minimize", "maximize"),
+                      "exact": ("minimize=True", "minimize=False"),  # Exact: setObjective(..., minimize=)
                       "gurobipy_python": ("MINIMIZE", "MAXIMIZE"),
                       "docplex_cplex": ("minimize", "maximize"),
                       "picat": ("$min(", "$max("),
