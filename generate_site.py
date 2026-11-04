@@ -450,7 +450,7 @@ def load_flags() -> dict:
 
 
 def load_generated_models() -> dict:
-    """Scan generated_models/<problem>/<solver>/<submission>/ -> {problem: {solver id: [entries]}}.
+    """Scan generated_models/<problem>/<solver>/ -> {problem: {solver id: [entry]}}.
 
     Keyed on the integration id, never on its display name: the name is read
     from the integration's metadata.json at render time so renaming an integration
@@ -465,42 +465,33 @@ def load_generated_models() -> dict:
         if not problem_dir.is_dir():
             continue
         by_fw = {}
-        for fw_dir in problem_dir.iterdir():
-            if not fw_dir.is_dir():
+        for fw_dir in sorted(problem_dir.iterdir()):
+            record_path = fw_dir / "record.json"
+            if not record_path.is_file():
                 continue
-            entries = []
-            for sub_dir in sorted(fw_dir.iterdir()):
-                if not sub_dir.is_dir():
-                    continue
-                record_path = sub_dir / "record.json"
-                if not record_path.is_file():
-                    continue
+            try:
+                metrics = json.loads(record_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            model_file = metrics.get("model_file") or next(
+                (f.name for f in sorted(fw_dir.iterdir())
+                 if f.is_file() and f.name.startswith("model.")),
+                None,
+            )
+            code = ""
+            if model_file:
                 try:
-                    metrics = json.loads(record_path.read_text(encoding="utf-8"))
+                    code = (fw_dir / model_file).read_text(encoding="utf-8")
                 except Exception:
-                    continue
-                model_file = metrics.get("model_file") or next(
-                    (f.name for f in sorted(sub_dir.iterdir())
-                     if f.is_file() and f.name.startswith("model.")),
-                    None,
-                )
-                code = ""
-                if model_file:
-                    try:
-                        code = (sub_dir / model_file).read_text(encoding="utf-8")
-                    except Exception:
-                        code = ""
-                entries.append({
-                    "submission": sub_dir.name,
-                    "directory": fw_dir.name,
-                    "metrics": metrics,
-                    "model_file": model_file,
-                    "code": code,
-                    "flags": flags.get(sub_dir.as_posix(), []),
-                })
-            if entries:
-                solver = entries[0]["metrics"].get("solver") or fw_dir.name
-                by_fw[solver] = entries
+                    code = ""
+            solver = metrics.get("solver") or fw_dir.name
+            by_fw[solver] = [{
+                "directory": fw_dir.name,
+                "metrics": metrics,
+                "model_file": model_file,
+                "code": code,
+                "flags": flags.get(fw_dir.as_posix(), []),
+            }]
         if by_fw:
             out[problem_dir.name] = by_fw
     return out
@@ -580,10 +571,10 @@ def row_positions(problem: str) -> dict:
 def instance_label(identifier, problem: str = "", instance_hash: str | None = None) -> tuple:
     """Name an evaluator instance the way the Instances section above does.
 
-    That section numbers the problem's JSON rows from 1 and calls the first one
-    the example; the corpus guarantees row 0 is exactly the embedded example. The
+    That section numbers the problem's JSON rows from 0, as their index in the
+    file, and the corpus guarantees row 0 is exactly the embedded example. The
     evaluator identifies rows by their index at evaluation time, so json:k is
-    Instance k+1 unless rows were removed since; the recorded hash then finds the
+    Instance k unless rows were removed since; the recorded hash then finds the
     row where it is now, or shows that it is gone. Rows that duplicate an earlier
     one are skipped entirely. Returns the label plus the raw identifier, which is
     worth a tooltip rather than space on the page: it only matters when replaying
@@ -591,7 +582,7 @@ def instance_label(identifier, problem: str = "", instance_hash: str | None = No
     """
     text = str(identifier)
     if identifier == "example":
-        return "Instance 1", text
+        return "Instance 0", text
     if text.startswith("json:"):
         try:
             index = int(text.split(':', 1)[1])
@@ -600,9 +591,9 @@ def instance_label(identifier, problem: str = "", instance_hash: str | None = No
         if instance_hash and problem:
             now = row_positions(problem).get(instance_hash)
             if now is None:
-                return f"Instance {index + 1} (since removed)", text
+                return f"Instance {index} (since removed)", text
             index = now
-        return f"Instance {index + 1}", text
+        return f"Instance {index}", text
     return text, ""
 
 
@@ -702,7 +693,7 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
     """A generated model: who made it and for what, how it was judged, the code."""
     metrics = entry["metrics"]
     generated_by = metrics.get("generated_by", {})
-    uid = f"{metrics.get('problem', '')}-{entry['submission']}"
+    uid = f"{metrics.get('problem', '')}-{entry['directory']}"
 
     rows = [f"<dt>Generated by</dt><dd>{esc(generated_by_label(generated_by.get('base_llm')))}</dd>"]
     if generated_by.get("dataset_version"):
@@ -711,6 +702,9 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
         )
     if metrics.get("solver"):
         rows.append(f'<dt>Solver</dt><dd>{solver_link(metrics["solver"], "../")}</dd>')
+        skill = skill_button(metrics["solver"]) if metrics["solver"] in INTEGRATIONS else ""
+        if skill:
+            rows.append(f"<dt>Skill</dt><dd>{skill}</dd>")
     chips = paradigm_chips(metrics.get("solver"), "../")
     if chips:
         rows.append(f"<dt>Paradigm</dt><dd>{chips}</dd>")
@@ -718,7 +712,7 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
     if entry["model_file"]:
         lang, label = model_language(metrics, entry["model_file"])
         link = (f'{REPO_URL}/blob/main/generated_models/{metrics.get("problem", "")}/'
-                f'{entry["directory"]}/{entry["submission"]}/{entry["model_file"]}')
+                f'{entry["directory"]}/{entry["model_file"]}')
         model = code_block(entry["code"], lang, copy_id=f"gmod-{uid}", head_label=label, link=link)
     else:
         model = '<p class="desc">Code file not found.</p>'
@@ -849,10 +843,12 @@ def verified_models(generated: dict, integrations: dict):
                     yield problem, solver, entry
 
 
-# Paradigms that can only express one kind of problem: SAT has no objective,
-# so a model of an optimisation problem does not count towards it.
+# Paradigms that can only express one kind of problem: SAT has no objective, so
+# a model of an optimisation problem is labelled with another paradigm its
+# integration declares (MaxSAT for PySAT). The paradigms page counts every
+# model under each paradigm its integration declares; a solver that takes only
+# satisfaction problems is marked there instead (`satisfaction_only`).
 PARADIGM_SCOPE = {"sat": "satisfaction"}
-SCOPE_NOTES = {"sat": "SAT counts satisfaction problems only."}
 
 
 def paradigm_breakdown(generated: dict, integrations: dict, vocabulary: list,
@@ -981,7 +977,7 @@ BACKEND_NAMES = {
     "cplex": "CPLEX",
     "exact": "Exact",
     "gurobi": "Gurobi",
-    "glucose4, RC2": "Glucose 4.1 (SAT), RC2 (MaxSAT)",
+    "glucose4, CoreTrail": "Glucose 4.1 (SAT), CoreTrail (MaxSAT)",
     "highs": "HiGHS",
     "gecode": "Gecode",
     "scip": "SCIP",
@@ -1106,6 +1102,18 @@ def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, tot
     return "".join(cells)
 
 
+def satisfaction_only(solver: str) -> bool:
+    """A solver whose every binding declares `"optimization": false` takes only
+    satisfaction problems (cvc5 has no optimiser), so it is measured against them."""
+    return all(INTEGRATIONS[binding].get("optimization") is False
+               for binding in SOLVERS[solver]["bindings"])
+
+
+def rounded(value: float) -> str:
+    """A whole number, half up: 146.5 is 147, not the 146 Python's round() gives."""
+    return str(int(value + 0.5))
+
+
 def coverage_count(count, total: int) -> str:
     """`163 / 164`: the count reads first, the catalogue size stays quiet."""
     return f'<span class="count">{count}</span><span class="of"> / {total}</span>'
@@ -1130,13 +1138,12 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
 
     by_solvers = paradigm_order(ranked)
 
-    groups, notes = [], []
+    groups = []
     anchored: set = set()
     listed: set = set()
+    marked = False
     for item in by_solvers:
         tag = item["id"]
-        scope = PARADIGM_SCOPE.get(tag)
-        denominator = type_counts.get(scope, 0) if scope else len(types)
         found = breakdown["by_paradigm_solver"].get(tag, {})
         per_binding = breakdown["by_paradigm"].get(tag, {})
         # The solvers that model the most problems in this paradigm lead;
@@ -1144,14 +1151,17 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
         solvers = sorted(item["solvers"], key=lambda solver: (
             -found.get(solver, 0), solver_name(solver).lower()))
         counts = [found.get(solver, 0) for solver in solvers]
-
-        mark = ""
-        if tag in SCOPE_NOTES:
-            mark = f'<a class="note-mark" href="#note-{esc(tag)}" aria-label="Note on {esc(item["name"])}">*</a>'
-            notes.append(f'<p class="table-note" id="note-{esc(tag)}">* {esc(SCOPE_NOTES[tag])}</p>')
+        # A satisfaction-only solver is measured against the satisfaction problems.
+        totals = [type_counts.get("satisfaction", 0) if satisfaction_only(solver) else len(types)
+                  for solver in solvers]
 
         entries = []
-        for solver in solvers:
+        for solver, total in zip(solvers, totals):
+            mark = ""
+            if satisfaction_only(solver):
+                marked = True
+                mark = ('<a class="note-mark" href="#note-satisfaction-only" '
+                        'aria-label="Supports only satisfaction problems">*</a>')
             # A solver listed under two paradigms keeps its anchors on the first.
             anchor = "" if solver in anchored else f' id="solver-{esc(solver)}"'
             anchored.add(solver)
@@ -1159,7 +1169,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             bindings = [binding for binding in SOLVERS[solver]["bindings"] if binding in item["integrations"]]
             target, rows, kind = "", "", ""
             if len(SOLVERS[solver]["bindings"]) > 1:
-                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], denominator)
+                rows = binding_list(bindings, per_binding, anchored, breakdown["integration_problems"], total)
                 kind = ' class="has-bindings"'
             elif bindings[0] not in anchored:
                 # The integration's own ID stays a target: older links use it.
@@ -1168,14 +1178,13 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
             entries.append(
                 f'<li{anchor}{kind}><span class="solver-name">{esc(solver_name(solver))}'
                 f'{backend_label(bindings[0], tag)}{solver_skill_button(solver)}{target}</span>'
-                f'<span class="solver-count">{coverage_count(found.get(solver, 0), denominator)}</span>'
+                f'<span class="solver-count">{coverage_count(found.get(solver, 0), total)}{mark}</span>'
                 f'{browse_button(solver, solver_problems.get(solver, 0)) or "<span></span>"}{rows}</li>'
             )
 
-        average = sum(counts) / len(counts) if counts else 0
-        # One decimal, half up: 161.25 is 161.3, not the 161.2 binary floats give.
-        tenths = int(average * 10 + 0.5)
-        shown = str(tenths // 10) if tenths % 10 == 0 else f"{tenths // 10}.{tenths % 10}"
+        # The average of the counts over the average of the solvers' totals.
+        average = rounded(sum(counts) / len(counts)) if counts else "0"
+        average_total = rounded(sum(totals) / len(totals)) if totals else str(len(types))
         # The count, then a Show/Hide button; the CSS writes the button's
         # word from aria-expanded, so the two cannot disagree.
         toggle = f'<span class="count">{len(solvers)}</span>' + (
@@ -1185,10 +1194,10 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
         )
         head = (
             f'<tr class="paradigm-row"><td class="abbrev">{esc(item.get("abbrev", tag))}</td>'
-            f'<td>{esc(item["name"])}{mark}'
+            f'<td>{esc(item["name"])}'
             f'{info_tip("tip-" + esc(tag), item["name"], item.get("summary", ""))}</td>'
             f'<td class="num">{toggle}</td>'
-            f'<td class="num">{coverage_count(shown, denominator)}</td></tr>'
+            f'<td class="num">{coverage_count(average, average_total)}</td></tr>'
         )
         # The solvers sit in one full-width row of their own, so their layout
         # does not depend on the paradigm columns above them.
@@ -1201,7 +1210,7 @@ def build_paradigms(problems: list, breakdown: dict) -> None:
       <button type="button" class="btn expand-all" aria-pressed="false">Show all</button></div>
       <table class="plain paradigm-table"><thead><tr><th>Abbrev.</th><th>Name</th>
       <th class="num">Solvers</th><th class="num">Avg. problems</th></tr></thead>{"".join(groups)}</table>
-      {"".join(notes)}
+      {'<p class="table-note" id="note-satisfaction-only">* supports only satisfaction problems</p>' if marked else ""}
     </div>
     """
     (OUTPUT_DIR / "paradigms.html").write_text(
@@ -1331,12 +1340,12 @@ def problem_instances(p: dict) -> list:
 
 
 def instance_pane_html(inst, i: int, idx: int, active: bool, example_solution, decision_vars: list) -> str:
-    """One instance's data, plus the example solution for instance 1."""
+    """One instance's data, plus the example solution for instance 0."""
     pretty = compact_json(inst)
     data_pane = code_block(pretty, "json", copy_id=f"inst-{idx}-{i}", head_label=f"Instance {i} · JSON")
     buttons = '<button class="tab-btn active" type="button" data-tab="data">Data</button>'
     panes = f'<div class="tab-pane active" data-pane="data">{data_pane}</div>'
-    if i == 1 and example_solution:
+    if i == 0 and example_solution:
         sol_code = compact_json(example_solution)
         buttons += '<button class="tab-btn" type="button" data-tab="solution">Solution</button>'
         panes += (
@@ -1354,31 +1363,33 @@ def instance_pane_html(inst, i: int, idx: int, active: bool, example_solution, d
 def instances_section_html(p: dict, idx: int) -> str:
     """A numbered picker over the instances, and the chosen one's data.
 
-    The corpus guarantees instance 1 is the data the reference model has
+    The corpus guarantees instance 0 is the data the reference model has
     written into it, which is why only that one comes with a solution.
+    Instances are numbered by their index in the problem's JSON file.
     """
     insts = problem_instances(p)
     if not insts:
         return ""
     solution, variables = p["example_solution"], p["decision_variables"]
-    note = ('<p class="desc picker-note">Instance 1 is the data written into the reference model'
-            + (", and the one shown with a solution." if solution else ".") + "</p>")
+    download = (f'<p class="desc instances-download">Download all instances: '
+                f'<a href="{esc(p["id"])}.json" download><strong>{esc(p["id"])}.json</strong></a></p>'
+                if p["instances"] else "")
     if len(insts) == 1:
-        body = note + instance_pane_html(insts[0], 1, idx, None, solution, variables)
+        body = instance_pane_html(insts[0], 0, idx, None, solution, variables)
     else:
         picks = "".join(
-            f'<button class="tab-btn pick{" active" if i == 1 else ""}" type="button" '
+            f'<button class="tab-btn pick{" active" if i == 0 else ""}" type="button" '
             f'data-tab="inst-{i}" aria-label="Instance {i}">{i}</button>'
-            for i in range(1, len(insts) + 1)
+            for i in range(len(insts))
         )
-        panes = "".join(instance_pane_html(inst, i, idx, i == 1, solution, variables)
-                        for i, inst in enumerate(insts, 1))
+        panes = "".join(instance_pane_html(inst, i, idx, i == 0, solution, variables)
+                        for i, inst in enumerate(insts))
         body = (f'<div class="tab-group picker-group"><div class="tab-bar picker" aria-label="Instances">'
-                f'{picks}</div>{note}{panes}</div>')
+                f'{picks}</div>{panes}</div>')
     return (
         f'<details class="card-box instances-box">'
         f'<summary><h3>Instances <span class="count-note">({len(insts)})</span></h3></summary>'
-        f'{body}</details>'
+        f'{download}{body}</details>'
     )
 
 
@@ -1484,10 +1495,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
     )
 
     instances_html = instances_section_html(p, idx)
-    # A puzzle whose numbers are all fixed carries no instances, so the footer
-    # line must not claim there are some.
-    shown_above = ("The reference model and the instances are"
-                   if instances_html else "The reference model is")
 
     gen_for_problem = generated.get(pid, {})
 
@@ -1508,9 +1515,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
 
     {models_section_html(p, meta, idx, gen_for_problem)}
 
-    <p class="desc" style="margin-top:26px">{shown_above} shown above;
-      the files live in
-      <a href="{BENCH_URL}/tree/main/dataset/{pid}" target="_blank" rel="noopener">dataset/{pid}</a>.</p>
     {prev_next}
     """
 
@@ -1524,6 +1528,9 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
         rendered_page,
         encoding="utf-8",
     )
+    # The instance file a standalone model reads, served beside its page.
+    if p["instances"]:
+        shutil.copyfile(Path("bench") / "dataset" / pid / f"{pid}.json", OUTPUT_DIR / "problems" / f"{pid}.json")
 
 
 # Metadata that is not a source of the problem: the collection shows in the
@@ -1631,7 +1638,7 @@ def main() -> None:
     PARADIGM_ABBREVS = {item["id"]: item.get("abbrev", item["id"]) for item in vocabulary}
     breakdown = paradigm_breakdown(generated, INTEGRATIONS, vocabulary,
                                    problem_types={p["id"]: p["type"] for p in problems},
-                                   solver_of=SOLVER_OF)
+                                   scopes={}, solver_of=SOLVER_OF)
     PARADIGM_ORDER = [item["id"] for item in paradigm_order(breakdown["paradigms"])]
 
     # client-side index data (escaped so it can't break out of <script>)

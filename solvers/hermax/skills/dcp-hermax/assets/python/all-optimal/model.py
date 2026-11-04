@@ -1,15 +1,19 @@
 # Every minimum vertex cover of a small graph.
 from hermax.model import Model
 
-N = 6
-EDGES = [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (4, 5)]
+N = 6                                                     # the number of vertices
+EDGES = [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (4, 5)]  # the edges to cover
 
 m = Model()
-take = m.bool_vector("take", N)  # True: the vertex is in the cover
+# take[v] is true when vertex v is in the cover
+take = m.bool_vector("take", N)
+
+# Every edge has at least one of its ends in the cover.
 for u, v in EDGES:
-    m &= (take[u] | take[v])     # every edge is covered
-for v in range(N):
-    m.obj[1] += ~take[v]         # pay 1 for every vertex taken
+    m &= (take[u] | take[v])
+
+# Take as few vertices as possible.
+m.obj += sum(take[v] for v in range(N))
 
 r = m.solve()
 if r.status != "optimum":

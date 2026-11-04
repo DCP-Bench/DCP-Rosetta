@@ -1,8 +1,8 @@
-"""Readiness checks for the mip_cbc integration and its current image.
+"""Readiness checks for the python_mip_cbc integration and its current image.
 
 Drives the repository evaluator against real containers, prints a JSON object
 mapping check name to Boolean on stdout, and exits nonzero if any check failed.
-`python -m generation.readiness check --solver mip_cbc` runs this and keeps its
+`python -m generation.readiness check --solver python_mip_cbc` runs this and keeps its
 output as the readiness evidence.
 """
 import json
@@ -16,7 +16,7 @@ from evaluation import evaluate
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
-SOLVER = "mip_cbc"
+SOLVER = "python_mip_cbc"
 
 # A tiny trusted reference, kept here so this script does not depend on the
 # test suite. n=2 gives x+y==2 exactly three solutions.

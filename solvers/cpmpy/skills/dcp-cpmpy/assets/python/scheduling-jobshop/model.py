@@ -23,15 +23,15 @@ model = cp.Model()
 tasks_on = {}  # machine -> list of (start, duration, end) of the tasks it runs
 for j, job in enumerate(jobs):
     for k, (machine, duration) in enumerate(job):
-        model += end[j][k] == start[j][k] + duration
-        model += makespan >= end[j][k]
+        model.add(end[j][k] == start[j][k] + duration)
+        model.add(makespan >= end[j][k])
         if k + 1 < len(job):
-            model += end[j][k] <= start[j][k + 1]  # the job's tasks run in order
+            model.add(end[j][k] <= start[j][k + 1])  # the job's tasks run in order
         tasks_on.setdefault(machine, []).append((start[j][k], duration, end[j][k]))
 
 for tasks in tasks_on.values():
     s, d, e = (list(column) for column in zip(*tasks))
-    model += cp.NoOverlap(s, d, e)  # one task at a time on this machine
+    model.add(cp.NoOverlap(s, d, e))  # one task at a time on this machine
 
 model.minimize(makespan)
 

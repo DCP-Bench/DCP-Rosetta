@@ -1,7 +1,7 @@
 import mip
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     model = mip.Model(sense=mip.MINIMIZE, solver_name="CBC")
     x = model.add_var("x", lb=0, ub=n, var_type=mip.INTEGER)

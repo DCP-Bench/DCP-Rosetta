@@ -8,19 +8,22 @@ Read [the submission contract](../../CONTRACT.md) first; this file only says how
 ## Submission file
 
 One Python file, `model.py`. It may import `pychoco` and the standard library; nothing
-else is installed (no NumPy), and no other file of yours is staged.
+else is installed (no NumPy), and no other file of yours is staged. The standalone run
+block imports `numpy`, which is fine: the runner never executes it.
 
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[Model, dict] | tuple[Model, dict, tuple[str, IntVar]]:
+def create_model(instance) -> tuple[Model, dict, dict | None]:
 ```
 
-It must return a 2-tuple `(model, outputs)` for a satisfaction problem, or a 3-tuple
-`(model, outputs, (direction, objective))` for an optimisation problem, with `model` a
-`pychoco.model.Model`. Anything the module prints goes to stderr. For an optimisation
-problem the runner calls `build(instance)` three times (a Choco search cannot be
-rewound), so it must build a fresh, identical model on each call.
+It must return a 3-tuple `(model, outputs, objective)`, with `model` a
+`pychoco.model.Model` and `objective` None for a satisfaction problem (see
+[Objective](#objective)). The runner imports the file as module `candidate`. Anything the
+module prints goes to stderr. For an optimisation problem the runner calls
+`create_model(instance)` three times (a Choco search cannot be rewound), so it must build a
+fresh, identical model on each call. Models retained before 2026-10-30 name it
+`build(instance)`, which the runner still accepts; write `create_model`.
 
 ## Instance
 
@@ -31,14 +34,17 @@ nested `list`s, 0-based.
 
 `outputs` is a non-empty `dict` mapping each declared output name to a Choco `IntVar` or
 `BoolVar`, a Python integer or Boolean, or a nested list/tuple of these with the declared
-shape. The runner reads `.get_value()` from each variable leaf: an `IntVar` gives an
+shape; the standalone run reads each leaf with `solution.get_int_val`, so use variables, not
+plain integers. The runner reads `.get_value()` from each variable leaf: an `IntVar` gives an
 `int`, a `BoolVar` a `bool`. Any leaf without `get_value` (a constraint, a string) is
 rejected.
 
 ## Objective
 
-The third element of the return value: `("minimize", var)` or `("maximize", var)`, with
-`var` a Choco variable of that model. The runner proves the optimum with
+The third element of the return value: the arguments of `find_optimal_solution`,
+`{"objective": var, "maximize": True}` (or `False` to minimise), with `var` a Choco variable
+of that model; None for a satisfaction problem. Do not call `model.set_objective`: nothing
+reads it. The runner proves the optimum with
 `find_optimal_solution`, rebuilds the model and posts `arithm(var, "=", best)` before
 enumerating.
 
@@ -82,8 +88,9 @@ dcp-eval/choco_python:v1 -c '...'`.
 
 - The objective must be a variable (anything with `get_value`), not an expression: post
   an equality onto an `IntVar` and pass that, or the run is an `execution_error`.
-- `import numpy` fails in this image (`execution_error`).
-- `build` must be deterministic and side-effect free: the optimum is proven on one call's
+- `import numpy` fails in this image (`execution_error`), except inside the standalone run
+  block, which the runner never executes.
+- `create_model` must be deterministic and side-effect free: the optimum is proven on one call's
   model and pinned on another's.
 - Choco enumerates assignments of every variable; the runner skips repeats of the declared
   outputs, which costs search time. Auxiliary variables left free can starve enumeration.
@@ -92,23 +99,98 @@ dcp-eval/choco_python:v1 -c '...'`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_choco.py](../../../tests/fixtures/model_choco.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
+# knapsack: a Choco-solver (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install pychoco numpy`):
+#   python knapsack.py knapsack.json
+
 from pychoco.model import Model
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
     model = Model()
-    x = model.intvar(0, n, name="x")
-    y = model.intvar(0, n, name="y")
-    if not instance["optimize"]:
-        model.arithm(x, "+", y, "=", n).post()
-        return model, {"x": x, "y": y}
-    model.arithm(x, "+", y, ">=", n).post()
-    total = model.intvar(0, 2 * n, name="total")
-    model.sum([x, y], "=", total).post()
-    return model, {"x": x, "y": y}, ("minimize", total)
+
+    # x[i] is true when the hiker packs item i
+    x = [model.boolvar(name=f"x{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model.scalar(x, weights, "<=", capacity).post()
+
+    # The total value of the packed items, which the hiker wants as large as possible.
+    total_value = model.intvar(0, sum(values), name="total_value")
+    model.scalar(x, values, "=", total_value).post()
+
+    return model, {"x": x}, {"objective": total_value, "maximize": True}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs, objective = create_model(instances[index])
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")
+```
+
+## Standalone run
+
+Every model carries the header and the run block of the example, with `knapsack` replaced
+by the problem id, so a reader can copy it from the catalogue and run it with Choco-solver
+and numpy. Nothing else goes in either: the header is the first lines of the file, the run block
+the last, and the model sits between them. The runner loads the file as module `candidate`,
+so the block never runs during evaluation.
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: a Choco-solver (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install pychoco numpy`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs, objective = create_model({})
+    solver = model.get_solver()
+
+    if objective:  # optimisation: find a solution and prove no better one exists
+        solution = solver.find_optimal_solution(**objective)
+    else:  # satisfaction: any solution will do
+        solution = solver.find_solution()
+
+    if solution:
+        solution_value = np.vectorize(solution.get_int_val)  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", solution_value(output))
+    else:
+        print("No solution")
 ```

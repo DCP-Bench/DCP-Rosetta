@@ -123,7 +123,7 @@ class SolverGroupingTests(unittest.TestCase):
 
     def test_a_solver_with_models_in_two_languages_opens_on_the_first(self):
         def entry(solver, suffix):
-            return {"submission": "attempt-001", "directory": solver, "model_file": f"model{suffix}", "code": "",
+            return {"directory": solver, "model_file": f"model{suffix}", "code": "",
                     "metrics": {"problem": "queens", "solver": solver, "verdict": {}}}
         best = {"choco_java": entry("choco_java", ".java"), "choco_python": entry("choco_python", ".py")}
         rendered = generate_site.solver_models_html(["choco_java", "choco_python"], best, True)
@@ -157,12 +157,12 @@ class ModelLinkTests(unittest.TestCase):
 
     def test_the_link_names_the_directory_the_model_lives_in(self):
         entry = {
-            "submission": "attempt-001", "directory": "cpmpy_python",
+            "directory": "cpmpy_python",
             "model_file": "model.py", "code": "",
             "metrics": {"problem": "queens", "solver": "cpmpy_python", "verdict": {}},
         }
         rendered = generate_site.generated_model_html(entry)
-        self.assertIn("generated_models/queens/cpmpy_python/attempt-001/model.py", rendered)
+        self.assertIn("generated_models/queens/cpmpy_python/model.py", rendered)
         self.assertNotIn("CPMpy", rendered)
 
     def test_every_model_in_the_repository_is_linked_to_a_real_file(self):
@@ -173,7 +173,7 @@ class ModelLinkTests(unittest.TestCase):
                 for entry in entries:
                     if not entry["model_file"]:
                         continue
-                    path = root / problem / entry["directory"] / entry["submission"] / entry["model_file"]
+                    path = root / problem / entry["directory"] / entry["model_file"]
                     self.assertTrue(path.is_file(), path)
                     checked += 1
         self.assertGreater(checked, 500, "the corpus should not have shrunk to nothing")
@@ -183,11 +183,11 @@ class ModelLinkTests(unittest.TestCase):
 class FlaggedModelTests(unittest.TestCase):
     """A model a later instance disproved stays on the page, marked, and stops counting."""
 
-    FLAG = {"model": "generated_models/queens/pure_cp/attempt-001", "instance": "json:6",
+    FLAG = {"model": "generated_models/queens/pure_cp", "instance": "json:6",
             "reason": "invalid_solution", "recorded": "2026-09-23"}
 
     def entry(self, flags):
-        return {"submission": "attempt-001", "directory": "pure_cp", "model_file": "model.py", "code": "",
+        return {"directory": "pure_cp", "model_file": "model.py", "code": "",
                 "flags": flags, "metrics": {"problem": "queens", "solver": "pure_cp",
                                             "verdict_source": "container_evaluator",
                                             "verdict": {"badge": "solution_valid"}}}
@@ -195,7 +195,7 @@ class FlaggedModelTests(unittest.TestCase):
     def test_a_flagged_model_is_marked_and_names_what_disproved_it(self):
         rendered = generate_site.generated_model_html(self.entry([self.FLAG]))
         self.assertIn("fails a later instance", rendered)
-        self.assertIn("Instance 7 (invalid_solution, rechecked 2026-09-23)", rendered)
+        self.assertIn("Instance 6 (invalid_solution, rechecked 2026-09-23)", rendered)
         self.assertNotIn("fails a later instance", generate_site.generated_model_html(self.entry([])))
 
     def test_a_flagged_model_does_not_count_and_loses_to_an_unflagged_one(self):
@@ -273,6 +273,35 @@ class RenderingHelperTests(unittest.TestCase):
             self.assertEqual(generate_site.model_paradigms("gone", "optimization"), [])
         finally:
             generate_site.INTEGRATIONS = saved
+
+    def test_a_solver_is_satisfaction_only_when_every_binding_says_so(self):
+        """The Solvers page measures such a solver against the satisfaction problems."""
+        saved = generate_site.INTEGRATIONS, generate_site.SOLVERS
+        generate_site.INTEGRATIONS = {"cvc5_python": {"optimization": False}, "z3_python": {},
+                                      "mixed_a": {"optimization": False}, "mixed_b": {}}
+        generate_site.SOLVERS = {"cvc5": {"bindings": ["cvc5_python"]}, "z3": {"bindings": ["z3_python"]},
+                                 "mixed": {"bindings": ["mixed_a", "mixed_b"]}}
+        try:
+            self.assertTrue(generate_site.satisfaction_only("cvc5"))
+            self.assertFalse(generate_site.satisfaction_only("z3"))
+            self.assertFalse(generate_site.satisfaction_only("mixed"))
+        finally:
+            generate_site.INTEGRATIONS, generate_site.SOLVERS = saved
+
+    def test_without_scopes_a_sat_and_maxsat_integration_counts_every_problem_under_sat(self):
+        """The Solvers page passes no scopes: PySAT models both kinds, so its SAT count is all of them."""
+        breakdown = generate_site.paradigm_breakdown(
+            {"queens": {"pysat": [verified("pysat")]}, "knapsack": {"pysat": [verified("pysat")]}},
+            {"pysat": {"id": "pysat", "paradigms": ["sat", "maxsat"]}},
+            VOCABULARY + [{"id": "maxsat", "name": "MaxSAT", "summary": "Weighted clauses."}],
+            problem_types={"queens": "satisfaction", "knapsack": "optimization"}, scopes={})
+        self.assertEqual(breakdown["by_paradigm"]["sat"], {"pysat": 2})
+        self.assertEqual(breakdown["by_paradigm"]["maxsat"], {"pysat": 2})
+
+    def test_an_average_is_rounded_half_up_to_a_whole_number(self):
+        self.assertEqual(generate_site.rounded(146.5), "147")
+        self.assertEqual(generate_site.rounded(146.67), "147")
+        self.assertEqual(generate_site.rounded(163.2), "163")
 
     def test_previews_read_formulas_and_markdown_as_plain_text(self):
         plain = generate_site.plain_text

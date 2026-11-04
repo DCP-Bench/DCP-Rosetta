@@ -1,10 +1,15 @@
 """Runner protocol for the z3_python integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(constraints, outputs)`, or
-`(constraints, outputs, (direction, objective))` for an optimization problem
-where direction is "minimize" or "maximize". The runner owns solving: it proves
-the optimum itself rather than trusting a single `check()`, enumerates distinct
-declared outputs by blocking, and never reports success on an unproven optimum.
+A submission defines `create_model(instance)` (models retained before 2026-10-30 define
+`build(instance)`, still accepted) returning `(solver, outputs)`: solver is a `z3.Solver`
+for a satisfaction problem, or a `z3.Optimize` with one objective set by `minimize` or
+`maximize` for an optimization problem. Models retained earlier return
+`(constraints, outputs)` or `(constraints, outputs, (direction, objective))` with
+direction "minimize" or "maximize"; both are still accepted.
+
+The runner owns solving: it proves the optimum itself rather than trusting a single
+`check()`, enumerates distinct declared outputs by blocking, and never reports success
+on an unproven optimum.
 """
 import contextlib
 import importlib.util
@@ -23,27 +28,41 @@ STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_second
 
 INPUT = Path("/input")
 DIRECTIONS = ("minimize", "maximize")
+SUBMITTED = None  # what create_model returned as its first value; see load()
 
 
 def load(instance):
-    """Import the submission and normalise what it returned."""
+    """Import the submission and normalise what it returned. The file is loaded as module
+    "candidate", so its `if __name__ == "__main__":` run block never runs."""
     spec = importlib.util.spec_from_file_location("candidate", str(INPUT / "model.py"))
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) not in (2, 3):
-        raise ValueError("build(instance) must return (constraints, outputs) or "
-                         "(constraints, outputs, (direction, objective))")
+        raise ValueError("create_model(instance) must return (solver, outputs), with solver "
+                         "a z3.Solver or a z3.Optimize with one objective")
     constraints, outputs = returned[0], returned[1]
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     objective = returned[2] if len(returned) == 3 else None
+    if objective is None and isinstance(constraints, z3.Optimize) and constraints.objectives():
+        objectives = constraints.objectives()
+        if len(objectives) != 1:
+            raise ValueError(f"The z3.Optimize must have exactly one objective, not {len(objectives)}")
+        # Z3 keeps a maximized term already negated, so minimizing it covers both directions.
+        objective = ("minimize", objectives[0])
     if objective is not None:
         if (not isinstance(objective, (tuple, list)) or len(objective) != 2
                 or objective[0] not in DIRECTIONS):
             raise ValueError('The objective must be ("minimize", expression) or '
                              '("maximize", expression)')
+    # Keep the submitted solver alive for the whole run. Z3's search depends on how its terms
+    # were allocated, and freeing that solver before the runner's own check() changed the
+    # search enough to turn csplib_007_all_interval (n=12) from 0.01 s into a timeout.
+    global SUBMITTED
+    SUBMITTED = constraints
     return assertions(constraints), outputs, objective
 
 

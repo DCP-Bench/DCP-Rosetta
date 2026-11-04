@@ -49,8 +49,9 @@ image as a label, so an image built from the same files on any machine verifies.
 `generation/runs/RUN/` holds one campaign: a manifest, an event log, and one
 directory per attempt with the candidate and the evaluator's verdict —
 including the attempts that failed, which is most of what makes the ledger
-worth reading. Accepted models are copied to `generated_models/` and keep their
-verdict in `record.json`.
+worth reading. The ledger stays on the machine that ran the campaign and is not
+committed. Accepted models are copied to `generated_models/` and keep their
+verdict in `record.json`, which is what the repository records.
 
 `generation/blockers.json` lists pairs not worth retrying, each with the
 evidence that justifies it, so the same dead end is not rediscovered.

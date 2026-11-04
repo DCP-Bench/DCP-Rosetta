@@ -8,20 +8,44 @@ Entry: [README.md](README.md).
 to expressions. Give each expression its own `IntVar` and constrain that:
 
 ```python
-q = m.int_vector("q", n, 0, n - 1)                  # queen column per row
-d1 = m.int_vector("d1", n, 0, 2 * n - 2)            # diagonal id q[i] + i
-d2 = m.int_vector("d2", n, 0, 2 * n - 2)            # anti-diagonal id q[i] - i + (n - 1)
-m &= q.all_different()
+q = m.int_vector("q", n, 0, n - 1)                  # q[i]: the column of the queen in row i
+d1 = m.int_vector("d1", n, 0, 2 * n - 2)            # d1[i]: its diagonal, q[i] + i
+d2 = m.int_vector("d2", n, 0, 2 * n - 2)            # d2[i]: its anti-diagonal, q[i] - i + n - 1
 for i in range(n):
     m &= (d1[i] == q[i] + i)
     m &= (d2[i] == q[i] - i + (n - 1))
+# No two queens share a column, a diagonal or an anti-diagonal.
+m &= q.all_different()
 m &= d1.all_different()
 m &= d2.all_different()
 ```
 
+A plain Python list of `IntVar`s (each with its own domain) becomes a container with
+`m.vector(items)`, so `m &= m.vector(items).all_different()` works.
+
 The pattern is checked by the n-queens enumeration in [All solutions](README.md#all-solutions).
-No-overlap on a machine is the `cumulative` call in the table above, and
+No-overlap on a machine is the `cumulative` call in the README table, and
 [assets/scheduling](../../assets/python/scheduling/README.md) shows `cumulative` with demands other than 1.
+For a machine that runs one task at a time, one ordering Boolean per pair of its tasks,
+`(s[a] + d[a] <= s[b]).only_if(o)` and `(s[b] + d[b] <= s[a]).only_if(~o)`, can solve much
+faster than `cumulative(..., [1] * k, 1)` (10 s against 84 s on a 10-job, 5-machine job
+shop, whichever `cumulative` backend): try both on the data you will solve.
+
+### Linear constraints over integers: write them directly
+
+hermax encodes a weighted sum over `IntVar`s itself, with large coefficients too: write
+the equation as the problem states it.
+
+```python
+# b, o, m_, a: how many of each fruit are bought, each 1..100
+b, o, m_, a = (m.int(name, 1, 100) for name in ("b", "o", "m", "a"))
+# A hundred fruits in all, costing exactly 315.00 (prices in hundredths of a cent).
+m &= (b + o + m_ + a == 100)
+m &= (189 * b + 225 * o + 245 * m_ + 945 * a == 31500)
+```
+
+This solves in under a second. Building the integers from Boolean digits, adders or
+unary counters by hand is longer, and slower than hermax's own encoding.
 
 ### Combining constraints: reify with `.iff`
 
@@ -31,94 +55,86 @@ sub-constraint a Boolean with `.iff`, then combine the Booleans:
 ```python
 r1, r2 = m.bool(), m.bool()          # unnamed auxiliaries never collide
 m &= (a + b <= 1).iff(r1)            # a PB constraint
-m &= (c == d).iff(r2)                # IntVar == IntVar
-m &= (r1 | r2)                       # (a + b <= 1) or (c == d)
+m &= (c != d).iff(r2)                # IntVar != IntVar
+m &= (r1 | r2)                       # (a + b <= 1) or (c != d)
 ```
 
-- `x != y` between two IntVars has no `.iff`: reify the equality and negate it,
-  `(x == y).iff(~r)`.
-- Half reification: `(consequent).only_if(condition)`: the condition implies the consequent,
-  so `(root == s).only_if(x == c)` says `x == c` implies `root == s`. `lit.implies(pb)` has
-  the same direction.
+- Half reification: `(consequent).only_if(condition)`: the condition implies the
+  consequent, so `(s[a] + d[a] <= s[b]).only_if(a_first)` says that when `a_first` is true,
+  task `a` ends before `b` starts. `lit.implies(pb)` has the same direction. For a
+  disjunctive choice, post both sides: `(...).only_if(a_first)` and `(...).only_if(~a_first)`.
 - An IntVar compared with a constant is already a `Literal`: `(x <= 3) | (y >= 2)` and
   `(x == 3) & (y == 4)` work directly.
-- `m.obj[w] += (pb)` makes the constraint soft (pays `w` when violated).
-- Every constraint, including `iv.all_different()`, `bv.exactly_one()` and
+- A soft constraint (pay `w` when it is violated): reify it, `m &= (pb).iff(r)`, and
+  `m.obj += w * ~r`.
+- Every constraint, including `iv.all_different()`, `bv.exactly_one()`, `m.table(...)` and
   `x.forbid_value(v)`, does nothing until it is posted with `m &=`; a bare call is silently
   dropped.
 - Names are unique per model and `bool_vector("x", 2)` reserves `x[0]` and `x[1]`: use
   `m.bool()` with no name for auxiliaries, or unique f-string names (`m.int` needs a name).
+
+### Tables of allowed combinations
+
+`m &= m.table([x, y, z], allowed=rows)` restricts the tuple `(x, y, z)` to the listed rows.
+The items may also be Boolean literals, with `True`/`False` in the rows.
+When a relation is awkward as arithmetic, compute the rows that satisfy it with a short
+Python loop and post them as a table:
+
+```python
+# The digits a, b, c, d (1..9, all different) with a/b + c/d == 1, found by enumeration.
+rows = [(a, b, c, d) for a, b, c, d in itertools.permutations(range(1, 10), 4)
+        if a * d + c * b == b * d]
+m &= m.table([da, db, dc, dd], allowed=rows)
+```
 
 ### Lookups, min/max and products
 
 | Need | Idiom |
 |---|---|
 | constant list indexed by an IntVar | `m &= ((arr @ i) == y)`; `arr[0]` pairs with `i.lb` |
-| list value as an expression | `sum(arr[k] * (i == k) for k in range(i.lb, i.ub + 1))` |
+| cost given per value of an IntVar | `x.piecewise(base_value=cost[x.lb], steps={t: cost[t] for t in range(x.lb + 1, x.ub + 1)})` |
 | IntVector element by an IntVar | `m &= (v[k] == z)`, absolute index, `z` an int or IntVar |
 | 2-D table lookup | `m &= m.table([r, c, val], allowed=[(i, j, tab[i][j]) for ...])` |
 | any other container indexed by an IntVar | `for j: m &= (y == bv[j]).only_if(k == j)` |
 | `b * x`, Boolean times IntVar | `p = m.int(..., 0, x.ub); m &= (p == x).only_if(b); m &= (p == 0).only_if(~b)` |
-| `x * y`, two IntVars | `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)` |
-| `x * x` | `sum(k * k * (x == k) for k in range(x.lb, x.ub + 1))` |
+| `x * y`, two IntVars | not supported (`TypeError`); `for k in range(x.lb, x.ub + 1): m &= (p == k * y).only_if(x == k)`, or a table; when `x` is wide, write it in binary digits `x = sum(2**b * bit[b])` and `x * y = sum(2**b * part[b])` with `(part[b] == y).only_if(bit[b])`, `(part[b] == 0).only_if(~bit[b])` |
+| `x * x` | `x.piecewise(base_value=x.lb ** 2, steps={k: k * k for k in range(x.lb + 1, x.ub + 1)})` |
+| remainder, quotient | `x % k` or `m.modulo(x, k)`; `m.floor_div(x, k)` |
+| maximum / minimum | `m.max([a, b])`, `m.min(...)` over IntVars |
 
-Plain lists, `BoolVector` and `IntMatrix` cannot be indexed by an IntVar (`TypeError`);
-`m.max`/`m.min` take IntVars only, so tie expressions to IntVars first; `m.enum` takes
-string choices only. Products or squares over wide domains (about 1000 and up) exhaust
-memory or time: loop over the smaller factor, and write a long number as a digit-weighted
-sum of small IntVars instead of one wide IntVar.
+`piecewise` steps give the value from that threshold on (not an increment), and it returns a
+linear expression usable in constraints and the objective. Plain lists, `BoolVector` and
+`IntMatrix` cannot be indexed by an IntVar (`TypeError`); `abs(...)` is not supported (use
+two one-sided slacks, below); `m.enum` takes string choices only. Products or squares over
+wide domains (about 1000 and up) exhaust memory or time: loop over the smaller factor, and
+write a long number as a digit-weighted sum of small IntVars instead of one wide IntVar.
 
-### Weighted constraints over integers: channel to bits once
+### The objective
 
-`sum(c[i] * x[i]) <= T` (or `==`) over IntVars with coefficients above about 5 can take
-tens of seconds to build and more than a minute with larger coefficients, and the cost
-lands inside `m &= ...`, so `time_limit` does not bound it (`189*b + 180*o + 175*g == 15750`
-never finished building). Tie each integer once to binary Booleans and write the weighted
-constraint over the bits:
+`m.obj += expr` adds `expr` to the cost that `solve` minimises; call it several times to
+add several terms.
 
-```python
-x = m.int_vector("x", n, 0, U)
-bits = []
-for i in range(n):
-    b = m.bool_vector(f"xb{i}", U.bit_length())
-    expr = sum(2 ** k * b[k] for k in range(len(b)))
-    m &= (x[i] == expr)               # IntVar with lb 0 == Boolean sum: cheap
-    bits.append(expr)
-m &= (sum(c[i] * bits[i] for i in range(n)) <= T)
-```
-
-A diet model with coefficients 10 to 400 went from over 100 s to 0.9 s, and the equality
-over bits above built in 0.0005 s. Keep using `x[i]` for comparisons with constants,
-`all_different` and outputs; a wide IntVar in the *objective* is still costly, so use the
-bit sums there too. The cheap path needs `lb == 0` and no constant term. Put a
-constraint and its objective on the same expression (`sum(w*b) <= cap`) instead of routing
-through `W == sum(w*b)`; the detour doubles the solve time. An equality with coefficients
-around 10^8 over several integers stays hard whichever encoding is used.
-
-### The objective is soft clauses
-
-| Direction | Write | Cost paid |
+| Direction | Write | Cost |
 |---|---|---|
-| minimise a total | `m.obj[c] += ~x` | `c` when `x` is true (the thing is used) |
-| maximise a total | `m.obj[v] += x` | `v` when `x` is false (the thing is left out) |
-| any integer expression | `m.obj += expr` | its value, e.g. `m.obj += makespan` |
-| maximise an expression | `m.obj += 0 - expr` | the negated value (`-x` on a bare `IntVar` is a `TypeError`) |
+| minimise a total over Booleans | `m.obj += sum(c[i] * x[i] ...)` | `c[i]` for each `x[i]` true |
+| maximise a total | `m.obj += -sum(v[i] * x[i] ...)` | minus the total |
+| minimise an integer expression | `m.obj += makespan` | its value |
+| pay `w` when a literal is false | `m.obj += w * ~lit` | `w` when `lit` is false |
+| a cost by cases of an integer | `m.obj += x.piecewise(...)` | the case's value |
 
-For a maximisation the solver minimises the **forgone** weight, so the objective is
-`sum(all weights) - r.cost`. Keep the objective as soft clauses where you can: a weighted
-sum tied to an integer variable is far slower (see [Common issues](issues.md)).
+`result.cost` is the objective's value, constants included. Give the sum to `m.obj`
+directly: tying it to an auxiliary `IntVar` first (`total == sum(...)`, `m.obj += total`)
+works, but its encoding costs time (0.16 s against 0.01 s on a 12-by-12 assignment); keep
+such a variable only when a bound on it helps. **Never enumerate thresholds**
+(`(total >= c)` for every `c`): that posts one pseudo-Boolean encoding per threshold.
 
-`m.obj += sum(c[i] * x[i] ...)` over Booleans or IntVars is a cheap, exact linear
-objective (each literal becomes one unit soft clause, negative coefficients and a constant
-are allowed, and `r.cost` is the expression's value). **Never enumerate thresholds**
-(`(total >= c)` for every `c`): that posts one pseudo-Boolean encoding per threshold
-(29 s to build, against 0.01 s for `m.obj += sum(c*x)`, on a six-variable diet model).
-For a bare `Literal` the two forms have opposite polarity: `m.obj[w] += lit` is a soft
-clause and **maximises** `lit`, while `m.obj += lit` and `m.obj[w] += 1 * lit` **minimise**
-it. `m.obj[w]` takes a positive integer only; put a sign in the expression.
+A constant added to the objective does not change which solutions are optimal, and
+subtracting a lower bound from each cost can make the soft clauses much smaller (see
+"Help the solver" in [SKILL.md](../../SKILL.md#modelling)). Keep the reported value on the
+original costs.
 
 An absolute deviation of `S = sum(c_i * x_i)` from a target `T` takes two one-sided slack
-integers, not an equality (`S - T == p - n` was 17 times slower to solve):
+integers:
 
 ```python
 p = m.int("p", 0, S_max - T); n = m.int("n", 0, T)
@@ -127,8 +143,6 @@ m &= (n >= T - S)
 m.obj += p + n
 ```
 
-**Sign check:** minimise uses `~x` (pays when `x` is chosen), maximise uses plain `x`
-(pays when `x` is left out). Copying `~x` from the minimise row into a maximisation makes
-the solver minimise the value and return the worst selection. Example: maximum-weight independent set,
-[assets/maximise](../../assets/python/maximise/README.md), uses `m.obj[w] += pick[i]`.
-
+**Sign check:** the objective is always minimised. A maximisation needs the minus sign
+(`m.obj += -total`); forgetting it returns the worst selection. Example: maximum-weight
+independent set, [assets/maximise](../../assets/python/maximise/README.md).

@@ -1,7 +1,7 @@
 """Runner protocol for the pysat integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(formula, outputs)`, where
-`outputs` maps each declared output name to a literal, a
+A submission defines `create_model(instance)` (`build` in models retained earlier)
+returning `(formula, outputs)`, where `outputs` maps each declared output name to a literal, a
 `pysat.integer.Integer`, a `pysat.integer.LinearExpr` over Integers, a plain
 bool, or nested lists of those, and `formula` is one of:
 
@@ -98,18 +98,19 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        result = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        result = create_model(instance)
     if isinstance(result, tuple) and len(result) == 3:
         raise ValueError("an objective is declared with the soft clauses of a "
                          "pysat.formula.WCNF, not returned as a third value")
     if not isinstance(result, tuple) or len(result) != 2:
-        raise ValueError("build(instance) must return (formula, outputs)")
+        raise ValueError("create_model(instance) must return (formula, outputs)")
     formula, outputs = result
     if not isinstance(formula, (CNF, WCNF)):
         raise ValueError("the first value must be a pysat.formula.CNF, or a "
                          "pysat.formula.WCNF when the problem has an objective")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return formula, outputs
 
 

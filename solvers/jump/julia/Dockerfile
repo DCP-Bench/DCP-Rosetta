@@ -8,6 +8,11 @@ COPY --chmod=0755 solvers/apt-snapshot.sh /usr/local/bin/apt-snapshot
 RUN apt-snapshot 20261015T145452Z && apt-get update && apt-get install -y --no-install-recommends python3=3.11.2-1+b1 \
  && rm -rf /var/lib/apt/lists/*
 ENV JULIA_PROJECT=/opt/jump JULIA_DEPOT_PATH=/opt/julia-depot JULIA_PKG_OFFLINE=false
+# Code precompiled for "native" uses every feature of the CPU that built it; on a CPU
+# lacking one, Julia rejects it and recompiles every package at run time (388 s on
+# one CPU). The layer is cached across CI runners of several CPU types, so it is
+# compiled for the generic x86-64 targets of Julia's system-image documentation.
+ENV JULIA_CPU_TARGET="generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)"
 COPY solvers/jump/julia/Project.toml solvers/jump/julia/Manifest.toml /opt/jump/
 RUN julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile(); using JuMP, HiGHS, JSON' \
  && chmod -R a+rX /opt/julia-depot /opt/jump

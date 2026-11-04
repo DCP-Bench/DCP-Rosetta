@@ -212,7 +212,8 @@ you keep the decisions and they do the modelling.
 - Never call something accepted without an evaluator record that says so. A
   clean build, an empty stderr, and your own reading of the model are not
   acceptance.
-- Never overwrite a previous attempt, a retained model, or a legacy directory.
+- Never overwrite a previous attempt or edit a retained model by hand: a better
+  model replaces the retained one only through `retain`.
 - Never work on a branch you did not create for this run, and never push or
   install skills globally.
 - Never touch an integration you are not setting up, and never edit

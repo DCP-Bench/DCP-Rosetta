@@ -56,7 +56,7 @@ OPTIMAL = ("from pychoco.model import Model\n"
            "    total = model.intvar(0, 2 * n, name='total')\n"
            "    model.arithm(x, '+', y, '>=', n).post()\n"
            "    model.scalar([x, y], [1, 1], '=', total).post()\n"
-           "    return model, {'x': x, 'y': y}, ('DIRECTION', total)\n")
+           "    return model, {'x': x, 'y': y}, {'objective': total, 'maximize': DIRECTION}\n")
 # Two distinct solutions that share their declared outputs: the runner must
 # report one of them, not two, because enumeration counts declared outputs.
 DUPLICATES = ("from pychoco.model import Model\n"
@@ -93,6 +93,17 @@ ISOLATED = ("import os, socket\n"
             "    return model, {'x': x, 'y': y}\n")
 
 
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    print(outputs)\n")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -112,12 +123,13 @@ def main():
 
         check("satisfaction", GOOD)
         check("changed_instances", GOOD, instances=[{"n": 3, "optimize": False}], instance_count=2)
-        check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
-        check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        check("minimization", OPTIMAL.replace("DIRECTION", "False"), reference=OPTIMIZING)
+        check("maximization", OPTIMAL.replace("DIRECTION", "True"), reference=MAXIMIZING)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
+        check("standalone_block", STANDALONE)
 
         # Enumeration has to do two things: return the distinct solutions asked
         # for, and stop at exhaustion rather than inventing repeats. x+y==2 over

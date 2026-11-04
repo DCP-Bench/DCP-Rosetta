@@ -111,6 +111,48 @@ while m.optimize(max_seconds=60) == mip.OptimizationStatus.OPTIMAL:
 
 The loop itself prints nothing. With zero solutions the first `optimize` returns `INFEASIBLE`, the loop body never runs and `placements` is empty, so a count of 0 is printed. With exactly one solution the count is 1. Check `placements` before indexing it. The [n-queens-all](../assets/python/n-queens-all/README.md) example prints the first placement as a plain list.
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it (`mip.xsum(w * xi for w, xi in zip(weights, x)) <= capacity`),
+  and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that creates the `mip.Model` with its sense, adds the
+constraints, sets `model.objective` when there is one, and returns the model with the
+variables to print. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    model = mip.Model(sense=mip.MAXIMIZE, solver_name="CBC")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [model.add_var(f"x_{i}", var_type=mip.BINARY) for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model += mip.xsum(w * xi for w, xi in zip(weights, x)) <= capacity
+
+    # Pack the most valuable selection.
+    model.objective = mip.xsum(v * xi for v, xi in zip(values, x))
+
+    return model, {"x": x}
+```
+
+Solve with `model.optimize()` after `model.verbose = 0` and `model.max_mip_gap = 0`, check
+for `OPTIMAL`, and print each output as `round(v.x)`; `numpy.vectorize` applies it to a
+nested list in one call.
+
 ## Common issues
 
 | Symptom | Likely cause | Fix |

@@ -189,15 +189,24 @@ class GenerationTests(unittest.TestCase):
         with self.assertRaises(manage.ManagementError):
             manage.retain(str(attempt))
 
-    def test_retention_preserves_legacy_directories(self):
+    def test_retention_replaces_the_pair_model_and_its_flags(self):
+        """One model per pair: a new one replaces the old, and the old one's flags go with it."""
         attempt = self.new_attempt()
-        legacy = self.root / "generated_models" / "problem" / "solver" / "model.py"
-        legacy.parent.mkdir(parents=True); legacy.write_text("legacy", encoding="utf-8")
+        old = self.root / "generated_models" / "problem" / "solver"
+        old.mkdir(parents=True)
+        (old / "model.lp").write_text("old", encoding="utf-8")
+        flags = self.root / "generation" / "flags.json"
+        flags.parent.mkdir(parents=True, exist_ok=True)
+        flags.write_text(manage._json({"schema": 1, "flags": [
+            {"model": "generated_models/problem/solver", "instance": "json:1"},
+            {"model": "generated_models/problem/other", "instance": "json:1"}]}), encoding="utf-8")
         with patch("generation.manage.evaluate_model", side_effect=lambda p, *_args, **_kwargs: self.accepted(p)):
             manage.evaluate(str(attempt), str(self.root / "model.py"))
         target = manage.retain(str(attempt))
-        self.assertTrue((target / "model.py").is_file())
-        self.assertEqual(legacy.read_text(encoding="utf-8"), "legacy")
+        self.assertEqual(target, old)
+        self.assertEqual(sorted(p.name for p in target.iterdir()), ["model.py", "record.json"])
+        self.assertEqual([x["model"] for x in manage._read(flags)["flags"]], ["generated_models/problem/other"])
+        self.assertEqual([p.name for p in old.parent.iterdir()], ["solver"])
 
     def test_traversal_and_invalid_event_are_rejected(self):
         manage.init("run1")
@@ -309,7 +318,7 @@ class GenerationTests(unittest.TestCase):
             self.assertEqual([x["problem"] for x in ordered], ["p2", "p1"])
             (self.root / "bench" / "dataset" / "p2" / "p2.json").unlink()
             (self.root / "solvers" / "s1" / "readiness.json").write_text("{}", encoding="utf-8")
-            kept = generated / "p1" / "s1" / "run-attempt-001"
+            kept = generated / "p1" / "s1"
             kept.mkdir(parents=True)
             (kept / "record.json").write_text(
                 '{"verdict_source": "container_evaluator", "evaluation": {"accepted": true}}', encoding="utf-8")
@@ -365,7 +374,7 @@ class GenerationTests(unittest.TestCase):
         (self.root / "bench" / "dataset" / "p1" / "p1.cpmpy.py").write_text("x", encoding="utf-8")
         (self.root / "solvers" / "s1").mkdir(parents=True)
         (self.root / "solvers" / "s1" / "metadata.json").write_text("{}", encoding="utf-8")
-        kept = self.root / "generated_models" / "p1" / "s1" / "run-attempt-001"
+        kept = self.root / "generated_models" / "p1" / "s1"
         kept.mkdir(parents=True)
         (kept / "record.json").write_text(
             '{"verdict_source": "container_evaluator", "evaluation": {"accepted": true}}', encoding="utf-8")
@@ -374,10 +383,10 @@ class GenerationTests(unittest.TestCase):
              patch.object(next_work, "integration", return_value={"id": "s1", "enumeration": True}):
             self.assertEqual(next_work.report(include_unready=True)["eligible_pairs"], 0)
             flags.write_text(manage._json({"schema": 1, "flags": [
-                {"model": "generated_models/p1/s1/run-attempt-001", "instance": "json:1"}]}), encoding="utf-8")
+                {"model": "generated_models/p1/s1", "instance": "json:1"}]}), encoding="utf-8")
             flagged = next_work.report(include_unready=True)
             self.assertEqual(flagged["eligible_pairs"], 1)
-            self.assertEqual(flagged["flagged_models"], ["generated_models/p1/s1/run-attempt-001"])
+            self.assertEqual(flagged["flagged_models"], ["generated_models/p1/s1"])
             flags.write_text("not json", encoding="utf-8")
             self.assertEqual(next_work.report(include_unready=True)["eligible_pairs"], 0)
 
@@ -447,7 +456,7 @@ class GenerationTests(unittest.TestCase):
                     "s_slow": ("execution_timeout", False), "s_infra": ("infrastructure_error", False),
                     "s_oom": ("memory_limit", False)}
         for solver in outcomes:
-            kept = generated / "p1" / solver / "attempt-001"
+            kept = generated / "p1" / solver
             kept.mkdir(parents=True)
             (kept / "model.py").write_text("model", encoding="utf-8")
             (kept / "record.json").write_text(manage._json({
@@ -475,7 +484,7 @@ class GenerationTests(unittest.TestCase):
             self.assertEqual(instances.record_flags(report["rows"]), 0)
         recorded = json.loads(flags.read_text(encoding="utf-8"))["flags"]
         self.assertEqual([(x["model"], x["instance"], x["reason"]) for x in recorded],
-                         [("generated_models/p1/s_bad/attempt-001", "json:1", "invalid_solution")])
+                         [("generated_models/p1/s_bad", "json:1", "invalid_solution")])
 
     def test_cli_error_is_clean(self):
         self.assertEqual(manage.main(["status", "--run", "missing"]), 2)

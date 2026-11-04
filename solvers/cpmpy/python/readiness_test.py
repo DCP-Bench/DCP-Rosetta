@@ -224,6 +224,17 @@ LARGE = ("import cpmpy as cp\n"
          "    count = cp.intvar(0, 3000)\n"
          "    return cp.Model(count == cp.sum(b), count == instance['n']), {'b': b, 'count': count}\n")
 
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    model.solve()\n"
+    "    print(outputs)\n")
+
 
 def main():
     results = {}
@@ -270,6 +281,7 @@ def main():
         result = check("auxiliary_free_distinct", AUXILIARY, solution_limit=3)
         results["auxiliary_free_distinct"] = result["accepted"] and result["solutions_checked"] == 3
         check("large_model", LARGE, reference=LARGE_REF, execution_timeout=120, reference_timeout=120)
+        check("standalone_block", STANDALONE)
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})

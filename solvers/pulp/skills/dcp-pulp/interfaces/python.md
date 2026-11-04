@@ -9,6 +9,7 @@ Shared concepts, encodings, statuses and enumeration strategy: [SKILL.md](../SKI
 - [Modelling](#modelling)
 - [Solving](#solving)
 - [All solutions](#all-solutions)
+- [Readable models](#readable-models)
 - [Common issues](#common-issues)
 - [Further reading](#further-reading)
 - Runnable examples: `assets/python/`, one folder per pattern
@@ -116,6 +117,47 @@ prob += pulp.lpSum(1 - b for b in ones) + pulp.lpSum(zeros) >= 1, f"no_good_{k}"
 ```
 
 For all optimal solutions, keep the objective in a variable (`score = pulp.lpSum(...)`, then `prob += score`), require `sol_status == pulp.LpSolutionOptimal`, read `best = round(pulp.value(score))`, add the named pin `prob += score == best, "optimum"`, and run the loop.
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it (`pulp.lpSum(w * xi for w, xi in zip(weights, x)) <= capacity`),
+  and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that creates the `LpProblem` with its sense, adds the
+constraints and the objective to it, and returns it with the variables to print. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    problem = pulp.LpProblem("knapsack", pulp.LpMaximize)
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [pulp.LpVariable(f"x_{i}", cat="Binary") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    problem += pulp.lpSum(w * xi for w, xi in zip(weights, x)) <= capacity
+
+    # Pack the most valuable selection.
+    problem += pulp.lpSum(v * xi for v, xi in zip(values, x))
+
+    return problem, {"x": x}
+```
+
+Solve with `problem.solve(pulp.PULP_CBC_CMD(msg=False))`, check `problem.status`, and print
+each output as `round(pulp.value(v))`; `numpy.vectorize` applies it to a nested list in one
+call.
 
 ## Common issues
 

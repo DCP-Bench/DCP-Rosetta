@@ -1,11 +1,13 @@
 # Enumerate every subset of 1..6 whose values sum to 7.
 from hermax.model import Model
 
-VALUES = list(range(1, 7))
-TARGET = 7
+VALUES = list(range(1, 7))   # the numbers to choose from
+TARGET = 7                   # the sum a subset must reach
 
 m = Model()
-pick = m.bool_vector("pick", len(VALUES))  # the decision variables to enumerate
+# pick[i] is true when VALUES[i] is in the subset
+pick = m.bool_vector("pick", len(VALUES))
+# The chosen numbers add up to the target.
 m &= (sum(v * pick[i] for i, v in enumerate(VALUES)) == TARGET)
 
 solutions = []

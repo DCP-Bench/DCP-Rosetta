@@ -12,12 +12,15 @@ standard library; nothing else is installed, and no other file of yours is stage
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[hermax.model.Model, dict]:
+def create_model(instance) -> tuple[hermax.model.Model, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return a 2-tuple
-`(model, outputs)` with `model` a `hermax.model.Model`; the objective is never returned.
-Anything the module prints goes to stderr.
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+It must return a 2-tuple `(model, outputs)` with `model` a `hermax.model.Model`; the
+objective is never returned. Anything the module prints goes to stderr.
+
+Models retained before the rename name it `build(instance)`, with the same return value;
+the runner still accepts that name. Write `create_model`.
 
 ## Instance
 
@@ -40,17 +43,19 @@ Plain Python values (`int`, `bool`) are not accepted (`execution_error`).
 
 ## Objective
 
-Soft clauses on `model.obj`: `m.obj[w] += literal` pays `w` when the literal is
-**false**, so minimising a literal's count pays on `~lit` and maximising pays on `lit`.
-`m.obj += expr` is also accepted; the cost then includes the expression's lower bounds
-(`m.obj += x` with `x` in 3..7 costs 3 at best). The runner always minimises that cost and
-reads only whether one exists: `result.cost` is None when there are no soft clauses, which
-makes the model a satisfaction problem.
+Minimise a cost with `m.obj += expr` (or `m.obj.add(expr, weight=w)`), where `expr` is a
+literal, an `IntVar`, a linear expression, or a sum of these: hermax turns it into weighted
+soft clauses. `m.obj += w * lit` pays `w` when `lit` is true, so paying when a literal is
+false is `m.obj += w * ~lit`, and maximising a quantity is minimising its complement. The
+cost includes the expression's constant and lower bounds (`m.obj += x` with `x` in 3..7
+costs 3 at best). The `m.obj[w] += lit` form of hermax 1.2 raises `TypeError` since 1.3.0.
+The runner always minimises that cost and reads only whether one exists: `result.cost` is
+None when there are no soft clauses, which makes the model a satisfaction problem.
 
 ## Solving
 
 - The runner calls `model.solve(time_limit=left)` with hermax's defaults and forces no
-  other setting: a model with soft clauses goes to hermax's stratified RC2, a hard-only model to
+  other setting: a model with soft clauses goes to hermax's CoreTrail (the default since 1.3.0), a hard-only model to
   PySAT's Glucose 4 (`g4`).
 - Status: `optimum`, or `sat` without soft clauses, is an answer; `unsat` is `unsat`
   (`complete` once something was emitted); `interrupted`, `interrupted_sat` and `unknown`
@@ -62,7 +67,7 @@ makes the model a satisfaction problem.
   re-solved, not emitted. It stops with `complete` on `unsat`, when nothing is left to
   block, or, for an optimisation, at the first answer whose cost exceeds the first one.
 - Time: one deadline from the runner's start; each solve gets the time left, and an
-  expired deadline before a solve is `timeout`. There is no SIGALRM, so `build` itself is
+  expired deadline before a solve is `timeout`. There is no SIGALRM, so `create_model` itself is
   unbounded until the evaluator stops the container.
 
 ## Compilation
@@ -71,45 +76,129 @@ None.
 
 ## Environment
 
-Image `dcp-eval/hermax:v1`: Python 3.12.11 (`/usr/local/bin/python`), hermax 1.2.9 with
+Image `dcp-eval/hermax:v1`: Python 3.12.11 (`/usr/local/bin/python`), hermax 1.3.0 with
 python-sat 1.9.dev17 (and `six`); the standard library (`json` included) and nothing else.
-`Model.solve` defaults to stratified RC2 (since 1.2.9) for soft clauses and Glucose 4.1 otherwise, which is what
+`Model.solve` defaults to CoreTrail (since 1.3.0) for soft clauses and Glucose 4.1 otherwise, which is what
 `metadata.json` names. No licence, no environment variables of note, no
 network in the container. For an ad hoc run, `--entrypoint sh` bypasses
 `/opt/runner/run.py`.
 
 ## Traps
 
-- `build` has no time limit of its own (see Solving): a slow build ends as
-  `execution_timeout`. Tying the objective to an auxiliary `IntVar`
-  (`sum(...) == total`) is the usual way to spend the budget inside `build`: keep the
-  objective as soft clauses.
+- `create_model` has no time limit of its own (see Solving): a slow one ends as
+  `execution_timeout`. Give the objective to `m.obj` directly: an auxiliary `IntVar`
+  tied to it (`total == sum(...)`, then `m.obj += total`) works since 1.3.0, but its
+  encoding still costs time (1.8 s against 0.01 s on a 12-by-12 assignment).
 - With `solution_limit > 1`, an output expression must sum only literals and `IntVar`s:
   a derived integer such as `x // 3` inside it cannot be blocked (`execution_error`).
   Tie it to an `IntVar` first.
 - Because enumeration blocks the literals and variables an expression output sums, every
   other combination with the same total costs a re-solve.
+- Enumeration blocks only the declared outputs, so with `solution_limit > 1` the second
+  solve has to prove that no other output value exists. Auxiliary variables with
+  interchangeable values (symmetric people, couples, colours) make that proof slow even
+  when the output is unique: break their symmetry (`execution_timeout` otherwise).
 - A `Literal` output is reported as a Boolean. For an output the brief declares as a
   0/1 integer, use `m.int(name, 0, 1)`.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_hermax.py](../../../tests/fixtures/model_hermax.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
-from hermax.model import Model
+# aircraft_landing: a hermax (Python) model from DCP Rosetta.
+# Download the `aircraft_landing.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_landing.html
+# Then run it on the first instance (after `pip install hermax`):
+#   python aircraft_landing.py aircraft_landing.json
+
+from hermax.model import Model, sum_expr
 
 
-def build(instance):
-    n = instance["n"]
+def create_model(instance):
+    """Land each aircraft inside its time window, keeping the required separation after
+    every earlier aircraft, so that the total penalty for landing before or after each
+    aircraft's target time is as small as possible."""
+    earliest = instance["earliest_landing"]      # earliest[i]: first time aircraft i may land
+    latest = instance["latest_landing"]          # latest[i]: last time aircraft i may land
+    target = instance["target_landing"]          # target[i]: preferred landing time of aircraft i
+    penalty_before = instance["penalty_before"]  # penalty_before[i]: cost per time unit early
+    penalty_after = instance["penalty_after"]    # penalty_after[i]: cost per time unit late
+    separation = instance["separation_time"]     # separation[i][j]: gap needed when i lands before j
+    n = len(earliest)
+
     m = Model()
-    x = m.int("x", 0, n)
-    y = m.int("y", 0, n)
-    if not instance["optimize"]:
-        m &= (x + y == n)
-        return m, {"x": x, "y": y}
-    m &= (x + y >= n)
-    m.obj += (x + y)
-    return m, {"x": x, "y": y}
+
+    # landing_times[i] is when aircraft i lands, inside its own time window
+    landing_times = [m.int(f"landing_time_{i}", earliest[i], latest[i]) for i in range(n)]
+
+    # Aircraft land in the given order, each at least the separation time after every earlier one.
+    for i in range(n):
+        for j in range(i + 1, n):
+            m &= (landing_times[i] + separation[i][j] <= landing_times[j])
+
+    # The penalty of landing aircraft i at time t: per time unit early, or per time unit late.
+    def penalty(i, t):
+        return penalty_before[i] * max(0, target[i] - t) + penalty_after[i] * max(0, t - target[i])
+
+    # The total penalty sums, per aircraft, its penalty as a step function over its time window.
+    total_penalty = sum_expr(
+        time.piecewise(base_value=penalty(i, time.lb),
+                       steps={t: penalty(i, t) for t in range(time.lb + 1, time.ub + 1)})
+        for i, time in enumerate(landing_times))
+
+    # Minimise the total penalty.
+    m.obj += total_penalty
+
+    return m, {"landing_times": landing_times, "total_penalty": total_penalty}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)
 ```
+
+## Standalone run
+
+Every model carries the header and the run block of the example, with `aircraft_landing`
+replaced by the problem id, so a reader can copy it from the catalogue and run it with
+nothing but `pip install hermax`. Nothing else goes in either: the header is the first
+lines of the file, the run block the last, and the model sits between them. The runner
+loads the file as module `candidate`, so the block never runs during evaluation.
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: a hermax (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install hermax`) with:
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    result = model.solve()
+
+    if result.ok:  # optimum, sat, or a best solution found before a time limit
+        for name, output in outputs.items():
+            print(name, "=", result[output])
+    else:
+        print("No solution:", result.status)
+```
+
+The pilot fixture [tests/fixtures/model_hermax.py](../../../tests/fixtures/model_hermax.py)
+(instance fields `n`, `optimize`; outputs `x`, `y`) is in the same form.

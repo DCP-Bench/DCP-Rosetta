@@ -6,7 +6,7 @@ Shared concepts, statuses and enumeration strategy: [SKILL.md](../SKILL.md).
 ## Contents
 - [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling) · [Solving](#solving)
 - [All solutions](#all-solutions) · [All optimal solutions](#all-optimal-solutions)
-- [Common issues](#common-issues) · [Runnable examples](#runnable-examples)
+- [Readable models](#readable-models) · [Common issues](#common-issues) · [Runnable examples](#runnable-examples)
 
 ## Install
 
@@ -178,6 +178,36 @@ enumerator.solve(model, collector)
 Check the first solve is `OPTIMAL` before using `objective_value`. Worked example:
 [ties-all-optimal](../assets/python/ties-all-optimal/README.md). Several objective terms can tie; `total` must be built from the same terms
 and weights as the objective, or the equality fixes the wrong value.
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it: `sum(w * xi for w, xi in zip(weights, x))` over index
+  arithmetic, and variables kept as lists or nested lists.
+
+For example:
+
+```python
+values = instance["values"]      # values[i]: the value of item i
+weights = instance["weights"]    # weights[i]: the weight of item i
+capacity = instance["capacity"]  # the most weight the backpack can carry
+
+model = cp_model.CpModel()
+
+# x[i] is true when the hiker packs item i
+x = [model.new_bool_var(f"x_{i}") for i in range(len(values))]
+
+# The packed items weigh no more than the backpack can carry.
+model.add(sum(w * xi for w, xi in zip(weights, x)) <= capacity)
+# Pack the most valuable selection.
+model.maximize(sum(v * xi for v, xi in zip(values, x)))
+```
 
 ## Common issues
 

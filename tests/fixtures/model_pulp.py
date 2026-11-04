@@ -1,7 +1,7 @@
 import pulp
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     problem = pulp.LpProblem("smoke", pulp.LpMinimize)
     x = pulp.LpVariable("x", 0, n, cat="Integer")

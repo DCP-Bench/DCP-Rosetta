@@ -168,6 +168,39 @@ the data, not from an answer. Examples: [production-plan](../assets/python/produ
 [transport-cost](../assets/python/transport-cost/model.py) (minimise), [project-schedule](../assets/python/project-schedule/model.py)
 (makespan through `model.max`).
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest call that says it (`model.scalar(x, weights, "<=", capacity)` over a loop of sums), and variables kept as lists or nested lists so the run block can print them.
+
+For example:
+
+```python
+values = instance["values"]      # values[i]: the value of item i
+weights = instance["weights"]    # weights[i]: the weight of item i
+capacity = instance["capacity"]  # the most weight the backpack can carry
+
+model = Model()
+
+# x[i] is true when the hiker packs item i
+x = [model.boolvar(name=f"x{i}") for i in range(len(values))]
+
+# The packed items weigh no more than the backpack can carry.
+model.scalar(x, weights, "<=", capacity).post()
+
+# The total value of the packed items, which the hiker wants as large as possible.
+total_value = model.intvar(0, sum(values), name="total_value")
+model.scalar(x, values, "=", total_value).post()
+
+return model, {"x": x}, {"objective": total_value, "maximize": True}
+```
+
 ## Common issues
 
 | Problem | Likely cause | Fix |

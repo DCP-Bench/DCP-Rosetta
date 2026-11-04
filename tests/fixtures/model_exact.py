@@ -1,7 +1,7 @@
 from exact import Exact
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     solver = Exact()
     solver.addVariable("x", 0, n)
@@ -10,4 +10,5 @@ def build(instance):
         solver.addConstraint([(1, "x"), (1, "y")], True, n, True, n)
         return solver, {"x": "x", "y": "y"}
     solver.addConstraint([(1, "x"), (1, "y")], True, n)
-    return solver, {"x": "x", "y": "y"}, ("minimize", [(1, "x"), (1, "y")])
+    solver.setObjective([(1, "x"), (1, "y")], minimize=True)
+    return solver, {"x": "x", "y": "y"}
