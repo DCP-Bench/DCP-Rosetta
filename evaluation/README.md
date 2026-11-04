@@ -66,12 +66,28 @@ unqualified-search-registries = ["docker.io"]
 short-name-mode = "permissive"
 ```
 
+Without a systemd user session that outlives your logins, rootless podman fails once
+you log out. Run `loginctl enable-linger` once (or ask an admin to), or set
+`cgroup_manager = "cgroupfs"` under `[engine]` in `~/.config/containers/containers.conf`.
+
 Results then match Docker's with two differences, both because of the missing
 subuid range and cgroup delegation. Candidates run as root inside the container,
 which is still the unprivileged host user, with every other restriction kept
-(`test_isolation` checks the host mapping, not the uid). And `--cpus` is not enforced: set
-`DCP_TASKSET=0-7` to pin containers to cores, and expect noisier timings.
-`--memory` limits and their `memory_limit` verdicts do work.
+(`test_isolation` checks the host mapping, not the uid). And the CPU limit is
+enforced differently. When the user owns the cgroup `cpu` controller, `--cpus` passes
+through as with Docker. Otherwise each run gets `ceil(cpus)` whole cores of its own,
+and seccomp forbids `sched_setaffinity`, so a candidate cannot use more cores. The cores come from
+`DCP_TASKSET` (e.g. `0-7`), or else every core the wrapper may use. A run that
+finds no free cores fails as an `infrastructure_error`, so run at most
+pool ÷ `ceil(cpus)` evaluations at once. Each result's `engine` field records which way
+it ran (`cpu_limit`: `quota` or `cores`). An admin can make it `quota` by delegating
+the controller (`Delegate=cpu cpuset io memory pids` in a drop-in for
+`user@.service`). `--memory` limits and their `memory_limit` verdicts work either way.
+
+Build images for this machine only. The build squashes every file's owner to root,
+which is harmless under podman, where everything runs as that root, but such an
+image may fail under Docker, which runs candidates as uid 65534. Don't push it or
+convert it for another machine.
 
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
