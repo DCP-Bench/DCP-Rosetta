@@ -36,6 +36,7 @@ Produce one self-contained skill folder `<name>/` that teaches a fresh agent to 
 | Step | Output |
 |---|---|
 | 0. Ask the user for the target: solver (+ language) | name/target |
+| 0b. Licence triage: classify the licence, `python -m evaluation.licences check`; if missing, write `LICENCE.md` and ask for it **without stopping** ([licences](references/licences.md)) | licence class; the request sent |
 | 1. Search for existing skills, this repository's first | new skill or new interface; each find classified: source / companion / ignore |
 | 2. Research, check the licence, install, run a hello-world | `research.md`, working install |
 | 3. Write the skill; run `check_assets.py` and `skills-ref` | the skill's skill folder |
@@ -43,6 +44,8 @@ Produce one self-contained skill folder `<name>/` that teaches a fresh agent to 
 | 5. Report: path, decision, tested version, test table, related skills, known gaps | `report.md` |
 
 After each step, send the user a one-line progress note: done, next, rough time left. Don't wait for a reply.
+
+**A missing licence never stops the run early.** Request it at step 0b, do every step that needs no running solver while you wait, poll with `python -m evaluation.licences check ID`, and ask once (interactive) or return **licence_pending** (headless) only when nothing else is left. Never open a licence file. The flow is in [licences](references/licences.md).
 
 **Interface.** Build exactly what the user named; it is one interface of the solver's skill. A modelling framework (JuMP, MiniZinc, CPMpy, Pyomo) uses its default backend unless one is named. A solver gets its **own** API, the one its developers ship (Chuffed → C++, Pumpkin → Rust, Choco → Java/pychoco), unless the user names a combination ("Chuffed via MiniZinc"). With several native interfaces, ask, proposing the one its docs use most. A missing compiler is installed (ask before `sudo`) or reported; it never changes the interface.
 
@@ -83,7 +86,8 @@ An overlapping skill is a source, never a companion: two skills with the same tr
 
 Fill in [references/research.md](references/research.md) from **official** docs, API reference, examples and changelog. Closed issues ("wrong result", "objective ignored") are the best source of gotchas.
 
-- **Licence**: needing a key, account or registration (full Gurobi, CPLEX, Xpress, Hexaly) → stop and ask. A free edition that installs without one (gurobipy's size-limited licence, CPLEX Community) is fine; put its limits in `compatibility` and *Common issues*.
+- **Licence**: classified at step 0b. A free edition that installs without one (gurobipy's size-limited licence, CPLEX Community) is fine; put its limits in `compatibility` and *Common issues*. A key, install or server licence is requested at once and the run goes on ([licences](references/licences.md)); only a licence that cannot work in a networkless container (needs internet at run time, node-locked, named-user) blocks.
+- The standalone skill says how to install the licence in general terms (the vendor's variables and search paths), never this repository's commands.
 - Install as the docs recommend, project-local where possible; ask before `sudo` (prevent if possible). Record the tested version in `sources.md`; the skill stays unpinned.
 - Done when you have run one tiny model of each kind (satisfy, enumerate all, all optimal, maximise, minimise, infeasible) and one broken on purpose, to see where errors appear.
 
@@ -127,7 +131,7 @@ Seven problems, 18 instances ([README](assets/toy-problems/README.md)).
 
 This part adds what Rosetta needs around the skill: `metadata.json`, `Dockerfile`, `run.py`, `readiness_test.py` and a readiness record. How a Rosetta submission (a model written in a solver's interface) must look is the model-generator skill's job, not this one's.
 
-Paths to `generation/`, `evaluation/`, `solvers/` and `skills/` mean repository-root paths. Return **ready** or **blocked** to the caller.
+Paths to `generation/`, `evaluation/`, `solvers/` and `skills/` mean repository-root paths. Return **ready**, **licence_pending** (everything done up to the steps that need a licence the user has not configured yet; see [licences](references/licences.md)) or **blocked** to the caller.
 
 The repository's own tools run on the host, in its Python environment: `.venv/bin/python` (`.venv/Scripts/python.exe` on Windows). A fresh checkout or worktree has none; create it with `python -m venv .venv` and install `requirements.txt` into it. `generation.readiness` needs it, since it runs `readiness_test.py` and the CPMpy reference with that interpreter.
 
@@ -164,6 +168,8 @@ python <this-skill>/scripts/check_integration.py ID --static
 
 Build with `python -m evaluation.build <id>`, bounded by the remaining budget. Evaluation never builds or installs implicitly.
 
+A licensed solver declares its licence under `licence` in `metadata.json` and keeps it out of the image: no build secret, no copied key. The evaluator binds it at run time ([licences](references/licences.md)).
+
 ## 3.3 Readiness
 
 ```bash
@@ -177,5 +183,5 @@ rebuild, move `readiness.json` to `readiness/superseded/`, and check and verify 
 
 Write the evidence under `generation/runs/RUN/setup/<id>/`: changed files, sources, versions, commands and their output (with repository-relative paths, never a path under your home folder), the image's recipe digest, capabilities and limitations, and add-solver's report with its toy-test table. Record `setup_finished` or `setup_blocked` with `generation.manage event`.
 
-Return **ready** only after readiness passed. Otherwise return **blocked** with the exact failure, the attempts spent and what is left. Stop when the budget is spent; never recurse.
+Return **ready** only after readiness passed. Return **licence_pending** when the only thing missing is a licence the user is acquiring: `<integration>/PENDING.md` lists the deferred steps, and the report starts with the licence to-do. Otherwise return **blocked** with the exact failure, the attempts spent and what is left. Stop when the budget is spent; never recurse.
 

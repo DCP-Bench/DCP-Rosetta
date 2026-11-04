@@ -81,6 +81,9 @@ When the framework binds the data (a typed modelling language):
 - Check `.dockerignore` before relying on a build file; never widen the context to
   datasets, references, credentials or models.
 - The final `ENTRYPOINT` runs the intended runner.
+- It never holds a licence: no `--mount=type=secret`, no copied key file. A licensed
+  solver declares `licence` in `metadata.json` and the evaluator binds it at run time
+  ([licences](licences.md)); `check_integration.py` rejects both.
 
 ## 3. `run.py`
 
@@ -147,6 +150,7 @@ readiness, evaluation and the website read them.
 | `compilation` | Add `true` only when submissions are compiled. |
 | `readiness_level` | `2` for every new integration; it adds the bug-class checks. Existing integrations without the key are at level 1 until upgraded. |
 | `instance_binding` | See [section 1](#1-who-converts-the-instance). |
+| `licence` | Only for a solver that needs a licence; see below and [licences](licences.md). |
 | `name` | What the website shows (it never shows `id`). See the naming rules below. |
 | `framework` | The package name (`cpmpy`, `docplex`, `pychoco`). |
 | `solver` | The backend. Needs a display label in `BACKEND_NAMES` in `generate_site.py`, unless `name` already contains it. |
@@ -156,6 +160,32 @@ readiness, evaluation and the website read them.
 
 `optimization`, `compilation` and `enumeration` select the required readiness checks:
 never declare an untested capability.
+
+**`licence`** says what the evaluator binds into each run. It never says where the
+licence is on a machine or what it contains:
+
+```json
+"licence": {
+  "id": "hexaly",
+  "kind": "file",
+  "target": "/run/licence/license.dat",
+  "env": {"HX_LICENSE_PATH": "/run/licence/license.dat"},
+  "without": "unavailable",
+  "errors": ["Cannot open file", "LICENSE_KEY", "license has expired"]
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `id` | The licence, shared by every binding of the solver: the solver's name. |
+| `kind` | `file` (a key file), `directory` (a licensed install, such as CPLEX Studio) or `server` (a licence-server client file; also give `port`, the server's default). |
+| `target` | Under `/run/licence/`. Point the solver at it with `env`, or with the runner's own call (Hexaly `HxVersion.set_license_path`, docplex `execfile`). |
+| `env` | Variables the solver reads (`HX_LICENSE_PATH`, `GRB_LICENSE_FILE`). |
+| `without` | `unavailable`, or `size-limited` when a free edition runs without it. |
+| `errors` | Substrings of the solver's own licence-refusal messages, read off a real run without the licence. Make them specific: a model error must never match. |
+
+A `server` licence also needs `runner/licence_relay.py` copied into the image, with
+`licence_relay.start()` called in `run.py` before the solver reads its licence.
 
 **Naming** (enforced by `tests/test_solvers.py` and `tests/test_site.py`; renaming is
 cheap, since `name` is not in the readiness record):
@@ -184,6 +214,8 @@ reads it beside the standalone skill; a model attempt refuses an integration wit
   represented, the output container, the objective form, the settings the runner forces.
 - Every fact about the container (binary paths, environment variables, network,
   preinstalled packages) goes under `## Environment`, never into the standalone skill.
+  For a licensed solver, that includes where the licence is bound, and that a run without
+  it is `licence_unavailable`.
 - `## Example` is the pilot fixture (see [section 7](#7-once-certified)).
 - Leave out what `solvers/CONTRACT.md` already says and what the standalone skill teaches
   about the solver's API.
@@ -240,6 +272,11 @@ bugs real models hit:
 | `minimization_step_one` | it optimises | an off-by-one bound in a runner that bounds the objective itself | a minimisation whose first solution is exactly optimum + 1 (steer the search there if the runner does branch and bound): accepted |
 | `auxiliary_free_distinct` | it enumerates | duplicate outputs from free auxiliaries | a free auxiliary variable outside the outputs, `solution_limit=3`: accepted with 3 distinct solutions |
 | `optimum_enumeration` | it optimises and enumerates | a re-posted objective parsed or pinned wrongly | a compound objective (a sum) with ten optima, `solution_limit=3`: accepted with 3 solutions checked |
+
+**Licensed integrations** (any level) also need `licence_missing`: run a valid model with
+`DCP_LICENCE_<ID>=none` in the environment, so the solver runs without its licence. It
+passes when the result's reason is `licence_unavailable`. This check runs without a
+licence, so do it while the licence is still pending ([licences](licences.md#5-readiness-check-licence_missing)).
 
 Full list: *Integration readiness* in `generation/AGENTS.md`.
 

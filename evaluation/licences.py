@@ -4,6 +4,7 @@
     python -m evaluation.licences set hexaly ~/.config/dcp-rosetta/licences/hexaly/license.dat
     python -m evaluation.licences check hexaly      # file checks, then a pilot solve
     python -m evaluation.licences todo              # licences still to acquire, and how
+    docker run $(python -m evaluation.licences args hexaly) ... # a probe container with it
 
 An integration that needs a licence declares it in its metadata.json:
 
@@ -40,6 +41,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import socket
 import stat
@@ -483,6 +485,29 @@ def command_check(args):
     return 1 if failed else 0
 
 
+def command_args(args):
+    """`docker run` flags that give a probe or toy-test container the licence, as the evaluator
+    would (read-only, with its variables). Such containers run as the image's root, which can
+    read the 0600 file, so the original is bound."""
+    entries = licensed().get(args.licence)
+    if not entries:
+        print(f"evaluation.licences: no integration declares licence {args.licence}", file=sys.stderr)
+        return 1
+    spec = entries[0][2]
+    value = configured(args.licence)
+    path = Path(value).expanduser() if value and value != "none" else None
+    reason = unusable(path, spec["kind"]) if path else "not configured"
+    if reason or spec["kind"] == "server":
+        print(f"evaluation.licences: {args.licence}: "
+              f"{reason or 'a server licence is relayed by the evaluator only; use evaluation.check'}", file=sys.stderr)
+        return 1
+    flags = ["-v", f"{path.resolve()}:{spec['target']}:ro"]
+    for key, value in spec.get("env", {}).items():
+        flags += ["-e", f"{key}={value}"]
+    print(" ".join(shlex.quote(flag) for flag in flags))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command")
@@ -494,8 +519,11 @@ def main(argv=None):
     check_p = commands.add_parser("check", help="check a configured licence, then solve each pilot with it")
     check_p.add_argument("licence", nargs="?")
     check_p.add_argument("--files-only", action="store_true", help="skip the pilot solves")
+    args_p = commands.add_parser("args", help="docker run flags giving a probe container the licence")
+    args_p.add_argument("licence")
     args = parser.parse_args(argv)
-    handler = {"todo": command_todo, "set": command_set, "check": command_check}.get(args.command, command_status)
+    handler = {"todo": command_todo, "set": command_set, "check": command_check,
+               "args": command_args}.get(args.command, command_status)
     return handler(args)
 
 

@@ -169,7 +169,7 @@ class SupplyTests(Machine):
 
 class EngineTests(Machine):
     def mount(self):
-        return licences.Mount(None, [(Path("/home/me/license.dat"), "/run/licence/license.dat")],
+        return licences.Mount(None, [(Path("/srv/licences/license.dat"), "/run/licence/license.dat")],
                               {"DEMO_LICENSE": "/run/licence/license.dat"}, [])
 
     def test_docker_binds_read_only_and_keeps_no_network(self):
@@ -178,7 +178,7 @@ class EngineTests(Machine):
             engine.Docker().run(METADATA, "sha256:" + "ab" * 32, Path("/stage"), memory_mb=256, cpus=1, timeout=9,
                                 licence=self.mount())
         command = fake.calls[0]
-        self.assertIn("--mount=type=bind,source=/home/me/license.dat,target=/run/licence/license.dat,readonly",
+        self.assertIn("--mount=type=bind,source=/srv/licences/license.dat,target=/run/licence/license.dat,readonly",
                       command)
         self.assertIn("--env=DEMO_LICENSE=/run/licence/license.dat", command)
         self.assertIn("--network=none", command)
@@ -195,7 +195,7 @@ class ApptainerEngineTests(Pool):
     def test_apptainer_binds_read_only(self):
         (self.root / "images").mkdir()
         (self.root / "images" / "demo.sif").write_bytes(b"sif")
-        mount = licences.Mount(None, [(Path("/home/me/license.dat"), "/run/licence/license.dat")],
+        mount = licences.Mount(None, [(Path("/srv/licences/license.dat"), "/run/licence/license.dat")],
                                {"DEMO_LICENSE": "/run/licence/license.dat"}, [])
         fake = FakeProcesses({"systemd-run": (0, "", ""),
                               "systemctl --user show": (0, "Result=success\nLoadState=not-found\n", "")})
@@ -205,7 +205,7 @@ class ApptainerEngineTests(Pool):
             engine.Apptainer().run(METADATA, "sha256:x", Path("/stage"), memory_mb=256, cpus=1, timeout=9,
                                    licence=mount)
         command = fake.calls[0]
-        self.assertIn("/home/me/license.dat:/run/licence/license.dat:ro", command)
+        self.assertIn("/srv/licences/license.dat:/run/licence/license.dat:ro", command)
         self.assertEqual(command[command.index("DEMO_LICENSE=/run/licence/license.dat") - 1], "--env")
         self.assertEqual(command[command.index("--network") + 1], "none")
 

@@ -21,6 +21,15 @@ Images run on Docker, podman or Apptainer (`evaluation/engine.py`). On a new mac
 `make engine` once to set one up. Call `evaluation.engine`, never `docker` directly, and
 certify on Docker. Details: `evaluation/README.md`.
 
+## Solver licences
+
+A commercial solver's licence lives outside the repository and outside every image:
+the integration declares it in `metadata.json`, each machine configures it with
+`python -m evaluation.licences set`, and the evaluator binds it into each run. Never
+open, print or copy a licence file; `python -m evaluation.licences check ID` says
+whether one works. A missing licence never halts work: ask the user for it early,
+without waiting, and carry on with everything else (`skills/solver-setup/references/licences.md`).
+
 ## Writing models for this benchmark
 
 *Rosetta* is this repository's model collection and the machinery that writes and checks
