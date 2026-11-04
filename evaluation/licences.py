@@ -18,8 +18,12 @@ An integration that needs a licence declares it in its metadata.json:
   the server through a relay, see `Relay`, and the container keeps no network).
 - `target`: where the container sees it. `env`: variables set in the container.
 - `without`: `unavailable` (no run without it) or `size-limited` (a free edition runs).
-- `errors`: substrings of the solver's own licence messages. A run that fails with one
-  is `licence_unavailable`, which says nothing about the model.
+- `errors`: substrings of the solver's own licence messages. A run that fails with one,
+  or with any message naming a licence (`licen`, either spelling), is
+  `licence_unavailable`, which says nothing about the model. The fallback is deliberate:
+  a licence failure taken for a model's costs attempts and blocks pairs, while the
+  reverse only withholds a verdict. (Hexaly's "This license is no longer valid" for an
+  expired licence matched no substring guessed from its docs.)
 
 Each machine says where its licences are, outside the repository: `DCP_LICENCE_<ID>`, else
 `.dcp-licences.json` at the checkout root (paths only; per checkout, as `.dcp-engine.json`,
@@ -60,6 +64,7 @@ REDACTED = "[licence redacted]"
 RELAY_TARGET = "/run/licence/relay"
 SHORTEST_SECRET = 8
 LICENCE_ID = re.compile(r"^[a-z0-9_]+$")
+LICENCE_WORD = re.compile(r"licen[cs]", re.IGNORECASE)
 GUIDE = "LICENCE.md"
 
 
@@ -228,12 +233,14 @@ def available(solver_id):
 
 
 def licence_error(metadata, *texts):
-    """Whether a failed run's output carries one of the solver's licence messages."""
+    """Whether a failed run of a licensed integration names its licence: one of its declared
+    messages, or any mention of a licence (`licen`, licence or license, any case)."""
     spec = metadata.get("licence")
     if not isinstance(spec, dict):
         return False
-    return any(isinstance(pattern, str) and pattern and pattern in (text or "")
-               for pattern in spec.get("errors", []) for text in texts)
+    patterns = [pattern for pattern in spec.get("errors", []) if isinstance(pattern, str) and pattern]
+    return any(pattern in (text or "") for pattern in patterns for text in texts) or \
+        any(LICENCE_WORD.search(text or "") for text in texts)
 
 
 # ---- Supplying a licence to one run -----------------------------------------------------

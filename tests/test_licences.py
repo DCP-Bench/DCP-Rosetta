@@ -254,6 +254,13 @@ class ExecuteTests(Machine):
             self.execute(fake)
         self.assertEqual(caught.exception.reason, "licence_unavailable")
 
+    def test_any_message_naming_a_licence_counts(self):
+        """Hexaly's message for an expired licence matched none of the declared substrings."""
+        self.assertTrue(licences.licence_error(METADATA, "ERROR [hx_create_optimizer]: This license is no longer valid."))
+        self.assertTrue(licences.licence_error(METADATA, "", "Licence check failed"))
+        self.assertFalse(licences.licence_error(METADATA, "Int boundaries are inconsistent"))
+        self.assertFalse(licences.licence_error({"id": "free"}, "invalid license"))  # declares none
+
     def test_unconfigured_never_starts_a_container(self):
         fake = FakeEngine(0, "", "")
         with self.assertRaises(EvaluationError) as caught:
