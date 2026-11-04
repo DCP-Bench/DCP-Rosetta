@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
-from evaluation.execution import OOM_REREADS, _copied_sources, execute, recipe, validate_records
+from evaluation.engine import Docker
+from evaluation.execution import _copied_sources, execute, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -30,7 +31,8 @@ print(json.dumps(solution))
 def built_image():
     """Stand in for the cpmpy_python image, which CI builds only after these tests run."""
     return patch.multiple("evaluation.check", image_identity=lambda metadata: "sha256:test",
-                          image_recipe=lambda metadata: "sha256:recipe")
+                          image_recipe=lambda metadata: "sha256:recipe",
+                          container_engine=lambda: {"name": "docker", "version": "Docker version test", "cpu_limit": "quota"})
 
 
 class OrchestrationTests(unittest.TestCase):
@@ -172,7 +174,7 @@ class OrchestrationTests(unittest.TestCase):
         Docker can set OOMKilled after the exit, so an unset flag after an exit
         137 is read again, and the detail gives the reading at exit and the last one.
         """
-        rereads = OOM_REREADS
+        rereads = Docker.OOM_REREADS
         for flags, reason, inspections, readings in (
                 (["true"], "memory_limit", 1, "OOMKilled was true at exit"),
                 (["false", "false", "true"], "memory_limit", 3, "OOMKilled was false at exit and true 0.5 s later"),
@@ -188,8 +190,8 @@ class OrchestrationTests(unittest.TestCase):
                 return {"run": (137, "", "Killed"), "rm": (0, "", "")}[command[1]]
 
             with self.subTest(flags=flags), tempfile.TemporaryDirectory() as temp, \
-                    patch("evaluation.execution.run_process", side_effect=docker), \
-                    patch("evaluation.execution.time.sleep"):
+                    patch("evaluation.engine.run_process", side_effect=docker), \
+                    patch("evaluation.execution._engine", Docker), patch("evaluation.engine.time.sleep"):
                 model = Path(temp) / "model.py"
                 model.write_text("# stub")
                 with self.assertRaises(EvaluationError) as raised:
@@ -208,7 +210,8 @@ class OrchestrationTests(unittest.TestCase):
             commands.append(command[1])
             return {"run": (1, "", "Traceback"), "inspect": (0, "false\n", ""), "rm": (0, "", "")}[command[1]]
 
-        with tempfile.TemporaryDirectory() as temp, patch("evaluation.execution.run_process", side_effect=docker):
+        with tempfile.TemporaryDirectory() as temp, patch("evaluation.engine.run_process", side_effect=docker), \
+                patch("evaluation.execution._engine", Docker):
             model = Path(temp) / "model.py"
             model.write_text("# stub")
             with self.assertRaises(EvaluationError) as raised:

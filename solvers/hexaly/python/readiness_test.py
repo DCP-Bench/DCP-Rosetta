@@ -3,13 +3,16 @@
 Drives the repository evaluator against real containers, prints a JSON object
 mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver hexaly_python` runs this and
-keeps its output as the readiness evidence. The image must have been built with
-the licence secret (DCP_SECRET_HEXALY_LICENSE), or every solving check fails.
+keeps its output as the readiness evidence. Every solving check needs the Hexaly
+licence configured on this machine (`python -m evaluation.licences check hexaly`);
+`licence_missing` runs the solver without it.
 """
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -401,6 +404,10 @@ def main():
         says("float_output", check("float_output", FLOAT, expected={"execution_error"}), "float expression")
         says("set_output", check("set_output", SET, expected={"execution_error"}), "is a set")
         check("with_block", WITH_BLOCK, expected={"execution_error"})
+
+        # Without its licence, Hexaly's own refusal is licence_unavailable, never a model failure.
+        with patch.dict(os.environ, {"DCP_LICENCE_HEXALY": "none"}):
+            check("licence_missing", GOOD, expected={"licence_unavailable"})
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})

@@ -18,6 +18,7 @@ from typing import Any
 from evaluation import evaluate as evaluate_model
 from evaluation.check import INCONCLUSIVE as INCONCLUSIVE_REASONS
 from evaluation.execution import integration_folder
+from evaluation.licences import available as licence_available
 from evaluation.results import EvaluationError
 
 
@@ -268,6 +269,9 @@ def attempt(run_id: str, problem_id: str, solver_id: str, skill: str | list[str]
     _identifier(problem_id, "problem ID")
     _identifier(solver_id, "solver ID")
     agent = _writer(agent)
+    licensed, reason = licence_available(solver_id)
+    if not licensed:
+        raise ManagementError(f"Licence pending for {solver_id}: {reason}")
     readiness = _readiness(solver_id)
     cited = _skills(skill)
     contracts = _contracts(solver_id)
@@ -383,6 +387,14 @@ def evaluate(attempt_path: str, model_path: str) -> dict[str, Any]:
     if not isinstance(result, dict):
         _record_failure(folder, {"time": time.time(), "error": "Evaluator returned a non-object result"})
         raise ManagementError("Evaluator returned a non-object result")
+    if result.get("reason") == "licence_unavailable":
+        # The solver could not run here, which says nothing about the model: no
+        # evaluation.json, so the same bytes are evaluated again once the licence works.
+        _record_failure(folder, {"time": time.time(), "error": f"licence_unavailable: {result.get('detail', '')}",
+                                 "candidate_sha256": candidate_hash})
+        _append_event(run_folder, "coordinator_failure", {"attempt": str(folder.relative_to(run_folder)),
+                                                            "error": "licence_unavailable"})
+        return result
     _write_new(folder / "evaluation.json", result)
     _append_event(run_folder, "attempt_evaluated", {"attempt": str(folder.relative_to(run_folder)),
                                                        "accepted": result.get("accepted", False),

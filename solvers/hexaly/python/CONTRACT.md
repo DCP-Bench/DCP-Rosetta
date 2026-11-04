@@ -82,10 +82,12 @@ None.
 
 Image `dcp-eval/hexaly_python:v1`: Python 3.12.11 (`/usr/local/bin/python`), hexaly
 15.0.20261026 (Hexaly Optimizer 15.0); the standard library (`json` included) and nothing
-else. The image carries a Hexaly academic licence (1 concurrent use, Hexaly up to 16.0,
-expires 2027-01-31) added at build time; the container has no network and needs none. An
-image built without the licence fails every solve with `HxError: ... Cannot open file
-[/opt/hexaly_15_0/license.dat]`. The runner keeps the protocol on its own copy of file
+else. The image holds no licence. The evaluator binds the machine's Hexaly licence file
+read-only at `/run/licence/license.dat` and sets `HX_LICENSE_PATH` to it, at run time
+(`licence` in `metadata.json`). Without a licence configured, a run stops before the
+container starts with `licence_unavailable`; a licence Hexaly refuses (`Cannot open file
+[...]`, or an expired licence) is `licence_unavailable` too. The container has no network
+and needs none. The runner keeps the protocol on its own copy of file
 descriptor 1 and sends fd 1, Hexaly's log and everything the submission prints to stderr.
 For an ad hoc run, `--entrypoint sh` bypasses `/opt/runner/run.py`.
 

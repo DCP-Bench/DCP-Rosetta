@@ -19,7 +19,7 @@ DATASET_SOURCES := $(shell find bench/dataset -type f 2>/dev/null) bench/jsonl_c
 FOLDER = $(shell $(PYTHON) -c "from evaluation.execution import integration_folder; print(integration_folder('$(SOLVER)').relative_to(__import__('pathlib').Path.cwd()))")
 
 .DEFAULT_GOAL := help
-.PHONY: help install dataset site serve clean test test-containers test-all dataset-audit \
+.PHONY: help install dataset site serve clean test test-containers test-all dataset-audit engine engine-check licences \
 	lint validate-skills build readiness readiness-verify next-work brief check eval-sample \
 	instances-status
 
@@ -54,7 +54,7 @@ clean: ## Remove the built website
 
 test: ## Run the tests that need no Docker
 	$(PYTHON) -m unittest tests.test_evaluation tests.test_generation tests.test_skill_workflow \
-		tests.test_readiness tests.test_site
+		tests.test_readiness tests.test_site tests.test_engine tests.test_licences
 
 test-containers: ## Run the tests against the built solver images (needs Docker and `make build`)
 	$(PYTHON) -m unittest tests.test_solvers tests.test_generation_containers
@@ -73,6 +73,15 @@ validate-skills: ## Validate the project skills and the solver skills, and check
 	for skill in solvers/*/skills/*/; do $(PYTHON) -m generation.skills rosetta-mentions $${skill%/} || exit 1; done
 
 # ---- Evaluation ------------------------------------------------------------
+
+engine: ## Set up, check and pick this machine's container engine (Docker, podman or Apptainer)
+	$(PYTHON) -m evaluation.engine_setup
+
+engine-check: ## Report the container engines and whether the chosen one is ready
+	$(PYTHON) -m evaluation.engine_setup --check
+
+licences: ## Report the solver licences this machine has; `python -m evaluation.licences todo` says how to get the others
+	$(PYTHON) -m evaluation.licences status
 
 build: ## Build the solver images (all, or SOLVER=id); needs Docker
 	$(PYTHON) -m evaluation.build $(SOLVER)

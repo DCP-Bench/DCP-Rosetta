@@ -5,8 +5,9 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
-from evaluation.build import missing_secrets
-from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
+from evaluation.engine import current
+from evaluation.execution import image_identity, integration_folder, integration_folders
+from evaluation.licences import available
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
 
@@ -39,12 +40,11 @@ def satisfaction_only(solver):
     return json.loads(path.read_text(encoding="utf-8")).get("optimization", True) is False
 
 
-# An image built without its licence secret (CI has none) cannot solve, so its
-# pilot runs only where the secret was there to build with.
-def skip_without_secrets(case, solver):
-    missing = missing_secrets(solver, ROOT)
-    if missing:
-        case.skipTest(f"{solver} needs build secrets: {', '.join(missing)}")
+# A licensed solver's pilot runs only where its licence is configured on this machine (CI has none).
+def skip_without_licence(case, solver):
+    usable, reason = available(solver)
+    if not usable:
+        case.skipTest(f"{solver} needs its licence: {reason}")
 
 # The minimize/maximize spelling each pilot fixture uses, so `test_maximization`
 # can turn it around. Kept beside PILOTS because the two are added together.
@@ -67,7 +67,7 @@ MAXIMIZATION_SWAPS = {"cpmpy_python": ("minimize", "maximize"), "ortools_cp_sat_
                       # pysat states its objective as soft-clause weights, so
                       # the swap pays the shortfall n - v instead of v.
                       "pysat": ("(v, v)", "(v, n - v)"),
-                      "exact": ("minimize", "maximize"),
+                      "exact": ("minimize=True", "minimize=False"),  # Exact: setObjective(..., minimize=)
                       "gurobipy_python": ("MINIMIZE", "MAXIMIZE"),
                       "docplex_cplex": ("minimize", "maximize"),
                       "picat": ("$min(", "$max("),
@@ -309,7 +309,7 @@ class ContainerTests(unittest.TestCase):
             if satisfaction_only(solver):
                 continue
             with self.subTest(solver=solver), tempfile.TemporaryDirectory() as temp:
-                skip_without_secrets(self, solver)
+                skip_without_licence(self, solver)
                 original = ROOT / "tests/fixtures" / filename
                 model = Path(temp) / ("model" + original.suffix)
                 model.write_text(original.read_text().replace(*replacements[solver]))
@@ -337,7 +337,7 @@ class ContainerTests(unittest.TestCase):
                 if optimize and satisfaction_only(solver):
                     continue
                 with self.subTest(solver=solver, optimize=optimize):
-                    skip_without_secrets(self, solver)
+                    skip_without_licence(self, solver)
                     source = SOURCE.replace("optimize = False", f"optimize = {optimize}")
                     result = evaluate(ROOT / "tests/fixtures" / filename, "tiny", solver,
                                       reference_source=source, instances=[{"n": 3, "optimize": optimize}],
@@ -358,8 +358,7 @@ class ContainerTests(unittest.TestCase):
             path.write_text("import time\ndef build(instance):\n    time.sleep(60)\n")
             result = evaluate(path, "tiny", "cpmpy_python", reference_source=SOURCE, execution_timeout=1)
             self.assertEqual(result["reason"], "execution_timeout", result)
-        code, out, _ = run_process(["docker", "ps", "-a", "--filter", "name=dcp-eval-", "--format", "{{.Names}}"], 10)
-        self.assertEqual(out.strip(), "")
+        self.assertEqual(current().leftovers(), [])
 
     def test_swipl_verdict_survives_a_stalled_halt(self):
         """swipl can block in halt after the driver printed its status; the status is the verdict."""
@@ -381,16 +380,23 @@ class ContainerTests(unittest.TestCase):
             path.write_text("import os, signal\ndef build(instance):\n    os.kill(os.getpid(), signal.SIGKILL)\n")
             result = evaluate(path, "tiny", "cpmpy_python", reference_source=SOURCE, memory_mb=256)
             self.assertEqual(result["reason"], "execution_error", result)
-        code, out, _ = run_process(["docker", "ps", "-a", "--filter", "name=dcp-eval-", "--format", "{{.Names}}"], 10)
-        self.assertEqual(out.strip(), "")
+        self.assertEqual(current().leftovers(), [])
 
     def test_isolation(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "model.py"
             path.write_text('''
 import os, socket
+def host_uid(uid):
+    for line in open('/proc/self/uid_map'):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
 def build(instance):
-    assert os.getuid() != 0
+    # Unprivileged on the host: Docker runs as nobody, Apptainer as the invoking user;
+    # rootless podman without a subuid range can only run as container root, which
+    # maps to the invoking user.
+    assert os.getuid() != 0 or host_uid(0) != 0
     assert not os.path.exists('/dataset')
     assert sorted(os.listdir('/input')) == ['model.py', 'request.json']
     try:

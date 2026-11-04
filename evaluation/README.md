@@ -34,7 +34,8 @@ and infrastructure failure (`infrastructure_error`).
 
 ## Setup
 
-Python 3.12, `requirements.txt`, and a running Docker Linux engine. Images
+Python 3.12, `requirements.txt`, and a running Docker Linux engine (or podman or
+Apptainer; see below). Images
 target linux/amd64 and pin their solver versions. Build them explicitly —
 `evaluate()` never builds or installs anything:
 
@@ -43,6 +44,93 @@ python -m evaluation.build                      # every integration, or name spe
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python --solution-limit 2
 ```
+
+### Container engines: Docker, podman, Apptainer
+
+On a new machine, run `make engine` once. It checks the three engines, sets up the one
+you pick, and saves the choice for this checkout in `.dcp-engine.json`. For Apptainer
+it installs an unprivileged Apptainer from the Apptainer PPA (Ubuntu, no root) and
+enables lingering. For podman it writes the configuration below. Then it lists which
+images are current and how to get the rest, and runs a smoke test.
+`make engine-check` only reports.
+
+[`engine.py`](engine.py) runs the images on one of the three engines. `DCP_ENGINE` picks it
+(`docker`, `podman` or `apptainer`); unset, the saved choice applies, else the first one on
+`PATH`. `DCP_APPTAINER`, `DCP_APPTAINER_IMAGES` and `DCP_TASKSET` override saved
+settings the same way. Each
+result's `engine` field records the engine, its version, and how it enforced the CPU
+limit: `cpu_limit` is `quota` (a CPU-time quota, as Docker sets) or `cores`. With
+`cores`, the run gets `ceil(cpus)` whole cores of its own, and its affinity can't be
+widened because `sched_setaffinity` fails. The cores come from `DCP_TASKSET` (e.g.
+`0-7`), or else every core the evaluator may use. A run that finds no free core fails
+as an `infrastructure_error`, so run at most pool ÷ `ceil(cpus)` evaluations at once.
+An admin can make it `quota` by delegating the `cpu` controller to users
+(`Delegate=cpu cpuset io memory pids` in a drop-in for `user@.service`).
+
+**Docker** is the reference: the readiness checks and the CI use it.
+
+**Rootless podman** builds from the same Dockerfiles. It also works for a user
+without an `/etc/subuid` range or `cpu` delegation (tested with podman 3.4 and all
+integrations). It needs `gcc` once, `fuse-overlayfs` and `taskset`, and this
+configuration:
+
+```toml
+# ~/.config/containers/storage.conf: graphroot on a local disk, not NFS
+[storage]
+driver = "overlay"
+graphroot = "/local/disk/containers"
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+ignore_chown_errors = "true"        # only needed without a subuid range
+
+# ~/.config/containers/registries.conf: resolve bare names like docker does
+unqualified-search-registries = ["docker.io"]
+short-name-mode = "permissive"
+```
+
+Without a subuid range, candidates run as root inside the container. That root is
+still the unprivileged host user, and every other restriction is kept
+(`test_isolation` checks the host mapping, not the uid). Builds squash every file's
+owner to root, so export Docker-built images for other machines rather than these.
+
+**Apptainer** (unprivileged, 1.1 or later) is for machines with neither. It can't
+build from a Dockerfile. Build and export the images where Docker or podman runs:
+
+```sh
+python -m evaluation.build cpmpy_python
+python -m evaluation.export --to exported/ cpmpy_python     # exported/cpmpy_python.tar
+```
+
+then copy the folder over and convert it into `DCP_APPTAINER_IMAGES` (default
+`images/`). The SIF keeps the recipe label, so readiness compares the same recipe:
+
+```sh
+export DCP_ENGINE=apptainer DCP_APPTAINER=/path/to/bin/apptainer   # if not on PATH
+python -m evaluation.build --archive exported/ cpmpy_python       # images/cpmpy_python.sif
+```
+
+An unprivileged user can't set cgroup limits or a seccomp filter on Apptainer
+directly. So each run is a transient `systemd-run --user` service, which bounds memory
+(no swap), tasks and CPUs, and records the kernel's OOM kill. This needs a systemd user
+manager. On a server whose ssh sessions don't start one, enable lingering once with
+`loginctl enable-linger`. The evaluator finds the manager under `/run/user/$UID`.
+
+The container has:
+
+- no network;
+- a read-only image and `/input`;
+- no capabilities;
+- your own uid;
+- a per-run scratch directory as `/tmp`.
+
+That `/tmp` is bounded by the disk, not by 512 MB as under Docker. An image's identity
+is the SHA-256 of its SIF file.
+
+Rootless podman and Apptainer both need a systemd user session that outlives your
+logins, or they fail once you log out. For podman you can set
+`cgroup_manager = "cgroupfs"` under `[engine]` in
+`~/.config/containers/containers.conf` instead. `--memory` limits and their
+`memory_limit` verdicts work on every engine.
 
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
@@ -78,6 +166,39 @@ Evaluation stops at the first failure, so `instances_checked` counts only
 passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's
 `solve_seconds`.
+
+### Solver licences
+
+A commercial solver's licence is never built into an image. The integration declares it
+under `licence` in `metadata.json` (see `skills/solver-setup/references/integration.md`),
+and each machine says where its own copy is, outside the repository:
+
+```sh
+make licences                                         # which licences this machine has
+python -m evaluation.licences todo                    # the missing ones, and how to get them
+python -m evaluation.licences set hexaly ~/.config/dcp-rosetta/licences/hexaly/license.dat
+python -m evaluation.licences check hexaly            # file checks, then a pilot solve
+```
+
+`set` saves the path in `.dcp-licences.json` (per checkout, like `.dcp-engine.json`), and
+`DCP_LICENCE_<ID>` overrides it. Keep the file at mode 600.
+
+[`licences.py`](licences.py) binds each run its licence read-only, with the solver's
+variables:
+- a key file as a per-run copy in a private temporary directory;
+- a licensed install directly;
+- a licence server through a Unix-socket relay, so the run keeps `--network=none`.
+
+What a run prints is redacted before it is parsed or stored: the licence's lines and its
+host path become `[licence redacted]`. A submission can read the licence, but cannot
+carry it into a result. Results name only the edition: `licence` is `licensed` or
+`size-limited`.
+
+A licence failure is never the model's fault. Without the licence configured, an
+integration that needs one stops with `licence_unavailable` before any container
+starts. When the solver refuses its licence (a message listed under `errors`), the
+reason is also `licence_unavailable`. `generation` then neither counts the attempt nor
+offers the integration's pairs until the licence works.
 
 ## Submitting a model
 

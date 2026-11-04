@@ -7,9 +7,10 @@ from pathlib import Path
 import sys
 import time
 
-from .execution import ROOT, execute, image_identity, image_recipe, integration, validate_records
+from .execution import ROOT, container_engine, execute, image_identity, image_recipe, integration, validate_records
 from bench.dcp_bench.reference import ReferenceSession, available_instances, choose_instances
 from .results import EvaluationError, canonical, digest, strict_json
+from .licences import edition, licence_error, require as require_licence
 
 
 def _shown(path):
@@ -91,6 +92,12 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
         image = image_identity(metadata)
         # The ID names the bytes run here; the recipe is what a readiness record pins.
         result["image"] = {"tag": metadata["image"], "id": image, "recipe": image_recipe(metadata)}
+        # The engine, and whether it enforced the CPU limit as a quota or as cores; see evaluation.engine.
+        result["engine"] = container_engine()
+        # The edition only (licensed or size-limited), never where the licence is or what it says.
+        if edition(metadata):
+            result["licence"] = edition(metadata)
+        require_licence(metadata)
         for instance_id, instance in chosen:
             result["unperformed_instances"].remove(instance_id)
             item = {"id": instance_id, "instance_hash": digest(instance), "accepted": False, "solutions_checked": 0}
@@ -142,6 +149,9 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
                     raise EvaluationError("memory_limit", f"The kernel killed a process at the {memory_mb} MB memory "
                                                           f"limit; the runner reported {status['status']}: "
                                                           f"{status.get('detail', '')}")
+                # A licence the solver refused says nothing about the model.
+                if status["status"] == "error" and licence_error(metadata, status.get("detail")):
+                    raise EvaluationError("licence_unavailable", status.get("detail", "error"))
                 if status["status"] in failure:
                     raise EvaluationError(failure[status["status"]], status.get("detail", status["status"]))
                 if not solutions:
