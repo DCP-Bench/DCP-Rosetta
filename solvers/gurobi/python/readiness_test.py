@@ -4,11 +4,16 @@ Drives the repository evaluator against real containers, prints a JSON object
 mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver gurobipy_python` runs this and
 keeps its output as the readiness evidence.
+
+The checks hold with or without a Gurobi token-server licence on this machine: the two
+about the wheel's own licence run with it switched off (DCP_LICENCE_GUROBI=none).
 """
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -182,8 +187,12 @@ def main():
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("fractional_output", FRACTIONAL, expected={"execution_error", "invalid_output"})
         check("unproven_optimum", UNPROVEN, expected={"execution_timeout"}, execution_timeout=5)
-        oversized = check("size_limit", OVERSIZED, expected={"unsupported_capability"})
-        results["size_limit"] = results["size_limit"] and "size-limited licence" in oversized.get("detail", "")
+        with patch.dict(os.environ, {"DCP_LICENCE_GUROBI": "none"}):
+            oversized = check("size_limit", OVERSIZED, expected={"unsupported_capability"})
+            results["size_limit"] = results["size_limit"] and "size-limited licence" in oversized.get("detail", "")
+            # Without a token server, the wheel's own licence runs the model.
+            unlicensed = check("licence_missing", GOOD)
+            results["licence_missing"] = results["licence_missing"] and unlicensed.get("licence") == "size-limited"
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
 
     try:
