@@ -71,8 +71,11 @@ When the framework binds the data (a typed modelling language):
     `apt-snapshot <UTC time, YYYYMMDDTHHMMSSZ> && apt-get update`, using the time
     you first build that RUN. Pinned versions then stay installable after the
     mirrors move on.
-  - Downloads: by checksum (`ADD --checksum=`, or `sha256sum -c`); source checkouts
-    at a fixed tag or commit; Rust with a committed `Cargo.lock` and `--locked`.
+  - Downloads: by checksum, preferably `sha256sum -c` after the download (older
+    builders such as podman 3.x reject `ADD --checksum=`); unpack archives with
+    `tar --no-same-owner`, as an archive's owners may not exist in a rootless build;
+    source checkouts at a fixed tag or commit; Rust with a committed `Cargo.lock` and
+    `--locked`.
 - It runs unprivileged, read-only, without network, with bounded scratch space;
   compilation happens inside it, within its own budget.
 - Check `.dockerignore` before relying on a build file; never widen the context to

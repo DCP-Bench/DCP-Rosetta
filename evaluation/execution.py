@@ -1,7 +1,9 @@
 """Resource-bounded Docker execution. No implicit builds or dependency installation."""
+import functools
 import hashlib
 import json
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import tempfile
@@ -174,9 +176,30 @@ def _inspect(metadata, template):
 def image_identity(metadata):
     """The local image ID. It names the bytes run on this machine only; see recipe."""
     identity = _inspect(metadata, "{{.Id}}")
+    if re.fullmatch(r"[0-9a-f]{64}", identity):
+        identity = "sha256:" + identity  # podman prints the bare digest
     if not identity.startswith("sha256:"):
         raise EvaluationError("infrastructure_error", "Docker did not return an image identity")
     return identity
+
+
+@functools.cache
+def container_engine():
+    """What runs the containers here, recorded with each result: the engine's version, and
+    how it enforces --cpus. Docker sets a CPU quota. Rootless podman through
+    tools/podman/docker sets one when the user owns the cgroup `cpu` controller, and
+    otherwise gives each run whole cores of its own ("cores"; see that script)."""
+    code, stdout, stderr = run_process(["docker", "--version"], 15)
+    if code:
+        raise EvaluationError("infrastructure_error", f"Could not read the container engine's version: {stderr.strip()}")
+    version = stdout.strip()
+    if not version.lower().startswith("podman"):
+        return {"version": version, "cpu_limit": "quota"}
+    code, stdout, _ = run_process(["docker", "dcp-cpu-limit"], 15)
+    limit = stdout.strip()
+    # Plain podman (not the wrapper) has no such command and drops nothing, but cannot
+    # tell here whether its --cpus would work.
+    return {"version": version, "cpu_limit": limit if code == 0 and limit in ("quota", "cores") else "unknown"}
 
 
 def image_recipe(metadata):
@@ -276,7 +299,7 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
             # docker-client termination alone does not terminate the container.
             try:
                 code, _, detail = run_process(["docker", "rm", "--force", name], 15)
-                if code and "No such container" not in detail:
+                if code and "no such container" not in detail.lower():  # Docker capitalises, podman not
                     raise EvaluationError("infrastructure_error", f"Container cleanup failed for {name}: {detail}")
             except EvaluationError as error:
                 raise EvaluationError("infrastructure_error", f"Could not confirm cleanup of {name}: {error}") from error

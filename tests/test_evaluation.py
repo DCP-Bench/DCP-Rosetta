@@ -30,7 +30,8 @@ print(json.dumps(solution))
 def built_image():
     """Stand in for the cpmpy_python image, which CI builds only after these tests run."""
     return patch.multiple("evaluation.check", image_identity=lambda metadata: "sha256:test",
-                          image_recipe=lambda metadata: "sha256:recipe")
+                          image_recipe=lambda metadata: "sha256:recipe",
+                          container_engine=lambda: {"version": "Docker version test", "cpu_limit": "quota"})
 
 
 class OrchestrationTests(unittest.TestCase):

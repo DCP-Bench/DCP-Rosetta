@@ -253,7 +253,7 @@ def recheck_one(problem, folder, record, model, ids):
         row["flag"] = {"problem": problem, "solver": record["solver"], "model": row["model"],
                        "instance": failed[-1]["id"], "instance_hash": failed[-1]["instance_hash"],
                        "reason": result["reason"], "detail": result.get("detail"),
-                       "image": result.get("image"), "limits": result["limits"],
+                       "image": result.get("image"), "engine": result.get("engine"), "limits": result["limits"],
                        "evaluation": failed[-1], "recorded": time.strftime("%Y-%m-%d")}
     else:
         row.update(outcome="inconclusive", detail=result.get("detail"))

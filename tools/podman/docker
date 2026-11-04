@@ -1,0 +1,152 @@
+#!/bin/bash
+# A `docker` stand-in that runs Rosetta's docker calls on rootless podman, for machines
+# without Docker where the user may also lack an /etc/subuid range and `cpu` cgroup
+# delegation. Put it on PATH as `docker`; see evaluation/README.md ("Without Docker").
+#
+#  * --user=<uid>:<gid> -> --user=0:0. Without a subuid range the container has a single
+#                          uid; its root is still the unprivileged host user, and Rosetta
+#                          keeps --cap-drop=ALL, --read-only, --network=none.
+#  * run --cpus N       -> enforced one of two ways (`docker dcp-cpu-limit` says which):
+#                          "quota": the user owns the cgroup `cpu` controller, so --cpus
+#                            passes through and podman enforces it as Docker does.
+#                          "cores": otherwise the run gets ceil(N) cores of its own from
+#                            the pool (DCP_TASKSET, e.g. "0-7", or every core this script
+#                            may use), held by a lock per core until the run ends, and a
+#                            seccomp profile (podman's default minus sched_setaffinity)
+#                            keeps the candidate from widening its affinity again. With
+#                            no free cores the run fails as an infrastructure error.
+#  * build              -> mounts an apt setting so apt does not switch to the `_apt` user,
+#                          and preloads a no-op chown so tar and dpkg scripts do not fail
+#                          on owners the namespace lacks; a Dockerfile with
+#                          `ADD --checksum` (unsupported by podman 3.x) is rewritten to a
+#                          temporary copy with ADD followed by `sha256sum -c`.
+here=$(dirname "$(readlink -f "$0")")
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/dcp-podman"
+runtime="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/dcp-podman"
+seccomp_default="${DCP_SECCOMP_DEFAULT:-/usr/share/containers/seccomp.json}"
+
+# The evaluator reads a run that never started as an infrastructure error.
+die() { echo "dcp-podman: infrastructure: $*" >&2; exit 125; }
+
+# The cgroup controllers rootless podman can use: the systemd user manager's (where the
+# systemd cgroup manager puts containers), else this process's own cgroup's.
+cpu_limit() {
+    local file="/sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/cgroup.controllers"
+    [ -r "$file" ] || file="/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup | head -1)/cgroup.controllers"
+    case " $(cat "${DCP_CGROUP_CONTROLLERS:-$file}" 2>/dev/null) " in
+        *" cpu "*) echo quota ;;
+        *) echo cores ;;
+    esac
+}
+
+# "0-3,8" -> "0 1 2 3 8"
+expand() {
+    local part parts
+    IFS=, read -ra parts <<< "$1"
+    for part in "${parts[@]}"; do
+        if [[ $part == *-* ]]; then seq "${part%-*}" "${part#*-}"; else echo "$part"; fi
+    done
+}
+
+# Claims $1 cores from the pool into $cores ("2,5"), each held by an open, flocked fd
+# that survives the final exec, so the claim lasts exactly as long as the podman run.
+claim_cores() {
+    local pool="${DCP_TASKSET:-$(taskset -pc $$ | sed 's/.*: //')}" core fd claimed=()
+    mkdir -p "$runtime/cores" || die "cannot create $runtime/cores"
+    for core in $(expand "$pool"); do
+        exec {fd}>"$runtime/cores/$core.lock"
+        if flock -n "$fd"; then
+            claimed+=("$core")
+            [ "${#claimed[@]}" -eq "$1" ] && break
+        else
+            exec {fd}>&-
+        fi
+    done
+    [ "${#claimed[@]}" -eq "$1" ] || die "no $1 free core(s) in pool $pool; run fewer evaluations at once or widen DCP_TASKSET"
+    cores=$(IFS=,; echo "${claimed[*]}")
+}
+
+# Podman's default profile without sched_setaffinity, which then fails with EPERM.
+seccomp_profile() {
+    local profile="$cache/seccomp-no-setaffinity.json"
+    if [ ! -f "$profile" ] || [ "$seccomp_default" -nt "$profile" ]; then
+        [ -r "$seccomp_default" ] || die "no seccomp profile at $seccomp_default to derive the core-pinning one from (set DCP_SECCOMP_DEFAULT)"
+        mkdir -p "$cache"
+        python3 - "$seccomp_default" "$profile.tmp" <<'EOF' && mv "$profile.tmp" "$profile" || die "cannot write $profile"
+import json, sys
+profile = json.load(open(sys.argv[1]))
+for rule in profile["syscalls"]:
+    if "sched_setaffinity" in rule.get("names", []):
+        rule["names"].remove("sched_setaffinity")
+profile["syscalls"] = [rule for rule in profile["syscalls"] if rule.get("names")]
+profile["syscalls"].append({"names": ["sched_setaffinity"], "action": "SCMP_ACT_ERRNO", "errnoRet": 1})
+json.dump(profile, open(sys.argv[2], "w"))
+EOF
+    fi
+    echo "$profile"
+}
+
+if [ "$1" = dcp-cpu-limit ]; then
+    cpu_limit
+    exit 0
+fi
+
+args=()
+if [ "$1" = build ]; then
+    if [ ! -f "$cache/nochown.so" ]; then
+        mkdir -p "$cache"
+        gcc -O2 -shared -fPIC -nostdlib -o "$cache/nochown.so" "$here/nochown.c" || exit 1
+        echo /usr/local/lib/dcp-nochown.so > "$cache/ld.so.preload"
+    fi
+    graphroot=$(podman info --format '{{.Store.GraphRoot}}' 2>/dev/null)
+    if [ "$(stat -f -c %T "$graphroot" 2>/dev/null)" = nfs ]; then
+        echo "dcp-podman: warning: podman stores images on NFS ($graphroot); set graphroot to a local disk, see evaluation/README.md" >&2
+    fi
+    args+=(build -v "$here/apt-no-sandbox.conf:/etc/apt/apt.conf.d/00-no-sandbox:ro"
+                 -v "$cache/nochown.so:/usr/local/lib/dcp-nochown.so:ro"
+                 -v "$cache/ld.so.preload:/etc/ld.so.preload:ro")
+    shift
+fi
+command=$1
+cpus=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --user=*) args+=("--user=0:0") ;;
+        --user|-u) args+=("--user=0:0"); shift ;;
+        --cpus=*) cpus=${1#--cpus=} ;;
+        --cpus) cpus=$2; shift ;;
+        *) args+=("$1") ;;
+    esac
+    shift
+done
+
+run=(podman)
+if [ "$command" = run ] && [ -n "$cpus" ]; then
+    if [ "$(cpu_limit)" = quota ]; then
+        args=(run "--cpus=$cpus" "${args[@]:1}")
+    else
+        count=$(awk -v c="$cpus" 'BEGIN { n = int(c); if (n < c) n++; if (n < 1) n = 1; print n }')
+        claim_cores "$count"
+        profile=$(seccomp_profile) || exit 125
+        args=(run "--security-opt=seccomp=$profile" "${args[@]:1}")
+        run=(taskset -c "$cores" podman)
+    fi
+elif [ -n "$DCP_TASKSET" ]; then
+    run=(taskset -c "$DCP_TASKSET" podman)
+fi
+
+tmp=
+if [ "${args[0]}" = build ]; then
+    for i in "${!args[@]}"; do
+        if [ "${args[$i]}" = -f ] && grep -q '^ADD[[:space:]]*--checksum' "${args[$((i+1))]}"; then
+            tmp=$(mktemp "${TMPDIR:-/tmp}/dcp-Dockerfile.XXXXXX")
+            python3 "$here/rewrite_dockerfile.py" "${args[$((i+1))]}" > "$tmp" || exit 1
+            args[$((i+1))]="$tmp"
+        fi
+    done
+fi
+
+if [ -n "$tmp" ]; then
+    "${run[@]}" "${args[@]}"; status=$?; rm -f "$tmp"; exit $status
+fi
+exec "${run[@]}" "${args[@]}"

@@ -44,6 +44,51 @@ python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver c
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python --solution-limit 2
 ```
 
+### Without Docker: rootless podman
+
+On a shared Linux server without Docker, rootless podman can stand in, including
+for a user without an `/etc/subuid` range or `cpu` cgroup delegation (tested with
+podman 3.4 and all integrations). Put [`tools/podman/docker`](../tools/podman/docker)
+on `PATH` as `docker` (e.g. `ln -s "$PWD/tools/podman/docker" ~/.local/bin/docker`;
+it needs `gcc` once, `fuse-overlayfs` and `taskset`), and configure podman:
+
+```toml
+# ~/.config/containers/storage.conf: graphroot on a local disk, not NFS
+[storage]
+driver = "overlay"
+graphroot = "/local/disk/containers"
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+ignore_chown_errors = "true"        # only needed without a subuid range
+
+# ~/.config/containers/registries.conf: resolve bare names like docker does
+unqualified-search-registries = ["docker.io"]
+short-name-mode = "permissive"
+```
+
+Without a systemd user session that outlives your logins, rootless podman fails once
+you log out. Run `loginctl enable-linger` once (or ask an admin to), or set
+`cgroup_manager = "cgroupfs"` under `[engine]` in `~/.config/containers/containers.conf`.
+
+Results then match Docker's with two differences, both because of the missing
+subuid range and cgroup delegation. Candidates run as root inside the container,
+which is still the unprivileged host user, with every other restriction kept
+(`test_isolation` checks the host mapping, not the uid). And the CPU limit is
+enforced differently. When the user owns the cgroup `cpu` controller, `--cpus` passes
+through as with Docker. Otherwise each run gets `ceil(cpus)` whole cores of its own,
+and seccomp forbids `sched_setaffinity`, so a candidate cannot use more cores. The cores come from
+`DCP_TASKSET` (e.g. `0-7`), or else every core the wrapper may use. A run that
+finds no free cores fails as an `infrastructure_error`, so run at most
+pool ÷ `ceil(cpus)` evaluations at once. Each result's `engine` field records which way
+it ran (`cpu_limit`: `quota` or `cores`). An admin can make it `quota` by delegating
+the controller (`Delegate=cpu cpuset io memory pids` in a drop-in for
+`user@.service`). `--memory` limits and their `memory_limit` verdicts work either way.
+
+Build images for this machine only. The build squashes every file's owner to root,
+which is harmless under podman, where everything runs as that root, but such an
+image may fail under Docker, which runs candidates as uid 65534. Don't push it or
+convert it for another machine.
+
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
 `if __name__ == "__main__":` guard — reference checks spawn a child process.
