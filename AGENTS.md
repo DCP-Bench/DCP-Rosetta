@@ -15,6 +15,12 @@ one commit. The problems are under `bench/dataset/` and their sources in
 `bench/SOURCES.md`. Change it only through `skills/instance-curator`: a dataset change
 is a commit inside `bench/`, followed by a commit here that moves the pointer.
 
+## The container engine
+
+Images run on Docker, podman or Apptainer (`evaluation/engine.py`). On a new machine, run
+`make engine` once to set one up. Call `evaluation.engine`, never `docker` directly, and
+certify on Docker. Details: `evaluation/README.md`.
+
 ## Writing models for this benchmark
 
 *Rosetta* is this repository's model collection and the machinery that writes and checks

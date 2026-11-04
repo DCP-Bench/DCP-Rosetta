@@ -10,7 +10,7 @@ on:
       - 'generation/**'
       - 'skills/**'
       - 'tests/**'
-      - 'tools/podman/**'
+      - 'tools/**'
       - 'bench'
       - 'eval.py'
       - 'requirements.txt'
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: python -m unittest tests.test_evaluation tests.test_generation tests.test_skill_workflow tests.test_readiness tests.test_podman -v
+      - run: python -m unittest tests.test_evaluation tests.test_generation tests.test_skill_workflow tests.test_readiness tests.test_engine -v
       - run: make validate-skills
       - run: python -m generation.next_work --limit 1
       - uses: docker/setup-buildx-action@v4

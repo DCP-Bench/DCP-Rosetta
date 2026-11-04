@@ -5,7 +5,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from evaluation import evaluate
-from evaluation.execution import image_identity, integration_folder, integration_folders, run_process
+from evaluation.engine import current
+from evaluation.execution import image_identity, integration_folder, integration_folders
 from evaluation.results import EvaluationError
 from tests.test_evaluation import SOURCE, ROOT
 
@@ -345,8 +346,7 @@ class ContainerTests(unittest.TestCase):
             path.write_text("import time\ndef build(instance):\n    time.sleep(60)\n")
             result = evaluate(path, "tiny", "cpmpy_python", reference_source=SOURCE, execution_timeout=1)
             self.assertEqual(result["reason"], "execution_timeout", result)
-        code, out, _ = run_process(["docker", "ps", "-a", "--filter", "name=dcp-eval-", "--format", "{{.Names}}"], 10)
-        self.assertEqual(out.strip(), "")
+        self.assertEqual(current().leftovers(), [])
 
     def test_swipl_verdict_survives_a_stalled_halt(self):
         """swipl can block in halt after the driver printed its status; the status is the verdict."""
@@ -368,8 +368,7 @@ class ContainerTests(unittest.TestCase):
             path.write_text("import os, signal\ndef build(instance):\n    os.kill(os.getpid(), signal.SIGKILL)\n")
             result = evaluate(path, "tiny", "cpmpy_python", reference_source=SOURCE, memory_mb=256)
             self.assertEqual(result["reason"], "execution_error", result)
-        code, out, _ = run_process(["docker", "ps", "-a", "--filter", "name=dcp-eval-", "--format", "{{.Names}}"], 10)
-        self.assertEqual(out.strip(), "")
+        self.assertEqual(current().leftovers(), [])
 
     def test_isolation(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -382,8 +381,9 @@ def host_uid(uid):
         if inside <= uid < inside + count:
             return outside + uid - inside
 def build(instance):
-    # Unprivileged on the host: Docker runs as nobody; rootless podman without a
-    # subuid range can only run as container root, which maps to the invoking user.
+    # Unprivileged on the host: Docker runs as nobody, Apptainer as the invoking user;
+    # rootless podman without a subuid range can only run as container root, which
+    # maps to the invoking user.
     assert os.getuid() != 0 or host_uid(0) != 0
     assert not os.path.exists('/dataset')
     assert sorted(os.listdir('/input')) == ['model.py', 'request.json']

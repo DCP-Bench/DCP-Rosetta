@@ -91,7 +91,7 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
         image = image_identity(metadata)
         # The ID names the bytes run here; the recipe is what a readiness record pins.
         result["image"] = {"tag": metadata["image"], "id": image, "recipe": image_recipe(metadata)}
-        # Podman may enforce --cpus as whole cores instead of Docker's quota; see container_engine.
+        # The engine, and whether it enforced the CPU limit as a quota or as cores; see evaluation.engine.
         result["engine"] = container_engine()
         for instance_id, instance in chosen:
             result["unperformed_instances"].remove(instance_id)

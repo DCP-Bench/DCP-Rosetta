@@ -34,7 +34,8 @@ and infrastructure failure (`infrastructure_error`).
 
 ## Setup
 
-Python 3.12, `requirements.txt`, and a running Docker Linux engine. Images
+Python 3.12, `requirements.txt`, and a running Docker Linux engine (or podman or
+Apptainer; see below). Images
 target linux/amd64 and pin their solver versions. Build them explicitly —
 `evaluate()` never builds or installs anything:
 
@@ -44,13 +45,34 @@ python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver c
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python --solution-limit 2
 ```
 
-### Without Docker: rootless podman
+### Container engines: Docker, podman, Apptainer
 
-On a shared Linux server without Docker, rootless podman can stand in, including
-for a user without an `/etc/subuid` range or `cpu` cgroup delegation (tested with
-podman 3.4 and all integrations). Put [`tools/podman/docker`](../tools/podman/docker)
-on `PATH` as `docker` (e.g. `ln -s "$PWD/tools/podman/docker" ~/.local/bin/docker`;
-it needs `gcc` once, `fuse-overlayfs` and `taskset`), and configure podman:
+On a new machine, run `make engine` once. It checks the three engines, sets up the one
+you pick, and saves the choice for this checkout in `.dcp-engine.json`. For Apptainer
+it installs an unprivileged Apptainer from the Apptainer PPA (Ubuntu, no root) and
+enables lingering. For podman it writes the configuration below. Then it lists which
+images are current and how to get the rest, and runs a smoke test.
+`make engine-check` only reports.
+
+[`engine.py`](engine.py) runs the images on one of the three engines. `DCP_ENGINE` picks it
+(`docker`, `podman` or `apptainer`); unset, the saved choice applies, else the first one on
+`PATH`. `DCP_APPTAINER`, `DCP_APPTAINER_IMAGES` and `DCP_TASKSET` override saved
+settings the same way. Each
+result's `engine` field records the engine, its version, and how it enforced the CPU
+limit: `cpu_limit` is `quota` (a CPU-time quota, as Docker sets) or `cores`. With
+`cores`, the run gets `ceil(cpus)` whole cores of its own, and its affinity can't be
+widened because `sched_setaffinity` fails. The cores come from `DCP_TASKSET` (e.g.
+`0-7`), or else every core the evaluator may use. A run that finds no free core fails
+as an `infrastructure_error`, so run at most pool ÷ `ceil(cpus)` evaluations at once.
+An admin can make it `quota` by delegating the `cpu` controller to users
+(`Delegate=cpu cpuset io memory pids` in a drop-in for `user@.service`).
+
+**Docker** is the reference: the readiness checks and the CI use it.
+
+**Rootless podman** builds from the same Dockerfiles. It also works for a user
+without an `/etc/subuid` range or `cpu` delegation (tested with podman 3.4 and all
+integrations). It needs `gcc` once, `fuse-overlayfs` and `taskset`, and this
+configuration:
 
 ```toml
 # ~/.config/containers/storage.conf: graphroot on a local disk, not NFS
@@ -66,28 +88,49 @@ unqualified-search-registries = ["docker.io"]
 short-name-mode = "permissive"
 ```
 
-Without a systemd user session that outlives your logins, rootless podman fails once
-you log out. Run `loginctl enable-linger` once (or ask an admin to), or set
-`cgroup_manager = "cgroupfs"` under `[engine]` in `~/.config/containers/containers.conf`.
+Without a subuid range, candidates run as root inside the container. That root is
+still the unprivileged host user, and every other restriction is kept
+(`test_isolation` checks the host mapping, not the uid). Builds squash every file's
+owner to root, so export Docker-built images for other machines rather than these.
 
-Results then match Docker's with two differences, both because of the missing
-subuid range and cgroup delegation. Candidates run as root inside the container,
-which is still the unprivileged host user, with every other restriction kept
-(`test_isolation` checks the host mapping, not the uid). And the CPU limit is
-enforced differently. When the user owns the cgroup `cpu` controller, `--cpus` passes
-through as with Docker. Otherwise each run gets `ceil(cpus)` whole cores of its own,
-and seccomp forbids `sched_setaffinity`, so a candidate cannot use more cores. The cores come from
-`DCP_TASKSET` (e.g. `0-7`), or else every core the wrapper may use. A run that
-finds no free cores fails as an `infrastructure_error`, so run at most
-pool ÷ `ceil(cpus)` evaluations at once. Each result's `engine` field records which way
-it ran (`cpu_limit`: `quota` or `cores`). An admin can make it `quota` by delegating
-the controller (`Delegate=cpu cpuset io memory pids` in a drop-in for
-`user@.service`). `--memory` limits and their `memory_limit` verdicts work either way.
+**Apptainer** (unprivileged, 1.1 or later) is for machines with neither. It can't
+build from a Dockerfile. Build and export the images where Docker or podman runs:
 
-Build images for this machine only. The build squashes every file's owner to root,
-which is harmless under podman, where everything runs as that root, but such an
-image may fail under Docker, which runs candidates as uid 65534. Don't push it or
-convert it for another machine.
+```sh
+python -m evaluation.build cpmpy_python
+python -m evaluation.export --to exported/ cpmpy_python     # exported/cpmpy_python.tar
+```
+
+then copy the folder over and convert it into `DCP_APPTAINER_IMAGES` (default
+`images/`). The SIF keeps the recipe label, so readiness compares the same recipe:
+
+```sh
+export DCP_ENGINE=apptainer DCP_APPTAINER=/path/to/bin/apptainer   # if not on PATH
+python -m evaluation.build --archive exported/ cpmpy_python       # images/cpmpy_python.sif
+```
+
+An unprivileged user can't set cgroup limits or a seccomp filter on Apptainer
+directly. So each run is a transient `systemd-run --user` service, which bounds memory
+(no swap), tasks and CPUs, and records the kernel's OOM kill. This needs a systemd user
+manager. On a server whose ssh sessions don't start one, enable lingering once with
+`loginctl enable-linger`. The evaluator finds the manager under `/run/user/$UID`.
+
+The container has:
+
+- no network;
+- a read-only image and `/input`;
+- no capabilities;
+- your own uid;
+- a per-run scratch directory as `/tmp`.
+
+That `/tmp` is bounded by the disk, not by 512 MB as under Docker. An image's identity
+is the SHA-256 of its SIF file.
+
+Rootless podman and Apptainer both need a systemd user session that outlives your
+logins, or they fail once you log out. For podman you can set
+`cgroup_manager = "cgroupfs"` under `[engine]` in
+`~/.config/containers/containers.conf` instead. `--memory` limits and their
+`memory_limit` verdicts work on every engine.
 
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
