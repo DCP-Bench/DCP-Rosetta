@@ -36,7 +36,7 @@ commit. To learn what you need, run the commands below; they never show the cont
    | key file | Hexaly `license.dat` | `kind: file` |
    | licensed install | CPLEX Optimization Studio (CP Optimizer) | `kind: directory`, the install mounted read-only |
    | licence server | Gurobi token server | `kind: server`; the run reaches it through a relay, never through the network |
-   | unusable here | needs internet while running (Gurobi WLS); node-locked to a hostname or MAC address; a named-user licence that refuses containers | **blocked**, with the reason: the evaluator gives no run network or a stable host identity |
+   | unusable here | needs internet while running (Gurobi WLS); node-locked to a hostname or MAC address; a named-user licence that refuses containers | **blocked**, with the reason: the evaluator gives no run network or a stable host identity. Seen: a Gurobi academic named-user licence fails in the container with `HostID mismatch (licensed to …, hostid is 0)` |
 
    Note any licence term that limits publishing benchmark results. It goes in `LICENCE.md`
    and the report.
@@ -136,4 +136,6 @@ solver without the licence, and the check passes when the result's reason is
 `errors`.
 
 Read that message from the failed run. If it is not caught, add a substring of it to
-`errors`. Keep each substring specific to licences, so that a model error never matches.
+`errors`. Any message that mentions a licence (`licen`) is caught anyway, because the solver's
+wording is hard to guess. Hexaly says `This license is no longer valid` for an expired licence,
+but a bare `Cannot open file [...]` when the licence is missing. Keep each substring specific to licences, so that a model error never matches.

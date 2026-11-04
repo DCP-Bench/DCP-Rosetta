@@ -5,6 +5,7 @@ No engine or solver is needed: engines run against faked processes, as in test_e
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import subprocess
 import tempfile
@@ -141,6 +142,19 @@ class SupplyTests(Machine):
         self.assertNotIn("2099-01-01", text)
         self.assertIn("ok", text)
         self.assertIn(licences.REDACTED, text)
+
+    def test_a_value_quoted_alone_is_redacted(self):
+        """Gurobi quotes one value of a named-user licence: 'HostID mismatch (licensed to f00dfee, ...)'."""
+        self.licence.write_text("# see GRB_LICENSE_FILE in the manual\nTYPE=NUMBERED\nHOSTID=f00dfee\nUSERNAME=someone\nKEY: AbCdEf123456789\nVERSION=13\n")
+        self.use(self.licence)
+        with licences.supply(METADATA) as mount:
+            pass
+        text = mount.redact("Gurobi error 10009: HostID mismatch (licensed to f00dfee, hostid is 0) for someone, "
+                            "key AbCdEf123456789, version 13")
+        for secret in ("f00dfee", "someone", "AbCdEf123456789"):
+            self.assertNotIn(secret, text)
+        self.assertIn("version 13", text)  # short values are left alone
+        self.assertNotIn("GRB_LICENSE_FILE", " ".join(licences.secret_lines(self.licence)))  # comments too
 
     def test_nothing_is_bound_without_a_licence(self):
         self.use("none")
@@ -327,11 +341,17 @@ class ManageTests(unittest.TestCase):
 class RepositoryTests(unittest.TestCase):
     def test_no_configured_licence_is_committed(self):
         """Whatever this machine's licences say appears in no tracked file."""
+        configured = {**licences.saved(), **{name[len("DCP_LICENCE_"):].lower(): value
+                                             for name, value in os.environ.items() if name.startswith("DCP_LICENCE_")}}
         secrets = set()
-        for licence_id, value in licences.saved().items():
+        for licence_id, value in configured.items():
             path = Path(os.environ.get(licences.variable(licence_id)) or value).expanduser()
-            if path.is_file():
-                secrets |= {s for s in licences.secret_lines(path) - {str(path)} if len(s) >= 16}
+            if value != "none" and path.is_file():
+                # Long lines and tokens, and shorter bare values that look like keys (letters and
+                # digits: a host ID, a key). A short `KEY=value` line such as VERSION=13 is public.
+                secrets |= {s for s in licences.secret_lines(path) - {str(path)}
+                            if len(s) >= 16 or (len(s) >= 6 and not re.search(r"[=:\s]", s)
+                                                and re.search(r"\d", s) and re.search(r"[A-Za-z]", s))}
         if not secrets:
             self.skipTest("no licence configured on this machine")
         tracked = subprocess.run(["git", "ls-files", "-z"], cwd=execution.ROOT, capture_output=True,
@@ -341,8 +361,9 @@ class RepositoryTests(unittest.TestCase):
             if not path.is_file() or path.stat().st_size > 8 << 20:
                 continue
             text = path.read_bytes().decode(errors="ignore")
-            leaked = [s for s in secrets if s in text]
-            self.assertFalse(leaked, f"{name} holds a line of a configured licence")
+            leaked = sum(s in text for s in secrets)
+            # The count only: printing what leaked would leak it again, into the test log.
+            self.assertFalse(leaked, f"{name} holds {leaked} piece(s) of a configured licence")
 
 
 if __name__ == "__main__":

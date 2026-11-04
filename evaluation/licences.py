@@ -62,7 +62,10 @@ WITHOUT = ("unavailable", "size-limited")
 KEYS = {"id", "kind", "target", "env", "without", "errors", "port"}
 REDACTED = "[licence redacted]"
 RELAY_TARGET = "/run/licence/relay"
-SHORTEST_SECRET = 8
+# What is redacted from a licence file: lines of at least 8 characters, and the values
+# (after `=` or `:`) and long tokens in them, from 6 and 12 characters: a solver can
+# quote one value alone, as Gurobi does with HOSTID in "HostID mismatch (licensed to ...)".
+SHORTEST_LINE, SHORTEST_VALUE, SHORTEST_TOKEN = 8, 6, 12
 LICENCE_ID = re.compile(r"^[a-z0-9_]+$")
 LICENCE_WORD = re.compile(r"licen[cs]", re.IGNORECASE)
 GUIDE = "LICENCE.md"
@@ -251,7 +254,7 @@ class Mount:
     def __init__(self, licence, binds, env, secrets):
         self.licence, self.binds, self.env = licence, binds, env
         # Longest first, so a line is redacted before a shorter line inside it.
-        self.secrets = sorted({s for s in secrets if len(s) >= SHORTEST_SECRET}, key=len, reverse=True)
+        self.secrets = sorted({s for s in secrets if len(s) >= SHORTEST_VALUE}, key=len, reverse=True)
 
     def redact(self, text):
         if not text:
@@ -262,13 +265,23 @@ class Mount:
 
 
 def secret_lines(path):
-    """The lines of a licence file worth redacting, plus its path."""
+    """What of a licence file to redact: its lines, their values and long tokens, and its path."""
     found = {str(path)}
     try:
-        if path.is_file() and path.stat().st_size <= 1 << 20:
-            found.update(line.strip() for line in path.read_text(errors="replace").splitlines())
+        lines = path.read_text(errors="replace").splitlines() if path.is_file() and path.stat().st_size <= 1 << 20 else []
     except OSError:
-        pass
+        lines = []
+    for line in (line.strip() for line in lines):
+        if line.startswith(("#", "!", "//", ";")):
+            continue  # a comment is the vendor's boilerplate, not the licence
+        if len(line) >= SHORTEST_LINE:
+            found.add(line)
+        separator = min((i for i in (line.find("="), line.find(":")) if i > 0), default=-1)
+        if separator > 0:
+            value = line[separator + 1:].strip().strip("\"'")
+            if len(value) >= SHORTEST_VALUE:
+                found.add(value)
+        found.update(token for token in re.split(r"[\s=:,;\"']+", line) if len(token) >= SHORTEST_TOKEN)
     return found
 
 
