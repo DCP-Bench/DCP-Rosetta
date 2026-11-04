@@ -275,8 +275,9 @@ bugs real models hit:
 
 **Licensed integrations** (any level) also need `licence_missing`: run a valid model with
 `DCP_LICENCE_<ID>=none` in the environment, so the solver runs without its licence. It
-passes when the result's reason is `licence_unavailable`. This check runs without a
-licence, so do it while the licence is still pending ([licences](licences.md#5-readiness-check-licence_missing)).
+passes when the run does what `without` declares: for `unavailable`, the result's reason is
+`licence_unavailable`; for `size-limited`, the model is accepted and the result's `licence`
+is `size-limited`. This check runs without a licence, so do it while the licence is still pending ([licences](licences.md#5-readiness-check-licence_missing)).
 
 Full list: *Integration readiness* in `generation/AGENTS.md`.
 

@@ -29,8 +29,9 @@ Each machine says where its licences are, outside the repository: `DCP_LICENCE_<
 `.dcp-licences.json` at the checkout root (paths only; per checkout, as `.dcp-engine.json`,
 since one NFS home serves machines with different licences). With none configured, a
 run that needs one stops before any container starts. `DCP_LICENCE_<ID>=none` instead
-runs the solver without it, so the `licence_missing` readiness check sees the solver's
-own refusal come back as licence_unavailable.
+runs the solver without it, so the `licence_missing` readiness check sees what the
+integration does then: the solver's own refusal as licence_unavailable, or, for a
+size-limited one, its free edition at work.
 
 The image never holds a licence, so it can be cached, exported and shipped freely. What
 a run prints is redacted before it is parsed or stored: the licence's lines and its host

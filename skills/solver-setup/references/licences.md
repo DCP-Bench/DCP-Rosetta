@@ -131,11 +131,16 @@ Run solver-setup again on the same target. When `<integration>/PENDING.md` exist
 
 Required whenever `metadata.json` declares a licence. Run one evaluation of a valid model
 with `DCP_LICENCE_<ID>=none` set in the check's environment. The evaluator then runs the
-solver without the licence, and the check passes when the result's reason is
-`licence_unavailable`. That proves the solver's own refusal message is listed under
-`errors`.
+solver without the licence, and the check passes when the run does what `without`
+declares:
 
-Read that message from the failed run. If it is not caught, add a substring of it to
+- **`unavailable`:** the result's reason is `licence_unavailable`. That proves the
+  solver's own refusal is recognised.
+- **`size-limited`:** the model is accepted and the result's `licence` is `size-limited`.
+  That proves the free edition still runs when no licence is bound (gurobipy's wheel,
+  for example).
+
+For an `unavailable` licence, read the refusal message from the failed run. If it is not caught, add a substring of it to
 `errors`. Any message that mentions a licence (`licen`) is caught anyway, because the solver's
 wording is hard to guess. Hexaly says `This license is no longer valid` for an expired licence,
 but a bare `Cannot open file [...]` when the licence is missing. Keep each substring specific to licences, so that a model error never matches.
