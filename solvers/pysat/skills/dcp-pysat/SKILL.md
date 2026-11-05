@@ -16,6 +16,8 @@ PySAT is a Python toolkit for SAT and MaxSAT. You build a formula from clauses: 
 
 The one idea to keep: **the objective is soft clauses.** Hard clauses are the constraints. RC2 finds a model that satisfies every hard clause and minimises the total weight of the soft clauses it falsifies.
 
+That cost is not the objective's value: it lacks the objective's constant, and a maximisation pays its shortfall. Keep the objective as an expression in the problem's own terms and direction beside the soft clauses, and evaluate it on the solution to report the value (see the interface file).
+
 ## Pick an interface
 
 Read this file, then the interface file for your language.

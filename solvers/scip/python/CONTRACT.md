@@ -60,6 +60,12 @@ ub=..)` with bounds from the data, `model.addCons(z == expr)`, `model.setObjecti
 Solving); with a bare expression as objective, one model proved its optimum in 2 s and
 then timed out searching for the second optimal solution.
 
+The objective reported with each solution is SCIP's objective value of the optimisation's
+solution, `getSolObjVal`, in the original problem: it has the objective's constant (which
+`setObjective` keeps as an objective offset) and the model's direction. Every solution
+enumerated after it is pinned to that value, so all report it. The incumbents are
+`getSolObjVal` of each new best solution, in the same terms.
+
 ## Solving
 
 - Forced after `build` returns, over the submission's own settings: `hideOutput()`,
@@ -73,6 +79,9 @@ then timed out searching for the second optimal solution.
   status (`nodelimit`, `sollimit`, `gaplimit`, `userinterrupt`, ...) is `error` naming
   it. The final status `limit` means the requested number of solutions was reached: it
   is not a failure.
+- Incumbents: with an objective, an event handler on `BESTSOLFOUND` reports each strictly
+  better integral `getSolObjVal` of the first solve as an `incumbent` record (the
+  supervisor relays it at once), `seconds` from right after `build`.
 - Enumeration: after the first proven solve, `freeTransform()`, then the objective is
   pinned by two constraints (±0.5 around the optimum when every objective coefficient is
   integral and no objective variable is continuous, a relative 1e-6 otherwise) and

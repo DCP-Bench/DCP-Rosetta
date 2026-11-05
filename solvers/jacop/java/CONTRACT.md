@@ -54,6 +54,11 @@ The argument is a variable, so tie an expression to a fresh `IntVar` with a cons
 (`XplusYeqZ`, `SumInt`, `LinearInt`) and give it finite bounds wide enough for every value. Absent:
 satisfaction. Do not bound the objective with a value known from elsewhere.
 
+State the problem's own objective, in the brief's direction: the runner reports the value of this
+variable on each solution as its `objective`. JaCoP only minimises, so the runner minimises a
+maximised objective through its negation (`dcp_negated_objective`) and reports the negation back,
+the variable's own value.
+
 ## Solving
 
 - **Search:** `DepthFirstSearch` with `SimpleSelect`: smallest domain first, `IndomainMin`, over
@@ -90,7 +95,7 @@ plus Python 3.12 for the runner. Jars at `/opt/jacop/jacop.jar` (JaCoP 4.10.0 fr
 AGPL-3.0, sha256 `4c7b5aa4…5585`), `/opt/jacop/json.jar` (org.json 20250517, sha256 `3ea61b2a…5796`)
 and `/opt/jacop/dcp-jacop.jar` (the driver). JaCoP's Scala wrapper and FlatZinc front end are not on
 the class path (their dependencies are not installed). The JVM runs with the serial collector, 2
-compiler threads, `-Xss256m` and a heap of 75% of the container memory; an exhausted heap is an
+compiler threads, `-Xss256m` and `-Xmx1400m` (below the 2 GiB limit); an exhausted heap is an
 `execution_error` with `OutOfMemoryError` in the detail. Inside the container: no network, a
 read-only filesystem except `/tmp`, unprivileged. No licence key or size limits.
 

@@ -28,7 +28,7 @@ immediately, tolerated or not.
 Solutions are checked before the runner's exit status is consulted, so a
 rejected solution is a rejection even when the run later timed out or crashed.
 `reason` separates model rejection (`invalid_solution`, `suboptimal_solution`,
-`no_solution`) from inconclusive runs (`reference_timeout`,
+`objective_mismatch`, `no_solution`) from inconclusive runs (`reference_timeout`,
 `execution_timeout`, `memory_limit`, `execution_error`), protocol violations (`invalid_output`, `output_limit`)
 and infrastructure failure (`infrastructure_error`).
 
@@ -238,11 +238,30 @@ lowered. The names are
 already in the brief a modeller works from, and no solution is ever included:
 
 ```json
-{"type":"solution","values":{"x":0,"y":2}}
+{"type":"solution","values":{"x":0,"y":2},"objective":2}
 {"type":"status","status":"limit","solve_seconds":0.01}
 ```
 
-Solution records are followed by exactly one status.
+Solution records are followed by exactly one status. For an optimisation, a solution record carries
+`objective`, the solution's objective value **in the problem's own terms**: the value the problem's
+objective takes on this solution, as the reference computes it. That is the model's objective, which must
+be the problem's own (see [solvers/CONTRACT.md](../solvers/CONTRACT.md)), and not whatever the solver
+reports internally: a MaxSAT solver's cost of falsified soft clauses, a maximisation the solver negated
+to minimise, an objective without the constant its preprocessing dropped. Where the solver's value is not
+the problem's, the runner translates it, or computes it from the solution with the model's objective
+expression. Integrations at `protocol_version` 2 must report it; earlier ones may.
+
+During an optimisation search a runner may also report each improving solution it finds, before proving
+the optimum, as it finds it (flushed, so a run cut off at its limit keeps them):
+
+```json
+{"type":"incumbent","objective":12,"seconds":0.31}
+```
+
+`objective` is the solution's integer objective value in the problem's own terms, as for a solution record,
+`seconds` the time since the search started (after the model was built), nondecreasing. Incumbents come anywhere before the status and are evidence for
+anytime measures, never results: the evaluator checks their shape, keeps them per instance as `incumbents`
+(`[[seconds, objective], ...]`) and otherwise ignores them. They carry no values.
 
 | Status | Meaning |
 | --- | --- |
@@ -265,8 +284,12 @@ Zero solutions never pass. Returning fewer than N distinct solutions requires
 `complete`, which is the runner's report that the *submitted* model has no more
 — it is not read as a claim about the reference. Anything less from a runner
 that neither reached the count nor reported exhaustion is `invalid_output`.
-Optimization runners emit only final optimal outputs; the evaluator re-derives
-optimality itself and never trusts a claimed objective.
+Optimization runners emit only final optimal outputs (and, optionally, incumbent
+records along the way); the evaluator re-derives optimality itself and never trusts a claimed objective.
+It does check every reported objective against the reference, after the solutions are accepted: a solution's
+`objective` must be the reference's optimum, and the incumbents must improve and end at it. Otherwise the
+run is `objective_mismatch`: the model's objective is scaled, offset or negated, or the runner reports the
+solver's internal value. Curves of improving solutions are only comparable across solvers because of this.
 
 ## Adding an integration
 

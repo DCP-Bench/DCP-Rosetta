@@ -64,7 +64,9 @@ def create_model(instance):
         if npv[i] > 0:
             formula.append([x[i]], weight=npv[i])
 
-    return formula, {"x": x, "z": z}
+    # The objective in the problem's terms: the total NPV of the chosen investments (RC2's
+    # cost is the NPV left out).
+    return formula, {"x": x, "z": z}, z
 
 
 if __name__ == "__main__":
@@ -76,7 +78,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

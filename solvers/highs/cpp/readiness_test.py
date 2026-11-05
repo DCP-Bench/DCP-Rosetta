@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -615,7 +615,16 @@ def main():
         check("large_model", LARGE, reference=LARGE_REF, execution_timeout=120, reference_timeout=120)
         # Objective offsets and negative coefficients, both directions.
         check("objective_offset_minimise", OFFSET_MIN, reference=OFFSET_REF)
+        # The MIP callback's improving solutions, with the objective's offset and negative terms, end at the optimum.
+        results["incumbents"] = improving_incumbents(check("incumbents", OFFSET_MIN, reference=OFFSET_REF))
         check("objective_offset_maximise", OFFSET_MAX, reference=OFFSET_MAX_REF)
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OFFSET_MAX, reference=OFFSET_MAX_REF), minimize=False)
+        # Every reported objective is the problem's own value (acceptance includes it being the reference's
+        # optimum): a maximisation with a constant term (-x + 2y + 7, optimum 16) and a minimisation with a
+        # negative optimum (2x - 3y - 5, optimum -20).
+        results["objective_values"] = (check("objective_values", OFFSET_MAX, reference=OFFSET_MAX_REF)["accepted"]
+                                       and check("objective_values", OFFSET_MIN, reference=OFFSET_REF)["accepted"])
         # Integer outputs within the tolerance, negative values and -0.
         check("rounding_within_tolerance", ROUNDING, reference=ROUNDING_REF)
         # Every solution of a small satisfaction problem, exactly once.

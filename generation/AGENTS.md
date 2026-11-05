@@ -57,7 +57,7 @@ It exits 0 only when every candidate passed.
 `recheck` evaluates every retained model of PROBLEM on the given IDs with the
 solution limit, timeouts and `tolerate_inconclusive` its record was accepted
 with. Each row is `passed`, `failed` (a model fault: `invalid_solution`,
-`suboptimal_solution`, `no_solution`, `execution_error`, `compilation_error`,
+`suboptimal_solution`, `objective_mismatch`, `no_solution`, `execution_error`, `compilation_error`,
 `invalid_output`, `output_limit`) or `inconclusive` (anything else).
 `most_failed` is true when at least two models, and more than half of the
 conclusive ones, failed. `--flag` appends each failure once to

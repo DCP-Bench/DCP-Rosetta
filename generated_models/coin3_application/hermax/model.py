@@ -35,9 +35,11 @@ def create_model(instance):
             m &= (paid[i] <= x[i])
 
     # Minimise the total number of coins carried.
-    m.obj += sum(x[i] for i in range(n))
+    total_coins = sum(x[i] for i in range(n))
+    m.obj += total_coins
 
-    return m, {"x": x}
+    # The objective in the problem's terms: the total number of coins carried, the cost minimised above.
+    return m, {"x": x}, total_coins
 
 
 if __name__ == "__main__":
@@ -47,11 +49,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

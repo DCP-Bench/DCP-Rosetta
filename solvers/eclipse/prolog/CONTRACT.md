@@ -68,13 +68,19 @@ The driver posts `Cost #= Expr` (and `Neg #= -Cost` for `max`) in `user`, so the
 is the one your solver library defines, then minimises with `bb_min/3`. The cost must be
 an integer once the variables are labelled; a real-valued objective is an `error`.
 
+State the problem's own objective, in the brief's direction. The runner reports `Cost`, the value of
+`Expr`, as each solution's `objective`; an incumbent's is `Cost` too, recovered from the bound
+`bb_min` passes to its `report_success` hook (`-Neg` for a `max`).
+
 ## Solving
 
 - Optimum phase: `bb_min(Search, Cost, bb_options{strategy:continue, delta:1, factor:1})`
   with `Search` the labelling goal described above. Each solution must improve the cost by
   at least 1 until branch and bound exhausts the space, so the last solution is optimal;
   only then is it reported, as the first solution. A model that fails, or an optimum phase
-  that finds nothing, is `unsat`.
+  that finds nothing, is `unsat`. Each improving solution is reported along the way as an
+  `incumbent` (its objective, seconds since `bb_min` started) through the `report_success`
+  option, whose default only logs; `run.py` relays these while the driver runs.
 - Enumeration phase (only when more than one solution is wanted and the optimum phase did
   not already reach the limit): the model is rebuilt, `Expr #= Optimum` is posted, and the
   driver backtracks through the labelling. Outputs equal to one already reported are

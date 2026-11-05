@@ -43,6 +43,11 @@ A `SparseAxisArray` or a quadratic expression is rejected (`execution_error`).
 `@objective(model, Min, expr)` or `@objective(model, Max, expr)`, linear. No objective
 (`FEASIBILITY_SENSE`) is a satisfaction problem.
 
+State the problem's own objective, constant included, in the brief's sense. The driver reports
+`objective_value(model)` (JuMP's value, in the model's sense and with its constant), rounded to an
+integer, as each solution's `objective`; the incumbents are HiGHS's improving-solution callback's
+`objective_function_value`, which is in the same terms (sense and offset kept).
+
 ## Solving
 
 - Forced by the driver after `build`: `set_optimizer(model, HiGHS.Optimizer)`,
@@ -54,6 +59,10 @@ A `SparseAxisArray` or a quadratic expression is rejected (`execution_error`).
   `INFEASIBLE_OR_UNBOUNDED`, which HiGHS reports for an unbounded MIP, gets one re-solve
   of the constraints alone with the objective set aside: no feasible point is `unsat`, a
   feasible point is `error` (objective unbounded).
+- Incumbents: during the first (optimisation) solve, HiGHS's improving-solution callback
+  (`HiGHS.CallbackFunction([kHighsCallbackMipImprovingSolution])`, which only reads the
+  solution) records each improving integer objective with the seconds since that solve
+  started; `run.py` relays them while the driver runs. Later solves report none.
 - Enumeration (only when `solution_limit > 1`) pins the objective within 1e-5 of the
   proven optimum, then adds a big-M no-good per answer over the variables under the
   declared outputs (a binary indicator below and above each current value). A repeated

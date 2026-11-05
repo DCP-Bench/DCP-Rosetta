@@ -41,7 +41,8 @@ def create_model(instance):
                      for i in range(n_people) for j in range(n_projects))
     m.obj += total_cost
 
-    return m, {"assign": assign, "total_cost": total_cost}
+    # The objective in the problem's terms: the total cost, the cost minimised above.
+    return m, {"assign": assign, "total_cost": total_cost}, total_cost
 
 
 if __name__ == "__main__":
@@ -51,11 +52,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

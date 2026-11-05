@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -44,6 +44,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 # A strongly correlated knapsack on which Gurobi's default MIPGap (1e-4) stops
 # at 12168379 and reports OPTIMAL; the optimum is 12168772. Measured with
@@ -99,6 +104,12 @@ def build(instance):
     model.setObjective(gp.quicksum(v * x[i] for i, v in enumerate(values)), GRB.MAXIMIZE)
     return model, {{"x": [x[i] for i in range(len(weights))]}}
 '''
+# The same knapsack as a minimisation of the value left out: an objective with a constant, whose improving
+# solutions must be reported in the problem's terms (incumbents).
+LEFT_OUT = KNAPSACK.replace("model.maximize(cp.sum(x * values))", "model.minimize(sum(values) - cp.sum(x * values))")
+LEFT_OUT_MODEL = KNAPSACK_MODEL.replace(
+    "model.setObjective(gp.quicksum(v * x[i] for i, v in enumerate(values)), GRB.MAXIMIZE)",
+    "model.setObjective(sum(values) - gp.quicksum(v * x[i] for i, v in enumerate(values)), GRB.MINIMIZE)")
 # The library and the submission both write to file descriptor 1; neither may
 # reach the protocol stream.
 NOISY = HEADER.replace("    model = gp.Model()\n",
@@ -144,6 +155,11 @@ ISOLATED = HEADER + ("    import os, socket\n"
     "    return model, {'x': x, 'y': y}\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("x + y, GRB.SENSE", "3 + x + y, GRB.MAXIMIZE")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("x + y, GRB.SENSE", "x - y - 3, GRB.MINIMIZE")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -175,10 +191,19 @@ def main():
         exhausts("unbounded_enumeration", check("unbounded_enumeration", UNBOUNDED, solution_limit=5), 3)
         check("minimization", OPTIMAL.replace("SENSE", "MINIMIZE"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "MAXIMIZE"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         # Three optima; enumeration past them must stay at the optimum and then stop.
         exhausts("optimal_enumeration", check("optimal_enumeration", OPTIMAL.replace("SENSE", "MINIMIZE"),
                                               reference=OPTIMIZING, solution_limit=5), 3)
         check("proven_optimum", KNAPSACK_MODEL, reference=KNAPSACK)
+        # The MIPSOL callback reports the knapsack's improving solutions, which end at the proven optimum; as a
+        # minimisation of the value left out, with its constant, too.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", LEFT_OUT_MODEL, reference=LEFT_OUT))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", KNAPSACK_MODEL, reference=KNAPSACK), minimize=False)
         check("expression_output", EXPRESSION, solution_limit=2)
         check("matrix_output", MATRIX, solution_limit=3)
         check("library_stdout", NOISY)

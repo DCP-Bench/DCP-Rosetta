@@ -90,7 +90,10 @@ When the framework binds the data (a typed modelling language):
 The protocol is in `evaluation/README.md`. In short:
 
 - Read `/input/model.<ext>` and `/input/request.json`; write JSONL `solution` records
-  with `values`, then exactly one `status`; log to stderr. Reuse `runner/runtime.py`.
+  with `values` (and, for an optimisation, `objective`), then exactly one `status`; log to
+  stderr. Reuse `runner/runtime.py`.
+- Report improving solutions as `incumbent` records while the solver optimises, where it
+  exposes them (a solution callback, a log line, an incremental loop the runner drives).
 - Return explicit `unsupported`, `error` and `compilation_error` statuses.
 - Never invent solutions, alter the submission or emit more solutions than requested;
   fewer only with `complete` (search exhausted).
@@ -102,6 +105,16 @@ brackets ([section 6](#6-readiness_testpy)).
   objective before solving, so every kill, crash and deadline path does too. On a timeout
   before the proof, emit no solutions, only `timeout`: the evaluator checks solutions
   first, so an unproven incumbent is rejected as suboptimal, not inconclusive.
+- **Report objectives in the problem's terms** (`objective_values`, `incumbents`,
+  `incumbents_maximize`). Every `objective`, on a solution or an incumbent, is the value of
+  the model's objective, which is the problem's own. Find out from the docs and a test what
+  the solver itself reports, and convert: a solver that only minimises reports a
+  maximisation negated (Z3's `Optimize` keeps `maximize(e)` as `-(e)`, CBC prints its
+  internal minimised value); preprocessing drops the objective's constant (PuLP keeps it
+  apart); a MaxSAT solver reports the cost of the soft clauses it falsified, from which the
+  objective follows only with the offset and direction the model's encoding implies. Where
+  no conversion is reliable, compute the value from the solution itself with the model's
+  objective expression. Write the conversion down in `CONTRACT.md` under `## Objective`.
 - **Parenthesise a re-posted objective** (`optimum_enumeration`). To enumerate at the
   optimum, post `(objective) = optimum`; where a sum or quantifier extends as far right as
   possible, the appended text is otherwise swallowed.
@@ -156,7 +169,7 @@ readiness, evaluation and the website read them.
 | `solver` | The backend. Needs a display label in `BACKEND_NAMES` in `generate_site.py`, unless `name` already contains it. |
 | `language` | What a submission is written in; sets the website's label and syntax highlighting. A new value needs a row in `LANGUAGES` in `generate_site.py` (use `plaintext` when highlight.js has no grammar for it). |
 | `paradigms` | Required. IDs from `solvers/paradigms.json` for the paradigm a **submission is written in**, not the backend's technology: CP-SAT is `["cp"]`. Several tags when a submission really belongs to several (`swipl_clpfd` is `["cp", "clp"]`). A new tag goes into `solvers/paradigms.json` in the same commit. |
-| `protocol_version` | `1`. |
+| `protocol_version` | `2`: solution records of an optimisation carry `objective`. Integrations at `1` predate it and are upgraded as they are re-certified. |
 
 `optimization`, `compilation` and `enumeration` select the required readiness checks:
 never declare an untested capability.
@@ -271,6 +284,8 @@ bugs real models hit:
 | `optimization_timeout` | it optimises | an unproven optimum emitted when time runs out | an easy reference; the submission adds an unrelated hard part to its objective (a Golomb ruler), so a solution comes fast but cannot be proven within a 3 s budget: `execution_timeout` with **zero solutions received** |
 | `minimization_step_one` | it optimises | an off-by-one bound in a runner that bounds the objective itself | a minimisation whose first solution is exactly optimum + 1 (steer the search there if the runner does branch and bound): accepted |
 | `auxiliary_free_distinct` | it enumerates | duplicate outputs from free auxiliaries | a free auxiliary variable outside the outputs, `solution_limit=3`: accepted with 3 distinct solutions |
+| `objective_values` | it optimises | the solver's internal objective reported instead of the problem's | a maximisation whose objective has a constant term (`3 + x + y`) and a minimisation with a negative optimum: accepted, with every solution's `objective` the reference's optimum |
+| `incumbents`, `incumbents_maximize` | it reports incumbents | incumbents on the solver's scale, in the wrong direction or missing the optimum | a minimisation and a maximisation, each with a first solution that is not optimal: `improving_incumbents(result)` (strictly better each time, the last the optimum) |
 | `optimum_enumeration` | it optimises and enumerates | a re-posted objective parsed or pinned wrongly | a compound objective (a sum) with ten optima, `solution_limit=3`: accepted with 3 solutions checked |
 
 **Licensed integrations** (any level) also need `licence_missing`: run a valid model with

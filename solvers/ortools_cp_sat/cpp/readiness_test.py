@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -70,6 +70,27 @@ SLOW = ('#include <chrono>\n#include <thread>\n' + HEAD + DECLARE
         + "  model.AddEquality(x + y, n);\n"
         "  std::this_thread::sleep_for(std::chrono::seconds(120));\n" + EXPORT + TAIL)
 UNCOMPILABLE = "this is not C++\n"
+# objective_values: every reported objective must be the problem's own value. A maximisation whose objective has
+# a constant term (3 + x + y under x + y <= n, optimum 5) and a minimisation with a negative optimum (x - y - 3,
+# optimum -5).
+OBJECTIVE_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.DIRECTION(EXPRESSION)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+CONSTANT_MAX_REF = OBJECTIVE_REF.replace("DIRECTION", "maximize").replace("EXPRESSION", "3 + x + y")
+NEGATIVE_MIN_REF = OBJECTIVE_REF.replace("DIRECTION", "minimize").replace("EXPRESSION", "x - y - 3")
+CONSTANT_MAX = HEAD + DECLARE + "  model.AddLessOrEqual(x + y, n);\n  model.Maximize(3 + x + y);\n" + EXPORT + TAIL
+NEGATIVE_MIN = HEAD + DECLARE + "  model.AddLessOrEqual(x + y, n);\n  model.Minimize(x - y - 3);\n" + EXPORT + TAIL
 
 # C++ can inspect its own container, so unlike MiniZinc and ASP this check runs
 # through the real submission path. A failed probe throws, which the driver
@@ -157,6 +178,16 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "Minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "Maximize"), reference=MAXIMIZING)
+        # Every solution the observer reports improves on the last, and the last is the optimum 2.
+        results["incumbents"] = improving_incumbents(check("incumbents", OPTIMAL.replace("DIRECTION", "Minimize"),
+                                                           reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "Maximize"), reference=MAXIMIZING),
+            minimize=False)
+        # Acceptance includes every reported objective being the reference's optimum.
+        objective_max = check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAX_REF)["accepted"]
+        objective_min = check("objective_values", NEGATIVE_MIN, reference=NEGATIVE_MIN_REF)["accepted"]
+        results["objective_values"] = objective_max and objective_min
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

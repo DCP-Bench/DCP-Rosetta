@@ -138,6 +138,15 @@ than one solution ends as `unsupported` ("Enumeration requires `minimising EXPR`
 `unsupported_capability`. The runner restates `EXPR` in parentheses itself (`(EXPR) =
 v`), so an unparenthesised `minimising sum i : D . c[i]` is fine.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`. With one solution requested it is the value of
+Minion's objective variable in its last (optimal) solution, read from Minion's solutions
+file as the incumbents are; Savile Row keeps the Essence' objective's constant, sign and
+direction there, so no conversion is needed. With more, it is the probe's
+`dcp_objective_value = (EXPR)`. Where Minion has no objective variable to follow (an
+objective Savile Row reduces to a constant), the probe runs for one solution too. The
+incumbents are those objective-variable values, one per improving solution.
+
 ## Solving
 
 Each call is one Savile Row run that also runs Minion, from a fresh directory under
@@ -169,6 +178,14 @@ considers unused (see [Traps](#traps)).
   `minimising/maximising dcp_objective_value`, adds `dcp_objective_value = (EXPR)`, and
   reads the optimum back; run 3 onwards drop the objective line, add `(EXPR) = optimum`,
   and enumerate as for satisfaction.
+- **Incumbents**: run 1 alone passes `-minion-bin /opt/runner/minion-follow.sh`, which
+  execs the same Minion with the same arguments after giving its `-solsout` file (one line
+  per improving solution, which Savile Row deletes at the end) a second name. While run 1
+  runs, the runner reads each new line's value of the objective variable (the
+  `MINIMISING`/`MAXIMISING` variable's position in the `PRINT` list of `out.minion`) and
+  reports it as an `incumbent`, with seconds from `out.minion`'s write to the solutions
+  file's last change. On fixtures this value equals the Essence' objective, including
+  constant offsets, negations and maximisation.
 - **Enumeration** (satisfaction, or pinned at the optimum): each round asks Savile Row
   for the solutions still missing (`-num-solutions want`). Savile Row enumerates every
   `find`, so a free auxiliary variable repeats an output assignment: the runner keeps a

@@ -116,6 +116,14 @@ words of the problem statement, not of the API:
 - the plainest expression that says it: <this solver's direct forms, e.g. its array
   arithmetic or native global constraints, over index loops and hand-built encodings>.
 
+**The objective is the problem's own value.** State the objective exactly as the problem
+defines it, in its direction: no scaling, no constant left off, no negation to turn a
+maximisation into a minimisation. <Where this solver's natural form invites otherwise, say
+how to keep the value: e.g. a MaxSAT encoding states the objective through soft-clause
+weights, so give the offset and direction that turn its cost back into the objective; a
+solver that only minimises takes `maximize` through its own API, not as a negated term.>
+The solver's reported objective is what a benchmark compares across solvers.
+
 <A short example in the solver's syntax: input fields, one variable, one constraint, the
 objective, each with its comment.>
 

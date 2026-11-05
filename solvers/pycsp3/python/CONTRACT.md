@@ -71,6 +71,13 @@ call posts `satisfy(term == optimum)` instead, so the objective must be the same
 every time the file runs. Minimising a maximisation problem (or the reverse) is
 `suboptimal_solution`, verified with a knapsack model.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`: ACE's proven optimum (`pycsp3.bound()` after
+`s OPTIMUM`), which the XCSP3 SolutionChecker's cost for that solution must equal. ACE
+reports the XCSP3 objective's own value, constant, sign and direction included
+(maximising `3 + x + y` reports 3, 4, 5), so no conversion is needed; the incumbents are
+its `o` lines. Solutions enumerated at the optimum carry the same value.
+
 ## Solving
 
 A **round** is one child process: one run of the model, one pycsp3 compilation to XCSP3
@@ -93,7 +100,9 @@ ACE's log; `-ev` makes ACE print the cause of a failure (without it ACE prints o
   status is `timeout` ("Candidate optimum was not proven") with no solution reported,
   never the incumbent. The optimum is pycsp3's `bound()`; without it the run is `error`.
   With a solution limit of 1 the run stops after that solution (`limit`); otherwise later
-  rounds pin the objective (`satisfy(term == optimum)`) and enumerate as below.
+  rounds pin the objective (`satisfy(term == optimum)`) and enumerate as below. Each
+  improving solution of the first round (ACE's `o <objective>` line) is relayed while ACE
+  runs as an `incumbent` record, `seconds` from the XCSP file being written.
 - **Satisfaction**: the first round asks for `solution_limit` solutions; later rounds for
   the ones still missing.
 - **Verification**: ACE 2.6 accepts some invalid tuples (a `Product` over four or more

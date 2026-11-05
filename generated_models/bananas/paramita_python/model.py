@@ -62,7 +62,9 @@ def create_model(instance):
     pool = DimacsVariablePool()
     add_to_weighted_container(-disliked, And(constraints), to_cnf, formula, pool)
 
-    return (formula, pool), outputs
+    # The objective in the problem's terms: the number of bananas and apples bought,
+    # minimised (its negation is what the soft clauses maximise).
+    return (formula, pool), outputs, disliked
 
 
 if __name__ == "__main__":
@@ -70,7 +72,7 @@ if __name__ == "__main__":
     from paramita.modelling import evaluate
     from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
 
-    (formula, pool), outputs = create_model({})
+    (formula, pool), outputs, objective = create_model({})
 
     solver = MaxSatSolver.from_name("EvalMaxSAT2022")
     # copy the formula into the solver: the hard clauses, then each soft clause with its weight
@@ -84,5 +86,6 @@ if __name__ == "__main__":
         value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
         for name, output in outputs.items():
             print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
     else:
         print("No solution")

@@ -49,7 +49,7 @@ METADATA_KEYS = ("name", "note")
 # Reasons that say the model is wrong on this instance. Everything else a
 # rejection can carry is a timeout, the memory limit, an infrastructure fault
 # or a bad request, which say nothing about the model.
-MODEL_FAILURES = ("invalid_solution", "suboptimal_solution", "no_solution", "execution_error",
+MODEL_FAILURES = ("invalid_solution", "suboptimal_solution", "objective_mismatch", "no_solution", "execution_error",
                   "compilation_error", "invalid_output", "output_limit")
 
 

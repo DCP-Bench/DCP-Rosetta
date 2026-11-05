@@ -77,7 +77,9 @@ def create_model(instance):
         if renting_cost[m] > 0:
             formula.append([-rent[m].equals(1)], weight=renting_cost[m])
 
-    return formula, {"z": z}
+    # The objective in the problem's terms: the profit z (RC2's cost is the profit lost
+    # against making every product at its upper bound, plus the renting costs).
+    return formula, {"z": z}, z
 
 
 if __name__ == "__main__":
@@ -89,7 +91,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

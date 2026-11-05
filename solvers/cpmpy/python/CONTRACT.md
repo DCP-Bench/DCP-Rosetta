@@ -39,6 +39,12 @@ integer or Boolean makes the runner raise, which the evaluator reports as
 Set it on the model: `model.minimize(expr)` or `model.maximize(expr)`, with an integer
 expression. No objective for a satisfaction problem.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`: the runner reads `model.objective_value()`
+after the proving solve, which CPMpy evaluates from the objective expression on the
+solution (constant and direction included). Solutions enumerated at the optimum carry
+the same value. No improving solutions are reported.
+
 ## Solving
 
 - Every solve is `model.solve(solver="ortools", time_limit=<seconds left>,

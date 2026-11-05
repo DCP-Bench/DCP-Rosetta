@@ -36,10 +36,12 @@ def create_model(instance):
         m &= (sum(allocation[i][j] for j in range(num_routes)) <= availability[i])
 
     # Minimise the total operational cost of all assigned aircraft.
-    m.obj += sum(costs[i][j] * allocation[i][j]
-                 for i in range(num_types) for j in range(num_routes))
+    total_cost = sum(costs[i][j] * allocation[i][j]
+                     for i in range(num_types) for j in range(num_routes))
+    m.obj += total_cost
 
-    return m, {"allocation": allocation}
+    # The objective in the problem's terms: the total operational cost, the cost minimised above.
+    return m, {"allocation": allocation}, total_cost
 
 
 if __name__ == "__main__":
@@ -49,11 +51,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

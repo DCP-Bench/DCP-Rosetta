@@ -48,6 +48,14 @@ evaluator said. This has happened here: the first accepted model, for
 `abbots_puzzle`, hardcodes all its constants and passed, because that problem
 has exactly one instance.
 
+The same reading applies to the objective. It must be the problem's own value on every
+solution, in the brief's direction: not scaled (a weight divided out), not offset (a
+constant left off because it does not change the optimum), not negated (a maximisation
+written as minimising the negative). Each would find the same optimal solutions, but the
+values it reports, and the curve of improving solutions a benchmark draws from them, would
+not be the problem's. Where the integration's runner reports objective values, the evaluator
+catches this as `objective_mismatch`; where it does not yet, only your reading does.
+
 A constant that belongs to the *problem* rather than the instance — a nutrient
 table the description itself fixes, a domain bound it states — may be mirrored,
 but say so in a comment where it appears.

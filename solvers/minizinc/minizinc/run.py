@@ -138,6 +138,36 @@ def bind(instance):
 solve = runtime.minizinc_solver
 
 
+class Optimum:
+    """The objective value of the proven optimum, in the problem's own terms: MiniZinc reports the value of
+    the solve item's expression (`_objective`, `Result.objective`), which the contract makes the integer
+    `objective` variable, constants and direction included. runtime.py emits solution records without it;
+    with_objective adds it to each one. Every solution of an optimisation is at the optimum: runtime.py
+    enumerates further ones with `constraint objective = <optimum>`. Move this into runtime.py when that file
+    next changes."""
+    value = None
+
+
+def remembering_objective(solve_instance):
+    def wrapped(instance, *args, **kwargs):
+        import minizinc
+        result = solve_instance(instance, *args, **kwargs)
+        if result.status == minizinc.Status.OPTIMAL_SOLUTION and result.objective is not None:
+            if isinstance(result.objective, bool) or int(result.objective) != result.objective:
+                raise ValueError("Use an integer objective")
+            Optimum.value = int(result.objective)
+        return result
+    return wrapped
+
+
+def with_objective(emit):
+    def wrapped(record):
+        if record.get("type") == "solution" and Optimum.value is not None:
+            record = {**record, "objective": Optimum.value}
+        return emit(record)
+    return wrapped
+
+
 def minizinc_solver(request):
     if not request["legacy"]:
         request = {**request, "instance": bind(request["instance"])}
@@ -149,4 +179,7 @@ def minizinc_solver(request):
 runtime.minizinc_solver = minizinc_solver
 
 if __name__ == "__main__":
+    import minizinc
+    minizinc.Instance.solve = remembering_objective(minizinc.Instance.solve)
+    runtime.emit = with_objective(runtime.emit)
     runtime.main("minizinc")

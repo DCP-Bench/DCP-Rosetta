@@ -57,9 +57,18 @@ constant has to be an `IntVar` first (`model.NewIntVar(...)` plus `AddEquality`,
 `model.Minimize(expr)` or `model.Maximize(expr)` on the builder, with an integer
 `LinearExpr`. A floating-point objective is refused (`unsupported`).
 
+The objective the runner reports, on every solution and incumbent, is CP-SAT's
+`objective_value()`: the expression's value on the solution in the model's own terms
+(CP-SAT applies the expression's constant and turns a `Maximize` back from the minimisation
+it solves internally). So the expression must be the problem's own value, constant terms
+included (`model.Maximize(3 + x + y)`), unscaled and in the brief's direction. Solutions
+enumerated after the optimum carry that proven optimum, to which the driver pins them.
+
 ## Solving
 
-- The driver solves with `SolveWithParameters` and these parameters, which the model
+- The driver solves with `SolveCpModel` (what `SolveWithParameters` does, plus a solution
+  observer that reports each improving solution of the optimisation search as an `incumbent`,
+  with the seconds since `Build` returned) and these parameters, which the model
   cannot change: `num_search_workers = 1`, `keep_all_feasible_solutions_in_presolve =
   true` (CP-SAT 9.11 to 9.15 dual presolve reductions can drop the optimum), and
   `max_time_in_seconds` set to what is left of the budget. Presolve is otherwise on, with

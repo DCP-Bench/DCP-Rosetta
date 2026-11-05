@@ -61,6 +61,10 @@ an error; the driver's completed search fixes every variable.
 is an `execution_error`: "the objective must be an IntVar"). Do not bound it with a value
 known from elsewhere.
 
+State the problem's own objective, in the brief's direction. The driver reports the objective
+variable's value (Choco optimises in the stated direction and keeps no negated copy) as the
+`objective` of every solution and of every `incumbent`.
+
 ## Solving
 
 - **Search:** a strategy set in `build` with `m.getSolver().setSearch(...)` (and restarts)
@@ -69,7 +73,8 @@ known from elsewhere.
 - **Optimisation:** branch and bound (`while (solver.solve())`) until the search ends. The
   last solution is the optimum only when the state is `TERMINATED`; a stop by the deadline
   (`STOPPED`) is `timeout` and nothing is emitted. Then a fresh model with the objective
-  cleared and `objective = optimum` posted enumerates further optima.
+  cleared and `objective = optimum` posted enumerates further optima. Each improving solution of
+  the branch and bound is reported as an `incumbent` (objective, seconds since the model was built).
 - **Enumeration:** after each solution the driver resets the solver and posts a no-good on
   the declared output variables, so solutions are distinct on the outputs and the next one
   must also come quickly. Under LCG (Choco 6.0.1 fails on constraints posted after a

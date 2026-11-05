@@ -67,6 +67,7 @@ Read top-level `reason`, `detail`, per-instance details, and `runner_status`.
 | Result | Action |
 | --- | --- |
 | `invalid_solution`, `suboptimal_solution`, `no_solution` | A counterexample was found: repair model/declared outputs. Holds even when the run later timed out or crashed. |
+| `objective_mismatch` | The solutions are optimal but the reported objective is not the problem's value: the model's objective is scaled, offset or negated. Write the problem's own objective expression in the brief's direction. |
 | `invalid_output`, `output_limit`, `compilation_error` | Inspect diagnostics. Candidate syntax/API/protocol mistakes go to modeller; a failure reproducible with a known-good fixture goes to setup. Too few distinct solutions without an exhaustion status means the enumeration implementation is at fault. |
 | `infrastructure_error` | Diagnose image/engine/dependency failure; bounded setup repair, then reevaluate the same candidate. |
 | `unsupported_solver` | Resolve the integration ID or invoke bounded setup for the missing integration. |

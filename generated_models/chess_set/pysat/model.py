@@ -48,15 +48,17 @@ def create_model(instance):
         formula.append([small_set.ge(v)], weight=small_profit)
         formula.append([large_set.ge(v)], weight=large_profit)
 
+    # The objective in the problem's terms: the profit of the week (RC2's cost is the
+    # profit lost against making max_sets of each).
     return formula, {"small_set": small_set, "large_set": large_set,
-                     "max_profit": max_profit}
+                     "max_profit": max_profit}, max_profit
 
 
 if __name__ == "__main__":
     import numpy as np
     from pysat.examples.rc2 import RC2Stratified
 
-    formula, outputs = create_model({})
+    formula, outputs, objective = create_model({})
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

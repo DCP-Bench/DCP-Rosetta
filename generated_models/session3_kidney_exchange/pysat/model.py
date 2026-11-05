@@ -44,7 +44,11 @@ def create_model(instance):
             if j + 1 in compatible[i]:
                 formula.append([transplants[i][j]], weight=1)
 
-    return formula, {"transplants": transplants}
+    # The objective in the problem's terms: the number of transplants (RC2's cost is the number
+    # of compatible pairs not matched).
+    objective = [(1, transplants[i][j]) for i in people for j in people]
+
+    return formula, {"transplants": transplants}, objective
 
 
 if __name__ == "__main__":
@@ -56,7 +60,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

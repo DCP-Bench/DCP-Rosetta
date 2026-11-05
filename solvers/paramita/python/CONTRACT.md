@@ -16,25 +16,26 @@ creates its own solver and imports `numpy`, which is fine: the runner never exec
 ## Entrypoint
 
 ```python
-def create_model(instance) -> tuple[tuple[CnfFormula | WcnfFormula, DimacsVariablePool],
-                                    dict]:
+def create_model(instance) -> (tuple[tuple[CnfFormula, DimacsVariablePool], dict]
+                               | tuple[tuple[WcnfFormula, DimacsVariablePool], dict, objective]):
 ```
 
 The runner imports the file as module `candidate` and calls `create_model(instance)` once.
 Models retained before 2026-11-02 name it `build(instance)`, which the runner still
 accepts by name, but only if it returns the form below; write `create_model`. It must
-return exactly `(formula, pool), outputs`:
+return exactly `(formula, pool), outputs` for a satisfaction problem and
+`(formula, pool), outputs, objective` for an optimisation:
 
 - `formula` is a `paramita.containers.CnfFormula` for a satisfaction problem, or a
   `WcnfFormula` for an optimisation problem;
 - `pool` is the `DimacsVariablePool` the model encoded with; the runner decodes with it;
-- `outputs` is described below.
+- `outputs` is described below;
+- `objective` is the problem's own objective (see [Objective](#objective)).
 
 Anything else is refused with `error` (`execution_error`) and a message naming the form:
-a list or a 3-tuple (an objective as a third value, `("maximize", expr)`, is refused:
-an objective is the soft clauses of a `WcnfFormula`), a formula without its pool, a
-formula that is neither class, a pool that is not a `DimacsVariablePool`, or empty
-`outputs`. The runner encodes nothing: it copies the clauses into a solver. Anything the
+a list, a formula without its pool, a formula that is neither class, a pool that is not a
+`DimacsVariablePool`, empty `outputs`, an optimisation without `objective`, or an
+`objective` that is not one expression. The runner encodes nothing: it copies the clauses into a solver. Anything the
 module prints, at import or in `create_model`, goes to stderr.
 
 ## Instance
@@ -67,13 +68,33 @@ inside such a sum counts as 0 or 1.
 
 ## Objective
 
-The soft clauses of a `WcnfFormula`, encoded by
-`add_to_weighted_container(objective, subject_to, to_cnf, formula, pool)`: the hard
-clauses are the constraints, and the soft clauses are the objective, which is maximised
-(EvalMaxSAT maximises the satisfied soft weight). A model that minimises passes the
-negated objective. A soft clause with weight 0 still counts as one. A `CnfFormula`, or
-a `WcnfFormula` without soft clauses (only its hard clauses are kept), is a satisfaction
-problem.
+Stated twice, for two readers:
+
+- **What EvalMaxSAT optimises: the soft clauses of a `WcnfFormula`**, encoded by
+  `add_to_weighted_container(soft, subject_to, to_cnf, formula, pool)`: the hard clauses
+  are the constraints, and the soft clauses are maximised (EvalMaxSAT maximises the
+  satisfied soft weight). A model that minimises passes the negated objective. A soft
+  clause with weight 0 still counts as one. A `CnfFormula`, or a `WcnfFormula` without
+  soft clauses (only its hard clauses are kept), is a satisfaction problem.
+- **What the runner reports: the third value, `objective`**, the problem's own objective
+  in its own terms and direction (the value the description's objective takes, constant
+  included): an integer expression over Bools (`sum(v * x) + c`, `-e`), a Bool (1 when
+  true) or an `int`. For a maximisation it is usually the expression given to
+  `add_to_weighted_container`; for a minimisation, the expression whose negation was given
+  (`add_to_weighted_container(-makespan, ...)`, return `makespan`). The runner evaluates it
+  in Python integers on each optimum and reports it as the solution's `objective` (runner
+  protocol 2), which the evaluator compares with the reference's optimum. It is never
+  optimised.
+
+Failures, all `execution_error`: a `WcnfFormula` with soft clauses returned without
+`objective` (models retained before protocol 2 returned two values: at protocol 2 the
+runner cannot report their objective), refused before the search; an `objective` that is a
+list, dict or anything but an expression, Bool or int, refused likewise; and two optima of
+the same benefit whose `objective` values differ, which means the expression and the soft
+clauses disagree (the status names both values). An expression that agrees with the soft
+clauses but is scaled, offset or negated is caught by the evaluator as
+`objective_mismatch`. A satisfaction model may return `objective` too; it is then reported
+but not checked.
 
 ## Solving
 
@@ -84,6 +105,9 @@ problem.
 - Satisfaction status: CaDiCaL `True` is an answer; `False` before any answer is
   `unsat`, after one `complete`; still undecided at the deadline is `timeout`. Reaching
   the solution limit is `limit`, which is not a failure.
+- Each solution record carries `objective`, the returned objective's value on it (when
+  one was returned). EvalMaxSAT runs to the proven optimum without exposing improving
+  solutions, so there are no `incumbent` records.
 - Optimisation status: only a proven optimum (`OPTIMAL`) is reported; `UNSATISFIABLE`
   is `unsat`; a search not finished at the deadline is `timeout` (`the optimum was not
   proven`), with nothing reported, which the evaluator records as `execution_timeout`;
@@ -204,7 +228,8 @@ def create_model(instance):
     pool = DimacsVariablePool()
     add_to_weighted_container(packed_value, fits, to_cnf, formula, pool)
 
-    return (formula, pool), {"x": x}
+    # The objective in the problem's terms: the packed value, maximised.
+    return (formula, pool), {"x": x}, packed_value
 
 
 if __name__ == "__main__":
@@ -217,7 +242,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    (formula, pool), outputs = create_model(instances[index])
+    (formula, pool), outputs, objective = create_model(instances[index])
 
     solver = MaxSatSolver.from_name("EvalMaxSAT2022")
     # copy the formula into the solver: the hard clauses, then each soft clause with its weight
@@ -231,6 +256,7 @@ if __name__ == "__main__":
         value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
         for name, output in outputs.items():
             print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
     else:
         print("No solution")
 ```
@@ -248,7 +274,9 @@ the block never runs during evaluation.
 The run block copies the formula into the solver, because paramita has no call that loads
 a formula object into a solver: `add_clauses(formula.hard_clauses())` and
 `add_clause(clause, weight)` per soft clause for EvalMaxSAT, as in the example, or
-`add_clauses(formula.clauses())` for CaDiCaL. Outputs are read with `evaluate(e, truth)`
+`add_clauses(formula.clauses())` for CaDiCaL. An optimisation unpacks
+`(formula, pool), outputs, objective` and prints `evaluate(objective, truth)` after the
+outputs, as in the example. Outputs are read with `evaluate(e, truth)`
 over the solver's model by name, where `truth` maps every variable name in the model to its
 value (decoded through `pool`); `numpy.vectorize` applies it to nested lists. The header and run block of a satisfaction
 model, `bin_packing`:

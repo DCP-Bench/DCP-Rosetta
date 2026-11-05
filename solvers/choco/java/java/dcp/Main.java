@@ -45,6 +45,8 @@ public final class Main {
     private static final Gson GSON = new Gson();
     private static PrintStream protocol;
     private static long started;
+    // When the search started: right after the model was built (incumbent times count from here).
+    private static long searchStarted;
 
     private record Built(Model model, Outputs outputs) {}
 
@@ -52,6 +54,9 @@ public final class Main {
     private static double buildSeconds = 0;
     // Seconds from main's start until the request was read (benchmarking).
     private static double readSeconds = 0;
+    // An optimisation's proven optimum: the objective variable's value, the problem's own (the model states
+    // the problem's objective and direction; Choco reports the variable's value, not a negated internal one).
+    private static Integer optimum = null;
 
     private enum Outcome { LIMIT, EXHAUSTED, TIMEOUT }
 
@@ -89,6 +94,7 @@ public final class Main {
         long building = System.nanoTime();
         Built built = factory.make();
         buildSeconds = (System.nanoTime() - building) / 1e9;
+        searchStarted = System.nanoTime();
         Model model = built.model();
         List<JsonObject> found = new ArrayList<>();
         List<int[]> forbidden = new ArrayList<>();
@@ -106,6 +112,7 @@ public final class Main {
             // optimal when the search then ends without a stop.
             while (solver.solve()) {
                 best = obj.getValue();
+                incumbent(best);
                 bestValues = built.outputs().values();
                 bestVars = built.outputs().snapshot();
             }
@@ -119,18 +126,19 @@ public final class Main {
             }
             found.add(bestValues);
             forbidden.add(bestVars);
+            optimum = best;
             if (limit == 1) {
                 finish(Outcome.LIMIT, found);
                 return;
             }
             // Enumerate the other optima on fresh models with the objective
             // fixed; the optimum already found is forbidden like any other.
-            int optimum = best;
+            int fixedOptimum = best;
             factory = () -> {
                 Built fresh = build(build, settings, data);
                 IntVar fixed = (IntVar) fresh.model().getObjective();
                 fresh.model().clearObjective();
-                fresh.model().arithm(fixed, "=", optimum).post();
+                fresh.model().arithm(fixed, "=", fixedOptimum).post();
                 return fresh;
             };
             built = null;
@@ -233,6 +241,8 @@ public final class Main {
             Map<String, Object> record = new LinkedHashMap<>();
             record.put("type", "solution");
             record.put("values", values);
+            // Every solution of an optimisation is an optimum (the others are enumerated with it fixed).
+            if (optimum != null) record.put("objective", optimum);
             protocol.println(GSON.toJson(record));
         }
         switch (outcome) {
@@ -240,6 +250,17 @@ public final class Main {
             case TIMEOUT -> status("timeout", "");
             case EXHAUSTED -> status(found.isEmpty() ? "unsat" : "complete", "");
         }
+    }
+
+    // An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+    // seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+    private static void incumbent(int objective) {
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("type", "incumbent");
+        record.put("objective", objective);
+        record.put("seconds", (System.nanoTime() - searchStarted) / 1e9);
+        protocol.println(GSON.toJson(record));
+        protocol.flush();
     }
 
     private static void status(String status, String detail) {

@@ -162,7 +162,9 @@ def create_model(instance):
         clause(neg(total_penalty.ge(v)), ge(total_so_far, steps))
         clause(neg(ge(total_so_far, steps)), total_penalty.ge(v))
 
-    return formula, {"landing_times": landing_times, "total_penalty": total_penalty}
+    # The objective in the problem's terms: the total penalty (RC2's cost is the same
+    # penalty, paid per time unit away from each target).
+    return formula, {"landing_times": landing_times, "total_penalty": total_penalty}, total_penalty
 
 
 if __name__ == "__main__":
@@ -174,7 +176,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

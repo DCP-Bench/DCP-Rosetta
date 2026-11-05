@@ -70,6 +70,30 @@ SLOW = (HEAD + "array[1..16] of var 1..15: p;\n"
         "constraint forall(i, j in 1..16 where i < j)(p[i] != p[j]);\n"
         "constraint x+y = n;\nsolve satisfy;\n" + OUTPUT)
 
+# objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
+# constant term, with three optima (so the solutions enumerated at the optimum carry it too), and a
+# minimisation with a negative optimum.
+OBJECTIVE_MAX_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.maximize(3 + x + y)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+OBJECTIVE_MIN_REF = OBJECTIVE_MAX_REF.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+OBJECTIVE_MAX = ("int: n;\nvar 0..n: x;\nvar 0..n: y;\nconstraint x + y <= n;\n"
+                 "var int: objective = 3 + x + y;\nsolve maximize objective;\n" + OUTPUT)
+OBJECTIVE_MIN = OBJECTIVE_MAX.replace("x + y <= n", "x + y >= 1").replace(
+    "3 + x + y;\nsolve maximize", "x - 2 * y - 4;\nsolve minimize")
+
 # The binding run.py adds for fields MiniZinc's data interface cannot take as
 # they are. A ragged list of rows binds padded, with `<field>_len` beside it;
 # the last instance is rectangular, where `<field>_len` is bound all the same.
@@ -202,6 +226,10 @@ def main():
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=3)
+        maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
+        minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
+        results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
+                                       and minimised["accepted"])
         # Each instance must have been checked, not merely the first.
         ragged = check("ragged_field", RAGGED, reference=RAGGED_REFERENCE,
                        instances=RAGGED_INSTANCES, instance_count=3)

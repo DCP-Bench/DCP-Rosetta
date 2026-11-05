@@ -13,12 +13,13 @@ The standalone run block imports `numpy`, which is fine: the runner never execut
 ## Entrypoint
 
 ```python
-def create_model(instance) -> tuple[pysat.formula.CNF | pysat.formula.WCNF, dict]:
+def create_model(instance) -> tuple[pysat.formula.CNF, dict] | tuple[pysat.formula.WCNF, dict, objective]:
 ```
 
 The runner imports the file as module `candidate` and calls `create_model(instance)` once.
-It must return a 2-tuple `(formula, outputs)`; a third value (an objective) is refused with
-an error. Anything the module prints goes to stderr. Models retained before 2026-11-02 name
+A satisfaction problem returns `(formula, outputs)`; an optimisation returns
+`(formula, outputs, objective)`, with `objective` as in [Objective](#objective). Anything
+the module prints goes to stderr. Models retained before 2026-11-02 name
 it `build(instance)`, which the runner still accepts; write `create_model`.
 
 ## Instance
@@ -43,11 +44,37 @@ Anything else is an `execution_error`.
 
 ## Objective
 
-The **soft clauses of a `WCNF`**: `formula.append(clause, weight=w)`. The runner hands a
-`WCNF` with soft clauses to stratified RC2 (`RC2Stratified`), which minimises the total
-weight of the soft clauses an assignment **falsifies**; maximising pays the shortfall.
-Hard clauses are the constraints. A `CNF`, or a `WCNF` without soft clauses (only its
-hard clauses are kept), is a satisfaction problem solved with Glucose 4.2.
+Stated twice, for two readers:
+
+- **What RC2 optimises: the soft clauses of a `WCNF`**, `formula.append(clause, weight=w)`.
+  The runner hands a `WCNF` with soft clauses to stratified RC2 (`RC2Stratified`), which
+  minimises the total weight of the soft clauses an assignment **falsifies**; maximising
+  pays the shortfall. Hard clauses are the constraints. A `CNF`, or a `WCNF` without soft
+  clauses (only its hard clauses are kept), is a satisfaction problem solved with Glucose 4.2.
+- **What the runner reports: the third value, `objective`**, the problem's own objective
+  as an expression over the model's variables, in the problem's terms and direction (the
+  value the description's objective takes, constant included, never the cost or its
+  negation). One of:
+  - an `Integer`, or a `LinearExpr` over Integers (`makespan`, `x + y + 3`);
+  - a list of `(coefficient, term)` pairs, each `coefficient` an `int` and each `term` a
+    literal (counts 1 when true; a negative literal `-v` is true when `v` is false), an
+    `Integer`, a `LinearExpr`, or `True` for a constant (`(c, True)` adds `c`). The
+    knapsack value is `[(v, xi) for xi, v in zip(x, values)]`.
+
+  The runner evaluates it on each solution and reports it as the solution's `objective`
+  (runner protocol 2), which the evaluator compares with the reference's optimum. It is
+  never optimised: the soft clauses must state the same objective, up to the constant and
+  direction RC2's cost implies (cost = objective - c for a minimisation, c - objective for
+  a maximisation).
+
+Failures, all `execution_error` (the runner's `error` status, before any search):
+a `WCNF` with soft clauses returned without `objective` (models retained before protocol 2
+returned a 2-tuple: at protocol 2 the runner cannot report their objective), and an
+`objective` of another form. A satisfaction problem may return `objective` too; it is then
+reported but not checked. When two optima RC2 reports at the same cost have different
+`objective` values, the expression and the soft clauses disagree: the run ends with
+`error` (`execution_error`) naming both values. An expression that agrees with the soft
+clauses but is scaled, offset or negated is caught by the evaluator as `objective_mismatch`.
 
 ## Solving
 
@@ -61,6 +88,9 @@ hard clauses are kept), is a satisfaction problem solved with Glucose 4.2.
   `bool` leaves are skipped. A repeated output value is re-solved, not emitted. It stops
   with `complete` on unsat, on an empty blocking clause, or, for an optimisation, at the
   first answer whose cost exceeds the first one.
+- Each solution record carries `objective`, the value of the returned objective on it
+  (when one was returned). RC2 exposes no improving solutions, so there are no `incumbent`
+  records.
 - Time: the budget runs from before `create_model`, so building the formula spends it.
   Each search is stopped by PySAT's interrupt from a timer thread, 0.5 s before the budget
   for Glucose and 2.0 s before it for RC2. A SIGALRM armed for the whole budget can only fire in
@@ -132,7 +162,11 @@ def create_model(instance):
         if v > 0:
             formula.append([xi], weight=v)
 
-    return formula, {"x": x}
+    # The objective in the problem's terms: the total value of the packed items
+    # (RC2's cost is the value left behind).
+    objective = [(v, xi) for xi, v in zip(x, values)]
+
+    return formula, {"x": x}, objective
 
 
 if __name__ == "__main__":
@@ -144,7 +178,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()
@@ -168,6 +202,8 @@ so the block never runs during evaluation.
 
 The run block fits the model, so it imports only what that model needs:
 
+- Unpacking: `formula, outputs, objective = create_model(...)` for an optimisation, as in
+  the example, `formula, outputs = create_model(...)` for a satisfaction problem.
 - Solving: a model that returns a `WCNF` with soft clauses calls `RC2Stratified`, as in the
   example (plain `RC2` took minutes on some models the stratified form solves in seconds).
   A model that returns a `CNF` solves it once with `Solver`:

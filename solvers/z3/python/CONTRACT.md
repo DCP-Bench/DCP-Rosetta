@@ -48,18 +48,26 @@ as its `as_long()`; any other sort (a `Real`, a bit-vector) is rejected.
 
 Set on the returned `z3.Optimize` with `solver.minimize(expr)` or `solver.maximize(expr)`,
 with `expr` an `Int`-sorted Z3 expression; exactly one objective, or the run is an
-`execution_error`. The runner reads it back with `objectives()`: Z3 stores a maximised
-term already negated, so the runner always minimises `objectives()[0]`. It builds its own
+`execution_error`. The runner reads it back with `objectives()`. Z3 stores a maximised
+term negated, as `-(expr)`; when the term is a negation and the solver's SMT-LIB text says
+`maximize`, the runner maximises `expr` itself, so that the objective values it reports
+(incumbents included) are the model's own and not their negation. It builds its own
 `z3.Optimize` over the assertions, requires the proven lower and upper bound to be the same
 finite integer, then adds `objective == best` before enumerating. A `z3.Solver`, or a
 `z3.Optimize` with no objective, means satisfaction.
+
+The objective reported with each solution is the model's objective (`expr`, unnegated)
+evaluated on that solution's model; the incumbents are the values of `expr` on each
+improving model z3's `on_model` callback hands over.
 
 ## Solving
 
 - The only parameter set is Z3's `timeout`, in milliseconds, on each `check()`: what is
   left of `execution_timeout`, measured from the start of the run (including `create_model`).
 - Optimisation: `check()` on the runner's `z3.Optimize`. `unsat` gives `unsat`; `unknown`,
-  or `sat` with lower and upper bound apart, gives `timeout`.
+  or `sat` with lower and upper bound apart, gives `timeout`. Each strictly better model
+  Z3 hands to `set_on_model` during that `check()` is reported as an `incumbent` record,
+  `seconds` from right after `build`.
 - Enumeration: a plain `z3.Solver` over the constraints (plus `objective == best`).
   `sat` reports a solution; `unsat` gives `unsat` on the first check and `complete`
   after; `unknown` gives `timeout`.

@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -102,6 +102,35 @@ OPTIMAL_MIN = optimal("minimize")
 STEP_ONE = optimal("minimize").replace(
     BRANCH, "    branch(*this, v[0], INT_VAL_MAX());\n    branch(*this, v[1], INT_VAL_MED());\n")
 OPTIMAL_MAX = optimal("maximize")
+# objective_values: every reported objective must be the problem's own value. A maximisation whose objective has
+# a constant term (3 + x + y under x + y <= n, optimum 5) and a minimisation with a negative optimum (x - y - 3,
+# optimum -5).
+OBJECTIVE_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.DIRECTION(EXPRESSION)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+CONSTANT_MAX_REF = OBJECTIVE_REF.replace("DIRECTION", "maximize").replace("EXPRESSION", "3 + x + y")
+NEGATIVE_MIN_REF = OBJECTIVE_REF.replace("DIRECTION", "minimize").replace("EXPRESSION", "x - y - 3")
+
+
+def objective_model(direction, expression):
+    return (HEAD + SUM + "    linear(*this, xy, IRT_LQ, n);\n"
+            f"    IntVar objective = expr(*this, {expression});\n"
+            f"    {direction}(objective);\n" + BRANCH + OUTPUTS + CLOSE)
+
+
+CONSTANT_MAX = objective_model("maximize", "3 + v[0] + v[1]")
+NEGATIVE_MIN = objective_model("minimize", "v[0] - v[1] - 3")
 # Restarts with activity-based branching. Optimality must still be proven.
 RESTARTS = (HEAD + SUM + "    linear(*this, xy, IRT_GQ, n);\n"
             "    IntVar total(*this, 0, 2 * n);\n"
@@ -569,6 +598,15 @@ def main():
         check("unbranched_aux", UNBRANCHED, solution_limit=3)
         check("optimum_enumeration", OPTIMAL_MIN, reference=OPTIMIZING, solution_limit=2)
         check("optimum_one_below_first", STEP_ONE, reference=OPTIMIZING, solution_limit=1)
+        # The first solution (total 3) is not optimal: the branch-and-bound reports it, then the optimum 2.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP_ONE, reference=OPTIMIZING))
+        # The first solution (x=0, y=2, total 2) is not optimal: the incumbents rise to the optimum 4.
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL_MAX, reference=MAXIMIZING), minimize=False)
+        # Acceptance includes every reported objective being the reference's optimum.
+        objective_max = check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAX_REF)["accepted"]
+        objective_min = check("objective_values", NEGATIVE_MIN, reference=NEGATIVE_MIN_REF)["accepted"]
+        results["objective_values"] = objective_max and objective_min
         check("restarts", RESTARTS, reference=OPTIMIZING, solution_limit=3)
         check("bool_output", BOOL_OUTPUT, reference=FLAG_REFERENCE, solution_limit=2)
         check("constant_output", CONSTANT_OUTPUT, reference=CONSTANT_REFERENCE)

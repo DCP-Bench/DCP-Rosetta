@@ -19,6 +19,13 @@ soft clauses, and `solve` minimises their total. `m.obj += w * lit` pays `w` whe
 true; to maximise, minimise the negation (`m.obj += -expr`). The `m.obj[w] += lit` form of
 hermax 1.2 raises `TypeError` since 1.3.0.
 
+**The objective's value is the problem's own.** `result.cost` is the value of what was
+minimised, so for a maximisation it is the negation (or the shortfall, if you paid for a
+complement). Keep the objective as an expression in the problem's terms and direction,
+give its negation (or its cost form) to `m.obj`, and read the value with `result[expr]`;
+a function that builds the model returns that expression beside the model and the
+variables to print (see the example below).
+
 ## Pick an interface
 
 Read this file and the interface below.
@@ -99,9 +106,14 @@ x = m.bool_vector("x", len(values))
 
 # The packed items weigh no more than the backpack can carry.
 m &= (sum(weights[i] * x[i] for i in range(len(x))) <= capacity)
-# Pack the most valuable selection.
-m.obj += -sum(values[i] * x[i] for i in range(len(x)))
+# Pack the most valuable selection: the objective is the packed value, maximised, so
+# its negation is minimised.
+packed_value = sum(values[i] * x[i] for i in range(len(x)))
+m.obj += -packed_value
 ```
+
+`result[packed_value]` is the objective's value; `result.cost` is its negation. Built
+in a function, the model returns `m, {"x": x}, packed_value`.
 
 ## Solving
 
@@ -116,7 +128,7 @@ m.obj += -sum(values[i] * x[i] for i in range(len(x)))
 | `error` | the solve failed |
 
 `result.cost` is the minimised objective's value, constant included, so a maximisation
-written as `m.obj += -expr` reports `-expr`'s value. `result.ok` is true for `sat`,
+written as `m.obj += -expr` reports `-expr`'s value: report `result[expr]` instead. `result.ok` is true for `sat`,
 `optimum` and `interrupted_sat`.
 
 ## All solutions

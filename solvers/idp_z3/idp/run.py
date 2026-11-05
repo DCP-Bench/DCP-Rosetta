@@ -447,6 +447,23 @@ def check(solver, deadline):
     return solver.check()
 
 
+def incumbents(target, goal, started):
+    """A z3 `set_on_model` callback: each strictly better model the optimiser reports while it searches is
+    emitted as an incumbent record, with the seconds since `started` (the end of the build)."""
+    last = []
+
+    def improved(model):
+        value = model.eval(target, model_completion=True)
+        if not z3.is_int_value(value):
+            return
+        value = value.as_long()
+        if last and not (value < last[-1] if goal == "minimize" else value > last[-1]):
+            return
+        last.append(value)
+        emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+    return improved
+
+
 def load(request):
     source = (INPUT / "model.idp").read_text()
     instance = request["instance"]
@@ -477,6 +494,7 @@ def solve(request):
         theory._add_assignment(optimizer)
         handle = (optimizer.minimize if goal == "minimize" else optimizer.maximize)(target)
         BUILD_SECONDS = time.monotonic() - building
+        optimizer.set_on_model(incumbents(target, goal, time.monotonic()))
         status = check(optimizer, deadline)
         if status == z3.unsat:
             return finish("unsat")
@@ -513,7 +531,11 @@ def solve(request):
                               for index, term in terms_.items()})
                   for name, terms_ in shown.items()}
         terms = [term for terms_ in shown.values() for term in terms_.values()]
-        emit({"type": "solution", "values": values})
+        record = {"type": "solution", "values": values}
+        if goal is not None:
+            # The objective symbol's value on this solution: the problem's own, as the theory defines it.
+            record["objective"] = python(model.eval(target, model_completion=True))
+        emit(record)
         count += 1
         if count == request["solution_limit"]:
             break

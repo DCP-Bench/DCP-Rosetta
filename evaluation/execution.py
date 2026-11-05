@@ -230,8 +230,64 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
                          "oom_killed": run.oom_killed}
 
 
+def incumbents(records):
+    """The improving solutions a runner reported during an optimisation search, as [seconds, objective]: its
+    `incumbent` records (seconds since the search started), in order. They are evidence for an anytime
+    measure, never a result: the evaluator checks their shape and otherwise ignores them."""
+    found = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "incumbent":
+            continue
+        objective, seconds = x.get("objective"), x.get("seconds")
+        if (not isinstance(objective, int) or isinstance(objective, bool) or not isinstance(seconds, (int, float))
+                or isinstance(seconds, bool) or seconds < 0 or (found and seconds < found[-1][0])):
+            raise EvaluationError("invalid_output", "An incumbent record needs an integer objective and "
+                                                    "nondecreasing seconds since the search started")
+        found.append([seconds, objective])
+    return found
+
+
+# From this protocol version on, every solution record of an optimisation carries its objective.
+OBJECTIVE_PROTOCOL = 2
+
+
+def check_objectives(records, optimum, protocol_version=1):
+    """The objective values a runner reported for an optimisation whose solutions the reference accepted as
+    optimal: each must be the problem's own value, so the optimum, as the reference states it. A model whose
+    objective is scaled, offset or negated, or a runner that passes on the solver's internal value (a MaxSAT
+    cost, a negated maximisation), fails here. The improving solutions must improve and end at that optimum.
+    Returns the objectives reported with the solutions (None where a runner before OBJECTIVE_PROTOCOL gave none)."""
+    reported = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "solution":
+            continue
+        value = x.get("objective")
+        if value is None and protocol_version < OBJECTIVE_PROTOCOL:
+            reported.append(None)
+            continue
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise EvaluationError("invalid_output", "A solution record of an optimisation needs its integer objective")
+        if value != optimum:
+            raise EvaluationError("objective_mismatch", f"The runner reported objective {value} for a solution the "
+                                  f"reference accepts as optimal, whose objective is {optimum}: the model's objective "
+                                  "must be the problem's own value, without scaling, offset or change of sign")
+        reported.append(value)
+    found = [objective for _, objective in incumbents(records)]
+    if found:
+        falling, rising = (all(b < a for a, b in zip(found, found[1:])), all(b > a for a, b in zip(found, found[1:])))
+        if found[-1] != optimum or not (falling or rising):
+            raise EvaluationError("objective_mismatch", f"The improving solutions reported {found[:3]}"
+                                  f"{' ... ' + str(found[-1]) if len(found) > 3 else ''}; they must improve and end "
+                                  f"at the optimum, {optimum}, in the problem's own objective")
+    return reported
+
+
 def validate_records(records):
     if not records or not all(isinstance(x, dict) for x in records):
+        raise EvaluationError("invalid_output", "Expected runner JSON records")
+    incumbents(records)  # their shape; they may come anywhere before the status
+    records = [x for x in records if x.get("type") != "incumbent"]
+    if not records:
         raise EvaluationError("invalid_output", "Expected runner JSON records")
     if records[-1].get("type") != "status" or any(x.get("type") != "solution" for x in records[:-1]):
         raise EvaluationError("invalid_output", "Expected solution records followed by exactly one status")

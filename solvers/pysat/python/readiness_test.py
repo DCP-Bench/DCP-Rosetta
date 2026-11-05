@@ -13,8 +13,17 @@ computes, in both directions; `optimal_enumeration` that every enumerated answer
 is optimal; `suboptimal_rejected` that the evaluator still catches a model whose
 soft clauses state the wrong objective; and `optimization_timeout` that an RC2
 search stopped at the budget ends as a timeout, never as an answer.
-`rejects_objective_tuple` checks that an objective returned beside the formula
-is refused rather than ignored.
+
+Runner protocol 2: an optimisation also returns its objective, in the problem's
+own terms, as an expression the runner evaluates on each solution.
+`objective_values` checks that the reported objective is the problem's value
+where the soft clauses' cost is not: a maximisation with a constant term
+(`3 + x + y`, a LinearExpr) and a minimisation with a negative optimum
+(`x + y - 10`, as (coefficient, literal) pairs), both accepted;
+`objective_required` that an optimisation without the objective is refused;
+`objective_consistency` that an objective that differs between two optima of
+the same cost ends the run with an error; and `objective_mismatch` that the
+evaluator catches a scaled objective.
 
 `native_api` guards the mistake this integration was rebuilt to fix:
 submissions are written against PySAT itself, not a modelling layer shipped
@@ -77,12 +86,23 @@ OPTIMAL = (HEAD + "    engine.add_linear(x + y >= n)\n"
            "        for var in (x, y):\n"
            "            if WEIGHT > 0:\n"
            "                formula.append([-var.equals(v)], weight=WEIGHT)\n"
-           '    return formula, {"x": x, "y": y}\n')
-MINIMIZING_MODEL = OPTIMAL.replace("WEIGHT", "v")
-MAXIMIZING_MODEL = OPTIMAL.replace("WEIGHT", "(n - v)")
-# An objective returned beside the formula, which the runner must refuse.
-OBJECTIVE_TUPLE = (HEAD + "    engine.add_linear(x + y >= n)\n"
-                   '    return engine.clausify(), {"x": x, "y": y}, ("minimize", x)\n')
+           '    return formula, {"x": x, "y": y}, OBJECTIVE\n')
+MINIMIZING_MODEL = OPTIMAL.replace("WEIGHT", "v").replace("OBJECTIVE", "x + y")
+MAXIMIZING_MODEL = OPTIMAL.replace("WEIGHT", "(n - v)").replace("OBJECTIVE", "x + y")
+# The problem's objective where the soft clauses' cost differs from it: a constant
+# term in a maximisation (cost 0 at the optimum), and a negative minimum, stated
+# through the literals x == v and y == v.
+CONSTANT_REFERENCE = MAXIMIZING.replace("model.maximize(x + y)", "model.maximize(3 + x + y)")
+CONSTANT_MODEL = OPTIMAL.replace("WEIGHT", "(n - v)").replace("OBJECTIVE", "x + y + 3")
+NEGATIVE_REFERENCE = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
+NEGATIVE_MODEL = OPTIMAL.replace("WEIGHT", "v").replace(
+    "OBJECTIVE", "[(v, var.equals(v)) for v in range(n + 1) for var in (x, y)] + [(-10, True)]")
+# An optimisation without its objective, which the runner must refuse.
+WITHOUT_OBJECTIVE = OPTIMAL.replace("WEIGHT", "v").replace(", OBJECTIVE", "")
+# An objective that is not the one the soft clauses state: x alone differs between
+# the optima of x + y, which all cost the same; 2 * (x + y) is scaled.
+INCONSISTENT_MODEL = OPTIMAL.replace("WEIGHT", "v").replace("OBJECTIVE", "x")
+SCALED_MODEL = OPTIMAL.replace("WEIGHT", "v").replace("OBJECTIVE", "2 * x + 2 * y")
 # A pigeonhole the oracle cannot refute in two seconds, under a soft clause so
 # that RC2 rather than plain Glucose has to be interrupted.
 SLOW_OPTIMAL = (HEAD + "    engine.add_linear(x + y == n)\n"
@@ -93,7 +113,7 @@ SLOW_OPTIMAL = (HEAD + "    engine.add_linear(x + y == n)\n"
                 "    formula = WCNF()\n"
                 "    formula.extend(engine.clausify().clauses)\n"
                 "    formula.append([-x.equals(n)], weight=1)\n"
-                '    return formula, {"x": x, "y": y}\n')
+                '    return formula, {"x": x, "y": y}, [(1, x.equals(n))]\n')
 # Solves, then corrupts the protocol stream the runner owns.
 MALFORMED = (HEAD + "    engine.add_linear(x + y == n)\n"
              "    import os\n"
@@ -250,8 +270,13 @@ def main():
         check("optimal_enumeration", MINIMIZING_MODEL, reference=OPTIMIZING, solution_limit=3)
         check("suboptimal_rejected", MAXIMIZING_MODEL, reference=OPTIMIZING,
               expected={"suboptimal_solution"})
-        check("rejects_objective_tuple", OBJECTIVE_TUPLE, reference=OPTIMIZING,
-              expected={"execution_error", "invalid_output"})
+        check("objective_constant", CONSTANT_MODEL, reference=CONSTANT_REFERENCE)
+        check("objective_negative", NEGATIVE_MODEL, reference=NEGATIVE_REFERENCE)
+        results["objective_values"] = results.pop("objective_constant") and results.pop("objective_negative")
+        check("objective_required", WITHOUT_OBJECTIVE, reference=OPTIMIZING, expected={"execution_error"})
+        check("objective_consistency", INCONSISTENT_MODEL, reference=OPTIMIZING,
+              expected={"execution_error"}, solution_limit=3)
+        check("objective_mismatch", SCALED_MODEL, reference=OPTIMIZING, expected={"objective_mismatch"})
         check("optimization_timeout", SLOW_OPTIMAL, reference=OPTIMIZING,
               expected={"execution_timeout"}, execution_timeout=2)
         check("native_api", NATIVE)

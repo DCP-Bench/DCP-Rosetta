@@ -6,9 +6,19 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 keeps its output as the readiness evidence.
 
 Every candidate follows the contract in run.py: `create_model` returns
-`(formula, pool), outputs`, a CnfFormula for satisfaction and a WcnfFormula,
-whose soft clauses are the objective, for optimisation. MaxSAT maximises, so a
-minimising candidate encodes the negated objective.
+`(formula, pool), outputs`, a CnfFormula for satisfaction, and
+`(formula, pool), outputs, objective` for optimisation: a WcnfFormula whose soft
+clauses are what MaxSAT optimises, and the problem's own objective, which the
+runner reports (runner protocol 2). MaxSAT maximises, so a minimising candidate
+encodes the negated objective in its soft clauses.
+
+`objective_values` checks that the reported objective is the problem's value
+where the soft clauses' benefit is not: a maximisation with a constant term
+(`3 + x + y`) and a minimisation with a negative optimum (`x + y - 10`), both
+accepted; `objective_required` that an optimisation without the objective is
+refused; `objective_consistency` that an objective that differs between two
+optima of the same benefit ends the run with an error; and `objective_mismatch`
+that the evaluator catches a scaled objective.
 
 `minimization` and `maximization` check that the optimum the runner proves is
 the one the reference computes, in both directions; `optimal_enumeration` that
@@ -19,8 +29,8 @@ that further optima are found for an objective over 2000 Bools;
 every solution is optimal; `suboptimal_rejected` that the evaluator still
 catches a model that optimises the wrong direction; `optimization_timeout` that
 an EvalMaxSAT search stopped at the budget ends as a timeout, never as an
-answer. `rejects_third_value` and `wrong_container` check that the old forms
-(an objective as a third value, constraints as a list, no pool) are refused.
+answer. `wrong_container` checks that the old forms (constraints as a list, no
+pool) are refused.
 `wcnf_without_soft` checks that a WcnfFormula without soft clauses is solved as
 a satisfaction problem and enumerated in full, `free_output_bool` that an output
 Bool the formula never mentions is enumerated both ways, and `empty_constraints`
@@ -93,21 +103,34 @@ SATISFY = ("    formula, pool = CnfFormula(), DimacsVariablePool()\n"
            "    return (formula, pool), outputs\n")
 
 
-def optimising(objective):
-    """The encoding that maximises `objective` under the constraints."""
+def optimising(soft, value=None):
+    """The encoding that maximises `soft` under the constraints, returning `value`,
+    the problem's objective, as the third value when one is given."""
+    third = "" if value is None else f", {value}"
     return ("    formula, pool = WcnfFormula(), DimacsVariablePool()\n"
-            f"    add_to_weighted_container({objective}, And(subject), to_cnf, formula, pool)\n"
-            "    return (formula, pool), outputs\n")
+            f"    add_to_weighted_container({soft}, And(subject), to_cnf, formula, pool)\n"
+            f"    return (formula, pool), outputs{third}\n")
 
 
 GOOD = PRELUDE + "    subject.append(x + y == n)\n" + OUTPUTS + SATISFY
 # x + y >= n, minimised (MaxSAT maximises the negation) or maximised.
-MINIMIZING_MODEL = PRELUDE + "    subject.append(x + y >= n)\n" + OUTPUTS + optimising("-(x + y)")
-MAXIMIZING_MODEL = PRELUDE + "    subject.append(x + y >= n)\n" + OUTPUTS + optimising("x + y")
-# The old forms: an objective as a third value, constraints as a list, and a
-# formula without its pool. The runner must refuse each rather than guess.
-THIRD_VALUE = MINIMIZING_MODEL.replace("    return (formula, pool), outputs\n",
-                                       '    return (formula, pool), outputs, ("minimize", x + y)\n')
+AT_LEAST = PRELUDE + "    subject.append(x + y >= n)\n" + OUTPUTS
+MINIMIZING_MODEL = AT_LEAST + optimising("-(x + y)", "x + y")
+MAXIMIZING_MODEL = AT_LEAST + optimising("x + y", "x + y")
+# The problem's objective where the benefit differs from it: a constant term in a
+# maximisation, and a negative minimum.
+CONSTANT_REFERENCE = MAXIMIZING.replace("model.maximize(x + y)", "model.maximize(3 + x + y)")
+CONSTANT_MODEL = AT_LEAST + optimising("x + y", "3 + x + y")
+NEGATIVE_REFERENCE = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
+NEGATIVE_MODEL = AT_LEAST + optimising("-(x + y)", "x + y - 10")
+# An optimisation without its objective, which the runner must refuse.
+WITHOUT_OBJECTIVE = AT_LEAST + optimising("-(x + y)")
+# An objective that is not the one the soft clauses state: x alone differs between
+# the optima of x + y, which all have the same benefit; 2 * (x + y) is scaled.
+INCONSISTENT_MODEL = AT_LEAST + optimising("-(x + y)", "x")
+SCALED_MODEL = AT_LEAST + optimising("-(x + y)", "2 * (x + y)")
+# The old forms: constraints as a list, and a formula without its pool. The
+# runner must refuse each rather than guess.
 AS_LIST = PRELUDE + "    subject.append(x + y == n)\n" + OUTPUTS + "    return subject, outputs\n"
 NO_POOL = GOOD.replace("    return (formula, pool), outputs\n", "    return formula, outputs\n")
 # A WcnfFormula without soft clauses: the objective 0 adds none, so it is a
@@ -116,7 +139,7 @@ WCNF_WITHOUT_SOFT = PRELUDE + "    subject.append(x + y == n)\n" + OUTPUTS + opt
 # A zero-weight objective adds a soft clause of weight 0: optimisation, in which
 # all three solutions are optimal.
 CONSTANT_OBJECTIVE = (PRELUDE + "    subject.append(x + y == n)\n" + OUTPUTS
-                      + optimising("0 * x + 4"))
+                      + optimising("0 * x + 4", "4"))
 # An output Bool z the formula never mentions. The reference leaves z free, so
 # there are six solutions, and the runner must find them all.
 FREE_OUTPUT = (PRELUDE + "    subject.append(x + y == n)\n"
@@ -161,7 +184,8 @@ print(json.dumps(solution))
 # 2000 Bools, such as at least ten of them, is beyond EvalMaxSAT in two minutes.)
 WIDE_OBJECTIVE = (PRELUDE + "    subject.append(x + y >= n)\n"
                   "    many = [Bool(f\"m{i}\") for i in range(2000)]\n" + OUTPUTS
-                  + optimising("-(x + y + sum((1 + i % 10) * b for i, b in enumerate(many)))"))
+                  + optimising("-(x + y + sum((1 + i % 10) * b for i, b in enumerate(many)))",
+                               "x + y + sum((1 + i % 10) * b for i, b in enumerate(many))"))
 # A pigeonhole of 18 pigeons in 17 holes, under the same unary x and y. It is
 # unsatisfiable and, unlike 13 in 12, too hard for CaDiCaL to refute in two
 # seconds, so the search is stopped at the budget.
@@ -174,11 +198,11 @@ PIGEONHOLE = """
 """
 SLOW = PRELUDE + "    subject.append(x + y == n)\n" + PIGEONHOLE + OUTPUTS + SATISFY
 SLOW_OPTIMAL = (PRELUDE + "    subject.append(x + y >= n)\n" + PIGEONHOLE + OUTPUTS
-                + optimising("-(x + y)"))
+                + optimising("-(x + y)", "x + y"))
 # Contradictory hard units. EvalMaxSAT writes a `c ...` line to standard output
 # while it loads them.
 CONTRADICTION = (PRELUDE + "    a = Bool(\"a\")\n    subject.extend([a, ~a])\n"
-                 + "    subject.append(x + y >= n)\n" + OUTPUTS + optimising("-(x + y)"))
+                 + "    subject.append(x + y >= n)\n" + OUTPUTS + optimising("-(x + y)", "x + y"))
 # A candidate that returns an output the runner cannot read.
 MALFORMED = (PRELUDE + "    subject.append(x + y == n)\n"
              + '    outputs = {"x": "not an expression", "y": y}\n' + SATISFY)
@@ -358,7 +382,13 @@ def main():
         exhausted("constant_objective", check("constant_objective", CONSTANT_OBJECTIVE, solution_limit=5), 3)
         check("suboptimal_rejected", MAXIMIZING_MODEL, reference=OPTIMIZING,
               expected={"suboptimal_solution"})
-        check("rejects_third_value", THIRD_VALUE, reference=OPTIMIZING, expected={"execution_error"})
+        check("objective_constant", CONSTANT_MODEL, reference=CONSTANT_REFERENCE)
+        check("objective_negative", NEGATIVE_MODEL, reference=NEGATIVE_REFERENCE)
+        results["objective_values"] = results.pop("objective_constant") and results.pop("objective_negative")
+        check("objective_required", WITHOUT_OBJECTIVE, reference=OPTIMIZING, expected={"execution_error"})
+        check("objective_consistency", INCONSISTENT_MODEL, reference=OPTIMIZING,
+              expected={"execution_error"}, solution_limit=3)
+        check("objective_mismatch", SCALED_MODEL, reference=OPTIMIZING, expected={"objective_mismatch"})
         check("wrong_container_list", AS_LIST, expected={"execution_error"})
         check("wrong_container_pool", NO_POOL, expected={"execution_error"})
         results["wrong_container"] = (results.pop("wrong_container_list")

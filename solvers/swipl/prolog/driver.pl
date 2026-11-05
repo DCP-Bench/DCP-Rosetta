@@ -113,7 +113,7 @@ search(Instance, Limit, Options, Optimum, Status) :-
     (   build(Instance, Vars, Outputs, Objective),
         fix_objective(Objective, Optimum),
         labeling(Options, Vars),
-        emit_solution(Outputs),
+        emit_solution(Outputs, Optimum),
         nb_getval(solution_count, Count),
         Count >= Limit
     ->  Status = limit
@@ -170,7 +170,9 @@ check_output(Other) :-
 % ---------------------------------------------------------------------------
 % Output
 
-emit_solution(Outputs) :-
+% An optimisation's solution carries the optimum, the value of the submission's
+% objective expression (evaluated with is/2), so the problem's own value.
+emit_solution(Outputs, Optimum) :-
     values_dict(Outputs, Dict),
     with_output_to(string(Text), json_write_dict(current_output, Dict, [width(0)])),
     nb_getval(solutions_seen, Seen),
@@ -178,7 +180,10 @@ emit_solution(Outputs) :-
     (   memberchk(Text, Seen)
     ->  true
     ;   nb_setval(solutions_seen, [Text|Seen]),
-        record(_{type: solution, values: Dict}),
+        (   Optimum == none
+        ->  record(_{type: solution, values: Dict})
+        ;   record(_{type: solution, values: Dict, objective: Optimum})
+        ),
         nb_getval(solution_count, Count),
         Next is Count + 1,
         nb_setval(solution_count, Next)

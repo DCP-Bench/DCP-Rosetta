@@ -29,9 +29,11 @@ def create_model(instance):
         m &= x.col(j).at_most_one()
 
     # Minimise the total cost of all the assignments made.
-    m.obj += sum(cost[i][j] * x[i][j] for i in range(n_tasks) for j in range(n_people))
+    total_cost = sum(cost[i][j] * x[i][j] for i in range(n_tasks) for j in range(n_people))
+    m.obj += total_cost
 
-    return m, {"x": x}
+    # The objective in the problem's terms: the total cost of the assignment, the cost minimised above.
+    return m, {"x": x}, total_cost
 
 
 if __name__ == "__main__":
@@ -41,11 +43,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

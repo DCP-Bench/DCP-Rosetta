@@ -28,9 +28,11 @@ def create_model(instance):
         m &= (sum(x[i] for i in covering[t]) == 1)
 
     # Minimise the number of selected shifts.
-    m.obj += sum(x[i] for i in range(num_shifts))
+    num_selected = sum(x[i] for i in range(num_shifts))
+    m.obj += num_selected
 
-    return m, {"x": x}
+    # The objective in the problem's terms: the number of selected shifts, the cost minimised above.
+    return m, {"x": x}, num_selected
 
 
 if __name__ == "__main__":
@@ -40,11 +42,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

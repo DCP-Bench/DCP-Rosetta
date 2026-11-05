@@ -20,7 +20,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -44,6 +44,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value, not clingo's cost (negated for a #maximize).
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 
 GOOD = """val(0..N) :- n(N).
 1 { xv(X) : val(X) } 1.
@@ -64,6 +68,9 @@ y(Y) :- yv(Y).
 #show x/1.
 #show y/1.
 """
+# The objective's constant as a weighted element of its own.
+CONSTANT_MAX = OPTIMAL.replace("#DIRECTION { X + Y", "#maximize { 3,offset ; X + Y")
+NEGATIVE_MIN = OPTIMAL.replace("#DIRECTION { X + Y", "#minimize { -10,offset ; X + Y")
 # Shows nothing, so the runner cannot tell what the declared outputs are.
 MALFORMED = "val(0..N) :- n(N).\n1 { xv(X) : val(X) } 1.\n"
 UNSATISFIABLE = "x(0).\ny(0).\n:- #true.\n#show x/1.\n#show y/1.\n"
@@ -177,6 +184,17 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        # Each strictly better model of the optimisation phase is an incumbent, ending at the optimum; a
+        # #maximize cost is the negated sum, so the maximising run must report the sum itself.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
+            minimize=False)
+        # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", NEGATIVE_MIN, reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=3)

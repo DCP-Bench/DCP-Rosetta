@@ -48,6 +48,8 @@ public final class Main {
     private static final Gson GSON = new Gson();
     private static PrintStream protocol;
     private static long started;
+    // When the search started: right after the model was built (incumbent times count from here).
+    private static long searchStarted;
     // Seconds the submission took to build the model (build, then the driver's objective and branching), for benchmarking.
     private static double buildSeconds = 0;
     // Seconds from main's start until the request was read (benchmarking).
@@ -114,6 +116,7 @@ public final class Main {
         }
         Supplier<Runnable[]> branching = Searches.firstFailBinary(decisions.toArray(new CPIntVar[0]));
         buildSeconds = (System.nanoTime() - building) / 1e9;
+        searchStarted = System.nanoTime();
 
         List<JsonObject> found = new ArrayList<>();
         Outcome outcome;
@@ -123,7 +126,10 @@ public final class Main {
             IntObjective bound = model.minimise() ? cp.minimize(objective) : cp.maximize(objective);
             DFSearch search = CPFactory.makeDfs(cp, branching);
             long[] bestValue = {0};
-            search.onSolution(() -> bestValue[0] = objective.min());
+            search.onSolution(() -> {
+                bestValue[0] = objective.min();
+                incumbent(bestValue[0]);
+            });
             SearchStatistics stats = search.optimize(bound, timeUp);
             if (!stats.isCompleted()) {
                 status("timeout", "Candidate optimum was not proven");
@@ -135,6 +141,7 @@ public final class Main {
             }
             // The optimum is proven. Fix it at the root and enumerate the optima.
             cp.post(CPFactory.eq(objective, (int) bestValue[0]));
+            optimum = bestValue[0];
             outcome = enumerate(cp, branching, out, limit, timeUp, found);
         }
         finish(outcome, found);
@@ -201,11 +208,17 @@ public final class Main {
         build.invoke(null, inst, model, out);
     }
 
+    // An optimisation's proven optimum: the declared objective variable's value, the problem's own (MaxiCP
+    // optimises it in the declared direction and reports the variable's value, not a negated internal one).
+    private static Long optimum = null;
+
     private static void finish(Outcome outcome, List<JsonObject> found) {
         for (JsonObject values : found) {
             Map<String, Object> record = new LinkedHashMap<>();
             record.put("type", "solution");
             record.put("values", values);
+            // Every solution of an optimisation is an optimum (enumerated with the objective fixed at it).
+            if (optimum != null) record.put("objective", optimum);
             protocol.println(GSON.toJson(record));
         }
         switch (outcome) {
@@ -213,6 +226,17 @@ public final class Main {
             case TIMEOUT -> status("timeout", "");
             case EXHAUSTED -> status(found.isEmpty() ? "unsat" : "complete", "");
         }
+    }
+
+    // An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+    // seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+    private static void incumbent(long objective) {
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("type", "incumbent");
+        record.put("objective", objective);
+        record.put("seconds", (System.nanoTime() - searchStarted) / 1e9);
+        protocol.println(GSON.toJson(record));
+        protocol.flush();
     }
 
     private static void status(String status, String detail) {

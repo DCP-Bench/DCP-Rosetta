@@ -131,6 +131,7 @@ public final class Runner {
         List<IntVar> leaves = model.leaves();
         int base = store.level;
         int emitted = 0;
+        Integer objective = null;
         // Propagate once at the base level before any search. JaCoP drops a
         // constraint that is first found satisfied inside a search level and
         // does not restore it when that level is removed, so every constraint
@@ -152,7 +153,11 @@ public final class Runner {
                 status("timeout", "the optimum was not proven");
                 return;
             }
-            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", optimum.values()));
+            // The problem's objective: the model's objective variable, whose value is the cost JaCoP
+            // minimised, or its negation for a maximisation.
+            objective = model.maximize ? -optimum.cost() : optimum.cost();
+            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", optimum.values())
+                    .put("objective", objective));
             emitted = 1;
             if (emitted >= limit) {
                 status("limit", "");
@@ -177,7 +182,10 @@ public final class Runner {
                 status(next.timedOut() ? "timeout" : emitted > 0 ? "complete" : "unsat", "");
                 return;
             }
-            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", next.values()));
+            JSONObject record = new JSONObject().put("type", "solution").put("values", next.values());
+            // Further optima of an optimisation, enumerated with the cost fixed at the optimum.
+            if (objective != null) record.put("objective", objective.intValue());
+            PROTOCOL.println(record);
             emitted++;
             if (emitted < limit && !block(store, leaves, next.leafValues())) {
                 status("complete", "");

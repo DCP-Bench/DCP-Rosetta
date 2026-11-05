@@ -90,6 +90,11 @@ build `obj` as an `IntVar` (e.g. `int_linear(coeffs, vars, IRT_EQ, obj)`). If th
 objective is also a declared output, export it with `dcp::out(obj)`. No `optimize` call
 for a satisfaction problem. Do not bound `obj` with a value known from elsewhere.
 
+`obj`'s value is the objective the runner reports, on every solution and incumbent: the
+driver reads it from the solution (Chuffed neither scales nor negates it, also under
+`OPT_MAX`), so it must be the problem's own value, constant terms included (tie it with
+`int_linear` to `3 + x + y`, not to `x + y`).
+
 ## Solving
 
 The driver ([driver.cpp](cpp/driver.cpp)) forks one child per phase. The child runs
@@ -123,7 +128,8 @@ complete).
   announces the objective before solving, so even a child killed at the deadline cannot
   leak an unproven solution). A finished search with no solution is `unsat`; otherwise
   the last solution is the proven optimum and is printed. With `solution_limit == 1` the
-  status is `limit`.
+  status is `limit`. Each improving solution is reported as it is found as an `incumbent`
+  (objective, seconds since the child built the model), written by the child straight to the protocol stream.
 - Optimisation, phase 2 (only for a limit above 1): a new child runs `Build` again, posts
   `objective == optimum` (`int_rel(obj, IRT_EQ, best)`), drops the objective
   (`engine.opt_var = nullptr`) and enumerates with `so.nof_solutions = limit + 1`; the

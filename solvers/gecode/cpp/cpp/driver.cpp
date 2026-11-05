@@ -58,8 +58,19 @@ void Status(const std::string& status, double seconds, const std::string& detail
           {"read_seconds", g_read_seconds}, {"main_seconds", Seconds(g_main_start)}, {"detail", detail}});
 }
 
-void Solution(const json& values) {
-  Record({{"type", "solution"}, {"values", values}});
+// An improving solution found during the optimisation search (anytime evidence, not a result): its objective
+// and the seconds since the search started.
+Clock::time_point g_search_start;
+void Incumbent(long long objective) {
+  Record({{"type", "incumbent"}, {"objective", objective}, {"seconds", Seconds(g_search_start)}});
+}
+
+// A solution; for an optimisation with its objective: the value of the model's objective variable on it, the
+// problem's own value (the model declares that variable; Gecode neither scales nor negates it).
+void Solution(const json& values, const dcp::Space& space) {
+  json record = {{"type", "solution"}, {"values", values}};
+  if (space.has_objective()) record["objective"] = space.objective_value();
+  Record(record);
 }
 
 // Outputs and the objective are assigned by values() and by the fallback
@@ -107,7 +118,7 @@ Outcome Enumerate(dcp::Space* root, int limit, Clock::time_point deadline, Pool&
 }
 
 void Finish(Outcome outcome, const Pool& pool, double seconds) {
-  for (const auto& values : pool.values) Solution(values);
+  for (std::size_t k = 0; k < pool.values.size(); ++k) Solution(pool.values[k], *pool.spaces[k]);
   switch (outcome) {
     case Outcome::Limit: Status("limit", seconds); break;
     case Outcome::Timeout: Status("timeout", seconds); break;
@@ -136,6 +147,7 @@ int main() {
     g_read_seconds = Seconds(start);
     std::unique_ptr<dcp::Space> root(dcp_make(request.at("instance")));
     g_build_seconds = Seconds(building);
+    g_search_start = Clock::now();
     if (!root->has_outputs()) throw std::runtime_error("Expected output dictionary");
     if (root->status() == SS_FAILED) {
       Status("unsat", Seconds(start));
@@ -162,6 +174,7 @@ int main() {
       while (true) {
         dcp::Space* solution = engine.next();
         if (solution == nullptr) break;
+        Incumbent(solution->objective_value());
         last.reset(solution);
       }
       stopped = engine.stopped();

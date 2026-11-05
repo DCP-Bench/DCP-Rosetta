@@ -48,6 +48,11 @@ submission the runner replaces `exact.Exact` with a subclass that records the ar
 `"SAT"` as a proven optimum, then pins `terms` at that value with `addConstraint` before
 enumerating.
 
+The objective reported with each solution is the problem's value, computed from the solution:
+`offset + sum(coefficient * value)` over `terms`. Exact's own value from `toOptimum` is not
+used for it: Exact minimises internally, so for a maximisation it returns `-(terms +
+offset)`. The runner reports no incumbents.
+
 ## Solving
 
 - The runner sets no solver option; it passes the seconds left of `execution_timeout`

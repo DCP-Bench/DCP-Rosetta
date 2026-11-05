@@ -79,6 +79,10 @@ expression is tied to a view first, for example `let obj = m.new_int_decision(lo
 m.linear(x * 3 - y * 2 + 7).eq(obj).post()?;`, or with `.define()` on a variable whose
 domain is known. Set at most one objective; a satisfaction problem sets none.
 
+The view's value is the objective the runner reports, on every solution and incumbent: the
+driver evaluates it on the solution (Huub neither scales nor negates it, also under
+`maximise`), so it must be the problem's own value, constant terms included.
+
 ## Solving
 
 The runner forces:
@@ -86,7 +90,8 @@ The runner forces:
 - The lowering defaults: `m.lower().to_solver()` with `int_eager_limit` 255 and restarts
   off. Search is Huub's default; the submission cannot change it.
 - Phase 1, when there is an objective: `minimize` or `maximize` is the first and only
-  solve on a fresh solver. Its result maps as follows:
+  solve on a fresh solver. Its `on_solution` callback reports each improving solution as an
+  `incumbent` (objective, seconds since the model was lowered). Its result maps as follows:
 
   | Huub result | Reported |
   | --- | --- |

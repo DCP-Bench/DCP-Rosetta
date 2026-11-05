@@ -234,6 +234,16 @@ def attempt(model, deadline, optimizing):
     raise RuntimeError(f"Python-MIP returned status {status.name}")
 
 
+def objective_value(model):
+    """The model's objective on the current solution, in the problem's terms: Python-MIP evaluates its
+    objective expression on the solution, with the constant CBC never sees and in the model's own sense."""
+    value = model.objective.x
+    rounded = round(value)
+    if abs(value - rounded) > TOLERANCE:
+        raise ValueError(f"The objective must be integer valued (got {value})")
+    return int(rounded)
+
+
 def solve(request):
     global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
@@ -270,7 +280,10 @@ def solve(request):
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if optimizing:
+                record["objective"] = objective_value(model)
+            emit(record)
             count += 1
             if count >= limit:
                 return finish("limit")

@@ -207,7 +207,11 @@ def create_model(instance):
                 if reduced > 0:
                     formula.append([-succ[i][j]], weight=reduced)
 
-    return formula, {"travel_distance": travel_distance}
+    # The objective in the problem's terms: the route length, the distance of each arc driven
+    # (RC2's cost pays reduced distances, a fixed amount less).
+    objective = [(dist[i][j], succ[i][j]) for i in range(n) for j in range(n) if i != j]
+
+    return formula, {"travel_distance": travel_distance}, objective
 
 
 if __name__ == "__main__":
@@ -219,7 +223,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

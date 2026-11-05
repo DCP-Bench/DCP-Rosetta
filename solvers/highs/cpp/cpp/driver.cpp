@@ -56,7 +56,47 @@ void Status(const std::string& status, double seconds, const std::string& detail
           {"read_seconds", g_read_seconds}, {"main_seconds", Seconds(g_main_start)}, {"detail", detail}});
 }
 
-void Solution(const json& values) { Record({{"type", "solution"}, {"values", values}}); }
+// The submission's objective (out.objective()), set once it is applied; nullptr without one. Every objective the
+// driver reports is this expression evaluated on the solution, constant included: the problem's own value,
+// whatever HiGHS reports internally.
+const dcp::Lin* g_objective = nullptr;
+
+long long ObjectiveAt(const double* x, std::size_t size) {
+  double v = g_objective->constant;
+  for (const auto& term : g_objective->terms) {
+    auto k = static_cast<std::size_t>(term.first);
+    if (term.first < 0 || k >= size) throw std::out_of_range("objective column beyond the solution");
+    v += term.second * x[k];
+  }
+  return std::llround(v);
+}
+
+// A solution; for an optimisation with its objective at the solution `x`.
+void Solution(const json& values, const std::vector<double>& x) {
+  json record = {{"type", "solution"}, {"values", values}};
+  if (g_objective != nullptr) record["objective"] = ObjectiveAt(x.data(), x.size());
+  Record(record);
+}
+
+// Improving MIP solutions of the optimisation search (anytime evidence, not a result) are reported as incumbents,
+// with the seconds since the search started, while g_report_incumbents holds: only during the first solve. The
+// objective is recomputed from the improving solution, which HiGHS gives in the original model's columns.
+Clock::time_point g_search_start;
+bool g_report_incumbents = false;
+
+void OnCallback(int type, const std::string&, const HighsCallbackOutput* data, HighsCallbackInput*, void*) {
+  if (type != kCallbackMipImprovingSolution || !g_report_incumbents || data == nullptr || g_objective == nullptr) return;
+  long long objective;
+  try {
+    objective = ObjectiveAt(data->mip_solution.data(), data->mip_solution.size());
+  } catch (const std::out_of_range&) {
+    return;  // no solution in the model's columns: report nothing rather than a value on another scale
+  }
+  if (objective != std::llround(data->objective_function_value))
+    std::cerr << "note: HiGHS reports the incumbent objective " << data->objective_function_value
+              << ", the model's objective is " << objective << "\n";
+  Record({{"type", "incumbent"}, {"objective", objective}, {"seconds", Seconds(g_search_start)}});
+}
 
 // A problem with the submission or with HiGHS's answer; reported as `error`.
 struct SubmissionError : std::runtime_error {
@@ -122,6 +162,7 @@ Verdict Run(Highs& h, Clock::time_point deadline) {
 // an unbounded MIP; solving again with the objective set aside tells them apart.
 Verdict Decide(Highs& h, const Objective& obj, Clock::time_point deadline) {
   Verdict first = Run(h, deadline);
+  g_report_incumbents = false;  // only the optimisation search itself, not the re-solves below or after
   if (first != Verdict::InfeasibleOrUnbounded) return first;
   if (!obj.active) return Verdict::Infeasible;  // a zero objective cannot be unbounded
   Objective zero = obj;
@@ -275,7 +316,14 @@ int main() {
       }
     }
     ApplyObjective(h, obj);
+    if (obj.active) g_objective = &out.objective();
     g_build_seconds = Seconds(building);
+    g_search_start = Clock::now();
+    if (obj.active) {
+      Check(h.setCallback(OnCallback), "setCallback");
+      Check(h.startCallback(kCallbackMipImprovingSolution), "startCallback");
+      g_report_incumbents = true;
+    }
 
     Verdict verdict = Decide(h, obj, deadline);
     if (verdict == Verdict::Infeasible) {
@@ -296,7 +344,7 @@ int main() {
     x.resize(static_cast<std::size_t>(n), 0.0);
     json values = ReadOutputs(out, x);
     if (limit == 1) {
-      Solution(values);
+      Solution(values, x);
       Status("limit", Seconds(start));
       return 0;
     }
@@ -322,7 +370,7 @@ int main() {
     while (true) {
       std::string key = values.dump();
       if (seen.insert(key).second) {
-        Solution(values);
+        Solution(values, x);
         if (++count >= limit) {
           Status("limit", Seconds(start));
           return 0;

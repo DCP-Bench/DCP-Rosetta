@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -70,6 +70,40 @@ theory {
 }
 """
 MALFORMED = "this is not FO(.) {{{\n"
+# objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
+# constant term, with three optima (so the solutions enumerated at the optimum carry it too), and a
+# minimisation with a negative optimum.
+OBJECTIVE_MAX_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.maximize(3 + x + y)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+OBJECTIVE_MIN_REF = OBJECTIVE_MAX_REF.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+OBJECTIVE_MAX = """vocabulary {
+    n: () -> Int
+    x: () -> Int
+    y: () -> Int
+    maximize: () -> Int
+}
+theory {
+    0 =< x() & x() =< n().
+    0 =< y() & y() =< n().
+    x() + y() =< n().
+    maximize() = 3 + x() + y().
+}
+"""
+OBJECTIVE_MIN = OBJECTIVE_MAX.replace("x() + y() =< n().", "x() + y() >= 1.").replace(
+    "maximize() = 3 + x() + y().", "minimize() = x() - 2 * y() - 4.").replace("maximize:", "minimize:")
 # A type Range_k declared <: Int is interpreted as {1..k} from the scalar field k.
 # The reference has k solutions; it is checked for k=2 and k=4.
 REFERENCE_RANGE = '''
@@ -315,6 +349,16 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        # z3's on_model callback under IDP-Z3 reports each improving model, ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
+            minimize=False)
+        maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
+        minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
+        results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
+                                       and minimised["accepted"])
         check("range_type", RANGE_TYPE, reference=REFERENCE_RANGE, instances=[{"k": 4}],
               instance_count=2, solution_limit=5)
         results["range_type_refused"] = (

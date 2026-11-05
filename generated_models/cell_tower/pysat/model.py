@@ -78,8 +78,10 @@ def create_model(instance):
         elif population[j] < 0:
             formula.append([-covered_region[j]], weight=-population[j])
 
+    # The objective in the problem's terms: the population covered (RC2's cost is the
+    # population left uncovered, plus the size of any negative region covered).
     return formula, {"build_tower": build_tower,
-                     "total_population_covered": total}
+                     "total_population_covered": total}, total
 
 
 if __name__ == "__main__":
@@ -91,7 +93,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

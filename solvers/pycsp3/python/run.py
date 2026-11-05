@@ -67,6 +67,8 @@ ACE_WRAPPER = "/opt/runner/ace"  # java -jar ACE-2.6.jar "$@" 2>&1, written by t
 ACE_JAR = Path(importlib.util.find_spec("pycsp3").origin).parent / "solvers" / "ace" / "ACE-2.6.jar"
 CHECKER = "org.xcsp.parser.callbacks.SolutionChecker"
 INSTANTIATION = re.compile(r"<instantiation\b[^>]*>.*?</instantiation>", re.S)
+IMPROVED = re.compile(r"^o (-?\d+)\s")  # ACE's line for each improving solution, its objective value first
+POLL = 0.02  # seconds between the parent's looks at a round's incumbent file
 
 
 class Timeout(Exception):
@@ -204,6 +206,9 @@ def _child(spec, result):
 
     ace_module.Ace.__init__ = wrapped_init
 
+    if fixed is None:
+        report_incumbents(spec["incumbents"], recorded)
+
     pycsp3.data = Instance(json.loads(Path(spec["instance"]).read_text(encoding="utf-8")))
     namespace = runpy.run_path(spec["model"], run_name="__main__")
     outputs = spec["outputs"]
@@ -254,6 +259,30 @@ def _child(spec, result):
                                for k in range(count)]
 
 
+def report_incumbents(path, recorded):
+    """Copy each improving solution ACE prints (`o <objective>`) to the round's incumbent file as it arrives,
+    stamped with the wall clock. pycsp3 reads ACE's output line by line and hands each line to its Logger, so
+    this sees it as ACE prints it; the parent relays the lines as incumbent records. Only for the
+    optimisation round: a satisfaction model records no objective direction, and nothing is written."""
+    from pycsp3.solvers import solver as solver_module
+    original_write = solver_module.Logger.write
+    best = [None]
+
+    def write(self, message):
+        original_write(self, message)
+        line = IMPROVED.match(ANSI.sub("", message))
+        if line is None or not recorded:
+            return
+        value = int(line.group(1))
+        if best[0] is not None and not (value < best[0] if recorded[0] == "min" else value > best[0]):
+            return
+        best[0] = value
+        with open(path, "a", encoding="utf-8") as kept:
+            kept.write(json.dumps({"objective": value, "time": time.time()}) + "\n")
+
+    solver_module.Logger.write = write
+
+
 # --- parent: rounds, projection, enumeration --------------------------------
 
 def stop(process):
@@ -274,7 +303,8 @@ def run_round(job, index, deadline, *, sols, objective, nogoods, outputs):
     xml = outdir / "model-placeholder.xml"
     spec = {"model": MODEL, "instance": str(job / "instance.json"), "outdir": str(outdir),
             "sols": sols, "time_limit": int(left) - 2, "objective": objective,
-            "nogoods": nogoods, "outputs": outputs, "result": str(outdir / "result.json")}
+            "nogoods": nogoods, "outputs": outputs, "result": str(outdir / "result.json"),
+            "incumbents": str(outdir / "incumbents.jsonl")}
     (outdir / "spec.json").write_text(json.dumps(spec, allow_nan=False), encoding="utf-8")
     log_path = outdir / "child.log"
     with open(log_path, "w", encoding="utf-8") as log:
@@ -282,12 +312,20 @@ def run_round(job, index, deadline, *, sols, objective, nogoods, outputs):
         process = subprocess.Popen([sys.executable, "/opt/runner/run.py", "--child", str(outdir / "spec.json")],
                                    stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                                    start_new_session=True, cwd=str(outdir))
+        relayed = 0
         try:
-            process.wait(timeout=left)
-        except subprocess.TimeoutExpired as error:
-            raise Timeout() from error
+            ends = time.monotonic() + left
+            while True:
+                try:
+                    process.wait(timeout=max(0.0, min(POLL, ends - time.monotonic())))
+                    break
+                except subprocess.TimeoutExpired as error:
+                    if time.monotonic() >= ends:
+                        raise Timeout() from error
+                relayed = relay(spec["incumbents"], xml, relayed)
         finally:
             stop(process)  # also ends any Java process the round started
+            relay(spec["incumbents"], xml, relayed)
             if index == 0 and xml.is_file():
                 BUILD_SECONDS = max(0.0, xml.stat().st_mtime - launched)
     if not os.path.isfile(spec["result"]):
@@ -296,6 +334,22 @@ def run_round(job, index, deadline, *, sols, objective, nogoods, outputs):
     result = json.loads(Path(spec["result"]).read_text(encoding="utf-8"))
     result["xml"] = str(xml)
     return result
+
+
+def relay(path, xml, relayed):
+    """Emit the incumbents the optimisation round's child has written since the last look, as records with
+    the seconds since the search started: the moment the XCSP file was written, which ends BUILD_SECONDS.
+    Returns how many lines have been relayed."""
+    if not os.path.isfile(path) or not xml.is_file():
+        return relayed
+    started = xml.stat().st_mtime
+    with open(path, encoding="utf-8") as kept:
+        lines = kept.read().split("\n")[:-1]  # a last line without its newline is still being written
+    for line in lines[relayed:]:
+        item = json.loads(line)
+        runtime.emit({"type": "incumbent", "objective": item["objective"],
+                      "seconds": max(0.0, item["time"] - started)})
+    return len(lines)
 
 
 class Found:
@@ -397,10 +451,14 @@ def pycsp3_solver(request):
     found = Found(outputs, limit)
     job = Path(tempfile.mkdtemp(prefix="pycsp3_", dir="/tmp"))
     rounds = count(1)  # round 0 is the first solve; later rounds take the rest
+    objective = None  # an optimisation's proven optimum, which every solution it reports has
 
     def flush(status, detail=""):
         for values in found.values[:limit]:
-            runtime.emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if objective is not None:
+                record["objective"] = objective
+            runtime.emit(record)
         return runtime.finish(status, detail)
 
     try:

@@ -51,8 +51,7 @@ def load(instance):
         objectives = constraints.objectives()
         if len(objectives) != 1:
             raise ValueError(f"The z3.Optimize must have exactly one objective, not {len(objectives)}")
-        # Z3 keeps a maximized term already negated, so minimizing it covers both directions.
-        objective = ("minimize", objectives[0])
+        objective = direction_of(constraints, objectives[0])
     if objective is not None:
         if (not isinstance(objective, (tuple, list)) or len(objective) != 2
                 or objective[0] not in DIRECTIONS):
@@ -64,6 +63,17 @@ def load(instance):
     global SUBMITTED
     SUBMITTED = constraints
     return assertions(constraints), outputs, objective
+
+
+def direction_of(optimize, term):
+    """The objective as the model states it. z3 keeps a maximised term negated (`maximize(e)` lists `-(e)`
+    among the objectives), so minimising that term would find the same optimum, but every value reported
+    on the way would be the negation of the model's objective. The direction is only in the solver's
+    SMT-LIB text, which is read only when the term is a negation."""
+    if z3.is_app_of(term, z3.Z3_OP_UMINUS) and any(
+            line.startswith("(maximize ") for line in optimize.sexpr().splitlines()):
+        return ("maximize", term.arg(0))
+    return ("minimize", term)
 
 
 def assertions(constraints):
@@ -107,10 +117,27 @@ def remaining(deadline):
 
 
 def optimum(constraints, direction, objective, deadline):
-    """Prove the optimal objective value, or say why it could not be proven."""
+    """Prove the optimal objective value, or say why it could not be proven.
+
+    Each strictly better model z3 reports while it optimises (`set_on_model`) is emitted as an incumbent,
+    with the seconds since this search started (right after the build)."""
+    started = time.monotonic()
     optimizer = z3.Optimize()
     optimizer.add(constraints)
     handle = (optimizer.minimize if direction == "minimize" else optimizer.maximize)(objective)
+    last = []
+
+    def improved(model):
+        value = model.eval(objective, model_completion=True)
+        if not isinstance(value, z3.IntNumRef):
+            return
+        value = value.as_long()
+        if last and not (value < last[-1] if direction == "minimize" else value > last[-1]):
+            return
+        last.append(value)
+        emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+
+    optimizer.set_on_model(improved)
     budget = remaining(deadline)
     if budget is None:
         return None, ("timeout", "")
@@ -168,7 +195,11 @@ def solve(request):
         if status != z3.sat:
             return finish("timeout")
         model = solver.model()
-        emit({"type": "solution", "values": mapped(outputs, lambda e: read(e, model))})
+        record = {"type": "solution", "values": mapped(outputs, lambda e: read(e, model))}
+        if objective is not None:
+            # The model's objective on this solution, as the model states it (see direction_of).
+            record["objective"] = read(objective[1], model)
+        emit(record)
         count += 1
         if count == request["solution_limit"]:
             break

@@ -133,6 +133,20 @@ subtracting a lower bound from each cost can make the soft clauses much smaller 
 "Help the solver" in [SKILL.md](../../SKILL.md#modelling)). Keep the reported value on the
 original costs.
 
+**Report the problem's value, not `result.cost`.** Whenever what `m.obj` minimises is not
+the problem's objective itself (a maximisation, a complement, a shifted cost), keep the
+objective as its own expression and read it with `result[...]`; return it beside the
+model and the outputs:
+
+```python
+profit = sum(v[i] * x[i] for i in range(n)) - fixed_cost   # the problem's objective, maximised
+m.obj += -profit                                           # what the solver minimises
+...
+return m, {"x": x}, profit                                 # result[profit] is the value
+```
+
+On every optimum `result.cost` and `result[profit]` agree up to that sign and constant.
+
 An absolute deviation of `S = sum(c_i * x_i)` from a target `T` takes two one-sided slack
 integers:
 

@@ -83,6 +83,36 @@ ISOLATED = ("import os, socket\n"
             "    model.add(x + y == n)\n"
             "    return model, {'x': x, 'y': y}\n")
 
+# objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
+# constant term, with three optima (so the solutions enumerated at the optimum carry it too), and a
+# minimisation with a negative optimum. CP-SAT keeps a maximisation negated, its constant as an offset.
+OBJECTIVE_MAX_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.maximize(3 + x + y)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+OBJECTIVE_MIN_REF = OBJECTIVE_MAX_REF.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+OBJECTIVE_MAX = ("from ortools.sat.python import cp_model\n"
+                 "def build(instance):\n"
+                 "    n = instance['n']\n"
+                 "    model = cp_model.CpModel()\n"
+                 "    x, y = model.new_int_var(0, n, 'x'), model.new_int_var(0, n, 'y')\n"
+                 "    model.add(x + y <= n)\n"
+                 "    model.maximize(3 + x + y)\n"
+                 "    return model, {'x': x, 'y': y}\n")
+OBJECTIVE_MIN = OBJECTIVE_MAX.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+
 # standalone_block: the entrypoint named create_model, and a standalone run block at the
 # end that would fail if the runner executed it (it reads a file named on the command line).
 STANDALONE = GOOD.replace("def build(", "def create_model(") + (
@@ -121,6 +151,10 @@ def main():
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
         check("standalone_block", STANDALONE)
+        maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
+        minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
+        results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
+                                       and minimised["accepted"])
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})
