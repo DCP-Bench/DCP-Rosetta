@@ -189,7 +189,7 @@ The objective is the problem's own value: do not scale, offset or negate it. Eac
 solution record carries it as `objective`, the objective symbol's value in that
 solution's Z3 model (`model.eval` of the ground `minimize()`/`maximize()` term), so
 its constant and direction are the theory's own. Each improving solution Z3's optimiser
-reports (`set_on_model`) is an `incumbent` record with the same term evaluated in that
+reports (`set_on_model`), and last the proven optimum if z3 did not hand it over, is an `incumbent` record with the same term evaluated in that
 model.
 
 ## Solving

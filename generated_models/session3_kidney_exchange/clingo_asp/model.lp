@@ -20,10 +20,8 @@ can_donate(I,J-1) :- compatible(I,_,J).
 1 { donates(I,J) : can_donate(I,J); idle(J) } 1 :- person(J).
 
 % Maximise the number of transplants. Every person who takes part gives exactly one kidney, so the
-% number of transplants is the number of people minus the idle ones, and maximising it is the same
-% as minimising the idle people. Stated this way the solver can see at once that the best possible
-% value is 0 idle people, which proves optimality as soon as everybody can be placed.
-#minimize { 1,I : idle(I) }.
+% number of transplants is the number of people who are not idle.
+#maximize { 1,I : person(I), not idle(I) }.
 
 % transplants(I,J,true/false): whether person I donates to person J.
 transplants(I,J,true)  :- donates(I,J).

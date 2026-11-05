@@ -42,8 +42,12 @@ public final class Runner {
     private static final PrintStream PROTOCOL = new PrintStream(
             new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
 
+    private static final long PROGRAM_START = System.nanoTime();
     private final long started = System.nanoTime();
     private final double budget;
+    // Seconds from the program's start until the request was read, and to build the model: the benchmark's phases.
+    private static double readSeconds = 0;
+    private static double buildSeconds = 0;
 
     private Runner(double budget) {
         this.budget = budget;
@@ -52,6 +56,7 @@ public final class Runner {
     public static void main(String[] args) throws Exception {
         System.setOut(System.err);
         JSONObject request = new JSONObject(new JSONTokener(System.in));
+        readSeconds = (System.nanoTime() - PROGRAM_START) / 1e9;
         Runner runner = new Runner(request.getDouble("execution_timeout"));
         try {
             runner.run(request);
@@ -81,6 +86,9 @@ public final class Runner {
         record.put("status", kind);
         record.put("detail", detail);
         record.put("solve_seconds", spent());
+        record.put("build_seconds", buildSeconds);
+        record.put("read_seconds", readSeconds);
+        record.put("main_seconds", (System.nanoTime() - PROGRAM_START) / 1e9);
         PROTOCOL.println(record);
     }
 
@@ -98,7 +106,9 @@ public final class Runner {
         Store store = new Store();
         Method build = Class.forName("Submission").getDeclaredMethod("build", JSONObject.class, Store.class);
         build.setAccessible(true);
+        long building = System.nanoTime();
         Object returned = build.invoke(null, request.getJSONObject("instance"), store);
+        buildSeconds = (System.nanoTime() - building) / 1e9;
         if (!(returned instanceof Model model)) {
             status("error", "build must return a dcp.jacop.Model, returned "
                     + (returned == null ? "null" : returned.getClass().getName()));

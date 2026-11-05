@@ -41,12 +41,16 @@ record(io, object) = (println(io, JSON.json(object)); flush(io))
 # Incumbents: HiGHS's improving-solution callback reports each improving solution of the
 # optimisation solve (anytime evidence, not a result) with its objective and the seconds
 # since that solve started. Only while REPORTING, so a feasibility re-solve that tells
-# infeasible from unbounded reports none.
+# infeasible from unbounded reports none. HiGHS also calls back for an improvement smaller
+# than the objective's integer step, so a value no better than the last one is skipped.
 const SEARCH_START = Ref{UInt64}(0)
 const REPORTING = Ref(false)
+const LAST_INCUMBENT = Ref{Union{Nothing,Int}}(nothing)
 
 function report_incumbents!(io, model)
     optimizer = unsafe_backend(model)
+    maximising = objective_sense(model) == MAX_SENSE
+    last = LAST_INCUMBENT
     MOI.set(optimizer, HiGHS.CallbackFunction([HiGHS.kHighsCallbackMipImprovingSolution]),
             (callback_type, message, data_out) -> begin
                 if REPORTING[] && callback_type == HiGHS.kHighsCallbackMipImprovingSolution
@@ -54,8 +58,12 @@ function report_incumbents!(io, model)
                     rounded = round(value)
                     # An objective that is not integral is no integer objective value to report.
                     if isfinite(value) && abs(value - rounded) <= TOLERANCE
-                        record(io, Dict("type" => "incumbent", "objective" => Int(rounded),
-                                        "seconds" => seconds_since(SEARCH_START[])))
+                        objective = Int(rounded)
+                        if last[] === nothing || (maximising ? objective > last[] : objective < last[])
+                            last[] = objective
+                            record(io, Dict("type" => "incumbent", "objective" => objective,
+                                            "seconds" => seconds_since(SEARCH_START[])))
+                        end
                     end
                 end
                 return Cint(0)
@@ -267,6 +275,11 @@ function solve(io, request, deadline)
     # is handed both), rounded as the objective is integral at an integer point. Read, like the values, before
     # the model changes.
     found = optimizing ? round(Int, objective_value(model)) : nothing
+    # The callback does not hand over every last solution: the proven optimum ends the incumbents.
+    if optimizing && LAST_INCUMBENT[] != found
+        LAST_INCUMBENT[] = found
+        record(io, Dict("type" => "incumbent", "objective" => found, "seconds" => seconds_since(SEARCH_START[])))
+    end
     if limit > 1
         reason = obstacle(variables)
         reason === nothing || return status(io, "unsupported", reason)

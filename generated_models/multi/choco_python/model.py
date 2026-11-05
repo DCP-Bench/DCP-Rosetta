@@ -85,27 +85,8 @@ def create_model(instance):
     total_cost = model.intvar(0, max_total_cost, name="total_cost")
     model.sum(delivery_cost, "=", total_cost).post()
 
-    # Plans of equal cost are told apart by their shipments, so the search does not
-    # have to list every cheapest plan. flat_x and flat_most list the shipments and
-    # their largest amounts in one row.
-    flat_x = [x[i][j][p] for i in range(n_origins) for j in range(n_destinations) for p in range(n_products)]
-    flat_most = [most[i][j][p] for i in range(n_origins) for j in range(n_destinations) for p in range(n_products)]
-    # tie_weights[k] is the weight of the k-th shipment in the tie-break, counting from 1
-    tie_weights = [k + 1 for k in range(len(flat_x))]
-    # tie_break_max: the largest possible weighted sum of the shipments
-    tie_break_max = sum(w * m for w, m in zip(tie_weights, flat_most))
-    # tie_break: the weighted sum of the shipments
-    tie_break = model.intvar(0, tie_break_max, name="tie_break")
-    model.scalar(flat_x, tie_weights, "=", tie_break).post()
-
-    # ranked_cost ranks plans by total cost first and by the tie-break second. The
-    # tie-break never reaches one unit of total cost, so the lowest ranked plan also
-    # has the lowest total cost.
-    cost_weight = tie_break_max + 1
-    ranked_cost = model.intvar(0, cost_weight * max_total_cost + tie_break_max, name="ranked_cost")
-    model.scalar([total_cost, tie_break], [cost_weight, 1], "=", ranked_cost).post()
-
-    return model, {"total_cost": total_cost}, {"objective": ranked_cost, "maximize": False}
+    # Minimise the total shipping cost.
+    return model, {"total_cost": total_cost}, {"objective": total_cost, "maximize": False}
 
 
 if __name__ == "__main__":

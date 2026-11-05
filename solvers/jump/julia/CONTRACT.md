@@ -62,7 +62,9 @@ integer, as each solution's `objective`; the incumbents are HiGHS's improving-so
 - Incumbents: during the first (optimisation) solve, HiGHS's improving-solution callback
   (`HiGHS.CallbackFunction([kHighsCallbackMipImprovingSolution])`, which only reads the
   solution) records each improving integer objective with the seconds since that solve
-  started; `run.py` relays them while the driver runs. Later solves report none.
+  started, skipping a value no better than the last (HiGHS also calls back for an improvement
+  below the integer step); `run.py` relays them while the driver runs. The callback does not hand
+  over every last solution, so the proven optimum is reported last if it was not. Later solves report none.
 - Enumeration (only when `solution_limit > 1`) pins the objective within 1e-5 of the
   proven optimum, then adds a big-M no-good per answer over the variables under the
   declared outputs (a binary indicator below and above each current value). A repeated

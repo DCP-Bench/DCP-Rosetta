@@ -461,6 +461,13 @@ def incumbents(target, goal, started):
             return
         last.append(value)
         emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+
+    def proven(value):
+        """z3 does not hand over every last model: the proven optimum ends the incumbents."""
+        if not last or last[-1] != value:
+            last.append(value)
+            emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+    improved.proven = proven
     return improved
 
 
@@ -494,7 +501,8 @@ def solve(request):
         theory._add_assignment(optimizer)
         handle = (optimizer.minimize if goal == "minimize" else optimizer.maximize)(target)
         BUILD_SECONDS = time.monotonic() - building
-        optimizer.set_on_model(incumbents(target, goal, time.monotonic()))
+        reporter = incumbents(target, goal, time.monotonic())
+        optimizer.set_on_model(reporter)
         status = check(optimizer, deadline)
         if status == z3.unsat:
             return finish("unsat")
@@ -510,6 +518,7 @@ def solve(request):
         if low.as_long() != high.as_long():
             return finish("timeout", "Candidate optimum was not proven")
         best = low
+        reporter.proven(best.as_long())
         # Enumerate only assignments achieving the proven optimum.
         solver.add(target == best)
 

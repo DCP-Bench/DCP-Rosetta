@@ -107,8 +107,10 @@ Enumeration needs every such column to be integer with finite bounds; otherwise 
 
 Incumbents: during the first solve of a problem with an objective, HiGHS's
 `kCallbackMipImprovingSolution` callback reports each improving MIP solution as an `incumbent`
-(its objective value, rounded; seconds since the model was built). An LP reports none; a MIP that
-presolve solves outright still reports its one solution.
+(its objective value, rounded; seconds since the model was built). HiGHS also calls back for an
+improvement smaller than the objective's integer step; a value no better than the last one is
+skipped. The callback does not hand over every last solution, and none for an LP, so once the
+solve proves the optimum it is reported as the last incumbent if it was not the last one reported.
 
 Time: the driver's deadline is `execution_timeout - 0.3 s` (at least 0.1 s), and every solve
 gets the time left. `timeout` reports a solve cut by the deadline; no unproven optimum is emitted.
