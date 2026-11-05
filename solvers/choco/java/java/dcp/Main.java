@@ -45,6 +45,8 @@ public final class Main {
     private static final Gson GSON = new Gson();
     private static PrintStream protocol;
     private static long started;
+    // When the search started: right after the model was built (incumbent times count from here).
+    private static long searchStarted;
 
     private record Built(Model model, Outputs outputs) {}
 
@@ -89,6 +91,7 @@ public final class Main {
         long building = System.nanoTime();
         Built built = factory.make();
         buildSeconds = (System.nanoTime() - building) / 1e9;
+        searchStarted = System.nanoTime();
         Model model = built.model();
         List<JsonObject> found = new ArrayList<>();
         List<int[]> forbidden = new ArrayList<>();
@@ -106,6 +109,7 @@ public final class Main {
             // optimal when the search then ends without a stop.
             while (solver.solve()) {
                 best = obj.getValue();
+                incumbent(best);
                 bestValues = built.outputs().values();
                 bestVars = built.outputs().snapshot();
             }
@@ -240,6 +244,17 @@ public final class Main {
             case TIMEOUT -> status("timeout", "");
             case EXHAUSTED -> status(found.isEmpty() ? "unsat" : "complete", "");
         }
+    }
+
+    // An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+    // seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+    private static void incumbent(int objective) {
+        Map<String, Object> record = new LinkedHashMap<>();
+        record.put("type", "incumbent");
+        record.put("objective", objective);
+        record.put("seconds", (System.nanoTime() - searchStarted) / 1e9);
+        protocol.println(GSON.toJson(record));
+        protocol.flush();
     }
 
     private static void status(String status, String detail) {

@@ -230,8 +230,29 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
                          "oom_killed": run.oom_killed}
 
 
+def incumbents(records):
+    """The improving solutions a runner reported during an optimisation search, as [seconds, objective]: its
+    `incumbent` records (seconds since the search started), in order. They are evidence for an anytime
+    measure, never a result: the evaluator checks their shape and otherwise ignores them."""
+    found = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "incumbent":
+            continue
+        objective, seconds = x.get("objective"), x.get("seconds")
+        if (not isinstance(objective, int) or isinstance(objective, bool) or not isinstance(seconds, (int, float))
+                or isinstance(seconds, bool) or seconds < 0 or (found and seconds < found[-1][0])):
+            raise EvaluationError("invalid_output", "An incumbent record needs an integer objective and "
+                                                    "nondecreasing seconds since the search started")
+        found.append([seconds, objective])
+    return found
+
+
 def validate_records(records):
     if not records or not all(isinstance(x, dict) for x in records):
+        raise EvaluationError("invalid_output", "Expected runner JSON records")
+    incumbents(records)  # their shape; they may come anywhere before the status
+    records = [x for x in records if x.get("type") != "incumbent"]
+    if not records:
         raise EvaluationError("invalid_output", "Expected runner JSON records")
     if records[-1].get("type") != "status" or any(x.get("type") != "solution" for x in records[:-1]):
         raise EvaluationError("invalid_output", "Expected solution records followed by exactly one status")

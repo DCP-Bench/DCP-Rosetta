@@ -59,7 +59,9 @@ finite integer, then adds `objective == best` before enumerating. A `z3.Solver`,
 - The only parameter set is Z3's `timeout`, in milliseconds, on each `check()`: what is
   left of `execution_timeout`, measured from the start of the run (including `create_model`).
 - Optimisation: `check()` on the runner's `z3.Optimize`. `unsat` gives `unsat`; `unknown`,
-  or `sat` with lower and upper bound apart, gives `timeout`.
+  or `sat` with lower and upper bound apart, gives `timeout`. Each strictly better model
+  Z3 hands to `set_on_model` during that `check()` is reported as an `incumbent` record,
+  `seconds` from right after `build`.
 - Enumeration: a plain `z3.Solver` over the constraints (plus `objective == best`).
   `sat` reports a solution; `unsat` gives `unsat` on the first check and `complete`
   after; `unknown` gives `timeout`.

@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import time
 
-from .execution import ROOT, container_engine, execute, image_identity, image_recipe, integration, validate_records
+from .execution import ROOT, container_engine, execute, image_identity, image_recipe, incumbents, integration, validate_records
 from bench.dcp_bench.reference import ReferenceSession, available_instances, choose_instances
 from .results import EvaluationError, canonical, digest, strict_json
 from .licences import edition, licence_error, require as require_licence
@@ -116,6 +116,8 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
                 item.update(timing)
                 solutions, status = validate_records(records)
                 item["runner_status"] = status
+                if found := incumbents(records):
+                    item["incumbents"] = found
                 item["solutions_received"] = len(solutions)
                 # A conforming runner never emits more than it was asked for. Without
                 # this bound, duplicate records each cost a full reference solve, so

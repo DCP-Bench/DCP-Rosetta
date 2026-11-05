@@ -233,14 +233,39 @@ def pin(model, objective):
     model.setObjective(0)
 
 
-def attempt(model, deadline):
-    """Solve once inside the remaining budget; say what Gurobi actually concluded."""
+def incumbent_callback(model):
+    """A MIPSOL callback that reports each improving solution of the optimisation solve as an incumbent: its
+    objective (MIPSOL_OBJ, the model's objective with its constant) when it is an integer, and the seconds
+    since optimize() was called. A callback only reads, so the search is Gurobi's own. The record goes to the
+    protocol stream directly, as optimize() runs with sys.stdout redirected to stderr."""
+    protocol, start = sys.stdout, time.monotonic()
+    better = (lambda a, b: a < b) if model.ModelSense == GRB.MINIMIZE else (lambda a, b: a > b)
+    best = []
+
+    def callback(model, where):
+        if where != GRB.Callback.MIPSOL:
+            return
+        value = model.cbGet(GRB.Callback.MIPSOL_OBJ)
+        rounded = round(value)
+        if abs(value - rounded) > TOLERANCE or (best and not better(rounded, best[-1])):
+            return
+        best.append(rounded)
+        print(json.dumps({"type": "incumbent", "objective": int(rounded), "seconds": time.monotonic() - start}),
+              file=protocol, flush=True)
+
+    return callback
+
+
+def attempt(model, deadline, incumbents=False):
+    """Solve once inside the remaining budget; say what Gurobi actually concluded. With `incumbents`, the
+    optimisation solve's improving solutions are reported as found."""
     left = deadline - time.monotonic()
     if left <= 0:
         return "timeout"
     model.Params.TimeLimit = left
+    callback = incumbent_callback(model) if incumbents else None
     with contextlib.redirect_stdout(sys.stderr):
-        model.optimize()
+        model.optimize(callback)
     if model.Status == GRB.INF_OR_UNBD:
         # Presolve stopped before telling the two apart; without dual reductions it has to.
         left = deadline - time.monotonic()
@@ -290,7 +315,7 @@ def solve(request):
     objective = objective_of(model)
     variables = cut_variables(outputs)
 
-    verdict = attempt(model, deadline)
+    verdict = attempt(model, deadline, incumbents=objective is not None)
     if verdict == "infeasible":
         return finish("unsat")
     if verdict == "unbounded":

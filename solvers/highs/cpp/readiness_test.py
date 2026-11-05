@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -615,6 +615,8 @@ def main():
         check("large_model", LARGE, reference=LARGE_REF, execution_timeout=120, reference_timeout=120)
         # Objective offsets and negative coefficients, both directions.
         check("objective_offset_minimise", OFFSET_MIN, reference=OFFSET_REF)
+        # The MIP callback's improving solutions, with the objective's offset and negative terms, end at the optimum.
+        results["incumbents"] = improving_incumbents(check("incumbents", OFFSET_MIN, reference=OFFSET_REF))
         check("objective_offset_maximise", OFFSET_MAX, reference=OFFSET_MAX_REF)
         # Integer outputs within the tolerance, negative values and -0.
         check("rounding_within_tolerance", ROUNDING, reference=ROUNDING_REF)

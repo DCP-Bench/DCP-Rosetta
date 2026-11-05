@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -338,6 +338,10 @@ def main():
             and exhausted["instances"][0]["runner_status"]["status"] == "complete")
         check("minimization", OPTIMAL.replace("OBJECTIVE", "min"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING)
+        # labeling([X, Y]) first finds x+y=2, which branch and bound improves to 3, then the optimum 4:
+        # each one must be reported, through report_success, as an incumbent.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING), minimize=False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

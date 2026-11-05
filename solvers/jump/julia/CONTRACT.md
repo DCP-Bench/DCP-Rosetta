@@ -54,6 +54,10 @@ A `SparseAxisArray` or a quadratic expression is rejected (`execution_error`).
   `INFEASIBLE_OR_UNBOUNDED`, which HiGHS reports for an unbounded MIP, gets one re-solve
   of the constraints alone with the objective set aside: no feasible point is `unsat`, a
   feasible point is `error` (objective unbounded).
+- Incumbents: during the first (optimisation) solve, HiGHS's improving-solution callback
+  (`HiGHS.CallbackFunction([kHighsCallbackMipImprovingSolution])`, which only reads the
+  solution) records each improving integer objective with the seconds since that solve
+  started; `run.py` relays them while the driver runs. Later solves report none.
 - Enumeration (only when `solution_limit > 1`) pins the objective within 1e-5 of the
   proven optimum, then adds a big-M no-good per answer over the variables under the
   declared outputs (a binary indicator below and above each current value). A repeated

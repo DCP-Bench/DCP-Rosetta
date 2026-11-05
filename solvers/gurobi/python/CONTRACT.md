@@ -48,6 +48,9 @@ objective (`NumObj > 1`) is `unsupported`.
   `error` (objective unbounded); `TIME_LIMIT` is `timeout`; any other status is `error`.
   On `INF_OR_UNBD` the runner re-solves once with `DualReductions = 0` and maps the new
   status. `SIZE_LIMIT_EXCEEDED` is `unsupported`, any other `GurobiError` `error`.
+- Incumbents: the first solve of an optimisation passes a `MIPSOL` callback (it only reads)
+  that reports each improving integer `MIPSOL_OBJ` as an `incumbent`, with the seconds
+  since `optimize()` was called. Later solves pass none.
 - Enumeration is not pool-based: after the first proven solve the objective is pinned by
   two constraints (±0.5 around the optimum for an integral objective) and replaced by 0;
   each next solve adds a no-good over the integer variables under the declared outputs

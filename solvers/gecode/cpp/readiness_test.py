@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -569,6 +569,8 @@ def main():
         check("unbranched_aux", UNBRANCHED, solution_limit=3)
         check("optimum_enumeration", OPTIMAL_MIN, reference=OPTIMIZING, solution_limit=2)
         check("optimum_one_below_first", STEP_ONE, reference=OPTIMIZING, solution_limit=1)
+        # The first solution (total 3) is not optimal: the branch-and-bound reports it, then the optimum 2.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP_ONE, reference=OPTIMIZING))
         check("restarts", RESTARTS, reference=OPTIMIZING, solution_limit=3)
         check("bool_output", BOOL_OUTPUT, reference=FLAG_REFERENCE, solution_limit=2)
         check("constant_output", CONSTANT_OUTPUT, reference=CONSTANT_REFERENCE)

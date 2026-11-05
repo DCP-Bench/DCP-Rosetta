@@ -26,7 +26,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -402,6 +402,10 @@ def main():
                                            and all(item.get("solutions_received", 0) == 0
                                                    for item in result["instances"]))
         check("minimization_step_one", STEP, reference=STEP_REF)
+        # ACE's first solution (x = n) is not optimal: its `o` lines are relayed as incumbents, ending at n - 1.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", MAXIMAL, reference=MAXIMIZING), minimize=False)
         result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         result = evaluate(candidate("output_shapes", SHAPES), "readiness", SOLVER,

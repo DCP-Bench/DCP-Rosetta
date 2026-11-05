@@ -73,6 +73,9 @@ optimum.
   and makes one asynchronous `solve` call.
 - With an objective, models whose `optimality_proven` is false are skipped; only proven
   optimal models are reported. Without one, every answer set is a candidate.
+- Each strictly cheaper model is reported as it is found as an `incumbent` record (`seconds` from
+  right after grounding) when the cost has one priority level and the optimisation statements are
+  all `#minimize`/weak constraints (objective = cost) or all `#maximize` (objective = -cost).
 - Nothing is added to the program between models: clingo enumerates answer sets itself,
   and the runner drops a model whose declared outputs repeat ones already reported
   (other shown atoms and hidden atoms do not count). It stops at `limit` once enough

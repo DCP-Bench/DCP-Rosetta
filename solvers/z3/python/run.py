@@ -107,10 +107,27 @@ def remaining(deadline):
 
 
 def optimum(constraints, direction, objective, deadline):
-    """Prove the optimal objective value, or say why it could not be proven."""
+    """Prove the optimal objective value, or say why it could not be proven.
+
+    Each strictly better model z3 reports while it optimises (`set_on_model`) is emitted as an incumbent,
+    with the seconds since this search started (right after the build)."""
+    started = time.monotonic()
     optimizer = z3.Optimize()
     optimizer.add(constraints)
     handle = (optimizer.minimize if direction == "minimize" else optimizer.maximize)(objective)
+    last = []
+
+    def improved(model):
+        value = model.eval(objective, model_completion=True)
+        if not isinstance(value, z3.IntNumRef):
+            return
+        value = value.as_long()
+        if last and not (value < last[-1] if direction == "minimize" else value > last[-1]):
+            return
+        last.append(value)
+        emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+
+    optimizer.set_on_model(improved)
     budget = remaining(deadline)
     if budget is None:
         return None, ("timeout", "")

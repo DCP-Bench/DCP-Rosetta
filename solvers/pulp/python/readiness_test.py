@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -124,7 +124,15 @@ def main():
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("fractional_output", FRACTIONAL, expected={"execution_error", "invalid_output"})
-        check("unproven_optimum", UNPROVEN, expected={"execution_timeout"}, execution_timeout=5)
+        unproven = check("unproven_optimum", UNPROVEN, expected={"execution_timeout"}, execution_timeout=5)
+        # CBC's preprocessing solves this model outright and logs no incumbent, so the proven optimum 4 is
+        # reported as one when the solve returns; the enumeration solve that solution_limit=2 adds reports none.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("SENSE", "LpMaximize"), reference=MAXIMIZING, solution_limit=2),
+            minimize=False)
+        # The knapsack's incumbents come from CBC's log, as it finds them, and are kept though the run times out.
+        logged = [objective for _, objective in unproven["instances"][0].get("incumbents", [])]
+        results["incumbents_from_log"] = bool(logged) and all(a < b for a, b in zip(logged, logged[1:]))
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
 
     try:

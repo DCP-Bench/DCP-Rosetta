@@ -58,6 +58,17 @@ void Status(const std::string& status, double seconds, const std::string& detail
 
 void Solution(const json& values) { Record({{"type", "solution"}, {"values", values}}); }
 
+// Improving MIP solutions of the optimisation search (anytime evidence, not a result) are reported as incumbents,
+// with the seconds since the search started, while g_report_incumbents holds: only during the first solve.
+Clock::time_point g_search_start;
+bool g_report_incumbents = false;
+
+void OnCallback(int type, const std::string&, const HighsCallbackOutput* data, HighsCallbackInput*, void*) {
+  if (type != kCallbackMipImprovingSolution || !g_report_incumbents || data == nullptr) return;
+  Record({{"type", "incumbent"}, {"objective", std::llround(data->objective_function_value)},
+          {"seconds", Seconds(g_search_start)}});
+}
+
 // A problem with the submission or with HiGHS's answer; reported as `error`.
 struct SubmissionError : std::runtime_error {
   using std::runtime_error::runtime_error;
@@ -122,6 +133,7 @@ Verdict Run(Highs& h, Clock::time_point deadline) {
 // an unbounded MIP; solving again with the objective set aside tells them apart.
 Verdict Decide(Highs& h, const Objective& obj, Clock::time_point deadline) {
   Verdict first = Run(h, deadline);
+  g_report_incumbents = false;  // only the optimisation search itself, not the re-solves below or after
   if (first != Verdict::InfeasibleOrUnbounded) return first;
   if (!obj.active) return Verdict::Infeasible;  // a zero objective cannot be unbounded
   Objective zero = obj;
@@ -276,6 +288,12 @@ int main() {
     }
     ApplyObjective(h, obj);
     g_build_seconds = Seconds(building);
+    g_search_start = Clock::now();
+    if (obj.active) {
+      Check(h.setCallback(OnCallback), "setCallback");
+      Check(h.startCallback(kCallbackMipImprovingSolution), "startCallback");
+      g_report_incumbents = true;
+    }
 
     Verdict verdict = Decide(h, obj, deadline);
     if (verdict == Verdict::Infeasible) {

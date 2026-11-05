@@ -112,8 +112,9 @@ dcp_solve(Data, Limit, Backend, Status) =>
     ).
 
 % Both solver modules return the first solution of a $min or $max search only
-% once it is proven optimal, so anything short of it is a timeout (run.py kills
-% the process) or an unsatisfiable model.
+% once it is proven optimal (the improving ones before it are only reported, as
+% incumbents), so anything short of it is a timeout (run.py kills the process)
+% or an unsatisfiable model.
 dcp_optimum(Data) = Optimum =>
     Found = findall(Value, once(dcp_optimum_value(Data, Value))),
     if Found == [] then
@@ -127,9 +128,25 @@ dcp_optimum_value(Data, Value) =>
         Value = none
     else
         dcp_objective_var(Objective, ObjVar),
-        call(solve, [Objective|Options], LabelVars),
+        % Each improving solution is reported as an incumbent through the
+        % solver's own $report option, which leaves the search as it is. A
+        % model that brings its own $report keeps it, and reports none.
+        if [R : R in Options, dcp_report_option(R)] == [] then
+            SearchOptions = [Objective, $report(dcp_incumbent(ObjVar))|Options]
+        else
+            SearchOptions = [Objective|Options]
+        end,
+        get_global_map().put(dcp_search_start, dcp_clock()),
+        call(solve, SearchOptions, LabelVars),
         Value = ObjVar
     end.
+
+% An improving solution of the optimisation search (anytime evidence, not a
+% result): its objective and the seconds since the search started.
+dcp_incumbent(Value) =>
+    G = get_global_map(),
+    dcp_record(to_fstring("{\"type\":\"incumbent\",\"objective\":%d,\"seconds\":%.6f}",
+                          Value, max(0.0, dcp_clock() - G.get(dcp_search_start)))).
 
 dcp_objective_var(min(V), ObjVar) => ObjVar = V.
 dcp_objective_var(max(V), ObjVar) => ObjVar = V.
@@ -177,6 +194,8 @@ dcp_build(Data, LabelVars, Outputs, Options, Objective) =>
 
 dcp_objective(min(_)) => true.
 dcp_objective(max(_)) => true.
+
+dcp_report_option(report(_)) => true.
 
 % An objective over an expression is minimised through a variable equal to it,
 % so the driver can read its value and fix it afterwards.

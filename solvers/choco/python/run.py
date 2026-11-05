@@ -120,6 +120,10 @@ def best_objective(instance, direction, deadline):
     Choco's branch and bound only establishes optimality when its search runs to
     completion, so a run that used its whole budget is reported as a timeout even
     though it holds an incumbent.
+
+    The search is Choco's `findOptimalSolution` written out: set the objective, then
+    `solve()` until it returns false, each success a strictly better solution. Each
+    one is reported as an incumbent, with the seconds since this search started.
     """
     left = remaining(deadline)
     if left <= 0:
@@ -128,9 +132,13 @@ def best_objective(instance, direction, deadline):
     solver = model.get_solver()
     limit(solver, left)
     started = time.monotonic()
-    solution = solver.find_optimal_solution(objective[1], maximize=direction == "maximize")
+    model.set_objective(objective[1], maximize=direction == "maximize")
+    best = None
+    while solver.solve():
+        best = objective[1].get_value()
+        emit({"type": "incumbent", "objective": best, "seconds": time.monotonic() - started})
     spent = time.monotonic() - started
-    if solution is None:
+    if best is None:
         # Either nothing satisfies the constraints, or the budget ran out before
         # anything was found; the elapsed time is what tells them apart.
         if spent < left - EXHAUSTION_MARGIN:
@@ -138,7 +146,7 @@ def best_objective(instance, direction, deadline):
         return None, ("timeout", "")
     if spent >= left - EXHAUSTION_MARGIN:
         return None, ("timeout", "Candidate optimum was not proven")
-    return solution.get_int_val(objective[1]), None
+    return best, None
 
 
 # Seconds the submission took to build the first model (posting into Choco), and from STARTED until the

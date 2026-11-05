@@ -50,6 +50,11 @@ an optimisation with that constant as the proven optimum.
   On 4 or 119 (infeasible or unbounded) the runner re-solves once with
   `preprocessing.reduce = 1` (primal reductions only) and maps the new code.
   `DOcplexLimitsExceeded` is `unsupported`.
+- Incumbents: during the first solve of an optimisation only, a CPLEX generic callback in
+  the global-progress context (informational: same nodes and iterations as without it)
+  reports each improving integer incumbent objective as an `incumbent`, with the seconds
+  since `solve()` was called. A model presolve solves outright gets no call, so the proven
+  optimum is reported when the solve returns if it was not the last one reported.
 - Enumeration: after the first proven solve the objective is pinned by a range
   (±0.5 around the optimum for an integral objective) and removed; each next solve adds
   a no-good over the integer variables under the declared outputs (a linear term per

@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -157,6 +157,11 @@ def main():
         exhausted("distinct_declared_outputs", AUXILIARY, 3)
         check("minimization", OPTIMAL.replace("SENSE", "Min"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "Max"), reference=MAXIMIZING)
+        # HiGHS's improving-solution callback reports the solve's incumbents; this model is small enough that
+        # the first is the optimum 4, which must arrive as one, and the later enumeration solve reports none.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("SENSE", "Max"), reference=MAXIMIZING, solution_limit=2),
+            minimize=False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

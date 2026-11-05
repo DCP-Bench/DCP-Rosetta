@@ -16,5 +16,5 @@ RUN apt-snapshot 20261016T072942Z && apt-get update \
 RUN apt-snapshot 20261016T072954Z && apt-get update \
  && apt-get install -y --no-install-recommends python3 \
  && rm -rf /var/lib/apt/lists/*
-COPY --chmod=0755 runner/runtime.py solvers/essence_prime/essence_prime/run.py /opt/runner/
+COPY --chmod=0755 runner/runtime.py solvers/essence_prime/essence_prime/run.py solvers/essence_prime/essence_prime/minion-follow.sh /opt/runner/
 ENTRYPOINT ["python", "/opt/runner/run.py"]

@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -125,6 +125,12 @@ def main():
         check("changed_instances", GOOD, instances=[{"n": 3, "optimize": False}], instance_count=2)
         check("minimization", OPTIMAL.replace("DIRECTION", "False"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "True"), reference=MAXIMIZING)
+        # Each solve() of the branch and bound is reported: strictly better, ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "False"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "True"), reference=MAXIMIZING),
+            minimize=False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

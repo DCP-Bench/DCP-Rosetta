@@ -74,7 +74,9 @@ an integer once the variables are labelled; a real-valued objective is an `error
   with `Search` the labelling goal described above. Each solution must improve the cost by
   at least 1 until branch and bound exhausts the space, so the last solution is optimal;
   only then is it reported, as the first solution. A model that fails, or an optimum phase
-  that finds nothing, is `unsat`.
+  that finds nothing, is `unsat`. Each improving solution is reported along the way as an
+  `incumbent` (its objective, seconds since `bb_min` started) through the `report_success`
+  option, whose default only logs; `run.py` relays these while the driver runs.
 - Enumeration phase (only when more than one solution is wanted and the optimum phase did
   not already reach the limit): the model is rebuilt, `Expr #= Optimum` is posted, and the
   driver backtracks through the labelling. Outputs equal to one already reported are
