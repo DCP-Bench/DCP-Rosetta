@@ -673,6 +673,62 @@
       "detail": "The brief declares an objective and cvc5_python is a satisfaction-only integration: cvc5 1.4.2 has no optimiser in its API and the runner adds none (metadata optimization is false).",
       "evidence": "solvers/cvc5/python/metadata.json",
       "recorded": "2026-11-02"
+    },
+    {
+      "problem": "csplib_006_golomb_rulers",
+      "solver": "hexaly_python",
+      "reason": "optimum_unproven",
+      "detail": "Hexaly finds rulers at once but cannot prove the minimum length from 8 marks up within 180 s: sizes 8, 9 and 10 (json:1, json:2, example) end FEASIBLE at the limit, which the runner reports as an unproven optimum, while sizes 5 and 7 are accepted (7 in 53 s). That is 2 of 5 instances, below the 80% a performance limit may cover. Adding the implied bound marks[j] - marks[i] >= (j-i)(j-i+1)/2 left size 8 unproven at 180 s. Hexaly's proofs come from its bounds, and pairwise distinct differences give it none that close.",
+      "evidence": "generation/runs/hexaly-pilot-20261102t153126z-252c/attempts/csplib_006_golomb_rulers/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
+    },
+    {
+      "problem": "csplib_009_perfect_square_placement",
+      "solver": "hexaly_python",
+      "reason": "search_timeout",
+      "detail": "Hexaly finds no packing within 180 s for the two largest instances, json:5 (19 squares in a 30 x 30 square) and json:6 (Duijvestijn's simple perfect squared square of order 21, base 112): both end INFEASIBLE, which proves nothing either way. The four smaller instances are accepted. That is 4 of 6, below the 80% a performance limit may cover. The model has pairwise non-overlap and the implied exact row and column coverage. A second formulation with a Boolean per square and corner cell, and every cell covered exactly once, also solved 4 of 6 (json:5 and json:6 end INFEASIBLE at the limit).",
+      "evidence": "generation/runs/hexaly-final-20261103t110215z-46d1/attempts/csplib_009_perfect_square_placement/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
+    },
+    {
+      "problem": "csplib_005_autocorrelation",
+      "solver": "hexaly_python",
+      "reason": "optimum_unproven",
+      "detail": "Hexaly finds low-energy sequences at once but cannot prove the minimum of the periodic autocorrelation energy (a sum of squared sums of products of +1/-1 decisions) for n >= 16 within 180 s: json:1, json:2 and json:4 end FEASIBLE, which the runner reports as an unproven optimum. n = 10 and 13 are accepted. That is 2 of 5 instances, below the 80% a performance limit may cover.",
+      "evidence": "generation/runs/hexaly-batch40-20261102t162134z-7991/attempts/csplib_005_autocorrelation/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-02"
+    },
+    {
+      "problem": "csplib_011_acc_basketball_schedule",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "Hexaly finds a valid timetable for the nine teams in seconds but not a second distinct one within 180 s, which the solution limit of 2 requires: the valid timetables are isolated points, so a re-solve starting from the first has no neighbouring solution to move to. 0 of 1 instance verified.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_011_acc_basketball_schedule/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_032_max_density_still_life",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "The 6 x 6 and 7 x 7 instances are accepted. On 8 x 8 Hexaly proves the optimum (36 live cells) and finds one pattern, but not a second optimal pattern or the proof that there is none within 180 s. That is 2 of 3 instances, below the 80% a performance limit may cover.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_032_max_density_still_life/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_003_quasigroup_existence",
+      "solver": "hexaly_python",
+      "reason": "second_solution_not_found",
+      "detail": "With one-hot Boolean cells and linear implications (attempt-002) the orders 8, 4 and 1 are accepted, but for order 9 Hexaly finds one quasigroup and not a second distinct one within 180 s. That is 3 of 4 instances, below 80%. The first formulation (integer cells with an element lookup) solved only 2 of 4.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_003_quasigroup_existence/hexaly_python/attempt-002/evaluation.json",
+      "recorded": "2026-11-03"
+    },
+    {
+      "problem": "csplib_002_template_design",
+      "solver": "hexaly_python",
+      "reason": "optimum_unproven",
+      "detail": "The optimum is not proven within 180 s on the example (an objective over products of layout counts and sheets, a sum of nonlinear terms); the second instance (three templates) is accepted. That is 1 of 2 instances.",
+      "evidence": "generation/runs/hexaly-rest-20261102t225510z-cea0/attempts/csplib_002_template_design/hexaly_python/attempt-001/evaluation.json",
+      "recorded": "2026-11-03"
     }
   ]
 }
