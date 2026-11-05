@@ -341,6 +341,42 @@ STEP_RS = """fn build(inst: &Instance, solver: &mut Solver) -> Model {
 }
 """
 
+# incumbents_maximize: x in {n - 1, n}, maximised; the incumbents must rise to n.
+STEP_MAX_REF = EASY_MIN.replace("x >= n", "(x >= n - 1) & (x <= n)").replace("model.minimize", "model.maximize")
+STEP_MAX_RS = STEP_RS.replace("m.minimise(x)", "m.maximise(x)")
+# objective_values: every reported objective must be the problem's own value. A maximisation whose objective has
+# a constant term (3 + x + y under x + y <= n, optimum 5) and a minimisation with a negative optimum (x - y - 3,
+# optimum -5).
+OBJECTIVE_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.DIRECTION(EXPRESSION)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+CONSTANT_MAX_REF = OBJECTIVE_REF.replace("DIRECTION", "maximize").replace("EXPRESSION", "3 + x + y")
+NEGATIVE_MIN_REF = OBJECTIVE_REF.replace("DIRECTION", "minimize").replace("EXPRESSION", "x - y - 3")
+
+
+def objective_model(terms, rhs, direction):
+    # obj is tied to x and y by sum(terms) == rhs, with x + y <= n.
+    return (HEAD + DECLARE
+            + POST.format("less_than_or_equals(vec![x.scaled(1), y.scaled(1)], n, tag)")
+            + "    let obj = solver.new_bounded_integer(-10, 10);\n"
+            + POST.format(f"equals(vec![{terms}, obj.scaled(-1)], {rhs}, tag)")
+            + EXPORT + f"    m.{direction}(obj);\n    m\n" + TAIL)
+
+
+CONSTANT_MAX = objective_model("x.scaled(1), y.scaled(1)", -3, "maximise")  # obj = 3 + x + y
+NEGATIVE_MIN = objective_model("x.scaled(1), y.scaled(-1)", 3, "minimise")  # obj = x - y - 3
+
 # optimum_enumeration: four values in 0..2 with a sum of at least n; ten optimal tuples.
 SUM_RS = """fn build(inst: &Instance, solver: &mut Solver) -> Model {
     let n = inst.int("n");
@@ -531,6 +567,12 @@ def main():
         check("minimization_step_one", STEP_RS, reference=STEP_REF)
         # The first solution (2) is not optimal: the optimise callback reports it, then the optimum 1.
         results["incumbents"] = improving_incumbents(check("incumbents", STEP_RS, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", STEP_MAX_RS, reference=STEP_MAX_REF), minimize=False)
+        # Acceptance includes every reported objective being the reference's optimum.
+        objective_max = check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAX_REF)["accepted"]
+        objective_min = check("objective_values", NEGATIVE_MIN, reference=NEGATIVE_MIN_REF)["accepted"]
+        results["objective_values"] = objective_max and objective_min
         result = check("optimum_enumeration", SUM_RS, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         # The i32 refusal is the documented limit, raised by build as an execution_error.
