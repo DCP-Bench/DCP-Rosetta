@@ -38,8 +38,8 @@ def build(instance):
     # x is the value that makes 2x - 1 the chosen prime
     m.addCons(x == quicksum(((q + 1) // 2) * z[q] for q in candidates))
 
-    # minimise x, which minimises a = x^2 (increasing in x)
-    m.setObjective(x, "minimize")
+    # minimise a = x^2: the chosen prime q fixes x = (q + 1) / 2, so a is linear in the z[q]
+    m.setObjective(quicksum(((q + 1) // 2) ** 2 * z[q] for q in candidates), "minimize")
     # outputs: a = x^2, b = (x-1)^2, n = x(x-1), p = 2x - 1
     a = x * x
     b = (x - 1) * (x - 1)

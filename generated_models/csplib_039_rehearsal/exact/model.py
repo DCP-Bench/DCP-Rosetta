@@ -81,15 +81,16 @@ def create_model(instance):
                 solver.addConstraint([(1, start[i]), (-1, arrival[p])], True, 0)
                 solver.addConstraint([(1, departure[p]), (-1, start[i])], True, duration[i])
 
-    # The time each player is present, summed over the players who play in some piece. Their
-    # playing time is fixed, so minimising this minimises the waiting time.
+    # The total waiting time: the time each player is present, summed over the players who play
+    # in some piece, less the time they spend playing, which the data fixes.
+    playing_time = sum(duration[i] for p in range(n_players) for i in range(n_pieces) if rehearsal[p][i])
     objective = []
     for p in range(n_players):
         if any(rehearsal[p]):
             objective.append((1, departure[p]))
             objective.append((-1, arrival[p]))
 
-    solver.setObjective(objective, minimize=True)
+    solver.setObjective(objective, minimize=True, offset=-playing_time)
 
     return solver, {"rehearsal_order": rehearsal_order}
 

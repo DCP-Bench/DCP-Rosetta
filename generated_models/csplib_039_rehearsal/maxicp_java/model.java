@@ -35,14 +35,16 @@ public class Submission {
     slotStart[0] = m.intVar(0, 0);
     for (int i = 1; i < n; i++) slotStart[i] = sum(Arrays.copyOf(slotDur, i));
 
-    // waiting time = (departure - arrival) - time spent playing. The time spent playing is fixed by the
-    // data, so minimising the sum of (departure - arrival) over all players minimises the total waiting time.
+    // waiting time = (departure - arrival) - time spent playing, summed over the players. The time spent
+    // playing is fixed by the data.
+    int totalPlayTime = 0;
     CPIntVar[] spans = new CPIntVar[2 * np];
     int t = 0;
     for (int p = 0; p < np; p++) {
       int playTime = 0;
       for (int k = 0; k < n; k++) playTime += rehearsal[p][k] * dur[k];
       if (playTime == 0) continue; // a player who is in no piece does not attend
+      totalPlayTime += playTime;
 
       // plays = 1 if player p is in the piece rehearsed in slot i
       CPIntVar[] arrival = new CPIntVar[n]; // start of slot i if p plays there, otherwise a large value
@@ -59,7 +61,7 @@ public class Submission {
       spans[t++] = minus(minimum(arrival));
     }
 
-    m.minimize(sum(Arrays.copyOf(spans, t))); // the playing time is a constant, so it is left out
+    m.minimize(minus(sum(Arrays.copyOf(spans, t)), totalPlayTime));
     out.put("rehearsal_order", order);
   }
 }
