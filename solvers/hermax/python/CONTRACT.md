@@ -12,15 +12,16 @@ standard library; nothing else is installed, and no other file of yours is stage
 ## Entrypoint
 
 ```python
-def create_model(instance) -> tuple[hermax.model.Model, dict]:
+def create_model(instance) -> tuple[hermax.model.Model, dict] | tuple[hermax.model.Model, dict, objective]:
 ```
 
 The runner imports the file as module `candidate` and calls `create_model(instance)` once.
-It must return a 2-tuple `(model, outputs)` with `model` a `hermax.model.Model`; the
-objective is never returned. Anything the module prints goes to stderr.
+A satisfaction problem returns `(model, outputs)` with `model` a `hermax.model.Model`; an
+optimisation returns `(model, outputs, objective)`, with `objective` as in
+[Objective](#objective). Anything the module prints goes to stderr.
 
-Models retained before the rename name it `build(instance)`, with the same return value;
-the runner still accepts that name. Write `create_model`.
+Models retained before the rename name it `build(instance)`; the runner still accepts that
+name. Write `create_model`.
 
 ## Instance
 
@@ -52,6 +53,26 @@ costs 3 at best). The `m.obj[w] += lit` form of hermax 1.2 raises `TypeError` si
 The runner always minimises that cost and reads only whether one exists: `result.cost` is
 None when there are no soft clauses, which makes the model a satisfaction problem.
 
+That cost is what the solver optimises, not what the runner reports: for a maximisation it
+is the negation or the complement of the objective. So an optimisation also returns the
+**problem's own objective as the third value, `objective`**: in the problem's terms and
+direction (the value the description's objective takes, constant included), as an
+`IntVar`, a `Literal` (1 when true), a linear expression (`PBExpr`, `Term`) or an `int`;
+anything `result[...]` decodes to an integer. The runner reports `result[objective]` on each
+solution as its `objective` (runner protocol 2), which the evaluator compares with the
+reference's optimum. For a minimisation given to `m.obj` as is, it is the same expression
+(`m.obj += makespan`, return `makespan`); for a maximisation, `m.obj += -profit` and return
+`profit`.
+
+Failures, all `execution_error`: an optimisation (`result.cost` not None) without
+`objective`, refused after the first solve and before any solution is emitted (models
+retained before protocol 2 returned a 2-tuple: at protocol 2 the runner cannot report
+their objective); an `objective` of another type, refused before solving; and two optima
+of the same cost whose `objective` values differ, which means the expression and `m.obj`
+disagree (the status names both values). An expression that agrees with `m.obj` but is
+scaled, offset or negated is caught by the evaluator as `objective_mismatch`. A
+satisfaction model may return `objective` too; it is then reported but not checked.
+
 ## Solving
 
 - The runner calls `model.solve(time_limit=left)` with hermax's defaults and forces no
@@ -66,6 +87,8 @@ None when there are no soft clauses, which makes the model a satisfaction proble
   `IntVar`, the flipped literal per `Literal`), and re-solves. A repeated output value is
   re-solved, not emitted. It stops with `complete` on `unsat`, when nothing is left to
   block, or, for an optimisation, at the first answer whose cost exceeds the first one.
+- Each solution record carries `objective`, `result[objective]` (when one was returned).
+  Only proven optima are reported, so there are no `incumbent` records.
 - Time: one deadline from the runner's start; each solve gets the time left, and an
   expired deadline before a solve is `timeout`. There is no SIGALRM, so `create_model` itself is
   unbounded until the evaluator stops the container.
@@ -150,7 +173,8 @@ def create_model(instance):
     # Minimise the total penalty.
     m.obj += total_penalty
 
-    return m, {"landing_times": landing_times, "total_penalty": total_penalty}
+    # The objective in the problem's terms: the total penalty, the cost minimised above.
+    return m, {"landing_times": landing_times, "total_penalty": total_penalty}, total_penalty
 
 
 if __name__ == "__main__":
@@ -160,12 +184,13 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)
 ```
@@ -177,6 +202,9 @@ replaced by the problem id, so a reader can copy it from the catalogue and run i
 nothing but `pip install hermax`. Nothing else goes in either: the header is the first
 lines of the file, the run block the last, and the model sits between them. The runner
 loads the file as module `candidate`, so the block never runs during evaluation.
+
+An optimisation's run block unpacks and prints the objective as the example does; a
+satisfaction model's unpacks `model, outputs = create_model(...)` and prints no objective.
 
 A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
 has all its data fixed by the statement. Its header and run block are:

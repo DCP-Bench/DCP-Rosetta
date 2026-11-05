@@ -12,9 +12,19 @@ runner emits a solution only on the former, so minimization and maximization
 below are really checking that the objective the reference computes is the one
 this integration reaches, in both directions.
 
-`native_api` and `rejects_objective_tuple` guard the mistake this integration
-was rebuilt to fix: submissions have to be written against `hermax.model`, and
-the objective belongs on `model.obj` rather than in the value returned.
+`native_api` guards the mistake this integration was rebuilt to fix:
+submissions have to be written against `hermax.model`, with the objective the
+solver minimises on `model.obj`.
+
+Runner protocol 2: an optimisation also returns its objective, in the problem's
+own terms, which the runner decodes on each solution. `objective_values` checks
+that the reported objective is the problem's value where the solver's cost is
+not: a maximisation with a constant term (`3 + x + y`, whose cost on `model.obj`
+is its complement) and a minimisation with a negative optimum (`x + y - 10`),
+both accepted; `objective_required` that an optimisation without the objective
+is refused; `objective_consistency` that an objective that differs between two
+optima of the same cost ends the run with an error; and `objective_mismatch`
+that the evaluator catches a scaled objective.
 
 `memory_limit` checks that a model killed at the memory limit while it solves
 ends as `memory_limit`, not as a solver error blamed on the model: hermax can
@@ -72,11 +82,29 @@ EXPORT = '    return m, {"x": x, "y": y}\n'
 
 GOOD = HEAD + "    m &= (x + y == n)\n" + EXPORT
 # `n` is a maximum here, so the objective has room to move in both directions.
-OPTIMAL = HEAD + "    m &= (x + y >= n)\n    m.obj += OBJECTIVE\n" + EXPORT
-# The contract this integration used before it was rebuilt on hermax.model. It
-# has to fail loudly rather than be silently ignored.
-OBJECTIVE_TUPLE = (HEAD + "    m &= (x + y >= n)\n"
-                   '    return m, {"x": x, "y": y}, ("minimize", x + y)\n')
+# COST is what the solver minimises, VALUE the problem's objective the runner reports.
+OPTIMAL = (HEAD + "    m &= (x + y >= n)\n    m.obj += COST\n"
+           '    return m, {"x": x, "y": y}, VALUE\n')
+
+
+def optimal(cost, value):
+    return OPTIMAL.replace("COST", cost).replace("VALUE", value)
+
+
+MINIMIZING_MODEL = optimal("x + y", "x + y")
+MAXIMIZING_MODEL = optimal("(2 * n) - (x + y)", "x + y")
+# The problem's objective where the solver's cost differs from it: a constant
+# term in a maximisation, and a negative minimum.
+CONSTANT_REFERENCE = MAXIMIZING.replace("model.maximize(x + y)", "model.maximize(3 + x + y)")
+CONSTANT_MODEL = optimal("(2 * n) - (x + y)", "3 + x + y")
+NEGATIVE_REFERENCE = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
+NEGATIVE_MODEL = optimal("x + y", "x + y - 10")
+# An optimisation without its objective, which the runner must refuse.
+WITHOUT_OBJECTIVE = OPTIMAL.replace("COST", "x + y").replace(", VALUE", "")
+# An objective that is not the one the soft clauses state: x alone differs between
+# the optima of x + y, which all cost the same; 2 * (x + y) is scaled.
+INCONSISTENT_MODEL = optimal("x + y", "x")
+SCALED_MODEL = optimal("x + y", "2 * x + 2 * y")
 # Solves, then corrupts the protocol stream the runner owns.
 MALFORMED = (HEAD + "    m &= (x + y == n)\n"
              "    import os\n"
@@ -255,9 +283,15 @@ def main():
         check("satisfaction", GOOD)
         check("changed_instances", GOOD, instances=[{"n": 3, "optimize": False}], instance_count=2)
         check("enumeration", GOOD, solution_limit=3)
-        check("minimization", OPTIMAL.replace("OBJECTIVE", "x + y"), reference=OPTIMIZING)
-        check("maximization", OPTIMAL.replace("OBJECTIVE", "(2 * n) - (x + y)"),
-              reference=MAXIMIZING)
+        check("minimization", MINIMIZING_MODEL, reference=OPTIMIZING)
+        check("maximization", MAXIMIZING_MODEL, reference=MAXIMIZING)
+        check("objective_constant", CONSTANT_MODEL, reference=CONSTANT_REFERENCE)
+        check("objective_negative", NEGATIVE_MODEL, reference=NEGATIVE_REFERENCE)
+        results["objective_values"] = results.pop("objective_constant") and results.pop("objective_negative")
+        check("objective_required", WITHOUT_OBJECTIVE, reference=OPTIMIZING, expected={"execution_error"})
+        check("objective_consistency", INCONSISTENT_MODEL, reference=OPTIMIZING,
+              expected={"execution_error"}, solution_limit=3)
+        check("objective_mismatch", SCALED_MODEL, reference=OPTIMIZING, expected={"objective_mismatch"})
         check("native_api", NATIVE)
         check("wide_output", WIDE, reference=WIDE_REFERENCE)
         repeat = check("repeated_output_once", REPEAT, reference=REPEAT_REFERENCE,
@@ -265,8 +299,6 @@ def main():
         results["repeated_output_once"] = (repeat["accepted"]
                                            and repeat["solutions_checked"] == 1)
         check("isolation", ISOLATED)
-        check("rejects_objective_tuple", OBJECTIVE_TUPLE,
-              reference=OPTIMIZING, expected={"execution_error", "invalid_output"})
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)

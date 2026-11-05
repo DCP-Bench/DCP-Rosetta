@@ -63,6 +63,7 @@ Full list: [API reference](https://hermax.readthedocs.io/en/latest/api.html) ·
 | equality between two sums | `m &= (sum(...) == sum(...))`, both sides may be sums |
 | minimise / maximise | [`m.obj += expr`](https://hermax.readthedocs.io/en/latest/modeling.html) / `m.obj += -expr`, see [modelling.md](modelling.md#the-objective) |
 | reading values | `r[var]`; `r[vector]` is a list, `r[matrix]` a list of row lists of the same shape |
+| the objective's value | `r[objective]` on the problem's own expression; `r.cost` is what was minimised (the negation, for a maximisation), see [modelling.md](modelling.md#the-objective) |
 
 `cumulative` returns its constraint like every other one (since 1.3.0): a call without
 `m &=` is silently dropped.
