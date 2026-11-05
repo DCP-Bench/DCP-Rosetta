@@ -493,6 +493,40 @@ OBJECTIVE_MIN_RS = """fn build(inst: &Instance, m: &mut Model) -> Res<Out> {
 
 OBJECTIVE_MAX_RS = OBJECTIVE_MIN_RS.replace("out.minimise(obj)", "out.maximise(obj)")
 
+# objective_values: every reported objective must be the problem's own value. The maximisation above has a
+# constant term (3x - 2y + 7, optimum 13); this minimisation has a negative optimum (x - y - 3 under x + y <= n,
+# optimum -5).
+NEGATIVE_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.minimize(x - y - 3)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+NEGATIVE_MIN_RS = """fn build(inst: &Instance, m: &mut Model) -> Res<Out> {
+    let n = inst.int("n");
+    let x = m.new_int_decision(0..=n);
+    let y = m.new_int_decision(0..=n);
+    m.linear(x + y).le(n).post()?;
+    let obj = m.new_int_decision(-1000..=1000);
+    m.linear(x * 1 - y * 1 - 3).eq(obj).post()?;
+    let mut out = Out::new();
+    out.put("x", x).put("y", y);
+    out.minimise(obj);
+    Ok(out)
+}
+"""
+# incumbents_maximize: x in {n - 1, n}, maximised; the incumbents must rise to n.
+STEP_MAX_REF = EASY_MIN.replace("x >= n", "(x >= n - 1) & (x <= n)").replace("model.minimize", "model.maximize")
+STEP_MAX_RS = STEP_RS.replace("out.minimise(x)", "out.maximise(x)")
+
 # constant_outputs: an integer constant and a Boolean constant declared as outputs.
 CONSTANT_RS = """fn build(inst: &Instance, m: &mut Model) -> Res<Out> {
     let n = inst.int("n");
@@ -577,6 +611,8 @@ def main():
         check("minimization_step_one", STEP_RS, reference=STEP_REF)
         # Branch and bound may reach x = n before the optimum n - 1: every solution it finds is reported.
         results["incumbents"] = improving_incumbents(check("incumbents", STEP_RS, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", STEP_MAX_RS, reference=STEP_MAX_REF), minimize=False)
         result = check("optimum_enumeration", SUM_RS, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         check("output_shapes", SHAPES_RS, reference=SHAPES_REF)
@@ -590,6 +626,11 @@ def main():
         check("large_model", LARGE_RS, reference=LARGE_REF, execution_timeout=120, reference_timeout=120)
         check("objective_expression", OBJECTIVE_MIN_RS, reference=OBJ_REF.replace("DIRECTION", "minimize"))
         check("maximize_expression", OBJECTIVE_MAX_RS, reference=OBJ_REF.replace("DIRECTION", "maximize"))
+        # Acceptance includes every reported objective being the reference's optimum.
+        objective_max = check("objective_values", OBJECTIVE_MAX_RS,
+                              reference=OBJ_REF.replace("DIRECTION", "maximize"))["accepted"]
+        objective_min = check("objective_values", NEGATIVE_MIN_RS, reference=NEGATIVE_REF)["accepted"]
+        results["objective_values"] = objective_max and objective_min
         check("constant_outputs", CONSTANT_RS, reference=CONSTANT_REF)
         result = check("n_cap", GOOD, reference=N_CAP_REF, solution_limit=2)
         results["n_cap"] = result["accepted"] and result["solutions_checked"] == 2

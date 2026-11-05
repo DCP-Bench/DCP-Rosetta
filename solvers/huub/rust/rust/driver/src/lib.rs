@@ -431,13 +431,18 @@ fn shape<I: Iterator<Item = Json>>(node: &Node, leaves: &mut I) -> Json {
     }
 }
 
-fn solution_record(out: &Out, leaves: Vec<Json>) -> Json {
+/// A solution record; for an optimisation with its objective: the objective view evaluated on the solution, the
+/// problem's own value (Huub neither scales nor negates the view the model declared).
+fn solution_record(out: &Out, leaves: Vec<Json>, objective: Option<i64>) -> Json {
     let mut values = serde_json::Map::new();
     let mut leaves = leaves.into_iter();
     for (name, node) in &out.outputs {
         values.insert(name.clone(), shape(node, &mut leaves));
     }
-    json!({"type": "solution", "values": values})
+    match objective {
+        Some(value) => json!({"type": "solution", "values": values, "objective": value}),
+        None => json!({"type": "solution", "values": values}),
+    }
 }
 
 /// Entry point the generated binary calls. Reads the request on stdin, solves,
@@ -533,7 +538,8 @@ pub fn run(build: fn(&Instance, &mut Model) -> Res<Out>) {
                         Value::Bool(b) => json!(b),
                     })
                     .collect();
-                println!("{}", solution_record(&out, leaves));
+                let value = objective.map(|(_, view)| view.val(sol));
+                println!("{}", solution_record(&out, leaves, value));
                 emitted += 1;
                 if emitted >= limit {
                     enough.set(true);
