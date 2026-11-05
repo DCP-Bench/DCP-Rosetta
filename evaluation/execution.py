@@ -247,6 +247,41 @@ def incumbents(records):
     return found
 
 
+# From this protocol version on, every solution record of an optimisation carries its objective.
+OBJECTIVE_PROTOCOL = 2
+
+
+def check_objectives(records, optimum, protocol_version=1):
+    """The objective values a runner reported for an optimisation whose solutions the reference accepted as
+    optimal: each must be the problem's own value, so the optimum, as the reference states it. A model whose
+    objective is scaled, offset or negated, or a runner that passes on the solver's internal value (a MaxSAT
+    cost, a negated maximisation), fails here. The improving solutions must improve and end at that optimum.
+    Returns the objectives reported with the solutions (None where a runner before OBJECTIVE_PROTOCOL gave none)."""
+    reported = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "solution":
+            continue
+        value = x.get("objective")
+        if value is None and protocol_version < OBJECTIVE_PROTOCOL:
+            reported.append(None)
+            continue
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise EvaluationError("invalid_output", "A solution record of an optimisation needs its integer objective")
+        if value != optimum:
+            raise EvaluationError("objective_mismatch", f"The runner reported objective {value} for a solution the "
+                                  f"reference accepts as optimal, whose objective is {optimum}: the model's objective "
+                                  "must be the problem's own value, without scaling, offset or change of sign")
+        reported.append(value)
+    found = [objective for _, objective in incumbents(records)]
+    if found:
+        falling, rising = (all(b < a for a, b in zip(found, found[1:])), all(b > a for a, b in zip(found, found[1:])))
+        if found[-1] != optimum or not (falling or rising):
+            raise EvaluationError("objective_mismatch", f"The improving solutions reported {found[:3]}"
+                                  f"{' ... ' + str(found[-1]) if len(found) > 3 else ''}; they must improve and end "
+                                  f"at the optimum, {optimum}, in the problem's own objective")
+    return reported
+
+
 def validate_records(records):
     if not records or not all(isinstance(x, dict) for x in records):
         raise EvaluationError("invalid_output", "Expected runner JSON records")

@@ -5,7 +5,7 @@ from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
 from evaluation.engine import Docker
-from evaluation.execution import _copied_sources, execute, incumbents, recipe, validate_records
+from evaluation.execution import _copied_sources, check_objectives, execute, incumbents, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -42,6 +42,27 @@ class OrchestrationTests(unittest.TestCase):
             model.write_text("# deliberately not executable on host")
             with built_image(), patch("evaluation.check.execute", return_value=(records, timing or {})):
                 return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE, instances=[], **kwargs)
+
+    def test_reported_objectives_are_the_problems_own(self):
+        status = {"type": "status", "status": "limit"}
+        solution = lambda objective=None: {"type": "solution", "values": {"x": 1},
+                                           **({} if objective is None else {"objective": objective})}
+        incumbent = lambda objective, seconds: {"type": "incumbent", "objective": objective, "seconds": seconds}
+        self.assertEqual(check_objectives([incumbent(9, 0.1), incumbent(7, 0.2), solution(7), status], 7, 2), [7])
+        self.assertEqual(check_objectives([solution(), status], 7, 1), [None])  # before protocol 2: may be absent
+        for records, protocol in (
+                ([solution(), status], 2),                          # protocol 2: the objective is required
+                ([solution(70), status], 2),                        # a scaled objective
+                ([solution(-7), status], 1),                        # a negated one, whenever it is reported
+                ([incumbent(-9, 0.1), incumbent(-7, 0.2), solution(), status], 1),  # incumbents on the solver's scale
+                ([incumbent(9, 0.1), incumbent(8, 0.2), solution(7), status], 2),   # they must end at the optimum
+                ([incumbent(9, 0.1), incumbent(6, 0.2), incumbent(7, 0.3), solution(7), status], 2)):  # and improve
+            with self.assertRaises(EvaluationError) as raised:
+                check_objectives(records, 7, protocol)
+            self.assertIn(raised.exception.reason, ("objective_mismatch", "invalid_output"))
+        with self.assertRaises(EvaluationError) as raised:
+            check_objectives([solution(70), status], 7, 2)
+        self.assertEqual(raised.exception.reason, "objective_mismatch")
 
     def test_runner_records_are_validated(self):
         for records in ([], [{}], [{"type": "status", "status": "success"}],

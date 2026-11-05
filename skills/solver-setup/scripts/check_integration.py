@@ -88,10 +88,10 @@ def check_metadata(root, solver_id, metadata):
                 others[other] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
             except ValueError:
                 pass
-    versions = {item.get("protocol_version") for item in others.values()}
-    check("metadata: protocol_version matches the others",
-          not versions or metadata.get("protocol_version") in versions,
-          f"{metadata.get('protocol_version')!r}, others use {sorted(versions, key=str)}")
+    # 2: an optimisation's solution records carry their objective (evaluation/README.md). Integrations at 1
+    # predate it and are upgraded as they are re-certified; a new one starts at 2.
+    check("metadata: protocol_version is 1 or 2 (2 for a new integration)",
+          metadata.get("protocol_version") in (1, 2), f"{metadata.get('protocol_version')!r}")
     clash = [other for other, item in others.items() if item.get("name") == metadata.get("name")]
     check("metadata: name is distinct", not clash, f"shared with {clash}")
     clash = [other for other, item in others.items() if item.get("image") == metadata.get("image")]

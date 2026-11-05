@@ -65,6 +65,12 @@ outputs and their shapes, the objective direction, and every instance field with
 - The brief gives the direction: satisfaction, minimize, or maximize.
 - A satisfaction problem declares no objective. An optimisation problem declares **one
   integer objective** with that direction, built from the model's variables.
+- The objective is **the problem's own value**: on every solution it takes exactly the value
+  the description's objective has there. Do not scale it, add or drop a constant, or negate it
+  to turn a maximisation into a minimisation; state the direction the brief gives. Equivalent
+  objectives that give the same optimal solutions are still wrong if the values differ: every
+  reported objective, including those of improving solutions during the search, is compared
+  with the reference, and a mismatch is `objective_mismatch`.
 - Do not bound the objective yourself (no `objective <= k` from a known optimum, no search
   for it in your own loop): proving the optimum is the runner's job.
 
@@ -79,6 +85,8 @@ The integration's runner, not the submission, does the solving:
   further solutions that differ in a declared output, up to the requested count. Fewer
   solutions than requested are fine only when the search space is exhausted.
 - It serialises the declared outputs and reports one final status.
+- It reports each final solution's objective in the problem's terms (the model's objective
+  value), translating the solver's own value where that differs.
 - Where the solver exposes them, it also reports each improving solution's objective while it searches,
   as an `incumbent` record ([evaluation/README.md](../evaluation/README.md)): evidence of how the search
   progressed, never a result. A submission does nothing for this.
@@ -112,6 +120,7 @@ a counterexample; an accepted model is one for which none was found.
 |---|---|---|
 | `invalid_solution` | A reported solution violates the reference: the model is wrong or under-constrained | A constraint missing or too weak; with "Declared outputs cannot extend to a reference solution", an output convention (above) |
 | `suboptimal_solution` | A reported "optimal" solution is not optimal for the reference | The objective's direction or expression |
+| `objective_mismatch` | The solutions are optimal, but the objective value reported for them (or for the improving solutions) is not the problem's | The objective is scaled, offset or negated: write the problem's own expression, in the brief's direction |
 | `no_solution` | The model reported no solution where the reference has one (over-constrained, or wrong) | A constraint too strong, or ordering the description does not ask for |
 | `invalid_output` | The reported outputs do not match the declared names or shapes, or too few distinct solutions without exhaustion | A declared name missing or extra, a shape wrong, a leaf of the wrong kind |
 | `output_limit` | Too much output (8 MiB per stream) | Printing from the model |
