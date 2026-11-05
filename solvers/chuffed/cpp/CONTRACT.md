@@ -90,6 +90,11 @@ build `obj` as an `IntVar` (e.g. `int_linear(coeffs, vars, IRT_EQ, obj)`). If th
 objective is also a declared output, export it with `dcp::out(obj)`. No `optimize` call
 for a satisfaction problem. Do not bound `obj` with a value known from elsewhere.
 
+`obj`'s value is the objective the runner reports, on every solution and incumbent: the
+driver reads it from the solution (Chuffed neither scales nor negates it, also under
+`OPT_MAX`), so it must be the problem's own value, constant terms included (tie it with
+`int_linear` to `3 + x + y`, not to `x + y`).
+
 ## Solving
 
 The driver ([driver.cpp](cpp/driver.cpp)) forks one child per phase. The child runs

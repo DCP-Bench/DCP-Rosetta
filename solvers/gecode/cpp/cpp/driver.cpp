@@ -65,8 +65,12 @@ void Incumbent(long long objective) {
   Record({{"type", "incumbent"}, {"objective", objective}, {"seconds", Seconds(g_search_start)}});
 }
 
-void Solution(const json& values) {
-  Record({{"type", "solution"}, {"values", values}});
+// A solution; for an optimisation with its objective: the value of the model's objective variable on it, the
+// problem's own value (the model declares that variable; Gecode neither scales nor negates it).
+void Solution(const json& values, const dcp::Space& space) {
+  json record = {{"type", "solution"}, {"values", values}};
+  if (space.has_objective()) record["objective"] = space.objective_value();
+  Record(record);
 }
 
 // Outputs and the objective are assigned by values() and by the fallback
@@ -114,7 +118,7 @@ Outcome Enumerate(dcp::Space* root, int limit, Clock::time_point deadline, Pool&
 }
 
 void Finish(Outcome outcome, const Pool& pool, double seconds) {
-  for (const auto& values : pool.values) Solution(values);
+  for (std::size_t k = 0; k < pool.values.size(); ++k) Solution(pool.values[k], *pool.spaces[k]);
   switch (outcome) {
     case Outcome::Limit: Status("limit", seconds); break;
     case Outcome::Timeout: Status("timeout", seconds); break;

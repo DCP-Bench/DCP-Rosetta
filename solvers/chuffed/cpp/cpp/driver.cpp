@@ -253,8 +253,13 @@ void Status(const std::string& status, double seconds, const std::string& detail
                      {"detail", detail}}).dump() << std::endl;
 }
 
-void Solution(const json& values) {
-  std::cout << json({{"type", "solution"}, {"values", values}}).dump() << std::endl;
+// A solution; for an optimisation with its objective, the proven optimum: the value of the model's objective
+// variable (engine.opt_var) on the solution, the problem's own value (Chuffed neither scales nor negates the
+// variable, also for OPT_MAX).
+void Solution(const json& values, const long long* objective = nullptr) {
+  json record = {{"type", "solution"}, {"values", values}};
+  if (objective != nullptr) record["objective"] = *objective;
+  std::cout << record.dump() << std::endl;
 }
 }  // namespace
 
@@ -302,7 +307,7 @@ int main() {
     if (first.values.empty()) { Status("unsat", seconds()); return 0; }
     json optimum = first.values.back();
     long long best = first.objectives.back();
-    Solution(optimum);
+    Solution(optimum, &best);
     if (limit == 1) { Status("limit", seconds()); return 0; }
 
     Phase second = RunPhase(request, 2, best, limit, deadline);
@@ -312,7 +317,7 @@ int main() {
     for (const auto& values : second.values) {
       if (count >= limit) break;
       if (!seen.insert(values.dump()).second) continue;
-      Solution(values);
+      Solution(values, &best);
       ++count;
     }
     if (count >= limit) Status("limit", seconds());

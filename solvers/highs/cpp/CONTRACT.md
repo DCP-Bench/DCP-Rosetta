@@ -66,6 +66,12 @@ constant goes to `changeObjectiveOffset`, and the sense to `changeObjectiveSense
 submission that sets costs on `h` itself has them overwritten. No objective means a
 satisfaction problem.
 
+The objective the runner reports, on every solution and incumbent, is this expression
+evaluated on the solution, constant included: the problem's own value. The driver computes
+it itself rather than passing on HiGHS's objective (for an incumbent, from the improving
+solution the MIP callback gives in the model's columns), so the expression must be the
+problem's own, unscaled and in the brief's direction.
+
 ## Solving
 
 The driver sets these options after `build` (a submission cannot change them):

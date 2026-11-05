@@ -79,6 +79,10 @@ expression is tied to a view first, for example `let obj = m.new_int_decision(lo
 m.linear(x * 3 - y * 2 + 7).eq(obj).post()?;`, or with `.define()` on a variable whose
 domain is known. Set at most one objective; a satisfaction problem sets none.
 
+The view's value is the objective the runner reports, on every solution and incumbent: the
+driver evaluates it on the solution (Huub neither scales nor negates it, also under
+`maximise`), so it must be the problem's own value, constant terms included.
+
 ## Solving
 
 The runner forces:
