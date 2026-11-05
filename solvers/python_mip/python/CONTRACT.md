@@ -26,6 +26,10 @@ The runner imports the file as module `candidate` and calls `create_model(instan
 
 Set on the model with `model.objective = expr` (a variable, a linear expression, or a number). The direction is the model's `sense`: `mip.Model(sense=mip.MAXIMIZE)` or `mip.MINIMIZE`, which is the default. A model is an optimisation when its objective has at least one term or a nonzero constant. Otherwise it is a satisfaction problem, whatever its `sense`. A bare `m += expr` is not an objective: a bare variable raises `TypeError`, and a bare expression is accepted and adds nothing. Use `m.objective`.
 
+The objective reported with each solution is `model.objective.x`: Python-MIP evaluates the
+objective expression on the solution, constant included (CBC itself never sees the
+constant), in the model's own sense. The runner reports no incumbents.
+
 ## Solving
 
 - Forced after `create_model`, overriding anything the model set: `verbose = 0`, `threads = 1`, `max_mip_gap = 0`, `max_mip_gap_abs = 0`. With the gap at zero, CBC's `OPTIMAL` means proven (the default gap of 1e-4 lets it stop early with a suboptimal value). Every solve gets `max_seconds` equal to the time left in the budget.

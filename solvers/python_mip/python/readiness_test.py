@@ -38,6 +38,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 HEADER = "import mip\n\n\ndef build(instance):\n    n = instance['n']\n"
 BOUNDED = ("    x = m.add_var('x', lb=0, ub=n, var_type=mip.INTEGER)\n"
@@ -318,6 +323,11 @@ UNBOUNDED = ("import mip\n\n\ndef build(instance):\n"
              "    return m, {'x': x}\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("SENSE", "MAXIMIZE").replace("m.objective = x + y", "m.objective = 3 + x + y")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("SENSE", "MINIMIZE").replace("m.objective = x + y", "m.objective = x - y - 3")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -347,6 +357,9 @@ def main():
             and exhausted["instances"][0]["runner_status"]["status"] == "complete")
         check("minimization", OPTIMAL.replace("SENSE", "MINIMIZE"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "MAXIMIZE"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         check("expression_output", EXPRESSION, solution_limit=2)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
