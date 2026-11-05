@@ -80,9 +80,14 @@ void Solution(const json& values, const std::vector<double>& x) {
 
 // Improving MIP solutions of the optimisation search (anytime evidence, not a result) are reported as incumbents,
 // with the seconds since the search started, while g_report_incumbents holds: only during the first solve. The
-// objective is recomputed from the improving solution, which HiGHS gives in the original model's columns.
+// objective is recomputed from the improving solution, which HiGHS gives in the original model's columns. HiGHS
+// also calls back for an improvement smaller than the objective's integer step, so a value no better than the last
+// one reported is skipped: incumbents strictly improve.
 Clock::time_point g_search_start;
 bool g_report_incumbents = false;
+bool g_maximising = false;
+bool g_has_incumbent = false;
+long long g_last_incumbent = 0;
 
 void OnCallback(int type, const std::string&, const HighsCallbackOutput* data, HighsCallbackInput*, void*) {
   if (type != kCallbackMipImprovingSolution || !g_report_incumbents || data == nullptr || g_objective == nullptr) return;
@@ -95,6 +100,9 @@ void OnCallback(int type, const std::string&, const HighsCallbackOutput* data, H
   if (objective != std::llround(data->objective_function_value))
     std::cerr << "note: HiGHS reports the incumbent objective " << data->objective_function_value
               << ", the model's objective is " << objective << "\n";
+  if (g_has_incumbent && (g_maximising ? objective <= g_last_incumbent : objective >= g_last_incumbent)) return;
+  g_has_incumbent = true;
+  g_last_incumbent = objective;
   Record({{"type", "incumbent"}, {"objective", objective}, {"seconds", Seconds(g_search_start)}});
 }
 
@@ -317,6 +325,7 @@ int main() {
     }
     ApplyObjective(h, obj);
     if (obj.active) g_objective = &out.objective();
+    g_maximising = obj.sense == ObjSense::kMaximize;
     g_build_seconds = Seconds(building);
     g_search_start = Clock::now();
     if (obj.active) {
