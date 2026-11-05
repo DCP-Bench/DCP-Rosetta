@@ -20,4 +20,5 @@ def create_model(instance):
         if cost > 0:
             formula.append([-x.equals(v)], weight=cost)
             formula.append([-y.equals(v)], weight=cost)
-    return formula, {"x": x, "y": y}
+    # The objective in the problem's terms, which the runner reports.
+    return formula, {"x": x, "y": y}, x + y
