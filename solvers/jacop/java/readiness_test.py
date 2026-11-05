@@ -59,6 +59,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value, not the cost JaCoP minimised.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 
 HEAD = ("import org.jacop.core.*;\n"
         "import org.jacop.constraints.*;\n"
@@ -79,6 +83,11 @@ GOOD = (HEAD + "        store.impose(new XplusYeqC(x, y, n));\n"
 OPTIMAL = (HEAD + "        store.impose(new XplusYgtC(x, y, n - 1));\n"
            + "        IntVar total = new IntVar(store, \"total\", 0, 2 * n);\n"
            + "        store.impose(new XplusYeqZ(x, y, total));\n"
+           + EXPORT + "        return m.DIRECTION(total);\n" + TAIL)
+# objective_values: total = OFFSET + x + y, maximised with OFFSET 3 and minimised with OFFSET -10.
+SHIFTED = (HEAD + "        store.impose(new XplusYgtC(x, y, n - 1));\n"
+           + "        IntVar total = new IntVar(store, \"total\", -100, 100);\n"
+           + "        store.impose(new LinearInt(new IntVar[]{x, y, total}, new int[]{1, 1, -1}, \"==\", -(OFFSET)));\n"
            + EXPORT + "        return m.DIRECTION(total);\n" + TAIL)
 MALFORMED = (HEAD + "        store.impose(new XplusYeqC(x, y, n));\n"
              + "        return new Model();\n" + TAIL)
@@ -348,6 +357,12 @@ def main():
             print(f"enumeration: solutions checked per instance {counts}, expected [3]", file=sys.stderr)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING, solution_limit=3)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING, solution_limit=3)
+        # Acceptance implies every reported objective equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", SHIFTED.replace("DIRECTION", "maximize").replace("OFFSET", "3"),
+                  reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", SHIFTED.replace("DIRECTION", "minimize").replace("OFFSET", "-10"),
+                      reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("native_api", NATIVE)
         check("stdout_is_log", NOISY)
         check("partial_search", PARTIAL, solution_limit=5)

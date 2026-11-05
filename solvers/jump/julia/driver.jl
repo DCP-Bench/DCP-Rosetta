@@ -263,6 +263,10 @@ function solve(io, request, deadline)
     limit = request["solution_limit"]
     variables = cut_variables(outputs)
     values, current = resolved(outputs), [round(Int, JuMP.value(v)) for v in variables]
+    # The problem's objective: JuMP's objective value, in the model's own sense and with its constant (HiGHS
+    # is handed both), rounded as the objective is integral at an integer point. Read, like the values, before
+    # the model changes.
+    found = optimizing ? round(Int, objective_value(model)) : nothing
     if limit > 1
         reason = obstacle(variables)
         reason === nothing || return status(io, "unsupported", reason)
@@ -280,7 +284,9 @@ function solve(io, request, deadline)
         key = JSON.json(values)
         if !(key in seen)
             push!(seen, key)
-            record(io, Dict("type" => "solution", "values" => values))
+            solution = Dict{String, Any}("type" => "solution", "values" => values)
+            optimizing && (solution["objective"] = found)
+            record(io, solution)
             count += 1
             count >= limit && return status(io, "limit")
         end
@@ -290,6 +296,7 @@ function solve(io, request, deadline)
         verdict == :unbounded && return status(io, "error", "The objective is unbounded")
         verdict == :solved || return status(io, "timeout")
         values, current = resolved(outputs), [round(Int, JuMP.value(v)) for v in variables]
+        found = optimizing ? round(Int, objective_value(model)) : nothing
     end
 end
 

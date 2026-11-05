@@ -41,6 +41,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value, not one the solver shifted or negated.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 FLAG_REFERENCE = REFERENCE.replace(
     'solution = {"x": int(x.value()), "y": int(y.value())}',
     'solution = {"x": int(x.value()), "y": int(y.value()), "flag": bool(x.value() == 0)}')
@@ -80,6 +84,10 @@ def optimal(direction, extra=""):
 
 OPTIMAL_MIN = optimal("minimize")
 OPTIMAL_MAX = optimal("maximize")
+OBJECTIVE_CONSTANT_MAX = (HEAD + '    m.cp().post(ge(sum(x, y), n));\n'
+                          "    m.maximize(plus(sum(x, y), 3));\n" + OUTPUTS + CLOSE)
+OBJECTIVE_NEGATIVE_MIN = (HEAD + '    m.cp().post(ge(sum(x, y), n));\n'
+                          "    m.minimize(plus(sum(x, y), -10));\n" + OUTPUTS + CLOSE)
 # Optimisation with the instance flag toggled by the tests that need both forms.
 OPTIMAL_FLAG = (HEAD + '    if (inst.getBool("optimize")) {\n'
                 '      m.cp().post(ge(sum(x, y), n));\n'
@@ -237,6 +245,8 @@ model.solve()
 solution = {"x": int(x.value())}
 print(json.dumps(solution))
 """
+# incumbents_maximize: maximise x with x <= n - 1; the search tries x = 0 first (objective 0), then 1.
+STEP_MAX_REF = STEP_REF.replace("model.minimize(10 - x)", "model.maximize(x)")
 STEP = ('''import org.maxicp.cp.CPFactory;
 import org.maxicp.cp.engine.core.CPIntVar;
 import static org.maxicp.cp.CPFactory.*;
@@ -254,6 +264,7 @@ public class Submission {
   }
 }
 ''')
+STEP_MAX = STEP.replace("m.minimize(plus(minus(x), 10));", "m.maximize(x);")
 # offset_objective: the objective is an offset view (x - 5). MaxiCP's objective bound
 # overflowed on offset views, so this model reported unsat. The minimum is at x = 0.
 OFFSET_REF = """
@@ -462,6 +473,12 @@ def main():
         check("minimization_step_one", STEP, reference=STEP_REF)
         # The first solution (10) is not optimal: the branch and bound reports it, then the optimum 9.
         results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", STEP_MAX, reference=STEP_MAX_REF), minimize=False)
+        # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", OBJECTIVE_CONSTANT_MAX, reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", OBJECTIVE_NEGATIVE_MIN, reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("offset_objective", OFFSET, reference=OFFSET_REF)
         result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3

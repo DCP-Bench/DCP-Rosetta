@@ -101,7 +101,9 @@ def relay(records, solution_limit):
         values = record.get("values")
         if not isinstance(values, dict) or not values:
             return finish("error", "The driver emitted a solution without declared outputs")
-        emit({"type": "solution", "values": values})
+        # An optimisation's objective, which the driver evaluates from the submission's objective expression.
+        extra = {"objective": record["objective"]} if "objective" in record else {}
+        emit({"type": "solution", "values": values, **extra})
     if len(solutions) > solution_limit:
         # The driver is not allowed to answer a question that was not asked;
         # report the excess rather than passing it on as if it were requested.

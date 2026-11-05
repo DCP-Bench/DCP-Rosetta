@@ -38,6 +38,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value, not the negated cost bb_min minimises.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 
 HEADER = ":- lib(ic).\n"
 GOOD = HEADER + ("model(Instance, [X, Y], [x-X, y-Y]) :-\n"
@@ -340,8 +344,16 @@ def main():
         check("maximization", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING)
         # labeling([X, Y]) first finds x+y=2, which branch and bound improves to 3, then the optimum 4:
         # each one must be reported, through report_success, as an incumbent.
-        results["incumbents"] = improving_incumbents(
-            check("incumbents", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING), minimize=False)
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING), minimize=False)
+        # Labelling X downwards from 10 finds 10 first, which branch and bound improves down to the optimum 1.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "max(3 + X + Y)"),
+                  reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "min(X + Y - 10)"),
+                      reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

@@ -197,7 +197,9 @@ def relay(records, solution_limit):
         values = record.get("values")
         if not isinstance(values, dict) or not values:
             return finish("error", "The driver emitted a solution without declared outputs")
-        emit({"type": "solution", "values": values})
+        # An optimisation's objective: the value of the submission's objective expression after branch and bound.
+        extra = {"objective": record["objective"]} if "objective" in record else {}
+        emit({"type": "solution", "values": values, **extra})
     detail = status.get("detail") or ""
     extra = {key: status[key] for key in RELAYED if key in status}
     finish(status["status"], detail, **extra)

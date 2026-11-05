@@ -61,6 +61,10 @@ an error; the driver's completed search fixes every variable.
 is an `execution_error`: "the objective must be an IntVar"). Do not bound it with a value
 known from elsewhere.
 
+State the problem's own objective, in the brief's direction. The driver reports the objective
+variable's value (Choco optimises in the stated direction and keeps no negated copy) as the
+`objective` of every solution and of every `incumbent`.
+
 ## Solving
 
 - **Search:** a strategy set in `build` with `m.getSolver().setSearch(...)` (and restarts)

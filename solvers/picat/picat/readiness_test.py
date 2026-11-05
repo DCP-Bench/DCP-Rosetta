@@ -43,6 +43,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 
 GOOD = """import cp.
 
@@ -173,9 +177,20 @@ def main():
         check("sat_maximization", sat(OPTIMAL.replace("OBJECTIVE", "max")), reference=MAXIMIZING)
         # Labelling x then y upwards first finds x+y=2, which a maximisation improves on, so each module's
         # $report must yield 2, 3, then the optimum 4.
-        for name, module in (("incumbents", lambda source: source), ("sat_incumbents", sat)):
+        for name, module in (("incumbents_maximize", lambda source: source), ("sat_incumbents", sat)):
             results[name] = improving_incumbents(
                 check(name, module(OPTIMAL.replace("OBJECTIVE", "max")), reference=MAXIMIZING), minimize=False)
+        # Labelling downwards first finds x+y=4, which the minimisation improves on, down to the optimum 2.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("$OBJECTIVE(X + Y)", "$min(X + Y), down"), reference=OPTIMIZING))
+        # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum,
+        # under each module.
+        results["objective_values"] = all(
+            check("objective_values", module(OPTIMAL.replace("$OBJECTIVE(X + Y)", objective)), reference=reference,
+                  solution_limit=3)["accepted"]
+            for module in (lambda source: source, sat)
+            for objective, reference in (("$max(3 + X + Y)", CONSTANT_MAXIMIZING),
+                                         ("$min(X + Y - 10)", NEGATIVE_MINIMIZING)))
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

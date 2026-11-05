@@ -41,6 +41,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value, not one the solver shifted or negated.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 FLAG_REFERENCE = REFERENCE.replace(
     'solution = {"x": int(x.value()), "y": int(y.value())}',
     'solution = {"x": int(x.value()), "y": int(y.value()), "flag": bool(x.value() == 0)}')
@@ -99,6 +103,13 @@ OPTIMAL_MAX = optimal("MAXIMIZE")
 # Upper-bound-first search: the first solution (x=2, y=2, total 4) is far from
 # the optimum 2, so the driver has to keep improving.
 FROM_ABOVE = optimal("MINIMIZE", "    m.getSolver().setSearch(Search.inputOrderUBSearch(x, y));\n")
+# The objective with a constant term, maximised, and shifted to a negative optimum, minimised.
+OBJECTIVE_CONSTANT_MAX = (HEAD + '    m.arithm(x, "+", y, ">=", n).post();\n'
+                          "    m.setObjective(Model.MAXIMIZE, x.add(y).add(3).intVar());\n" + OUTPUTS + CLOSE)
+OBJECTIVE_NEGATIVE_MIN = (HEAD + '    m.arithm(x, "+", y, ">=", n).post();\n'
+                          "    m.setObjective(Model.MINIMIZE, x.add(y).sub(10).intVar());\n" + OUTPUTS + CLOSE)
+# Lower-bound-first search on a maximisation: the first solution (x=0, y=2, total 2) is below the optimum 4.
+FROM_BELOW = optimal("MAXIMIZE", "    m.getSolver().setSearch(Search.inputOrderLBSearch(x, y));\n")
 # Luby restarts with a learning-based heuristic. Optimality must still be proven.
 RESTARTS = optimal("MINIMIZE", "    m.getSolver().setSearch(Search.domOverWDegSearch(x, y));\n"
                                "    m.getSolver().setLubyRestart(2, new FailCounter(m, 2), 1000);\n")
@@ -240,6 +251,12 @@ def main():
         check("optimum_from_above", FROM_ABOVE, reference=OPTIMIZING, solution_limit=1)
         # The first solution (total 4) is far from the optimum 2: the driver reports each improvement, ending at 2.
         results["incumbents"] = improving_incumbents(check("incumbents", FROM_ABOVE, reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", FROM_BELOW, reference=MAXIMIZING), minimize=False)
+        # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", OBJECTIVE_CONSTANT_MAX, reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", OBJECTIVE_NEGATIVE_MIN, reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("restarts", RESTARTS, reference=OPTIMIZING, solution_limit=3)
         check("lcg_optimization", LCG, reference=OPTIMIZING, solution_limit=3)
         check("lcg_enumeration", LCG_ENUMERATION, solution_limit=3)

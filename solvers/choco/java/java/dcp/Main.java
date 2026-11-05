@@ -54,6 +54,9 @@ public final class Main {
     private static double buildSeconds = 0;
     // Seconds from main's start until the request was read (benchmarking).
     private static double readSeconds = 0;
+    // An optimisation's proven optimum: the objective variable's value, the problem's own (the model states
+    // the problem's objective and direction; Choco reports the variable's value, not a negated internal one).
+    private static Integer optimum = null;
 
     private enum Outcome { LIMIT, EXHAUSTED, TIMEOUT }
 
@@ -123,18 +126,19 @@ public final class Main {
             }
             found.add(bestValues);
             forbidden.add(bestVars);
+            optimum = best;
             if (limit == 1) {
                 finish(Outcome.LIMIT, found);
                 return;
             }
             // Enumerate the other optima on fresh models with the objective
             // fixed; the optimum already found is forbidden like any other.
-            int optimum = best;
+            int fixedOptimum = best;
             factory = () -> {
                 Built fresh = build(build, settings, data);
                 IntVar fixed = (IntVar) fresh.model().getObjective();
                 fresh.model().clearObjective();
-                fresh.model().arithm(fixed, "=", optimum).post();
+                fresh.model().arithm(fixed, "=", fixedOptimum).post();
                 return fresh;
             };
             built = null;
@@ -237,6 +241,8 @@ public final class Main {
             Map<String, Object> record = new LinkedHashMap<>();
             record.put("type", "solution");
             record.put("values", values);
+            // Every solution of an optimisation is an optimum (the others are enumerated with it fixed).
+            if (optimum != null) record.put("objective", optimum);
             protocol.println(GSON.toJson(record));
         }
         switch (outcome) {

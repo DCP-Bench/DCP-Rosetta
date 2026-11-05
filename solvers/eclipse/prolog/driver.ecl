@@ -127,7 +127,7 @@ dcp_optimum(Instance, Optimum) :-
                 ->  Optimum = Cost
                 ;   dcp_fail_with("The objective is not an integer after search: %w", [Cost])
                 ),
-                dcp_report_solution(Outputs)
+                dcp_report_solution(Outputs, Optimum)
             ;   Optimum = unsat
             )
         )
@@ -152,7 +152,7 @@ dcp_enumerate(Instance, Limit, Optimum, Status) :-
         dcp_fix_objective(Objective, Optimum),
         dcp_not_reported(Outputs),
         dcp_search_all(Vars, Outputs, Objective),
-        dcp_report_solution(Outputs),
+        dcp_report_solution(Outputs, Optimum),
         getval(dcp_count, Count),
         Count >= Limit
     ->  Status = limit
@@ -248,8 +248,10 @@ dcp_check_names([Pair|Rest], Seen) :-
 % ---------------------------------------------------------------------------
 % Output
 
-% A solution counts once per distinct assignment of the declared outputs.
-dcp_report_solution(Outputs) :-
+% A solution counts once per distinct assignment of the declared outputs. An
+% optimisation's solution carries the optimum, the value of Cost #= Expr (the
+% submission's own objective, not the negated Target bb_min minimises).
+dcp_report_solution(Outputs, Optimum) :-
     dcp_check_values(Outputs),
     getval(dcp_seen, Seen),
     (   memberchk(Outputs, Seen)
@@ -257,7 +259,12 @@ dcp_report_solution(Outputs) :-
     ;   setval(dcp_seen, [Outputs|Seen]),
         write(dcp_protocol, "{\"type\": \"solution\", \"values\": {"),
         dcp_write_pairs(Outputs),
-        write(dcp_protocol, "}}"),
+        write(dcp_protocol, "}"),
+        (   integer(Optimum)
+        ->  printf(dcp_protocol, ", \"objective\": %d", [Optimum])
+        ;   true
+        ),
+        write(dcp_protocol, "}"),
         nl(dcp_protocol),
         flush(dcp_protocol),
         getval(dcp_count, Count),

@@ -68,6 +68,10 @@ The driver posts `Cost #= Expr` (and `Neg #= -Cost` for `max`) in `user`, so the
 is the one your solver library defines, then minimises with `bb_min/3`. The cost must be
 an integer once the variables are labelled; a real-valued objective is an `error`.
 
+State the problem's own objective, in the brief's direction. The runner reports `Cost`, the value of
+`Expr`, as each solution's `objective`; an incumbent's is `Cost` too, recovered from the bound
+`bb_min` passes to its `report_success` hook (`-Neg` for a `max`).
+
 ## Solving
 
 - Optimum phase: `bb_min(Search, Cost, bb_options{strategy:continue, delta:1, factor:1})`
