@@ -226,6 +226,9 @@ def solve(request):
     if status != S.OPTIMAL:
         return finish("timeout", f"No proven result within the time limit (Hexaly status {status.name})")
 
+    # The proven optimum: Hexaly's value of the model's own objective expression, constant and direction included.
+    # Every solution after the first is pinned to it.
+    optimum = None if objective is None else integer(objective.value)
     limit = request["solution_limit"]
     seen, repeats = set(), []
     while True:
@@ -235,7 +238,7 @@ def solve(request):
             return finish("error", "Hexaly returned a solution already reported; the declared outputs "
                                    "could not be excluded")
         seen.add(key)
-        emit({"type": "solution", "values": values})
+        emit({"type": "solution", "values": values, **({} if optimum is None else {"objective": optimum})})
         if len(seen) >= limit:
             return finish("limit")
 

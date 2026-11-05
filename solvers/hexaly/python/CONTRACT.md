@@ -54,6 +54,10 @@ objective, or one constant objective, is a satisfaction problem (the runner adds
 `minimize(0)`, which Hexaly needs to close a model). More than one objective (Hexaly's
 lexicographic objectives) is `unsupported`; a float objective is `execution_error`.
 
+The objective is the problem's own value, in the brief's direction. The runner reports Hexaly's
+value of `expr` itself on every solution, constant and direction included; further optima are
+pinned to it. It reports no incumbents.
+
 ## Solving
 
 - Forced over the submission's own parameters: `verbosity = 0`, `nb_threads = 4` (Hexaly

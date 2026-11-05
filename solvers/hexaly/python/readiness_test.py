@@ -55,6 +55,12 @@ GOOD = HEADER + XY + ("    model.constraint(x + y == n)\n"
 OPTIMAL = HEADER + XY + ("    model.constraint(x + y >= n)\n"
                          "    model.OBJECTIVE(x + y)\n"
                          "    return optimizer, {'x': x, 'y': y}\n")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation with a constant
+# term and a minimisation with a negative optimum; accepted means the runner reported exactly the optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
+CONSTANT_OPTIMAL = OPTIMAL.replace("OBJECTIVE(x + y)", "maximize(3 + x + y)")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("OBJECTIVE(x + y)", "minimize(x - y - 3)")
 MALFORMED = "def build(instance):\n    return None, {}\n"
 # Presolve proves this one: the only proof of infeasibility Hexaly gives.
 UNSATISFIABLE = HEADER + ("    x = model.int(0, 1)\n"
@@ -368,6 +374,9 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("OBJECTIVE", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("OBJECTIVE", "maximize"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
