@@ -185,6 +185,13 @@ that is `Int` or a type `<: Int`) and define it in the theory
 with arguments or a non-integer codomain, is an error. No such symbol means a
 satisfaction problem.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`, the objective symbol's value in that
+solution's Z3 model (`model.eval` of the ground `minimize()`/`maximize()` term), so
+its constant and direction are the theory's own. Each improving solution Z3's optimiser
+reports (`set_on_model`) is an `incumbent` record with the same term evaluated in that
+model.
+
 ## Solving
 
 The runner does not call `Theory.expand` or `Theory.optimize` (`expand` blocks on every

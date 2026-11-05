@@ -33,9 +33,36 @@ def solve_without_guard_when_no_objective(solve):
     return wrapped
 
 
+class Optimum:
+    """The objective value of the proven optimum, in the problem's own terms: CPMpy evaluates the model's
+    objective expression on the solution (`Model.objective_value()`), constants and direction included.
+    runtime.py emits solution records without it; with_objective adds it to each one. Every solution of an
+    optimisation is at the optimum: runtime.py enumerates further ones with the objective fixed to it.
+    Move this into runtime.py when that file next changes."""
+    value = None
+
+
+def remembering_objective(solve):
+    def wrapped(model, *args, **kwargs):
+        ok = solve(model, *args, **kwargs)
+        if ok and model.has_objective():
+            Optimum.value = int(model.objective_value())
+        return ok
+    return wrapped
+
+
+def with_objective(emit):
+    def wrapped(record):
+        if record.get("type") == "solution" and Optimum.value is not None:
+            record = {**record, "objective": Optimum.value}
+        return emit(record)
+    return wrapped
+
+
 runtime.build = build
 
 if __name__ == "__main__":
     import cpmpy
-    cpmpy.Model.solve = solve_without_guard_when_no_objective(cpmpy.Model.solve)
+    cpmpy.Model.solve = remembering_objective(solve_without_guard_when_no_objective(cpmpy.Model.solve))
+    runtime.emit = with_objective(runtime.emit)
     runtime.main("cpmpy")

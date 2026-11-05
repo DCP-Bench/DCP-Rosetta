@@ -86,6 +86,12 @@ and enumerates all solutions of that model. A solve item that does not match (an
 annotation, a trailing comment, an expression instead of `objective`, a second matching
 line) gets status `unsupported` whenever more than one solution is requested.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`: MiniZinc's reported objective
+(`Result.objective`, the value of the solve item's expression on the proven optimal
+solution), which is the `objective` variable, constant and direction included. Solutions
+enumerated at the optimum carry the same value. No improving solutions are reported.
+
 ## Solving
 
 - The runner passes no solver flags: Gecode runs with MiniZinc's defaults (one thread,

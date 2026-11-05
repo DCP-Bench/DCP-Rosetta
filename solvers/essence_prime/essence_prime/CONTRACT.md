@@ -138,6 +138,15 @@ than one solution ends as `unsupported` ("Enumeration requires `minimising EXPR`
 `unsupported_capability`. The runner restates `EXPR` in parentheses itself (`(EXPR) =
 v`), so an unparenthesised `minimising sum i : D . c[i]` is fine.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`. With one solution requested it is the value of
+Minion's objective variable in its last (optimal) solution, read from Minion's solutions
+file as the incumbents are; Savile Row keeps the Essence' objective's constant, sign and
+direction there, so no conversion is needed. With more, it is the probe's
+`dcp_objective_value = (EXPR)`. Where Minion has no objective variable to follow (an
+objective Savile Row reduces to a constant), the probe runs for one solution too. The
+incumbents are those objective-variable values, one per improving solution.
+
 ## Solving
 
 Each call is one Savile Row run that also runs Minion, from a fresh directory under
