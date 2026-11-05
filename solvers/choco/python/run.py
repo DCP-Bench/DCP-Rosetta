@@ -198,7 +198,11 @@ def solve(request):
             # Choco varied something the problem does not declare; keep looking.
             continue
         seen.add(fingerprint)
-        emit({"type": "solution", "values": mapped(outputs, read)})
+        record = {"type": "solution", "values": mapped(outputs, read)}
+        if objective is not None:
+            # The objective variable's value: the model's objective itself, as Choco keeps it.
+            record["objective"] = read(objective[1])
+        emit(record)
     finish("limit")
 
 

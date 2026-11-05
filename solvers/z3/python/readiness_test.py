@@ -38,6 +38,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 GOOD = ("import z3\n"
         "def build(instance):\n"
@@ -88,6 +93,11 @@ STANDALONE = GOOD.replace("def build(", "def create_model(") + (
     "    print(outputs)\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("DIRECTION(x + y)", "maximize(3 + x + y)")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("DIRECTION(x + y)", "minimize(x - y - 3)")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -110,6 +120,9 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         # z3's on_model callback reports each improving model: strictly better, ending at the optimum.
         results["incumbents"] = improving_incumbents(
             check("incumbents", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING))

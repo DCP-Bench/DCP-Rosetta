@@ -39,6 +39,11 @@ Boolean. A value that is not within 1e-6 of an integer is rejected (`execution_e
 constant (`minimize(3)`) makes `has_objective()` true, so the runner treats the model as
 an optimisation with that constant as the proven optimum.
 
+The objective reported with each solution is the objective expression evaluated on that
+solution (its constant included, integer variables rounded), in the model's own direction.
+The incumbents are CPLEX's incumbent objective, which already has the model's constant and
+direction (CPLEX maximises natively and keeps the constant as the objective offset).
+
 ## Solving
 
 - Forced over the submission's own parameters: `threads = 1`,

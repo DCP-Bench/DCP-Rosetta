@@ -44,6 +44,12 @@ whatever its sense. The runner accepts a solve only when CBC's `sol_status` is
 `LpSolutionOptimal`, then pins the objective to within 1e-6 of that value before
 enumerating.
 
+The objective reported with each solution is `pulp.value(problem.objective)` on that
+solution: PuLP evaluates the expression itself, constant included, in the problem's sense.
+CBC's own value is not used for it: CBC only minimises, so a maximisation shows the negated
+value, and PuLP keeps the objective's constant to itself. The incumbents read from CBC's log
+are converted for both: `(-V if maximising else V) + constant`.
+
 ## Solving
 
 - Each solve is `PULP_CBC_CMD(msg=0, threads=1, timeLimit=max(1, int(seconds left)))`:

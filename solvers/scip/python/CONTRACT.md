@@ -60,6 +60,12 @@ ub=..)` with bounds from the data, `model.addCons(z == expr)`, `model.setObjecti
 Solving); with a bare expression as objective, one model proved its optimum in 2 s and
 then timed out searching for the second optimal solution.
 
+The objective reported with each solution is SCIP's objective value of the optimisation's
+solution, `getSolObjVal`, in the original problem: it has the objective's constant (which
+`setObjective` keeps as an objective offset) and the model's direction. Every solution
+enumerated after it is pinned to that value, so all report it. The incumbents are
+`getSolObjVal` of each new best solution, in the same terms.
+
 ## Solving
 
 - Forced after `build` returns, over the submission's own settings: `hideOutput()`,

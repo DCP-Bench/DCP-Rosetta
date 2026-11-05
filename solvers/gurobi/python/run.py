@@ -332,13 +332,19 @@ def solve(request):
             return finish("unsupported", "Enumeration needs integer declared outputs; "
                                          f"{continuous[0]} is continuous")
 
+    # The model's objective expression, kept for the solution records after the enumeration unsets it.
+    goal = objective
     seen, count, index = set(), 0, 0
     while True:
         values = resolved(outputs, read)
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if goal is not None:
+                # Evaluated on the solution, with its constant, in the model's own sense.
+                record["objective"] = read(expression_value(goal))
+            emit(record)
             count += 1
             if count >= limit:
                 return finish("limit")

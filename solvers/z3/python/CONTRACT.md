@@ -56,6 +56,10 @@ term negated, as `-(expr)`; when the term is a negation and the solver's SMT-LIB
 finite integer, then adds `objective == best` before enumerating. A `z3.Solver`, or a
 `z3.Optimize` with no objective, means satisfaction.
 
+The objective reported with each solution is the model's objective (`expr`, unnegated)
+evaluated on that solution's model; the incumbents are the values of `expr` on each
+improving model z3's `on_model` callback hands over.
+
 ## Solving
 
 - The only parameter set is Z3's `timeout`, in milliseconds, on each `check()`: what is

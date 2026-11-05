@@ -39,6 +39,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 # A strongly correlated knapsack on which CPLEX's default relative gap (1e-4)
 # stops at 12168379 with status 102, "integer optimal, tolerance"; the optimum
@@ -90,6 +95,12 @@ def build(instance):
     model.maximize(model.sum(v * x[i] for i, v in enumerate(values)))
     return model, {"x": x}
 """
+# The same knapsack as a minimisation of the value left out: an objective with a constant, whose improving
+# solutions must be reported in the problem's terms (incumbents).
+LEFT_OUT = KNAPSACK.replace("model.maximize(cp.sum(x * values))", "model.minimize(sum(values) - cp.sum(x * values))")
+LEFT_OUT_MODEL = KNAPSACK_MODEL.replace(
+    "model.maximize(model.sum(v * x[i] for i, v in enumerate(values)))",
+    "model.minimize(sum(values) - model.sum(v * x[i] for i, v in enumerate(values)))")
 # The submission writes to file descriptor 1 and to Python's stdout; neither may
 # reach the protocol stream.
 NOISY = HEADER.replace("    model = Model()\n",
@@ -135,6 +146,11 @@ ISOLATED = HEADER + ("    import os, socket\n"
     "    return model, {'x': x, 'y': y}\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("SENSE(x + y)", "maximize(3 + x + y)")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("SENSE(x + y)", "minimize(x - y - 3)")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -166,13 +182,19 @@ def main():
         exhausts("unbounded_enumeration", check("unbounded_enumeration", UNBOUNDED, solution_limit=5), 3)
         check("minimization", OPTIMAL.replace("SENSE", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "maximize"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         # Three optima; enumeration past them must stay at the optimum and then stop.
         exhausts("optimal_enumeration", check("optimal_enumeration", OPTIMAL.replace("SENSE", "minimize"),
                                               reference=OPTIMIZING, solution_limit=5), 3)
         check("proven_optimum", KNAPSACK_MODEL, reference=KNAPSACK)
-        # The global-progress callback reports the knapsack's improving solutions, which end at the proven optimum.
+        # The global-progress callback reports the knapsack's improving solutions, which end at the proven optimum; as a
+        # minimisation of the value left out, with its constant, too.
         results["incumbents"] = improving_incumbents(
-            check("incumbents", KNAPSACK_MODEL, reference=KNAPSACK), minimize=False)
+            check("incumbents", LEFT_OUT_MODEL, reference=LEFT_OUT))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", KNAPSACK_MODEL, reference=KNAPSACK), minimize=False)
         check("expression_output", EXPRESSION, solution_limit=2)
         check("library_stdout", NOISY)
         check("isolation", ISOLATED)

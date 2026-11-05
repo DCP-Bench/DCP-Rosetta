@@ -314,6 +314,7 @@ def solve(request):
     building = time.monotonic()
     problem, outputs = load(request["instance"])
     optimizing = problem.objective is not None
+    objective = problem.objective
     register(problem, cut_variables(outputs))
     BUILD_SECONDS = time.monotonic() - building
 
@@ -343,7 +344,12 @@ def solve(request):
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if optimizing:
+                # PuLP evaluates the objective on the solution itself, with its constant and in the
+                # problem's own sense (CBC's printed value is neither).
+                record["objective"] = read(objective)
+            emit(record)
             count += 1
             if count >= limit:
                 return finish("limit")

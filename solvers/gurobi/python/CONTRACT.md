@@ -39,6 +39,11 @@ A value that is not within 1e-6 of an integer is rejected (`execution_error`).
 variable terms (never set, or a constant) is a satisfaction problem; more than one
 objective (`NumObj > 1`) is `unsupported`.
 
+The objective reported with each solution is the objective expression evaluated on that
+solution (its constant included, integer variables rounded), in the model's own direction.
+The incumbents are Gurobi's `MIPSOL_OBJ`, which already has the model's constant
+(`ObjCon`) and direction (Gurobi maximises natively).
+
 ## Solving
 
 - Forced over the submission's own parameters: `OutputFlag = 0` (no solver log),

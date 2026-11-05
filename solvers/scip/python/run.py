@@ -304,7 +304,7 @@ def snapshot(model, outputs, variables, objective):
     values = resolved(outputs, lambda leaf: leaf if isinstance(leaf, bool) else read(number_in(solution, leaf)))
     current = {variable.getIndex(): solution[variable] for variable in variables}
     best = solution[objective] if objective is not None else None
-    return values, current, best
+    return values, current, best, (read(model.getSolObjVal(solution)) if objective is not None else None)
 
 
 def forbid(model, variables, current, index):
@@ -365,13 +365,22 @@ def solve(request):
         return finish("error", f"SCIP stopped with status {verdict}")
 
     integral = objective is not None and integral_objective(objective)
+    # The problem's objective value of the optimal solutions: SCIP's own value of the optimisation's
+    # solution, which has the objective's offset and the model's sense. Every solution enumerated after
+    # it is pinned to it, as the solve that finds them has no objective of its own.
+    reported = None
     seen, count, index = set(), 0, 0
     while True:
-        values, current, best = snapshot(model, outputs, variables, objective)
+        values, current, best, value = snapshot(model, outputs, variables, objective)
+        if objective is not None:
+            reported = value
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if reported is not None:
+                record["objective"] = reported
+            emit(record)
             count += 1
             if count >= limit:
                 return finish("limit")

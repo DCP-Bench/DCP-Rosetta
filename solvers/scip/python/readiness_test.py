@@ -45,6 +45,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 # A strongly correlated knapsack on which a solver with a relative gap of 1e-4
 # stops short of the optimum 12168772. The runner must not report that solution.
@@ -194,6 +199,11 @@ ISOLATED = HEADER + ("    import os, socket\n"
     "    return model, {'x': x, 'y': y}\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("x + y, 'SENSE'", "3 + x + y, 'maximize'")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("x + y, 'SENSE'", "x - y - 3, 'minimize'")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -231,6 +241,9 @@ def main():
         exhausts("unbounded_enumeration", check("unbounded_enumeration", UNBOUNDED, solution_limit=5), 3)
         check("minimization", OPTIMAL.replace("SENSE", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "maximize"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         # Three optima; enumeration past them must stay at the optimum and then stop.
         exhausts("optimal_enumeration", check("optimal_enumeration", OPTIMAL.replace("SENSE", "minimize"),
                                               reference=OPTIMIZING, solution_limit=5), 3)

@@ -48,6 +48,10 @@ reads it. The runner proves the optimum with Choco's
 `find_optimal_solution` loop written out, rebuilds the model and posts `arithm(var, "=", best)` before
 enumerating.
 
+The objective reported with each solution is `var`'s value in that solution, and each
+incumbent is `var`'s value after a successful `solve()` of the branch and bound: the model's
+objective itself, in its own direction, with nothing to convert.
+
 ## Solving
 
 - The runner sets one parameter, Choco's time limit, as `limit_time("<seconds>s")` with

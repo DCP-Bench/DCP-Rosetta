@@ -195,7 +195,11 @@ def solve(request):
         if status != z3.sat:
             return finish("timeout")
         model = solver.model()
-        emit({"type": "solution", "values": mapped(outputs, lambda e: read(e, model))})
+        record = {"type": "solution", "values": mapped(outputs, lambda e: read(e, model))}
+        if objective is not None:
+            # The model's objective on this solution, as the model states it (see direction_of).
+            record["objective"] = read(objective[1], model)
+        emit(record)
         count += 1
         if count == request["solution_limit"]:
             break
