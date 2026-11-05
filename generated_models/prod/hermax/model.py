@@ -38,7 +38,8 @@ def create_model(instance):
     # Maximise the total profit, by minimising its negation.
     m.obj += -total_profit
 
-    return m, {"x": X, "total_profit": total_profit}
+    # The objective in the problem's terms: the total profit, whose negation the solver minimises.
+    return m, {"x": X, "total_profit": total_profit}, total_profit
 
 
 if __name__ == "__main__":
@@ -48,11 +49,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

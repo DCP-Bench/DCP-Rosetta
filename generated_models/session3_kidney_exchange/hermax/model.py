@@ -40,9 +40,12 @@ def create_model(instance):
         m &= (sum(transplants[i][j] for j in range(n)) <= sum(transplants[k][i] for k in range(n)))
 
     # Maximise the number of transplants: minimise the negated count of transplants made.
-    m.obj += -sum(transplants[i][j] for i in range(n) for j in donates_to[i])
+    num_transplants = sum(transplants[i][j] for i in range(n) for j in donates_to[i])
+    m.obj += -num_transplants
 
-    return m, {"transplants": transplants}
+    # The objective in the problem's terms: the number of transplants (people who receive a kidney),
+    # whose negation the solver minimises; incompatible pairs are forced false.
+    return m, {"transplants": transplants}, num_transplants
 
 
 if __name__ == "__main__":
@@ -52,11 +55,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

@@ -38,7 +38,9 @@ def create_model(instance):
     # small range, which keeps the soft clauses small.
     m.obj += excess
 
-    return m, {"counts": counts}
+    # The objective in the problem's terms: the number of items bought, the target plus the
+    # excess minimised above.
+    return m, {"counts": counts}, target + excess
 
 
 if __name__ == "__main__":
@@ -48,11 +50,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

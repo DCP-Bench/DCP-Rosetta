@@ -46,19 +46,21 @@ def create_model(instance):
     # Maximise the weekly profit (the solver minimises, so minimise its negative).
     m.obj += -max_profit
 
+    # The objective in the problem's terms: the weekly profit, whose negation the solver minimises.
     return m, {
         "small_set": small_set,
         "large_set": large_set,
         "max_profit": max_profit,
-    }
+    }, max_profit
 
 
 if __name__ == "__main__":
-    model, outputs = create_model({})
+    model, outputs, objective = create_model({})
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

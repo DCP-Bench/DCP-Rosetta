@@ -36,11 +36,14 @@ def create_model(instance):
                 m &= ~assignments[i][j]
 
     # Maximise the number of assignments. hermax always minimises, so minimise the negated count.
-    m.obj += -sum(assignments[i][j]
-                  for i in range(n_participants) for j in range(n_cars)
-                  if possible[i][j])
+    num_assigned = sum(assignments[i][j]
+                       for i in range(n_participants) for j in range(n_cars)
+                       if possible[i][j])
+    m.obj += -num_assigned
 
-    return m, {"assignments": assignments}
+    # The objective in the problem's terms: the number of assignments, whose negation the
+    # solver minimises (non-interesting pairs are forced false, so this counts every assignment).
+    return m, {"assignments": assignments}, num_assigned
 
 
 if __name__ == "__main__":
@@ -50,11 +53,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

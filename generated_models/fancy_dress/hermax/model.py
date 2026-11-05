@@ -43,15 +43,18 @@ def create_model(instance):
     m.obj += socks_price * s
     m.obj += fee * n
 
-    return m, {"t": t, "h": h, "r": r, "s": s, "n": n}
+    # The objective in the problem's terms: the total cost paid, the sum of the four terms minimised above.
+    total_cost = tie_price * t + hat_price * h + socks_price * s + fee * n
+    return m, {"t": t, "h": h, "r": r, "s": s, "n": n}, total_cost
 
 
 if __name__ == "__main__":
-    model, outputs = create_model({})
+    model, outputs, objective = create_model({})
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)
