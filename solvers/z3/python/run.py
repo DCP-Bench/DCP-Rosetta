@@ -51,8 +51,7 @@ def load(instance):
         objectives = constraints.objectives()
         if len(objectives) != 1:
             raise ValueError(f"The z3.Optimize must have exactly one objective, not {len(objectives)}")
-        # Z3 keeps a maximized term already negated, so minimizing it covers both directions.
-        objective = ("minimize", objectives[0])
+        objective = direction_of(constraints, objectives[0])
     if objective is not None:
         if (not isinstance(objective, (tuple, list)) or len(objective) != 2
                 or objective[0] not in DIRECTIONS):
@@ -64,6 +63,17 @@ def load(instance):
     global SUBMITTED
     SUBMITTED = constraints
     return assertions(constraints), outputs, objective
+
+
+def direction_of(optimize, term):
+    """The objective as the model states it. z3 keeps a maximised term negated (`maximize(e)` lists `-(e)`
+    among the objectives), so minimising that term would find the same optimum, but every value reported
+    on the way would be the negation of the model's objective. The direction is only in the solver's
+    SMT-LIB text, which is read only when the term is a negation."""
+    if z3.is_app_of(term, z3.Z3_OP_UMINUS) and any(
+            line.startswith("(maximize ") for line in optimize.sexpr().splitlines()):
+        return ("maximize", term.arg(0))
+    return ("minimize", term)
 
 
 def assertions(constraints):
