@@ -17,8 +17,12 @@ from runtime import finish
 
 CLASSPATH = "/opt/jacop/jacop.jar:/opt/jacop/json.jar:/opt/jacop/dcp-jacop.jar"
 # One CPU, a 128-process cap and a read-only root: a serial collector, few JIT
-# threads and no perf-data file under /tmp keep the JVM inside all three.
-JVM = ["-XX:+UseSerialGC", "-XX:CICompilerCount=2", "-XX:-UsePerfData", "-XX:MaxRAMPercentage=75",
+# threads and no perf-data file under /tmp keep the JVM inside all three. The
+# heap is fixed below the 2 GiB container limit rather than a share of the
+# memory the JVM detects: where the engine bounds the run from outside the
+# container's own cgroup, the JVM sees the host's memory, and an exhausted heap
+# would end as a kernel kill instead of an OutOfMemoryError.
+JVM = ["-XX:+UseSerialGC", "-XX:CICompilerCount=2", "-XX:-UsePerfData", "-Xmx1400m",
        "-Xss256m", "-Djava.io.tmpdir=/tmp"]
 
 
