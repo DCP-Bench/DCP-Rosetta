@@ -350,6 +350,15 @@ int main() {
 
     // Solved: the solution is proven optimal when there is an objective.
     std::vector<double> x = h.getSolution().col_value;
+    // The callback does not hand over every last solution, and none for an LP: the proven optimum ends the incumbents.
+    if (obj.active) {
+      long long proven = ObjectiveAt(x.data(), x.size());
+      if (!g_has_incumbent || proven != g_last_incumbent) {
+        g_has_incumbent = true;
+        g_last_incumbent = proven;
+        Record({{"type", "incumbent"}, {"objective", proven}, {"seconds", Seconds(g_search_start)}});
+      }
+    }
     x.resize(static_cast<std::size_t>(n), 0.0);
     json values = ReadOutputs(out, x);
     if (limit == 1) {

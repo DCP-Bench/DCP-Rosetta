@@ -152,6 +152,10 @@ def optimum(constraints, direction, objective, deadline):
         return None, ("error", f"Objective is not a finite integer between {low} and {high}")
     if low.as_long() != high.as_long():
         return None, ("timeout", "Candidate optimum was not proven")
+    # z3 does not hand over every last model: the proven optimum ends the incumbents.
+    if not last or last[-1] != low.as_long():
+        last.append(low.as_long())
+        emit({"type": "incumbent", "objective": low.as_long(), "seconds": time.monotonic() - started})
     return low.as_long(), None
 
 

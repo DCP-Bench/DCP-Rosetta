@@ -58,7 +58,7 @@ finite integer, then adds `objective == best` before enumerating. A `z3.Solver`,
 
 The objective reported with each solution is the model's objective (`expr`, unnegated)
 evaluated on that solution's model; the incumbents are the values of `expr` on each
-improving model z3's `on_model` callback hands over.
+improving model z3's `on_model` callback hands over, and last the proven optimum if it did not.
 
 ## Solving
 
