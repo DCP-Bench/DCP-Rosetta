@@ -62,6 +62,11 @@ int main() {
     auto start = std::chrono::steady_clock::now();
     double seconds = 0;
     int count = 0, limit = request.at("solution_limit");
+    // An optimisation's proven optimum, from the first solve: CpSolverResponse::objective_value() is in the model's
+    // own terms (CP-SAT applies the objective's offset and scaling factor, which turns a Maximize back from the
+    // minimisation it solves), so it is the problem's value. Every later solution is pinned to it.
+    bool optimising = model.Build().has_objective();
+    long long best = 0;
     while (count < limit) {
       double left = request.at("execution_timeout").get<double>() - std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
       if (left <= 0) { Status("timeout", seconds); return 0; }
@@ -91,7 +96,10 @@ int main() {
       }
       std::vector<int> indices;
       json values = Read(outputs, response, indices);
-      std::cout << json({{"type", "solution"}, {"values", values}}).dump() << std::endl;
+      if (optimising && count == 0) best = std::llround(response.objective_value());
+      json record = {{"type", "solution"}, {"values", values}};
+      if (optimising) record["objective"] = best;
+      std::cout << record.dump() << std::endl;
       ++count;
       if (count == limit) break;
       if (model.Build().has_floating_point_objective()) { Status("unsupported", seconds, "Use an integer objective"); return 0; }
