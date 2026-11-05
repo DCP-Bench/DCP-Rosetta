@@ -341,6 +341,12 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(unbindable("session2_movie_scheduling"), ["movies"])
         self.assertEqual(unbindable("csplib_054_n_queens"), [])
 
+    def test_the_brief_takes_the_description_from_its_file(self):
+        from generation.brief import brief
+        description = brief("abbots_puzzle")["description"]
+        self.assertTrue(description.startswith("If 100 bushels of corn"))
+        self.assertTrue(description.endswith("(men, women, children)."))
+
     def test_recorded_blockers_leave_the_queue(self):
         """A pair known not to be worth retrying must not keep being offered."""
         (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)

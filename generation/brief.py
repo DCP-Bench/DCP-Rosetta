@@ -8,7 +8,7 @@ it depends on. This prints those facts so they are read rather than inferred.
 
     python -m generation.brief csplib_056_sonet
 
-The description is the reference's docstring, so a modeller can work from
+The description is the problem's description.md, so a modeller can work from
 the problem statement without reading the reference's code.
 
 It also reports the shape of each instance field, because a ragged or
@@ -16,7 +16,6 @@ mixed-type field is what an integration's data interface may be unable to bind
 at all; `generation.next_work` uses the same analysis to withhold those pairs.
 """
 import argparse
-import ast
 import functools
 import importlib.util
 import json
@@ -24,6 +23,7 @@ import sys
 import types
 
 from evaluation.execution import ROOT, integration_folder
+from bench.dcp_bench.problems import read_description
 from bench.dcp_bench.reference import embedded_instance, load_reference
 from evaluation.results import EvaluationError
 
@@ -171,7 +171,8 @@ def shape_of(value):
 
 
 def brief(problem):
-    source = (ROOT / "bench" / "dataset" / problem / f"{problem}.cpmpy.py").read_text(encoding="utf-8")
+    folder = ROOT / "bench" / "dataset" / problem
+    source = (folder / f"{problem}.cpmpy.py").read_text(encoding="utf-8")
     rows = instance_rows(problem)
     instance = rows[0] if rows else embedded_instance(source)
     model, outputs = load_reference(source, instance)
@@ -180,7 +181,7 @@ def brief(problem):
         objective = "minimize" if getattr(model, "objective_is_min", True) else "maximize"
     return {
         "problem": problem,
-        "description": ast.get_docstring(ast.parse(source)) or "",
+        "description": read_description(folder),
         "instances_listed": max(1, len(rows)),
         "objective": objective,
         "declared_outputs": {name: shape_of(value) for name, value in outputs.items()},

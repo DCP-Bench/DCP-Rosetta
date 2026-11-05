@@ -12,7 +12,9 @@
 
 `bench/` is the DCP-Bench Open repository, checked out as a git submodule pinned to
 one commit. The problems are under `bench/dataset/` and their sources in
-`bench/SOURCES.md`. Change it only through `skills/instance-curator`: a dataset change
+`bench/SOURCES.md`. A problem is a folder: `description.md`, `metadata.json` (generated,
+for indexing and filtering), the reference and its instances; `bench/CONTRIBUTING.md` has
+the details. Change it only through `skills/instance-curator`: a dataset change
 is a commit inside `bench/`, followed by a commit here that moves the pointer.
 
 ## The container engine
@@ -46,7 +48,7 @@ campaign end to end, and `skills/solver-setup` for adding a framework/solver.
 Follow `skills/instance-curator` to add instances to existing problems. A generated model should be kept only when the evaluator accepts it.
 
 `python -m generation.brief PROBLEM` prints what a model has to satisfy: the problem
-description, the declared output names with their shapes, the objective direction, and
+description (its `description.md`), the declared output names with their shapes, the objective direction, and
 every instance field with its shape. Modelling starts blind, from the brief, the
 contracts and the solver skill, without the reference (see `skills/model-generator`). `python -m generation.next_work` says what is left, and withholds pairs whose
 instance shape an integration cannot bind at all.

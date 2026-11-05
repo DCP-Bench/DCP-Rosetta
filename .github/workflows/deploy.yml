@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: bench/dcp-bench-open.jsonl
-          key: jsonl-${{ hashFiles('bench/dataset/**', 'bench/jsonl_convert.py', 'requirements.txt') }}
+          key: jsonl-${{ hashFiles('bench/dataset/**', 'bench/dcp_bench/**', 'bench/jsonl_convert.py', 'requirements.txt') }}
       - name: Generate dataset jsonl
         if: steps.cache-jsonl.outputs.cache-hit != 'true'
         working-directory: bench
