@@ -59,14 +59,16 @@ def create_model(instance):
         for v in range(2, FRUITS + 1):
             formula.append([-fruit.ge(v)], weight=1)
 
-    return formula, {"bananas": bananas, "oranges": oranges, "mangoes": mangoes, "apples": apples}
+    # The objective in the problem's terms: the number of bananas plus apples (RC2's cost is
+    # that number minus 2).
+    return formula, {"bananas": bananas, "oranges": oranges, "mangoes": mangoes, "apples": apples}, bananas + apples
 
 
 if __name__ == "__main__":
     import numpy as np
     from pysat.examples.rc2 import RC2Stratified
 
-    formula, outputs = create_model({})
+    formula, outputs, objective = create_model({})
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

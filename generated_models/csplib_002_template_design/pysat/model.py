@@ -132,7 +132,11 @@ def create_model(instance):
     for v in range(lower + 1, upper + 1):
         formula.append([-total.ge(v)], weight=1 + (v - lower - 1) // group)
 
-    return formula, {"production": production, "layout": layout}
+    # The objective in the problem's terms: the number of sheets printed, over all templates
+    # (RC2's cost is a grouped weight on total, which bounds it from above).
+    objective = [(1, production[t]) for t in templates]
+
+    return formula, {"production": production, "layout": layout}, objective
 
 
 if __name__ == "__main__":
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

@@ -78,7 +78,9 @@ def create_model(instance):
             elif c[j] < 0:
                 formula.append([-x[j].ge(v)], weight=-c[j])
 
-    return formula, {"x": x, "total_profit": total_profit}
+    # The objective in the problem's terms: the total profit (RC2's cost is the profit lost
+    # against making every product at its limit).
+    return formula, {"x": x, "total_profit": total_profit}, total_profit
 
 
 if __name__ == "__main__":
@@ -90,7 +92,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

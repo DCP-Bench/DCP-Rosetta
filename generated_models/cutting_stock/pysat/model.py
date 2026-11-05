@@ -85,7 +85,9 @@ def create_model(instance):
     for v in range(lower + 1, total_ub + 1):
         formula.append([-min_rolls_cut.ge(v)], weight=1)
 
-    return formula, {"patterns_used": patterns_used, "min_rolls_cut": min_rolls_cut}
+    # The objective in the problem's terms: the number of raw rolls cut (RC2's cost is that
+    # number minus the lower bound).
+    return formula, {"patterns_used": patterns_used, "min_rolls_cut": min_rolls_cut}, min_rolls_cut
 
 
 if __name__ == "__main__":
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

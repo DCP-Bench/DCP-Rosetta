@@ -42,7 +42,12 @@ def create_model(instance):
     for v in range(1, target_score + 1):
         formula.append([score.ge(v)], weight=1)
 
-    return formula, {"hits": hits}
+    # The objective in the problem's terms: the distance between the total score and the
+    # target score, one per threshold the score passes above it or misses below it (as RC2's cost).
+    objective = ([(1, score.ge(v)) for v in range(target_score + 1, 2 * target_score + 1)]
+                 + [(1, -score.ge(v)) for v in range(1, target_score + 1)])
+
+    return formula, {"hits": hits}, objective
 
 
 if __name__ == "__main__":
@@ -54,7 +59,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

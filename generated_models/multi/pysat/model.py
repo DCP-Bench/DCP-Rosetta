@@ -137,7 +137,9 @@ def create_model(instance):
                     for v in range(1, x[i][j][p].ub + 1):
                         formula.append([-x[i][j][p].ge(v)], weight=c)
 
-    return formula, {"total_cost": total_cost}
+    # The objective in the problem's terms: the total shipping cost (RC2's cost is only the
+    # excess over the cheapest origin, a fixed amount less).
+    return formula, {"total_cost": total_cost}, total_cost
 
 
 if __name__ == "__main__":
@@ -149,7 +151,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

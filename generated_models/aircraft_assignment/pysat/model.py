@@ -55,7 +55,11 @@ def create_model(instance):
                 if k_cost > 0:
                     formula.append([-count.equals(k)], weight=k_cost)
 
-    return formula, {"allocation": allocation}
+    # The objective in the problem's terms: the total operating cost (RC2's cost differs
+    # from it by a fixed amount when some unit cost is negative).
+    objective = [(costs[a][r], allocation[a][r]) for a in range(n_types) for r in range(n_routes)]
+
+    return formula, {"allocation": allocation}, objective
 
 
 if __name__ == "__main__":
@@ -67,7 +71,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

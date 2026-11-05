@@ -49,7 +49,9 @@ def create_model(instance):
     for v in range(n + 1, n * n + 1):
         formula.append([-z.ge(v)], weight=1)
 
-    return formula, {"z": z, "x": x}
+    # The objective in the problem's terms: the total number of candies (RC2's cost is that
+    # total minus n).
+    return formula, {"z": z, "x": x}, z
 
 
 if __name__ == "__main__":
@@ -61,7 +63,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

@@ -71,7 +71,8 @@ def create_model(instance):
             for v in range(1, n):
                 formula.append([-dist[c].ge(v)], weight=count)
 
-    return formula, {"final_sum": final_sum}
+    # The objective in the problem's terms: the sum of all cable lengths (as RC2's cost).
+    return formula, {"final_sum": final_sum}, final_sum
 
 
 if __name__ == "__main__":
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()
