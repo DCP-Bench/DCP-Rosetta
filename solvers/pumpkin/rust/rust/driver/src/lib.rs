@@ -495,6 +495,14 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
         }
     }
 
+    // An optimisation's solution records carry the objective variable's value on the solution: the problem's own
+    // value, since Pumpkin neither scales nor negates the variable the model declared (also when maximising).
+    let objective_var = model.objective.map(|(_, var)| var);
+    let record = |values: Value, objective: Option<i32>| match objective {
+        Some(value) => json!({"type": "solution", "values": values, "objective": value}),
+        None => json!({"type": "solution", "values": values}),
+    };
+
     let mut brancher = solver.default_brancher();
     let mut resolver = ResolutionResolver::default();
     let mut emitted = 0usize;
@@ -536,7 +544,7 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
 
         let best = optimum.get_integer_value(objective);
         let reference = optimum.as_reference();
-        emit(json!({"type": "solution", "values": model.render(&reference)}));
+        emit(record(model.render(&reference), Some(best)));
         emitted = 1;
         if emitted >= limit {
             status("limit", "", budget.spent());
@@ -570,7 +578,8 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
             {
                 SatisfactionResult::Satisfiable(satisfiable) => {
                     let solution = satisfiable.solution();
-                    emit(json!({"type": "solution", "values": model.render(&solution)}));
+                    let objective = objective_var.map(|var| solution.get_integer_value(var));
+                    emit(record(model.render(&solution), objective));
                     emitted += 1;
                     blocking = model.blocking_clause(&solution);
                 }
