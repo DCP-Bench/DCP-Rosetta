@@ -134,6 +134,12 @@ returns the objective's constant part; the optimum is `constant + ms.benefit()`.
 minimise, pass the negated objective and negate the result. `subject_to` must be one
 expression: wrap a list with `And(list)`. `ms.solve()` returns `MAXSAT_ANSWER.OPTIMAL`,
 `SATISFIABLE`, `UNSATISFIABLE` or `UNKNOWN`; only `OPTIMAL` is a proven result.
+
+**The objective's value is the problem's own, not `ms.benefit()`.** The benefit misses
+the constant, and is negated for a minimisation. Keep the problem's objective as its own
+expression, in its own direction, and evaluate it on the model to report the value:
+`evaluate(objective, truth)` (32-bit; sum the terms in Python for wider values). For a
+minimised makespan, `add_to_weighted_container(-makespan, ...)` and report `makespan`.
 See [knapsack-max](../assets/python/knapsack-max/README.md) and
 [colouring-json](../assets/python/colouring-json/README.md).
 
@@ -166,7 +172,8 @@ Build the model in one function that encodes it into a formula, as a CNF or WCNF
 holds a problem: a `CnfFormula` for a satisfaction problem, or a `WcnfFormula` whose hard
 clauses are the constraints and whose soft clauses are the objective (maximised; negate
 an objective to minimise it). Return the formula with the pool that numbered its Bools,
-and the variables to print. For example:
+the variables to print and, for an optimisation, the objective in the problem's own terms
+and direction (the expression whose value is reported, above), with a comment. For example:
 
 ```python
 def create_model(instance):
@@ -191,7 +198,8 @@ def create_model(instance):
     pool = DimacsVariablePool()
     add_to_weighted_container(packed_value, fits, to_cnf, formula, pool)
 
-    return (formula, pool), {"x": x}
+    # The objective in the problem's terms: the packed value, maximised.
+    return (formula, pool), {"x": x}, packed_value
 ```
 
 A satisfaction model adds its constraints one by one with
@@ -218,6 +226,6 @@ nested list in one call.
 | A constraint silently forces a Bool false, e.g. `If(a, sum([]) >= 1)` makes `a` false | `sum([]) >= 1` is Python `False`, and `If` with a Python bool on one side is not a dropped constraint | build the constraint only when the list is non-empty |
 | A unary chain gives too small a value (e.g. a makespan of 0) | an end time that is always at least `t` (end >= t with `t` at most the duration) was left out of the clauses instead of asserted | assert such a fact as a unit clause (`m[t]`, `s[b][t]`), not as an `If` with a constant |
 | `SyntaxError` at the top of the file | a comment such as `# ... encoding: ...` in lines 1-2 is a Python coding declaration | move encoding notes below line 2 |
-| Optimum or direction looks wrong | objective not negated for a minimise, or the constant part not added | `optimum = constant + ms.benefit()`; negate for minimise |
+| Optimum or direction looks wrong | objective not negated for a minimise, or the constant part not added | `optimum = constant + ms.benefit()`; negate for minimise; or evaluate the objective expression on the model |
 
 Solver-level issues are in [SKILL.md](../SKILL.md#common-issues).

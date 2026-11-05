@@ -21,4 +21,5 @@ def create_model(instance):
     objective = -(x + y) if sense.startswith("min") else x + y
     formula = WcnfFormula()
     add_to_weighted_container(objective, And(order + [x + y >= n]), to_cnf, formula, pool)
-    return (formula, pool), {"x": x, "y": y}
+    # The objective in the problem's terms, which the runner reports.
+    return (formula, pool), {"x": x, "y": y}, x + y

@@ -1,8 +1,9 @@
 """Runner protocol for the Paramita (Python) integration. Runs inside the image only.
 
 A submission is written against `paramita` and defines `create_model(instance)`
-(`build` in models retained earlier), which returns exactly two values,
-`(formula, pool), outputs`:
+(`build` in models retained earlier), which returns `(formula, pool), outputs`
+for a satisfaction problem and `(formula, pool), outputs, objective` for an
+optimisation:
 
 - `formula` is a `paramita.containers.CnfFormula` for a satisfaction problem, or
   a `WcnfFormula` for an optimisation problem: its hard clauses are the
@@ -17,6 +18,15 @@ A submission is written against `paramita` and defines `create_model(instance)`
   Each is read with `paramita.modelling.evaluate` over the solver's assignment.
   An output Bool the formula never mentions is unconstrained: the runner blocks
   over it like any other, and reads it false until the solver has seen it.
+- `objective` is the problem's own objective, in its own terms and direction: an
+  integer expression over Bools (or a Bool, or an int). The soft clauses are
+  what EvalMaxSAT optimises, and its benefit is not the problem's value (a
+  minimisation encodes the negation; the encoding may shift it by a constant),
+  so the runner evaluates this expression on each optimum and reports it as the
+  solution's `objective` (runner protocol 2). A WcnfFormula with soft clauses
+  returned without it is refused with an error, and two optima of the same
+  benefit with different objective values (the expression and the soft clauses
+  disagree) end the run with an error.
 
 The runner encodes nothing itself. It copies the clauses into a solver:
 
@@ -162,12 +172,10 @@ def load(instance):
         if create_model is None:
             raise ValueError("the model defines no create_model(instance)")
         result = create_model(instance)
-    if isinstance(result, tuple) and len(result) == 3:
-        raise ValueError(f"{FORM}; an objective is encoded as the soft clauses of a "
-                         "WcnfFormula, not returned as a third value")
-    if not isinstance(result, tuple) or len(result) != 2:
+    if not isinstance(result, tuple) or len(result) not in (2, 3):
         raise ValueError(f"{FORM}; got {type(result).__name__}")
-    model, outputs = result
+    model, outputs = result[:2]
+    objective = result[2] if len(result) == 3 else None
     if isinstance(model, (CnfFormula, WcnfFormula)):
         raise ValueError(f"{FORM}; the formula comes with the DimacsVariablePool it was "
                          "encoded with, as the pair (formula, pool)")
@@ -185,7 +193,17 @@ def load(instance):
                          f"model encoded with, got {type(pool).__name__}")
     if not isinstance(outputs, dict) or not outputs:
         raise ValueError(f"{FORM}; outputs must be a nonempty dictionary")
-    return formula, pool, outputs
+    if objective is not None:
+        if isinstance(objective, (list, tuple, dict)):
+            raise ValueError("the objective must be one integer expression over Bools, a Bool "
+                             f"or an int; got a {type(objective).__name__}")
+        bool_names(objective, set())  # refuses a leaf no expression can be
+    elif isinstance(formula, WcnfFormula) and formula.soft_clauses():
+        raise ValueError(f"{FORM}, objective; an optimisation (a WcnfFormula with soft clauses) "
+                         "must return its objective as a third value: the problem's own objective "
+                         "as an integer expression over Bools, which the runner reports on each "
+                         "solution; the soft clauses' benefit is not it")
+    return formula, pool, outputs, objective
 
 
 def bool_names(node, found):
@@ -239,14 +257,17 @@ def exact_value(node, truth):
     return int(evaluate(node, truth))
 
 
-def output_variables(pool, outputs):
-    """(names, variables) of every output Bool, numbered by the model's pool.
+def output_variables(pool, outputs, objective=None):
+    """(names, variables) of every output Bool, then every further Bool the
+    objective names, numbered by the model's pool, and how many of them are
+    outputs: only those are blocked.
 
     Taken before any solver or fork. `get_variable` numbers a Bool the formula
     never mentions with a fresh variable; that Bool is free, and the solver
     learns of it from the first blocking clause."""
     names = sorted(bool_names(outputs, set()))
-    return names, [pool.get_variable(name) for name in names]
+    extra = [] if objective is None else sorted(bool_names(objective, set()) - set(names))
+    return names + extra, [pool.get_variable(name) for name in names + extra], len(names)
 
 
 def values_of(model, variables):
@@ -262,11 +283,14 @@ def blocking_clause(variables, values):
 
 
 class Emitter:
-    """Renders, deduplicates and emits solutions; counts the distinct ones."""
+    """Renders, deduplicates and emits solutions with their objective; counts the
+    distinct ones."""
 
-    def __init__(self, outputs, names, limit):
-        self.outputs, self.names, self.limit = outputs, names, limit
+    def __init__(self, outputs, objective, names, limit):
+        self.outputs, self.objective, self.names, self.limit = outputs, objective, names, limit
         self.seen = set()
+        # (benefit, objective value) of the first optimum, which every later one shares.
+        self.first = None
 
     @property
     def count(self):
@@ -275,12 +299,26 @@ class Emitter:
     def full(self):
         return self.count >= self.limit
 
-    def offer(self, values):
-        rendered = render(self.outputs, dict(zip(self.names, values)))
-        key = json.dumps(rendered, sort_keys=True)
+    def offer(self, values, benefit=None):
+        """Emits the solution unless it repeats one; returns an error detail instead
+        when its objective disagrees with the first optimum's at the same benefit."""
+        truth = dict(zip(self.names, values))
+        record = {"type": "solution", "values": render(self.outputs, truth)}
+        if self.objective is not None:
+            # exact_value reads a Bool as 0/1 and an int as itself.
+            record["objective"] = exact_value(self.objective, truth)
+            if benefit is not None:
+                if self.first is None:
+                    self.first = (benefit, record["objective"])
+                elif benefit == self.first[0] and record["objective"] != self.first[1]:
+                    return ("the objective expression disagrees with the soft clauses: two optima "
+                            f"of benefit {benefit} have objective values {self.first[1]} and "
+                            f"{record['objective']}")
+        key = json.dumps(record["values"], sort_keys=True)
         if key not in self.seen:
             self.seen.add(key)
-            emit({"type": "solution", "values": rendered})
+            emit(record)
+        return None
 
 
 def solve_within(solver, deadline):
@@ -296,7 +334,7 @@ def solve_within(solver, deadline):
             return answer
 
 
-def satisfy(clauses, variables, emitter, deadline):
+def satisfy(clauses, variables, blocked, emitter, deadline):
     global BUILD_SECONDS
     solver = SatSolver.from_name(SAT_SOLVER)
     solver.add_clauses(clauses)
@@ -309,16 +347,17 @@ def satisfy(clauses, variables, emitter, deadline):
             return finish("complete" if emitter.count else "unsat", solve_seconds=deadline.spent())
         values = values_of(solver.model(), variables)
         emitter.offer(values)
-        if not variables:
+        if not blocked:
             # The outputs depend on nothing the solver chooses, so there is no
             # second answer to look for.
             return finish("complete", solve_seconds=deadline.spent())
-        solver.add_clause(blocking_clause(variables, values))
+        solver.add_clause(blocking_clause(variables[:blocked], values[:blocked]))
     return finish("limit", solve_seconds=deadline.spent())
 
 
-def _optima_worker(solver, variables, connection):
-    """Runs in a forked child: sends ("optimum", values) per optimum, then one of
+def _optima_worker(solver, variables, blocked, connection):
+    """Runs in a forked child: sends ("optimum", values, benefit) per optimum, the
+    values of `variables` of which the first `blocked` are blocked, then one of
     ("unsat",), ("worse",), ("done",), ("answer", name) or ("error", detail).
     Only a kill from the parent stops it otherwise."""
     try:
@@ -338,18 +377,18 @@ def _optima_worker(solver, variables, connection):
                 connection.send(("worse",))
                 return
             values = values_of(solver.model(), variables)
-            connection.send(("optimum", values))
-            if not variables:
+            connection.send(("optimum", values, benefit))
+            if not blocked:
                 connection.send(("done",))
                 return
-            solver.add_clause(blocking_clause(variables, values))
+            solver.add_clause(blocking_clause(variables[:blocked], values[:blocked]))
     except Exception as error:  # reported to the parent, which turns it into a status
         connection.send(("error", repr(error)))
     finally:
         connection.close()
 
 
-def optimise(formula, variables, emitter, deadline):
+def optimise(formula, variables, blocked, emitter, deadline):
     global BUILD_SECONDS
     solver = MaxSatSolver.from_name(MAXSAT_SOLVER)
     solver.add_clauses(formula.hard_clauses())
@@ -359,7 +398,7 @@ def optimise(formula, variables, emitter, deadline):
 
     context = multiprocessing.get_context("fork")
     receiver, sender = context.Pipe(duplex=False)
-    worker = context.Process(target=_optima_worker, args=(solver, variables, sender))
+    worker = context.Process(target=_optima_worker, args=(solver, variables, blocked, sender))
     worker.start()
     sender.close()
     try:
@@ -376,7 +415,9 @@ def optimise(formula, variables, emitter, deadline):
                 message = ("error", "the MaxSAT process ended without an answer")
             kind = message[0]
             if kind == "optimum":
-                emitter.offer(message[1])
+                disagreement = emitter.offer(message[1], message[2])
+                if disagreement:
+                    return finish("error", disagreement, solve_seconds=deadline.spent())
                 if emitter.full():
                     return finish("limit", solve_seconds=deadline.spent())
                 continue
@@ -412,14 +453,14 @@ def main():
 
     started = time.monotonic()
     deadline = Deadline(request, started)
-    formula, pool, outputs = load(request["instance"])
-    names, variables = output_variables(pool, outputs)
-    emitter = Emitter(outputs, names, request["solution_limit"])
+    formula, pool, outputs, objective = load(request["instance"])
+    names, variables, blocked = output_variables(pool, outputs, objective)
+    emitter = Emitter(outputs, objective, names, request["solution_limit"])
     if isinstance(formula, WcnfFormula):
         if formula.soft_clauses():
-            return optimise(formula, variables, emitter, deadline)
-        return satisfy(formula.hard_clauses(), variables, emitter, deadline)
-    return satisfy(formula.clauses(), variables, emitter, deadline)
+            return optimise(formula, variables, blocked, emitter, deadline)
+        return satisfy(formula.hard_clauses(), variables, blocked, emitter, deadline)
+    return satisfy(formula.clauses(), variables, blocked, emitter, deadline)
 
 
 if __name__ == "__main__":
