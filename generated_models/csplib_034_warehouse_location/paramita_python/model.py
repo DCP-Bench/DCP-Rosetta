@@ -61,11 +61,13 @@ def create_model(instance):
     pool = DimacsVariablePool()
     add_to_weighted_container(-total_cost, And(constraints), to_cnf, formula, pool)
 
+    # The objective in the problem's terms: the total cost, minimised (its negation is
+    # what the soft clauses maximise).
     return (formula, pool), {
         "open_warehouses": open_warehouses,
         "supplier_assignment": supplier_assignment,
         "total_cost": total_cost,
-    }
+    }, total_cost
 
 
 if __name__ == "__main__":
@@ -78,7 +80,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    (formula, pool), outputs = create_model(instances[index])
+    (formula, pool), outputs, objective = create_model(instances[index])
 
     solver = MaxSatSolver.from_name("EvalMaxSAT2022")
     # copy the formula into the solver: the hard clauses, then each soft clause with its weight
@@ -92,5 +94,6 @@ if __name__ == "__main__":
         value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
         for name, output in outputs.items():
             print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
     else:
         print("No solution")

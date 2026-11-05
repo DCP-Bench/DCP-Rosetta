@@ -100,8 +100,19 @@ def create_model(instance):
             elif W * H > 0:
                 formula.append([-total_x.equals(W), -total_y.equals(H)], weight=W * H)
 
+    # The objective in the problem's terms: the area total_x * total_y (as RC2's cost).
+    # sides(W, H) names the choice of sides W and H, and adds W * H when it is made.
+    objective = []
+    for W in range(area_min_x, area_max_x + 1):
+        for H in range(area_min_y, area_max_y + 1):
+            if W * H >= item_area and W * H > 0:
+                sides = pool.id(("sides", W, H))
+                formula.extend([[-sides, total_x.equals(W)], [-sides, total_y.equals(H)],
+                                [sides, -total_x.equals(W), -total_y.equals(H)]])
+                objective.append((W * H, sides))
+
     return formula, {"pos_x": pos_x, "pos_y": pos_y,
-                     "total_x": total_x, "total_y": total_y}
+                     "total_x": total_x, "total_y": total_y}, objective
 
 
 if __name__ == "__main__":
@@ -113,7 +124,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

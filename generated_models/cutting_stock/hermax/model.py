@@ -32,7 +32,8 @@ def create_model(instance):
     min_rolls_cut = sum(patterns_used[i] for i in range(num_patterns))
     m.obj += min_rolls_cut
 
-    return m, {"patterns_used": patterns_used, "min_rolls_cut": min_rolls_cut}
+    # The objective in the problem's terms: the total number of raw rolls cut, the cost minimised above.
+    return m, {"patterns_used": patterns_used, "min_rolls_cut": min_rolls_cut}, min_rolls_cut
 
 
 if __name__ == "__main__":
@@ -42,11 +43,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

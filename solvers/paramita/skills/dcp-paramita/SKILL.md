@@ -45,7 +45,7 @@ and expressions are in the interface file.
 - **All solutions**: after each model add a clause that differs from it in at least one
   answer Boolean, and solve again; unsatisfiable means the list is complete. Block only the answer
   variables: auxiliary variables make duplicates of the same answer.
-- **Optimisation (MaxSAT)** maximises a linear objective; to minimise, negate it. Only an `OPTIMAL` status is a proven result.
+- **Optimisation (MaxSAT)** maximises a linear objective; to minimise, negate it. Only an `OPTIMAL` status is a proven result. The solver's benefit is not the objective's value (no constant, negated for a minimisation): keep the problem's objective as an expression in its own terms and direction, and evaluate it on the solution.
 - **All optimal solutions**: solve for the optimum, then fix the objective to it as a hard constraint on a fresh solver and enumerate.
 - **Time limits**: CaDiCaL accepts only a conflict budget; EvalMaxSAT accepts none, so run it in a child process and kill it at the deadline.
 - **Recursion**: the default PB encoder recurses once per term. A single sum of about 5000

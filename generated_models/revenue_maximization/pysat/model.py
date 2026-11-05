@@ -131,7 +131,9 @@ def create_model(instance):
     for v in range(lower + 1, upper + 1):
         formula.append([max_revenue.ge(v)], weight=1 + (upper - v) // group)
 
-    return formula, {"packages_to_sell": packages_to_sell, "max_revenue": max_revenue}
+    # The objective in the problem's terms: the total revenue (RC2's cost is a grouped weight
+    # on each level it falls short of).
+    return formula, {"packages_to_sell": packages_to_sell, "max_revenue": max_revenue}, max_revenue
 
 
 if __name__ == "__main__":
@@ -143,7 +145,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

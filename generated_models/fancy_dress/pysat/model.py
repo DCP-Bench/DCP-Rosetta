@@ -42,14 +42,18 @@ def create_model(instance):
     formula.append([-s], weight=12)
     formula.append([-n], weight=11)
 
-    return formula, {"t": t, "h": h, "r": r, "s": s, "n": n}
+    # The objective in the problem's terms: the money he spends on the tie, hat, socks and fee
+    # (as RC2's cost).
+    objective = [(10, t), (2, h), (12, s), (11, n)]
+
+    return formula, {"t": t, "h": h, "r": r, "s": s, "n": n}, objective
 
 
 if __name__ == "__main__":
     import numpy as np
     from pysat.examples.rc2 import RC2Stratified
 
-    formula, outputs = create_model({})
+    formula, outputs, objective = create_model({})
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

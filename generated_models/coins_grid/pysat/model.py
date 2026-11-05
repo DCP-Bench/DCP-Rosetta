@@ -82,7 +82,9 @@ def create_model(instance):
     for (i, j) in cells:
         formula.append([-coin[i][j]], weight=dist[i][j])
 
-    return formula, {"x": x, "z": z}
+    # The objective in the problem's terms: z, the sum of the squared distances of the coins
+    # from the main diagonal (as RC2's cost).
+    return formula, {"x": x, "z": z}, z
 
 
 if __name__ == "__main__":
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

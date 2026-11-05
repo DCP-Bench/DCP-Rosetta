@@ -51,7 +51,11 @@ def create_model(instance):
         elif w < 0:
             formula.append([lit], weight=-w)
 
-    return formula, {"x": x}
+    # The objective in the problem's terms: the total cost of the pairs made (RC2's cost
+    # differs from it by a fixed amount when some cost is negative).
+    objective = [(w, lit) for lit, w in zip(lits, weights)]
+
+    return formula, {"x": x}, objective
 
 
 if __name__ == "__main__":
@@ -63,7 +67,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

@@ -71,7 +71,17 @@ def create_model(instance):
             elif delta < 0:
                 formula.append([count[k].ge(v)], weight=-delta)
 
-    return formula, {"sequence": sequence}
+    # The objective in the problem's terms: the energy E. Each shift k adds times * C_k^2, which
+    # is times * n^2 when no positions differ plus the step changes RC2 pays (or saves) above.
+    objective = []
+    for k in shifts:
+        times = 1 if 2 * k == n else 2
+        objective.append((times * n * n, True))
+        for v in range(1, n + 1):
+            delta = times * ((n - 2 * v) ** 2 - (n - 2 * (v - 1)) ** 2)
+            objective.append((delta, count[k].ge(v)))
+
+    return formula, {"sequence": sequence}, objective
 
 
 if __name__ == "__main__":
@@ -83,7 +93,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

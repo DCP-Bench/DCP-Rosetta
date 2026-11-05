@@ -1,18 +1,29 @@
 """Runner protocol for the hermax integration. Runs inside the image only.
 
-A submission defines `create_model(instance)` returning `(model, outputs)`, where
-`model` is a `hermax.model.Model` and `outputs` maps each declared output name
-to variables of that model. Models retained before the rename define
-`build(instance)`, which is still accepted. The file is loaded as module
-"candidate", so its `if __name__ == "__main__":` run block never runs here.
+A submission defines `create_model(instance)` returning `(model, outputs)`, or
+`(model, outputs, objective)` for an optimisation, where `model` is a
+`hermax.model.Model` and `outputs` maps each declared output name to variables
+of that model. Models retained before the rename define `build(instance)`,
+which is still accepted. The file is loaded as module "candidate", so its
+`if __name__ == "__main__":` run block never runs here.
 
-**The objective goes on the model, not into the return.** A MaxSAT solver
+**The objective the solver optimises goes on the model.** A MaxSAT solver
 minimises the weight of the soft clauses it breaks, so an objective is written
 the way hermax writes one -- `model.obj += expr`, which hermax turns into
 weighted soft clauses (the `model.obj[weight] += literal` form of 1.2 raises
 TypeError since 1.3.0). Maximising a quantity means paying for its complement.
-The runner only needs to know an objective exists, which it reads off
-`result.cost`: hermax leaves that None for a model with no soft clauses.
+The runner knows an objective exists from `result.cost`: hermax leaves that
+None for a model with no soft clauses.
+
+**The objective the runner reports is returned.** The cost is the problem's
+objective only for a minimisation given to `model.obj` as is; a maximisation
+pays its complement. So an optimisation also returns `objective`, the problem's
+own objective in its own terms and direction, as anything `result[...]` decodes
+to a number (an IntVar, a Literal, a linear expression, an int). The runner
+reports its value on each solution as `objective` (runner protocol 2). An
+optimisation without it is refused with an error before anything is emitted,
+and two optima of the same cost with different objective values (the
+expression and the soft clauses disagree) end the run with an error.
 
 Routing an objective through an auxiliary integer variable instead, with
 `sum(...) == total`, was a trap in hermax 1.2 (43 seconds to encode that one
@@ -76,15 +87,38 @@ def load(instance):
         spec.loader.exec_module(module)
         create_model = getattr(module, "create_model", None) or module.build
         returned = create_model(instance)
-    if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("create_model(instance) must return (model, outputs), with any "
-                         "objective declared on model.obj")
-    model, outputs = returned
+    if not isinstance(returned, tuple) or len(returned) not in (2, 3):
+        raise ValueError("create_model(instance) must return (model, outputs), or "
+                         "(model, outputs, objective) for an optimisation, with the objective "
+                         "the solver minimises declared on model.obj")
+    model, outputs = returned[:2]
+    objective = returned[2] if len(returned) == 3 else None
     if not isinstance(model, Model):
         raise ValueError("the first value must be a hermax.model.Model")
     if not isinstance(outputs, dict) or not outputs:
         raise ValueError("create_model(instance) must return a nonempty output dictionary")
-    return model, outputs
+    if len(returned) == 3 and not (isinstance(objective, (int, IntVar, Literal, PBExpr, Term))
+                                   or type(objective).__module__.startswith("hermax.")):
+        raise ValueError("the objective must be an IntVar, a Literal, a linear expression of "
+                         f"them or an int; got {type(objective).__name__}")
+    return model, outputs, objective
+
+
+# Reported when an optimisation returned no objective.
+MISSING_OBJECTIVE = ("an optimisation (a model with soft clauses on model.obj) must return its "
+                     "objective as a third value, (model, outputs, objective): the problem's own "
+                     "objective as an expression of the model's variables, which the runner "
+                     "reports on each solution; the solver's cost is not it")
+
+
+def objective_value(objective, result):
+    """The problem's objective on this solution, as an int."""
+    value = objective if isinstance(objective, int) else result[objective]
+    if isinstance(value, bool) or (isinstance(value, float) and value.is_integer()):
+        value = int(value)
+    if not isinstance(value, int):
+        raise ValueError(f"the objective decoded to {value!r}, not an integer")
+    return value
 
 
 def atoms(node, found):
@@ -152,11 +186,14 @@ def main():
 
     started = time.monotonic()
     deadline = started + request["execution_timeout"]
-    model, outputs = load(request["instance"])
+    model, outputs, objective = load(request["instance"])
     BUILD_SECONDS = time.monotonic() - started
 
     limit = request["solution_limit"]
     best = None
+    # The objective value of the first optimum: every later one, at the same cost,
+    # must have it too, or the objective expression and the soft clauses disagree.
+    best_value = None
     emitted = 0
     # Declared outputs already reported; see blocking_clause on expressions.
     seen = set()
@@ -180,17 +217,28 @@ def main():
             return finish("error", f"unexpected solver status {status}", solve_seconds=spent)
         # hermax leaves cost None when the model declares no soft clauses.
         if result.cost is not None:
+            if objective is None:
+                return finish("error", MISSING_OBJECTIVE, solve_seconds=spent)
             if best is None:
                 best = result.cost
             elif result.cost > best:
                 # Every remaining answer is worse, so the optimal ones are done.
                 return finish("complete", solve_seconds=spent)
 
-        values = mapped(outputs, lambda leaf: result[leaf])
-        key = json.dumps(values, sort_keys=True)
+        record = {"type": "solution", "values": mapped(outputs, lambda leaf: result[leaf])}
+        if objective is not None:
+            record["objective"] = objective_value(objective, result)
+            if result.cost is not None:
+                if best_value is None:
+                    best_value = record["objective"]
+                elif record["objective"] != best_value:
+                    return finish("error", "the objective expression disagrees with the soft "
+                                  f"clauses: two optima of cost {best} have objective values "
+                                  f"{best_value} and {record['objective']}", solve_seconds=spent)
+        key = json.dumps(record["values"], sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            emit(record)
             emitted += 1
             if emitted >= limit:
                 break

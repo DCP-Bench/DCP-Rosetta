@@ -65,7 +65,9 @@ def create_model(instance):
     # distance of zero costs nothing, so its trip gets no soft clause.
     m.obj += sum_expr(reduced[i][j] * lit for (i, j), lit in go.items() if reduced[i][j] > 0)
 
-    return m, {"travel_distance": total}
+    # The objective in the problem's terms: the length of the round trip with the plain distances;
+    # the solver minimises it shifted by a constant (the reduced distances).
+    return m, {"travel_distance": total}, total
 
 
 if __name__ == "__main__":
@@ -75,11 +77,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

@@ -105,7 +105,12 @@ def create_model(instance):
     for v in range(1, TOTAL_MAX + 1):
         formula.append([-total_sum.ge(v)], weight=1 + (v - 1) // block_size)
 
-    return formula, {"row_signs": row_signs, "col_signs": col_signs}
+    # The objective in the problem's terms: the overall sum of the flipped matrix, each entry
+    # a when it keeps its sign and -a otherwise (RC2's cost is a grouped weight on total_sum,
+    # which bounds that sum from above).
+    objective = [(2 * matrix[i][j], keep[i][j]) for i, j in cells] + [(-sum(sum(row) for row in matrix), True)]
+
+    return formula, {"row_signs": row_signs, "col_signs": col_signs}, objective
 
 
 if __name__ == "__main__":
@@ -117,7 +122,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

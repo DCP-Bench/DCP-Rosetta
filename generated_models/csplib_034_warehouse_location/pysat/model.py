@@ -81,8 +81,9 @@ def create_model(instance):
         for w in warehouses:
             formula.append([-is_open[w]], weight=building_cost)
 
+    # The objective in the problem's terms: the maintenance plus supply cost (as RC2's cost).
     return formula, {"total_cost": total_cost, "open_warehouses": is_open,
-                     "supplier_assignment": supplier_assignment}
+                     "supplier_assignment": supplier_assignment}, total_cost
 
 
 if __name__ == "__main__":
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()
