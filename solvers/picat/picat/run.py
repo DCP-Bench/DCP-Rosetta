@@ -158,7 +158,9 @@ def relay(records, killed, solution_limit, output, returncode):
     if statuses and (len(statuses) != 1 or statuses[0] is not records[-1]):
         return finish("error", "The driver did not end with exactly one status record")
     for record in solutions:
-        emit({"type": "solution", "values": record["values"]})
+        # An optimisation's objective, which the driver reads from its objective variable.
+        extra = {"objective": record["objective"]} if "objective" in record else {}
+        emit({"type": "solution", "values": record["values"], **extra})
     if killed:
         return finish("timeout", "The execution budget ran out")
     if not statuses:

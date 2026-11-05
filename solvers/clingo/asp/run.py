@@ -174,7 +174,7 @@ def objective_sign(program):
 
     clingo stores `#maximize { w }` as the cost -w, and its syntax tree is the same as `#minimize { -w }`'s, so
     the program is parsed twice, once with `#maximize`/`#maximise` spelled `#minimize`: a statement that
-    changes came from a `#maximize`. Only for incumbent records; the search never sees this.
+    changes came from a `#maximize`. Only for the objectives the runner reports; the search never sees this.
     """
     def statements(text):
         found = []
@@ -222,9 +222,15 @@ def solve(request):
                 # answer once some model was proven optimal.
                 return finish("complete" if count else ("timeout" if optimizing else "unsat"))
             optimizing = optimizing or bool(model.cost)
-            # Each strictly better model of the optimisation phase is an incumbent; its objective is the
-            # program's own sum, so only a one-level cost with a known direction is reported.
-            if sign is not None and len(model.cost) == 1 and (best is None or model.cost[0] < best):
+            # The problem has one integer objective, which the runner reports on every solution: the program's
+            # own sum, read from a one-level cost with a known direction. Anything else has no such value.
+            if model.cost and (sign is None or len(model.cost) != 1):
+                handle.cancel()
+                return finish("error", "The objective must be one priority level stated with #minimize (or weak "
+                                       "constraints) only or #maximize only, so that its value is the problem's "
+                                       f"objective; clingo reports the cost {list(model.cost)}")
+            # Each strictly better model of the optimisation phase is an incumbent.
+            if model.cost and (best is None or model.cost[0] < best):
                 best = model.cost[0]
                 emit({"type": "incumbent", "objective": sign * best,
                       "seconds": time.monotonic() - search_start})
@@ -235,7 +241,11 @@ def solve(request):
             key = json.dumps(values, sort_keys=True)
             if key not in seen:
                 seen.add(key)
-                emit({"type": "solution", "values": values})
+                record = {"type": "solution", "values": values}
+                if model.cost:
+                    # clingo minimises: a #maximize's sum is the negated cost.
+                    record["objective"] = sign * model.cost[0]
+                emit(record)
                 count += 1
             handle.resume()
     finish("limit")

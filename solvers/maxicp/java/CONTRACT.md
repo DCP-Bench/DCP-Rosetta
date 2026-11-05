@@ -65,6 +65,10 @@ domain, posts `eq(fresh, objective)` and optimises the fresh one (`freshObjectiv
 view's `removeAbove` computes `v - o` unchecked, so optimising the view directly wrapped and reported `unsat` on
 satisfiable models. The readiness check `offset_objective` (`minus(x, 5)` over 0..3) guards this.
 
+State the problem's own objective, in the brief's direction. The driver reports the fresh variable's value,
+which equals the declared objective's (MaxiCP optimises it in the declared direction, with no negated copy), as
+the `objective` of every solution and of every `incumbent`.
+
 ## Solving
 
 - **Branching:** the driver searches with `firstFailBinary` over every variable made with `m.intVar`,

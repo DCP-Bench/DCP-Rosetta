@@ -43,6 +43,11 @@ A `SparseAxisArray` or a quadratic expression is rejected (`execution_error`).
 `@objective(model, Min, expr)` or `@objective(model, Max, expr)`, linear. No objective
 (`FEASIBILITY_SENSE`) is a satisfaction problem.
 
+State the problem's own objective, constant included, in the brief's sense. The driver reports
+`objective_value(model)` (JuMP's value, in the model's sense and with its constant), rounded to an
+integer, as each solution's `objective`; the incumbents are HiGHS's improving-solution callback's
+`objective_function_value`, which is in the same terms (sense and offset kept).
+
 ## Solving
 
 - Forced by the driver after `build`: `set_optimizer(model, HiGHS.Optimizer)`,

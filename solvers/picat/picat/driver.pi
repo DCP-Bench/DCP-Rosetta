@@ -98,7 +98,7 @@ dcp_solve(Data, Limit, Backend, Status) =>
         dcp_fix(Objective, Optimum),
         call(solve, Options, LabelVars),
         dcp_complete(Backend),
-        dcp_emit(Outputs),
+        dcp_emit(Outputs, Optimum),
         G.get(dcp_count) >= Limit
     ->  Status = limit
     ;   Count = G.get(dcp_count),
@@ -229,7 +229,10 @@ dcp_pair_value((_ = Value)) = Value.
 % ---------------------------------------------------------------------------
 % Output
 
-dcp_emit(Outputs) =>
+% An optimisation's solution carries the optimum: the value of the objective
+% variable, which equals the submission's objective expression (both modules
+% optimise it in the stated direction), so it is the problem's own value.
+dcp_emit(Outputs, Optimum) =>
     Fields = [dcp_field(dcp_pair_name(P), dcp_pair_name(P), dcp_pair_value(P)) : P in sort(Outputs)],
     Text = "{" ++ join(Fields, ",") ++ "}",
     G = get_global_map(),
@@ -237,7 +240,12 @@ dcp_emit(Outputs) =>
     % Distinctness is measured over the declared outputs only.
     if not membchk(Text, Seen) then
         G.put(dcp_seen, [Text|Seen]),
-        dcp_record("{\"type\":\"solution\",\"values\":" ++ Text ++ "}"),
+        if Optimum == none then
+            dcp_record("{\"type\":\"solution\",\"values\":" ++ Text ++ "}")
+        else
+            dcp_record("{\"type\":\"solution\",\"values\":" ++ Text ++ ",\"objective\":"
+                       ++ to_string(Optimum) ++ "}")
+        end,
         G.put(dcp_count, G.get(dcp_count) + 1)
     end.
 

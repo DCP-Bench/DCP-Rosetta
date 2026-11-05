@@ -141,6 +141,7 @@ public final class Main {
             }
             // The optimum is proven. Fix it at the root and enumerate the optima.
             cp.post(CPFactory.eq(objective, (int) bestValue[0]));
+            optimum = bestValue[0];
             outcome = enumerate(cp, branching, out, limit, timeUp, found);
         }
         finish(outcome, found);
@@ -207,11 +208,17 @@ public final class Main {
         build.invoke(null, inst, model, out);
     }
 
+    // An optimisation's proven optimum: the declared objective variable's value, the problem's own (MaxiCP
+    // optimises it in the declared direction and reports the variable's value, not a negated internal one).
+    private static Long optimum = null;
+
     private static void finish(Outcome outcome, List<JsonObject> found) {
         for (JsonObject values : found) {
             Map<String, Object> record = new LinkedHashMap<>();
             record.put("type", "solution");
             record.put("values", values);
+            // Every solution of an optimisation is an optimum (enumerated with the objective fixed at it).
+            if (optimum != null) record.put("objective", optimum);
             protocol.println(GSON.toJson(record));
         }
         switch (outcome) {

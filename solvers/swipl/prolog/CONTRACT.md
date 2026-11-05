@@ -61,6 +61,10 @@ clpfd arithmetic expression. The driver runs `once(labeling([min(Expr)|Options],
 propagation (`Z #= X + Y` with `X`, `Y` labelled is fine). Anything else in that
 position is an `error`.
 
+State the problem's own objective, in the brief's direction: that value of `Expr` is what the runner
+reports as each solution's `objective`. No incumbents are reported (clpfd's `labeling/2` returns
+only the optimum).
+
 ## Solving
 
 - Labelling options are `labeling_options/1` when defined, else `[ff]`; the driver adds

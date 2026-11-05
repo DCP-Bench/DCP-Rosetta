@@ -38,6 +38,10 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# The problem's own objective, with a constant term (optimum 3 + 2n = 7) and with a negative optimum (2 - 10 = -8):
+# every reported objective must be that value.
+CONSTANT_MAXIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMIZING = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x + y - 10)")
 
 HEADER = ":- use_module(library(clpfd)).\n"
 GOOD = HEADER + ("model(Instance, [X, Y], [x-X, y-Y]) :-\n"
@@ -105,6 +109,12 @@ def main():
             and exhausted["instances"][0]["runner_status"]["status"] == "complete")
         check("minimization", OPTIMAL.replace("OBJECTIVE", "min"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING)
+        # Acceptance implies every reported objective equalled the reference's optimum.
+        results["objective_values"] = (
+            check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "max(3 + X + Y)"),
+                  reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
+            and check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "min(X + Y - 10)"),
+                      reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
