@@ -365,12 +365,17 @@ class Incumbents:
     line's seconds count from when the Minion model was written (the end of the build,
     as BUILD_SECONDS) to the solutions file's last change: exact for the last line
     read, an upper bound for an earlier one read in the same poll.
+
+    The objective variable's value is the Essence' objective's own (Savile Row keeps its
+    constant, sign and direction: `maximising 3 + x + y` gives 3, 4, 5), so the last line's,
+    `last`, is the optimum once Minion has finished its search.
     """
 
     FOLLOWED = "dcp_incumbents.sols"
 
     def __init__(self, work):
         self.work, self.handle, self.position, self.start = work, None, None, None
+        self.last = None
 
     def objective_position(self):
         """Index of the objective's value in a solution line, or None."""
@@ -413,6 +418,7 @@ class Incumbents:
                 value = int(line.split()[self.position])
             except (IndexError, ValueError, OSError):
                 continue
+            self.last = value
             runtime.emit({"type": "incumbent", "objective": value,
                           "seconds": max(0.0, changed - self.start)})
 
@@ -425,11 +431,11 @@ class Incumbents:
 POLL_SECONDS = 0.05
 
 
-def savile_row(work, source, param, deadline, count, incumbents=False):
+def savile_row(work, source, param, deadline, count, incumbents=None):
     """One Savile Row + Minion run. Returns (solutions, info, error). `solutions`
     is a list of dicts of every find variable; `count` caps them (`None` for an
-    optimisation, which writes one). `incumbents` reports the run's improving
-    solutions as they are found (the optimisation search proper only)."""
+    optimisation, which writes one). `incumbents`, an Incumbents on `work`, reports
+    the run's improving solutions as they are found (the optimisation search proper only)."""
     global BUILD_SECONDS, BUILT
     for old in (glob.glob(os.path.join(work, "out*")) + glob.glob(os.path.join(work, ".MINION*"))
                 + glob.glob(os.path.join(work, Incumbents.FOLLOWED))):
@@ -452,7 +458,7 @@ def savile_row(work, source, param, deadline, count, incumbents=False):
     launched = time.time()  # wall clock, as a file's mtime
     process = subprocess.Popen(command, cwd=work, stdout=sys.stderr, stderr=sys.stderr,
                                start_new_session=True)
-    follow = Incumbents(work) if incumbents else None
+    follow = incumbents
     stop = time.monotonic() + max(1, left)
     try:
         while True:
@@ -508,6 +514,7 @@ def run(request, source, work, deadline):
     limit = request["solution_limit"]
     declared = request.get("outputs") or []
     seen, emitted = set(), []
+    optimum = None  # an optimisation's proven optimum, which every solution it reports has
 
     def project(solution):
         if declared and all(name in solution for name in declared):
@@ -524,13 +531,17 @@ def run(request, source, work, deadline):
 
     def flush(status, detail=""):
         for values in emitted[:limit]:
-            runtime.emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if optimum is not None:
+                record["objective"] = optimum
+            runtime.emit(record)
         return runtime.finish(status, detail)
 
     objectives = OBJECTIVE.findall(comment_free(source))
     optimising = bool(re.search(r"\b(minimising|maximising)\b", comment_free(source)))
     if optimising:
-        solutions, info, error = savile_row(work, source, None, deadline, None, incumbents=True)
+        follow = Incumbents(work)
+        solutions, info, error = savile_row(work, source, None, deadline, None, incumbents=follow)
         if error == "timeout" or (not error and info.get("SolverTimeOut") != "0"):
             return runtime.finish("timeout", "Candidate optimum was not proven")
         if error:
@@ -538,24 +549,35 @@ def run(request, source, work, deadline):
         if not solutions:
             return runtime.finish("unsat")
         keep(solutions[:1])
-        if limit == 1:
+        # The objective of Minion's last solution, the optimum. Where Minion had none to follow (an
+        # objective Savile Row reduced to a constant), the probe below reads it.
+        optimum = follow.last
+        if limit == 1 and optimum is not None:
             return flush("limit")
         if len(objectives) != 1 or len(OBJECTIVE.findall(source)) != 1:
+            if limit == 1:
+                return runtime.finish("error", "Could not read the objective value: write `minimising EXPR` "
+                                      "or `maximising EXPR` on its own line")
             return runtime.finish("unsupported", "Enumeration requires `minimising EXPR` or "
                                   "`maximising EXPR` on its own line")
         direction, expression = objectives[0]
-        # Read the optimum through an auxiliary variable, then fix it.
+        # Read the optimum through an auxiliary variable equal to the objective expression, then fix it.
         probe = OBJECTIVE.sub(lambda m: f"find dcp_objective_value : int({-BIG}..{BIG})\n"
                               f"{direction} dcp_objective_value", source, count=1)
         probe = with_constraint(probe, f"dcp_objective_value = ({expression})")
         solutions, info, error = savile_row(work, probe, None, deadline, None)
         if error == "timeout" or (not error and info.get("SolverTimeOut") != "0"):
+            if optimum is None:
+                return runtime.finish("timeout", "The objective value was not read back in time")
             return flush("timeout", "Candidate optimum was not proven")
         if error:
             return runtime.finish("error", error)
         if not solutions or "dcp_objective_value" not in solutions[0]:
             return runtime.finish("error", "Could not read the optimum back from Savile Row")
         value = solutions[0]["dcp_objective_value"]
+        optimum = value
+        if limit == 1:
+            return flush("limit")
         source = with_constraint(OBJECTIVE.sub("", source, count=1), f"({expression}) = {value}")
     # Satisfaction, or an optimisation fixed at its proven optimum. Savile Row
     # enumerates every `find` variable, so an auxiliary one that the constraints

@@ -531,7 +531,11 @@ def solve(request):
                               for index, term in terms_.items()})
                   for name, terms_ in shown.items()}
         terms = [term for terms_ in shown.values() for term in terms_.values()]
-        emit({"type": "solution", "values": values})
+        record = {"type": "solution", "values": values}
+        if goal is not None:
+            # The objective symbol's value on this solution: the problem's own, as the theory defines it.
+            record["objective"] = python(model.eval(target, model_completion=True))
+        emit(record)
         count += 1
         if count == request["solution_limit"]:
             break

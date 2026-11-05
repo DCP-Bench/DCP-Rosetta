@@ -451,10 +451,14 @@ def pycsp3_solver(request):
     found = Found(outputs, limit)
     job = Path(tempfile.mkdtemp(prefix="pycsp3_", dir="/tmp"))
     rounds = count(1)  # round 0 is the first solve; later rounds take the rest
+    objective = None  # an optimisation's proven optimum, which every solution it reports has
 
     def flush(status, detail=""):
         for values in found.values[:limit]:
-            runtime.emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if objective is not None:
+                record["objective"] = objective
+            runtime.emit(record)
         return runtime.finish(status, detail)
 
     try:
