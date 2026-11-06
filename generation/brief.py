@@ -172,6 +172,10 @@ def shape_of(value):
 
 def brief(problem):
     folder = ROOT / "bench" / "dataset" / problem
+    # A missing description.md raises; an empty one would hand the modeller nothing.
+    description = read_description(folder)
+    if not description:
+        raise ValueError(f"{folder / 'description.md'} is empty")
     source = (folder / f"{problem}.cpmpy.py").read_text(encoding="utf-8")
     rows = instance_rows(problem)
     instance = rows[0] if rows else embedded_instance(source)
@@ -181,7 +185,7 @@ def brief(problem):
         objective = "minimize" if getattr(model, "objective_is_min", True) else "maximize"
     return {
         "problem": problem,
-        "description": read_description(folder),
+        "description": description,
         "instances_listed": max(1, len(rows)),
         "objective": objective,
         "declared_outputs": {name: shape_of(value) for name, value in outputs.items()},
