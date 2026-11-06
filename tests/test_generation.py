@@ -341,6 +341,24 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(unbindable("session2_movie_scheduling"), ["movies"])
         self.assertEqual(unbindable("csplib_054_n_queens"), [])
 
+    def test_the_brief_takes_the_description_from_its_file(self):
+        from generation.brief import brief
+        description = brief("abbots_puzzle")["description"]
+        self.assertTrue(description.startswith("If 100 bushels of corn"))
+        self.assertTrue(description.endswith("(men, women, children)."))
+
+    def test_the_brief_refuses_a_missing_or_empty_description(self):
+        from generation import brief as brief_module
+        folder = self.root / "bench" / "dataset" / "p1"
+        folder.mkdir(parents=True)
+        with patch.object(brief_module, "ROOT", self.root):
+            with self.assertRaises(FileNotFoundError):
+                brief_module.brief("p1")
+            (folder / "description.md").write_text("  \n\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "is empty"):
+                brief_module.brief("p1")
+            self.assertEqual(brief_module.main(["p1"]), 2)
+
     def test_recorded_blockers_leave_the_queue(self):
         """A pair known not to be worth retrying must not keep being offered."""
         (self.root / "bench" / "dataset" / "p1").mkdir(parents=True)

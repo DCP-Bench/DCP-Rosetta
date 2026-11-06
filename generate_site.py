@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
+from bench.dcp_bench.problems import reference_body
 from evaluation.results import digest
 
 DATASET_JSONL = Path("bench") / "dcp-bench-open.jsonl"
@@ -286,26 +287,14 @@ def generated_by_label(raw: str) -> str:
     return label
 
 
-def parse_metadata(metadata: list) -> dict:
-    fields = {}
-    for line in metadata:
-        m = re.match(r"#\s*([A-Za-z][A-Za-z ]*?)\s*:\s*(.*)$", line.strip())
-        if m:
-            key = m.group(1).strip().lower().replace(" ", "_")
-            fields[key] = m.group(2).strip()
-    return fields
-
-
 def reference_model_code(problem_id: str, fallback: str) -> str:
-    """Load the runnable reference model body, omitting metadata and its description."""
+    """Load the runnable reference model body, omitting its origin comments."""
     path = Path("bench") / "dataset" / problem_id / f"{problem_id}.cpmpy.py"
     try:
         code = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return fallback
-    description = re.search(r'""".*?"""|\'\'\'.*?\'\'\'', code, re.DOTALL)
-    if description:
-        code = code[description.end():].lstrip("\r\n")
+    code = reference_body(code)
     trailing_newline = "\n" if code.endswith("\n") else ""
     return "\n".join(line.rstrip() for line in code.splitlines()) + trailing_newline
 
@@ -1533,11 +1522,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
         shutil.copyfile(Path("bench") / "dataset" / pid / f"{pid}.json", OUTPUT_DIR / "problems" / f"{pid}.json")
 
 
-# Metadata that is not a source of the problem: the collection shows in the
-# page header, `name` is the problem's title.
-NOT_SOURCES = ("generated_by", "category", "problem_instances", "timeout", "name")
-
-
 def link_text(url: str) -> str:
     """Name a link by where it goes: "GitHub · hakank/hakank · cabling.py",
     "csplib.org · prob006"."""
@@ -1556,15 +1540,14 @@ def sources_html(meta: dict) -> str:
     """The reference model's sources as one list: each bare URL as a link
     named by its site and page, each citation or note as written.
 
-    The metadata keys are left out. They vary from file to file
-    (source_model, model_source, source_and_problem_instances, ...) and
-    say less than the links themselves.
+    Their kinds are left out; they say less than the links themselves.
+    Sources of instances alone are left out too: this list is about the model.
     """
     items, seen = [], set()
-    for key, value in meta.items():
-        value = mirrored(value.strip())
-        if key in NOT_SOURCES or not value:
+    for source in meta["sources"]:
+        if source["kind"] == "instances":
             continue
+        value = mirrored(source.get("url") or source["text"])
         if URL_RE.fullmatch(value) and url_end(value) == len(value):
             if value not in seen:
                 seen.add(value)
@@ -1605,12 +1588,12 @@ def main() -> None:
             data = json.loads(line)
             # The reference model says whether it optimises: an objective can be a
             # keyword of Model, which a search of the source for minimize( misses.
-            if not isinstance(data.get("is_optimization"), bool):
+            if not isinstance(data.get("is_optimization"), bool) or not isinstance(data.get("metadata"), dict):
                 raise SystemExit(
-                    f"{DATASET_JSONL}: {data['id']} has no is_optimization. "
+                    f"{DATASET_JSONL}: {data['id']} predates is_optimization or the structured metadata. "
                     "Rebuild it with `python jsonl_convert.py` inside bench/."
                 )
-            meta = parse_metadata(data.get("metadata", []))
+            meta = data["metadata"]
             problems.append(
                 {
                     "id": data["id"],

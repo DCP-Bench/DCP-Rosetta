@@ -324,6 +324,20 @@ class RenderingHelperTests(unittest.TestCase):
         self.assertIsNotNone(generate_site.MATH_RE.search("integers \\( 0 = a_1 \\)"))
 
 
+class SourcesListTests(unittest.TestCase):
+    def test_links_citations_and_instance_only_sources(self):
+        html = generate_site.sources_html({"sources": [
+            {"kind": "origin", "url": "https://example.org/model.py"},
+            {"kind": "description", "text": "Winston, page 3"},
+            {"kind": "model", "url": "https://example.org/model.py"},
+            {"kind": "instances", "url": "https://example.org/data.json"},
+        ]})
+        self.assertEqual(html.count("https://example.org/model.py"), 2)  # one link: its href and title
+        self.assertIn("<li>Winston, page 3</li>", html)
+        self.assertNotIn("data.json", html)
+        self.assertEqual(generate_site.sources_html({"sources": []}), "")
+
+
 class RealRepositoryTests(unittest.TestCase):
     """The vocabulary and the integration metadata, as the site build reads them."""
 

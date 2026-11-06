@@ -14,7 +14,7 @@ LIMIT ?= 20
 DATASET := bench/dcp-bench-open.jsonl
 # The conversion solves every reference model (about 20 s), so the jsonl is
 # rebuilt only when a problem file or the converter is newer than it.
-DATASET_SOURCES := $(shell find bench/dataset -type f 2>/dev/null) bench/jsonl_convert.py
+DATASET_SOURCES := $(shell find bench/dataset bench/dcp_bench -name __pycache__ -prune -o -type f -print 2>/dev/null) bench/jsonl_convert.py
 # Where an integration lives, `solvers/<solver>/<interface>/`, read from its ID.
 FOLDER = $(shell $(PYTHON) -c "from evaluation.execution import integration_folder; print(integration_folder('$(SOLVER)').relative_to(__import__('pathlib').Path.cwd()))")
 
