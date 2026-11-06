@@ -31,6 +31,8 @@ SOLVERS_DIR = Path("solvers")
 REPO_URL = "https://github.com/DCP-Bench/DCP-Rosetta"
 # The problems live in DCP-Bench, checked out as the bench/ submodule.
 BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
+# The solver skills, mirrored from solvers/<solver>/skills/<name>/ to skills/<name>/.
+SKILLS_URL = "https://github.com/DCP-Bench/DCP-skills"
 # Where the deploy workflow publishes site/: link previews need absolute URLs.
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
@@ -1036,6 +1038,15 @@ def binding_browse_button(binding: str, count: int) -> str:
             f'title="The problems with a {esc(label)} model of this solver">{esc(label)} models &rarr;</a>')
 
 
+def skill_href(page: str) -> str:
+    """A skill file's GitHub page: in the public DCP-skills repository for a
+    solver skill, else in this one."""
+    parts = page.split("/")
+    if len(parts) > 3 and parts[0] == "solvers" and parts[2] == "skills":
+        return f"{SKILLS_URL}/blob/main/skills/{'/'.join(parts[3:])}"
+    return f"{REPO_URL}/blob/main/{page}"
+
+
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
     one integration: the interface entry it reads when the skill serves several
@@ -1048,7 +1059,7 @@ def skill_button(solver: str) -> str:
     name = Path(skill).name
     entry = interface_entry(root / skill, interface) if interface else None
     page = entry.relative_to(root).as_posix() if entry else f"{skill}/SKILL.md"
-    href = f"{REPO_URL}/blob/main/{page}"
+    href = skill_href(page)
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')
 
@@ -1061,7 +1072,7 @@ def solver_skill_button(solver: str) -> str:
         return skill_button(solver if solver in INTEGRATIONS else (info.get("bindings") or [solver])[0])
     if not info.get("skill"):
         return ""
-    href = f"{REPO_URL}/blob/main/{info['skill']}/SKILL.md"
+    href = skill_href(f"{info['skill']}/SKILL.md")
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
 
@@ -1080,7 +1091,7 @@ def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, tot
         label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
         skill, interface = integration_skill(root, binding)
         entry = interface_entry(root / skill, interface) if skill and interface else None
-        skill_link = (f'<a class="binding-skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
+        skill_link = (f'<a class="binding-skill" href="{esc(skill_href(entry.relative_to(root).as_posix()))}" '
                       f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
                       if entry else "")
         cells.append(f'<span class="binding"{anchor}>{esc(label)}{skill_link}</span>'
