@@ -1,34 +1,41 @@
-// fancy_dress: Mr Greenguest chooses which green items to wear (tie t, hat h,
-// shirt r, socks s) and whether he pays the entrance fee n, minimising the cost.
 #include "dcp.h"
 
+// Fancy dress: Mr Greenguest chooses which green items to wear to Mr Greenfan's party, and
+// pays the $11 entrance fee if he is not dressed according to rules 1-3, at the lowest total
+// cost. He owns a green shirt; a green tie costs $10, a used green hat $2, green socks $12.
 void build(const json& instance, Highs& h, dcp::Outputs& out) {
-  (void)instance;  // the problem has no instance data
-  dcp::Lin t = dcp::new_var(h, 0, 1);  // green tie
-  dcp::Lin hat = dcp::new_var(h, 0, 1);  // green hat
-  dcp::Lin r = dcp::new_var(h, 0, 1);  // green shirt
-  dcp::Lin s = dcp::new_var(h, 0, 1);  // green socks
-  dcp::Lin n = dcp::new_var(h, 0, 1);  // entrance fee paid
+  (void)instance;  // no fields: every number below is from the problem statement
 
-  // If someone wears a green tie he has to wear a green shirt,
-  // unless he pays the entrance fee.
-  dcp::add_row(h, t - r - n, -kHighsInf, 0);
+  dcp::Lin tie = dcp::new_var(h, 0, 1);    // 1 when he wears a green tie
+  dcp::Lin hat = dcp::new_var(h, 0, 1);    // 1 when he wears a green hat
+  dcp::Lin shirt = dcp::new_var(h, 0, 1);  // 1 when he wears a green shirt
+  dcp::Lin socks = dcp::new_var(h, 0, 1);  // 1 when he wears green socks
+  dcp::Lin fee = dcp::new_var(h, 0, 1);    // 1 when he pays the entrance fee
 
-  // A guest may only wear green socks and a green shirt if he wears a green tie
-  // or a green hat, unless he pays the entrance fee.
-  dcp::add_row(h, s + r - t - hat - n, -kHighsInf, 1);
+  // Rule 4: a guest who is not dressed according to rules 1-3 must pay the fee. Each rule
+  // below is written as "what it asks for, or the fee": a row  item <= wanted + fee  says
+  // that wearing the item needs one of the wanted items, unless he pays.
 
-  // A guest wearing a green shirt or a green hat or who does not wear green socks
-  // must wear a green tie, unless he pays the entrance fee.
-  // Written as r + h + (1 - s) <= 3 t + 3 n.
-  dcp::add_row(h, r + hat - s - 3 * t - 3 * n, -kHighsInf, -1);
+  // Rule 1: if someone wears a green tie he has to wear a green shirt.
+  dcp::add_row(h, tie - shirt - fee, -kHighsInf, 0);
 
-  // Cost: tie 10, hat 2, socks 12, entrance fee 11. The owned shirt costs nothing.
-  out.minimize(10 * t + 2 * hat + 12 * s + 11 * n);
+  // Rule 2: a guest who wears green socks or a green shirt must also wear a green tie or a
+  // green hat: the socks need a tie or a hat, and so does the shirt.
+  dcp::add_row(h, socks - tie - hat - fee, -kHighsInf, 0);
+  dcp::add_row(h, shirt - tie - hat - fee, -kHighsInf, 0);
 
+  // Rule 3: a guest wearing a green shirt or a green hat or who does not wear green socks
+  // must wear a green tie: the shirt, the hat and bare feet (1 - socks) each need the tie.
+  dcp::add_row(h, shirt - tie - fee, -kHighsInf, 0);
+  dcp::add_row(h, hat - tie - fee, -kHighsInf, 0);
+  dcp::add_row(h, (1 - socks) - tie - fee, -kHighsInf, 0);
+
+  // Minimise the total cost: the tie, the hat, the socks and the fee (the shirt he owns).
+  out.minimize(10 * tie + 2 * hat + 12 * socks + 11 * fee);
+
+  out.add("t", tie);
   out.add("h", hat);
-  out.add("n", n);
-  out.add("r", r);
-  out.add("s", s);
-  out.add("t", t);
+  out.add("r", shirt);
+  out.add("s", socks);
+  out.add("n", fee);
 }
