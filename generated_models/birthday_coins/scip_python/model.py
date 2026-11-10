@@ -7,11 +7,11 @@ from pyscipopt import Model
 
 
 def create_model(instance):
-    """Tommy was given 15 coins for his birthday: half-crowns, shillings and
-    sixpences, worth exactly £1 5s 6d in total. How many half-crowns was he given?
+    """Tommy was given 15 coins for his birthday, each a half-crown, a shilling or a
+    sixpence, worth exactly £1 5s 6d in total. How many half-crowns could he have been given?
 
-    Money is counted in pence (a pound is 240d, a shilling 12d). Each of the three
-    kinds of coin is among the coins he was given, so each appears at least once.
+    Money is counted in pence (a pound is 240d, a shilling 12d). He was not necessarily
+    given coins of all three kinds, so a kind may be absent.
     The instance is an empty list: every number here is fixed by the statement,
     so the model takes no data from it.
     """
@@ -24,18 +24,15 @@ def create_model(instance):
 
     model = Model("birthday_coins")
 
-    # half_crowns: how many half-crowns he was given (the answer).
-    # Upper bound: the shillings and sixpences need at least one coin each,
-    # so at most coins - 2 half-crowns.
-    half_crowns = model.addVar("half_crowns", vtype="I", lb=1, ub=coins - 2)
+    # half_crowns: how many half-crowns he was given (the answer). A kind may be absent,
+    # so it can be 0, and it cannot exceed the 15 coins.
+    half_crowns = model.addVar("half_crowns", vtype="I", lb=0, ub=coins)
 
-    # shillings: how many shillings he was given. Same bound reasoning.
-    shillings = model.addVar("shillings", vtype="I", lb=1, ub=coins - 2)
+    # shillings and sixpences: how many of each he was given, with the same bounds.
+    shillings = model.addVar("shillings", vtype="I", lb=0, ub=coins)
+    sixpences = model.addVar("sixpences", vtype="I", lb=0, ub=coins)
 
-    # sixpences: how many sixpences he was given. Same bound reasoning.
-    sixpences = model.addVar("sixpences", vtype="I", lb=1, ub=coins - 2)
-
-    # He was given 15 coins in all, of the three kinds.
+    # He was given 15 coins in all.
     model.addCons(half_crowns + shillings + sixpences == coins)
 
     # Together the coins add up to £1 5s 6d (306 pence).

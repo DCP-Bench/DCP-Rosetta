@@ -1,73 +1,59 @@
-// Fancy dress party: Mr Greenguest chooses which green items to wear so that the total cost
-// is minimal. t = green tie, h = green hat, r = green shirt (owned, so free), s = green socks,
-// n = entrance fee of 11 (paid when a dress rule is broken). Each choice costs
-// 10 (tie), 2 (hat), 12 (socks), and the fee 11. The rules are not hard constraints: breaking
-// one means the fee is paid. Each Boolean connective (and, or, implication) is written as
-// linear inequalities over 0/1 variables with LinearInt.
+import org.jacop.constraints.IfThen;
 import org.jacop.constraints.LinearInt;
+import org.jacop.constraints.Or;
+import org.jacop.constraints.PrimitiveConstraint;
+import org.jacop.constraints.XeqC;
 import org.jacop.core.BooleanVar;
 import org.jacop.core.IntVar;
 import org.jacop.core.Store;
 import org.json.JSONObject;
 import dcp.jacop.Model;
 
+// Fancy dress: Mr Greenguest chooses which green items to wear to Mr Greenfan's party, and
+// pays the $11 entrance fee if he is not dressed according to rules 1-3, at the lowest total
+// cost. He owns a green shirt; a green tie costs $10, a used green hat $2, green socks $12.
 public class Submission {
-    public static Model build(JSONObject inst, Store store) {
-        BooleanVar t = new BooleanVar(store, "tie");
-        BooleanVar h = new BooleanVar(store, "hat");
-        BooleanVar r = new BooleanVar(store, "shirt");
-        BooleanVar s = new BooleanVar(store, "socks");
-        BooleanVar n = new BooleanVar(store, "fee");
-
-        // q = tie or hat (rule 2 reads: socks and shirt need a green tie or a green hat)
-        BooleanVar q = new BooleanVar(store, "tieOrHat");
-        lin(store, new IntVar[]{q, t}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{q, h}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{q, t, h}, new int[]{1, -1, -1}, "<=", 0);
-
-        // p = shirt or hat or not socks (rule 3 premise)
-        BooleanVar p = new BooleanVar(store, "shirtOrHatOrNoSocks");
-        lin(store, new IntVar[]{p, r}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{p, h}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{p, s}, new int[]{1, 1}, ">=", 1);
-        lin(store, new IntVar[]{p, r, h, s}, new int[]{1, -1, -1, 1}, "<=", 1);
-
-        // v1 = rule 1 broken: green tie without green shirt
-        BooleanVar v1 = new BooleanVar(store, "rule1Broken");
-        lin(store, new IntVar[]{v1, t}, new int[]{1, -1}, "<=", 0);
-        lin(store, new IntVar[]{v1, r}, new int[]{1, 1}, "<=", 1);
-        lin(store, new IntVar[]{v1, t, r}, new int[]{1, -1, 1}, ">=", 0);
-
-        // v2 = rule 2 broken: green socks and green shirt without green tie or green hat
-        BooleanVar v2 = new BooleanVar(store, "rule2Broken");
-        lin(store, new IntVar[]{v2, s}, new int[]{1, -1}, "<=", 0);
-        lin(store, new IntVar[]{v2, r}, new int[]{1, -1}, "<=", 0);
-        lin(store, new IntVar[]{v2, q}, new int[]{1, 1}, "<=", 1);
-        lin(store, new IntVar[]{v2, s, r, q}, new int[]{1, -1, -1, 1}, ">=", -1);
-
-        // v3 = rule 3 broken: shirt, hat or no socks, but no green tie
-        BooleanVar v3 = new BooleanVar(store, "rule3Broken");
-        lin(store, new IntVar[]{v3, p}, new int[]{1, -1}, "<=", 0);
-        lin(store, new IntVar[]{v3, t}, new int[]{1, 1}, "<=", 1);
-        lin(store, new IntVar[]{v3, p, t}, new int[]{1, -1, 1}, ">=", 0);
-
-        // The fee is paid exactly when some rule is broken: n = v1 or v2 or v3.
-        lin(store, new IntVar[]{n, v1}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{n, v2}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{n, v3}, new int[]{1, -1}, ">=", 0);
-        lin(store, new IntVar[]{n, v1, v2, v3}, new int[]{1, -1, -1, -1}, "<=", 0);
-
-        // Total cost: 10 tie + 2 hat + 12 socks + 11 fee, to be minimised.
-        IntVar cost = new IntVar(store, "cost", 0, 35);
-        lin(store, new IntVar[]{t, h, s, n, cost}, new int[]{10, 2, 12, 11, -1}, "==", 0);
-
-        return new Model()
-            .put("t", t).put("h", h).put("r", r).put("s", s).put("n", n)
-            .minimize(cost)
-            .search(new IntVar[]{t, h, r, s, n}, null, null);
+    // "v holds": the 0/1 variable v is 1
+    private static PrimitiveConstraint yes(IntVar v) {
+        return new XeqC(v, 1);
     }
 
-    private static void lin(Store store, IntVar[] x, int[] w, String op, int c) {
-        store.impose(new LinearInt(x, w, op, c));
+    // "v does not hold": the 0/1 variable v is 0
+    private static PrimitiveConstraint no(IntVar v) {
+        return new XeqC(v, 0);
+    }
+
+    // at least one of the conditions holds
+    private static PrimitiveConstraint anyOf(PrimitiveConstraint... cs) {
+        return new Or(cs);
+    }
+
+    public static Model build(JSONObject inst, Store store) {
+        // The instance has no fields: every number below is from the problem statement.
+        BooleanVar t = new BooleanVar(store, "t");  // he wears a green tie
+        BooleanVar h = new BooleanVar(store, "h");  // he wears a green hat
+        BooleanVar r = new BooleanVar(store, "r");  // he wears a green shirt
+        BooleanVar s = new BooleanVar(store, "s");  // he wears green socks
+        BooleanVar n = new BooleanVar(store, "n");  // he pays the entrance fee
+
+        // Rule 4: a guest who is not dressed according to rules 1-3 must pay the fee, so
+        // each rule holds or he pays.
+        // Rule 1: if someone wears a green tie he has to wear a green shirt.
+        store.impose(anyOf(new IfThen(yes(t), yes(r)), yes(n)));
+        // Rule 2: a guest who wears green socks or a green shirt must also wear a green tie
+        // or a green hat.
+        store.impose(anyOf(new IfThen(anyOf(yes(s), yes(r)), anyOf(yes(t), yes(h))), yes(n)));
+        // Rule 3: a guest wearing a green shirt or a green hat or who does not wear green
+        // socks must wear a green tie.
+        store.impose(anyOf(new IfThen(anyOf(yes(r), yes(h), no(s)), yes(t)), yes(n)));
+
+        // Minimise the total cost: the tie, the hat, the socks and the fee (the shirt he
+        // owns).
+        IntVar cost = new IntVar(store, "cost", 0, 10 + 2 + 12 + 11);
+        store.impose(new LinearInt(new IntVar[]{t, h, s, n, cost}, new int[]{10, 2, 12, 11, -1}, "==", 0));
+
+        return new Model().put("t", t).put("h", h).put("r", r).put("s", s).put("n", n)
+                .minimize(cost)
+                .search(new IntVar[]{t, h, r, s, n}, null, null);
     }
 }

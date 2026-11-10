@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791971238.6770058,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/idp_z3/idp/CONTRACT.md": "6b19906b2661c126ead971534a987a847e3588557576f94de05aabc64dfaa5f8"
+    },
+    "created_at": 1794252188.958432,
     "problem_id": "birthday_coins",
     "profile": {
       "compilation_timeout": 120,
@@ -14,32 +18,58 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "7f080ba08db4dfe6d542b25112a7e8b9209d446b04b34f2bf2569c81fb0265f0",
-    "run_id": "20261015-idp-models",
-    "schema": 2,
-    "skill_bundle_hash": "9a25d36ad575c9a46834d5f2b4a2400285c9cec1f10da5c0915b9cc02c1af977",
-    "skill_source": "solvers/idp_z3/skills/idp-z3",
+    "readiness_hash": "98ab0fd7626d82dffe4fc88da02604ce62b913d268b37a272962cc7ca3db91b9",
+    "run_id": "wording-20261109t191601z-d18d",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b9674aa598920b2a739ab096ac32d1a89b81d309",
+      "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
       "modified": false,
-      "path": "solvers/idp_z3/skills/idp-z3"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e054443862cea55e681ddc5d6de42dea2a7e9e6a88fe0ee88f50d17cac73207d",
+        "source": "solvers/idp_z3/skills/dcp-idp-z3",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "solvers/idp_z3/skills/dcp-idp-z3"
+        }
+      }
+    ],
     "solver_id": "idp_z3"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "Docker version 29.9.2, build a82e528"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:23e65bbc0d573afb17d3d70e69cbcc03924c5ece2878691531c3e1373c382ed4",
+      "id": "sha256:f2153d0424009b112e5af5a91e8004116deacc4d206737ab0a369c09da8ecc82",
+      "recipe": "sha256:83de1fc75f3917ee17776086e6944c3b098e2cd01be530c3c81e11fd1923c7f9",
       "tag": "dcp-eval/idp_z3:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.003345525008626282,
-        "execution_wall_seconds": 0.8515554479672574,
+        "checking_seconds": 0.0042882999405264854,
+        "execution_wall_seconds": 2.0471582000609487,
         "first_solution": {
-          "half_crowns": 8
+          "half_crowns": 7
         },
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
@@ -50,14 +80,17 @@
           "half_crowns"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7220864620176144,
+        "reference_setup_seconds": 1.8314010000322014,
         "runner_status": {
+          "build_seconds": 0.1013475190002282,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 0.11118146800026807,
+          "read_seconds": 0.005700872000033996,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       }
     ],
@@ -70,15 +103,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "11bb6e73903fbd7f30a151aee293f41e1d2c38d3ec4e5daae6ea2cfb24108101",
+    "model_hash": "461e8816bef3ddbbf77d364684bf9227394fe5b78f8221ca74c9f24746410aaa",
     "problem_id": "birthday_coins",
     "reason": "accepted",
-    "reference_hash": "458dbc09aad47a607001bdee9cff395fd9f07f5d7ebeb8cd16074cce9a9cfe9e",
+    "reference_hash": "ba2c99feae0490e265ca389a4e3dde1df5877abedbed75083cc14a870d01effa",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.10"
     },
     "requested": {
       "instance_count": 99,
@@ -87,13 +120,13 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 1,
+    "solutions_checked": 2,
     "solver_id": "idp_z3",
-    "total_wall_seconds": 1.7110660510370508,
+    "total_wall_seconds": 4.950131600024179,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.idp",

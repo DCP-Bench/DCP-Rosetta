@@ -43,11 +43,12 @@ def create_model(instance):
     broken_1 = model.addVar("broken_1", vtype="B")  # 1 when rule 1 is broken
     model.addConsAnd([t, no_shirt], broken_1)
 
-    # Rule 2: a guest may only wear green socks and a green shirt if he also wears
-    # a green tie or a green hat. Broken when he wears socks and shirt, and neither
-    # tie nor hat.
+    # Rule 2: a guest who wears green socks or a green shirt must also wear a green tie
+    # or a green hat. Broken when he wears socks or the shirt, and neither tie nor hat.
+    socks_or_shirt = model.addVar("socks_or_shirt", vtype="B")  # 1 when rule 2 applies
+    model.addConsOr([s, r], socks_or_shirt)
     broken_2 = model.addVar("broken_2", vtype="B")  # 1 when rule 2 is broken
-    model.addConsAnd([s, r, no_tie, no_hat], broken_2)
+    model.addConsAnd([socks_or_shirt, no_tie, no_hat], broken_2)
 
     # Rule 3: a guest who wears a green shirt, or a green hat, or who does not wear
     # green socks, must wear a green tie. Broken when one of those holds and he has
