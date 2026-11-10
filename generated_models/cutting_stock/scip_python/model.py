@@ -24,8 +24,7 @@ def create_model(instance):
     # The data gives no upper bound on it, so none is set.
     used = model.addMatrixVar(num_patterns, vtype="I", lb=0, name="used")
 
-    # rolls is the total number of rolls cut. It is held in its own integer variable,
-    # so that the optimum can be pinned when the solver enumerates optimal solutions.
+    # rolls is the total number of rolls cut, held in its own integer variable.
     rolls = model.addVar("rolls", vtype="I", lb=0)
     model.addCons(rolls == used.sum())  # the total of the rolls cut with each pattern
 

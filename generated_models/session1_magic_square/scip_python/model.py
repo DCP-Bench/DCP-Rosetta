@@ -21,9 +21,9 @@ def create_model(instance):
 
     model = Model("session1_magic_square")
 
-    # SCIP's default settings are slow to find a first square for larger n (n = 6
-    # took about two minutes in tests, about half a minute with this setting). The
-    # feasibility emphasis changes only the search for solutions, not which exist.
+    # SCIP's default settings are slow to find a first square for larger n. The
+    # feasibility emphasis speeds up the search for a solution and does not change
+    # which squares exist.
     model.setEmphasis(SCIP_PARAMEMPHASIS.FEASIBILITY)
 
     # value[i, j, v] is 1 when cell (i, j) holds the number v + 1, and 0 when

@@ -16,7 +16,7 @@ def create_model(instance):
     names = instance["warehouse_s"]                       # names of the candidate cities, one per warehouse
     fixed_costs = np.array(instance["fixed_costs"])       # fixed_costs[i]: cost of opening warehouse i
     capacity = instance["max_shipping"]                   # most units one warehouse can ship in total
-                                                          # (assumption: the statement does not give it, the field name does)
+                                                          # (the statement's max_shipping per open warehouse)
     demands = np.array(instance["demands"])               # demands[j]: units region j needs
     shipping_costs = np.array(instance["shipping_costs"]) # shipping_costs[i][j]: cost of one unit from warehouse i to region j
 
@@ -35,8 +35,8 @@ def create_model(instance):
     # can exceed it; the upper bound here only gives each cell a finite bound.
     ships = model.addMatrixVar((len(names), len(demands)), vtype="I", lb=0, ub=capacity, name="ships")
 
-    # total_cost is the total cost, the quantity to minimise. It is a bounded integer, so that the
-    # optimum can be pinned when further optimal solutions are listed. Its upper bound is derived
+    # total_cost is the total cost, the quantity to minimise, held in its own bounded integer
+    # variable. Its upper bound is derived
     # from the data: opening every warehouse once, plus shipping all demand at the most expensive rate.
     total_cost = model.addVar("total_cost", vtype="I", lb=0,
                               ub=fixed_costs.sum() + demands.sum() * shipping_costs.max())

@@ -24,7 +24,7 @@ def create_model(instance):
     y = [[model.addVar(f"y_{k}_{p}", vtype="B") for p in range(n)] for k in range(m)]
 
     # x[k] is the bowl number of the k-th orange from the left (1..n). This is
-    # the reported output, an integer variable so it can be read and blocked.
+    # the reported output, an integer variable so it can be read directly.
     x = [model.addVar(f"x_{k}", vtype="I", lb=1, ub=n) for k in range(m)]
 
     # Each orange is in exactly one bowl.

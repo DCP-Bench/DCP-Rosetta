@@ -11,8 +11,8 @@ from pyscipopt import Model, quicksum
 #     C(2) -- D(3)
 # so cell p is in the north row when p < 2 and in the south row when p >= 2, and in the
 # west column when p is even and in the east column when p is odd.
-# The statement fixes the whole problem: its instance file is empty ([]), and the run
-# block passes {} to create_model, which reads nothing from its argument.
+# The statement fixes the whole problem: its instance file is empty ([]), so
+# create_model reads nothing from its argument.
 
 # Named items, in the order the statement lists them.
 PWANA, QUERO, RAYOU, SKERN = range(4)  # the four islands

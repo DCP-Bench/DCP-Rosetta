@@ -32,14 +32,11 @@ def create_model(instance):
 
     # shake[i, j] is 1 when persons i and j shake hands, and 0 when they do not.
     # A handshake involves two people, so shake is symmetric.
-    shake = model.addMatrixVar((people, people), vtype="B", name="shake")
+    # Nobody shakes hands with themselves (the diagonal) or with their spouse (the other
+    # person of the same couple), so those entries have upper bound 0.
+    allowed = 1 - np.eye(people) - np.kron(np.eye(couples), 1 - np.eye(2))
+    shake = model.addMatrixVar((people, people), vtype="B", ub=allowed.tolist(), name="shake")
     model.addMatrixCons(shake == shake.T)  # a handshake is between two people
-    # Nobody shakes hands with themselves (the diagonal is 0)...
-    for i in range(people):
-        model.addCons(shake[i, i] == 0)
-    # ...or with their spouse, who is the other person of the same couple.
-    for c in range(couples):
-        model.addCons(shake[2 * c, 2 * c + 1] == 0)
 
     # hands[p] is the number of hands person p has shaken.
     hands = shake.sum(axis=1)
@@ -60,15 +57,11 @@ def create_model(instance):
 
     # Known consequence of the distinct answers in Halmos's handshake puzzle: the two
     # spouses of each couple together shook max_hands hands. It is implied by the
-    # answers, so it does not change the solutions; it is kept because without it the
-    # search for a further solution is too slow.
+    # answers, so it removes no solution; it is kept because it speeds up SCIP's search.
     for c in range(couples):
         model.addCons(hands[2 * c] + hands[2 * c + 1] == max_hands)
 
     # hil: Hilary's number of hands, as its own integer variable equal to hands[HILARY].
-    # A solver that looks for a second solution must exclude the values of the variables an
-    # output is built from. A sum over a whole row of binaries has many assignments with
-    # the same value, so the search is slow; one integer variable excludes one value.
     hil = model.addVar(vtype="I", lb=0, ub=max_hands, name="hil")
     model.addCons(hil == hands[HILARY])
 

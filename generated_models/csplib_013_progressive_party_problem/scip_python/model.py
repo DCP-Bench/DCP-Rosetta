@@ -42,7 +42,8 @@ def create_model(instance):
 
     # Every crew is aboard exactly one boat in every period.
     model.addMatrixCons(visit.sum(axis=2) == 1)
-    # Crews go aboard only host boats: visit[p, g, h] <= is_host[h].
+    # Crews go aboard only host boats: visit[p, g, h] <= is_host[h]. (On the diagonal this
+    # overlaps with the next constraint, which fixes visit[p, b, b] to is_host[b].)
     model.addMatrixCons(visit <= is_host)
     # A host crew stays aboard its own boat, and a guest crew is not: visit[p, b, b] == is_host[b].
     model.addMatrixCons(np.diagonal(visit, axis1=1, axis2=2) == is_host)
@@ -52,11 +53,10 @@ def create_model(instance):
     model.addMatrixCons(crew @ visit <= capacity)
 
     # A guest crew visits each host at most once over the whole party. The diagonal
-    # is left out, because a host's crew is aboard its own boat in every period.
-    for g in boats:
-        for h in boats:
-            if g != h:
-                model.addCons(quicksum(visit[p, g, h] for p in periods) <= 1)
+    # is left out (its bound is n_periods), because a host's crew is aboard its own boat
+    # in every period.
+    visits_allowed = np.where(np.eye(n_boats, dtype=bool), n_periods, 1)
+    model.addMatrixCons(visit.sum(axis=0) <= visits_allowed)
 
     # Two guest crews meet at most once. They meet when both are aboard the same
     # boat h in the same period p. Boat h is skipped when it is one of the two

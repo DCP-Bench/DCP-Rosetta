@@ -26,8 +26,8 @@ def create_model(instance):
 
     # step[s, t] is 1 when the knight moves directly from square s to square t. Only
     # knight's-move pairs can be steps: ub=adjacent fixes the other pairs to 0. This
-    # gives at most 8 N step variables, where a variable per square and move number
-    # would give N * N.
+    # leaves at most 8 N free step variables (a knight has at most 8 moves), where a
+    # variable per square and move number would give N * N.
     step = model.addMatrixVar((N, N), vtype="B", ub=adjacent, name="step")
     # start[s] is 1 when the tour starts on square s, and end[s] when it ends there.
     start = model.addMatrixVar(N, vtype="B", name="start")
@@ -54,7 +54,8 @@ def create_model(instance):
 
     # SCIP branches first on the variables with the higher priority. The steps get 1000,
     # the move numbers the default 0: the search then follows the path step by step.
-    # Branching on the move numbers first wanders, and a second tour can take minutes.
+    # Branching on the move numbers first wanders and is much slower. This only steers the
+    # search; no constraint depends on it.
     for variable in step.flatten():
         model.chgVarBranchPriority(variable, 1000)
 

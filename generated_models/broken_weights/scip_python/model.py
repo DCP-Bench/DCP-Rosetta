@@ -37,9 +37,7 @@ def create_model(instance):
     # w[i] when it is there, else 0. on_left is the same for the left pan. Each is a
     # product of a binary and w[i], written as big-M constraints with M = m, the upper
     # bound of w, rather than with addConsIndicator: an indicator gives the LP
-    # relaxation little to work with. Measured on the 80-pound instance, the indicator
-    # version found no first solution in 170 s; this one found two solutions in 66 s,
-    # or in 12 s with the branch priority below.
+    # relaxation little to work with, so the big-M form solves much faster.
     on_right = model.addMatrixVar((m, n), vtype="I", lb=0, ub=m, name="on_right")
     on_left = model.addMatrixVar((m, n), vtype="I", lb=0, ub=m, name="on_left")
     for on, pan in ((on_right, right), (on_left, left)):
@@ -56,8 +54,7 @@ def create_model(instance):
     model.addMatrixCons((on_right - on_left).sum(axis=1) == np.arange(1, m + 1))
 
     # Search hint only, no constraint: branch on the piece weights before the pan
-    # choices. Once the weights are fixed, each weighing is a small pan choice. Measured
-    # on the 80-pound instance, this took the two-solution time from 66 s to 12 s.
+    # choices. Once the weights are fixed, each weighing is a small pan choice.
     for i in range(n):
         model.chgVarBranchPriority(w[i], 100)
 

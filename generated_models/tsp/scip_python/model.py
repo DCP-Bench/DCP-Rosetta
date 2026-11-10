@@ -53,8 +53,8 @@ def create_model(instance):
 
     # travel_distance is the length of the route: the distances of the arcs it uses.
     # It is also the objective. The length is held as one bounded integer variable, not only
-    # as the sum, so the optimal length is a single value SCIP can pin. Its upper bound: the
-    # route has n arcs and no arc is longer than the largest distance in the data.
+    # as the sum. Its upper bound: the route has n arcs and no arc is longer than the
+    # largest distance in the data.
     travel_distance = model.addVar("travel_distance", vtype="I", lb=0,
                                    ub=n * int(dist.max()))
     model.addCons(travel_distance == (dist * x).sum())

@@ -12,9 +12,9 @@ from pyscipopt import Model, quicksum
 def create_model(instance):
     """Sudoku: fill a square grid with digits so that every row, every column and
     every box of the grid contains each digit exactly once. Some cells are given;
-    the empty ones must be filled. The example grid is 9 x 9 with boxes of 3 x 3."""
+    the empty ones must be filled. The usual grid is 9 x 9 with boxes of 3 x 3."""
     givens = instance["input_grid"]  # givens[r][c]: the digit given in cell (r, c), 0 when the cell is empty
-    n = len(givens)                  # the side of the grid, taken from the instance (9 in the example)
+    n = len(givens)                  # the side of the grid, taken from the instance (9 for the usual sudoku)
     box = isqrt(n)                   # the side of one box (3 for a 9 x 9 grid)
     digits = range(1, n + 1)         # the digits allowed in a cell: 1 to n, from the sudoku rules
     cells = [(r, c) for r in range(n) for c in range(n)]

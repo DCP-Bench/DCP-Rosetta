@@ -39,8 +39,7 @@ def create_model(instance):
     # numberings. Week 0 is numbered in blocks: golfers 0 to group_size - 1 in
     # group 0, the next block in group 1, and so on. Golfer 0 is then put in
     # group 0 in every later week. Every schedule has such a numbering, so at
-    # least one numbering of each schedule stays in the model. Without these fixings
-    # the search for the larger instances does not finish within the time limit.
+    # least one numbering of each schedule stays in the model.
     first_week = np.eye(n_groups, dtype=int)[np.arange(n_golfers) // group_size]
     model.addMatrixCons(plays[:, 0, :] == first_week)
     model.addMatrixCons(plays[0, 1:, 0] == 1)

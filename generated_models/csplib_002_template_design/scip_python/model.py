@@ -10,12 +10,11 @@ from pyscipopt import Model
 def create_model(instance):
     """Template design for a colour printing firm.
 
-    Each product variation (for example a design of a cat-food carton) is printed from
-    a template: a thin aluminium sheet with several variations etched on it. The firm
-    produces n_templates templates, each with n_slots positions, and each position
-    carries one copy of one variation. A mother sheet is printed from a template, and
-    printing a template once gives as many copies of each variation as it has positions
-    for it. Choose the variations on each template and how many sheets to print from
+    Each mother sheet is printed from a template: a thin aluminium sheet with the
+    designs of several product variations (for example cat-food cartons) etched on it.
+    The firm produces n_templates templates, each with n_slots positions, and each
+    position carries one copy of one variation. Printing a template once gives as many
+    copies of each variation as it has positions for it. Choose the variations on each template and how many sheets to print from
     each template, so that every variation gets at least its demand, with as few printed
     sheets as possible.
     """
@@ -30,8 +29,8 @@ def create_model(instance):
     # can take every position of a template, which is the bound n_slots from the data.
     layout = model.addMatrixVar((n_templates, n_var), vtype="I", lb=0, ub=n_slots)
 
-    # production[i]: number of sheets printed from template i. Each template is produced,
-    # so it is printed at least once (lb=1). The upper bound max(demand) is derived: a
+    # production[i]: number of sheets printed from template i. The statement gives
+    # each template between 1 sheet (lb=1) and max(demand) sheets. The upper bound is also derived: a
     # template printed more than max(demand) times can print max(demand) times instead,
     # since each variation it carries still gets at least max(demand) >= demand copies
     # from it, so no optimal solution is cut off.

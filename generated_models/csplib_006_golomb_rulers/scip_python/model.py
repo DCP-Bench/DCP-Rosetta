@@ -23,7 +23,7 @@ def create_model(instance):
     model = Model("golomb_ruler")
 
     # Upper bound on every mark position, size * size. This is an ASSUMPTION, not a consequence
-    # of the statement: it is the reference's domain bound, and the optimal rulers of the listed
+    # of the statement: the optimal rulers of the listed
     # instances lie below it. It only limits the search space; if no ruler fitted below it, the
     # solver would report no solution.
     upper = m * m

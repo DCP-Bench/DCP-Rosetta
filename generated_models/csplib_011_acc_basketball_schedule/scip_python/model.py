@@ -34,8 +34,10 @@ def create_model(instance):
     statement gives no value for a bye, so this is a choice of the output.
     where[d][i] is 0 for a home match, 1 for a bye and 2 for an away match.
     """
-    n_teams = instance["n_teams"]  # the number of teams: 9 (the statement's teams)
-    n_days = instance["n_days"]    # the number of dates: 18 (index d is the statement's date d + 1)
+    n_teams = instance["n_teams"]  # the number of teams (the statement has 9)
+    n_days = instance["n_days"]    # the number of dates (the statement has 18); index d is the statement's date d + 1
+    # The date numbers 10, 15, 16 and the slice [1:10:2] below, like MIRROR above, are
+    # fixed by the statement; the rest of the model reads the sizes from the data.
     T, D = n_teams, n_days
 
     model = Model("csplib_011_acc_basketball_schedule")

@@ -23,8 +23,7 @@ def create_model(instance):
     # monotone in rating, so it has at most n children.
     x = [model.addVar(f"x_{i}", vtype="I", lb=1, ub=n) for i in range(n)]
 
-    # z is the total number of candies. It is a variable (not a bare expression)
-    # so the optimum can be pinned when enumerating optimal handouts. Its bounds
+    # z is the total number of candies, held in its own integer variable. Its bounds
     # follow from the bounds on x: at least one candy each, at most n each.
     z = model.addVar("z", vtype="I", lb=n, ub=n * n)
 

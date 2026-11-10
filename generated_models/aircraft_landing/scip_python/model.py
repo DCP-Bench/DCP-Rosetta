@@ -54,11 +54,9 @@ def create_model(instance):
         for i in range(n)
     ]
 
-    # The total penalty, held in a bounded integer variable rather than a bare
-    # sum, so the objective can be fixed at its optimum when all optimal landing
-    # schedules are listed. Its upper bound is the largest penalty each aircraft
-    # could cost within its window, summed over the aircraft; the max(0, ...)
-    # clamps matter only when a target lies outside its window.
+    # The total penalty, held in its own bounded integer variable. Its upper bound is
+    # the largest penalty each aircraft could cost within its window, summed over the
+    # aircraft; the max(0, ...) clamps matter only when a target lies outside its window.
     max_penalty = sum(
         penalty_before[i] * max(0, target[i] - earliest[i])
         + penalty_after[i] * max(0, latest[i] - target[i])

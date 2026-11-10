@@ -16,12 +16,12 @@ LETTERS = "ABCDEFGHIJ"
 
 def create_model(instance):
     """Cryptarithm: give each letter A to J a different digit from 0 to 9 so that
-    the 20-digit sum FIRST + SECOND = TOTAL holds, with the words of the statement.
-    The first letter of each of the three numbers is not zero. The instance file is
-    empty ([]), so the words are fixed by the statement and the function reads
-    nothing from `instance`. It is a satisfaction problem with no objective; the
+    the sum FIRST + SECOND = TOTAL holds, for the three words given above.
+    The first letter of each of the three numbers is not zero. The words are fixed
+    by the statement, so the function reads nothing from `instance`. It is a satisfaction problem with no objective; the
     outputs are the digit of each letter."""
     model = Model("crypta")
+    n = len(TOTAL)  # the number of columns of the sum
     index = {letter: i for i, letter in enumerate(LETTERS)}
 
     # x[l, d] is 1 when letter l (0 for A up to 9 for J) stands for digit d.
@@ -42,17 +42,17 @@ def create_model(instance):
 
     # carry[j] is 1 when column j - 1 passes a carry on to column j, with columns
     # counted from the right, the units column being 0. Nothing is carried into the
-    # units column (carry[0] = 0), and nothing leaves the leftmost column (carry[20] = 0)
+    # units column (carry[0] = 0), and nothing leaves the leftmost column (carry[n] = 0)
     # because a carry out of it would need a 21st digit, which TOTAL does not have.
     # A column adds at most 9 + 9 + 1 = 19, so a carry is 0 or 1.
-    carry = [0] + [model.addVar(f"carry_{j}", vtype="B") for j in range(1, 20)] + [0]
+    carry = [0] + [model.addVar(f"carry_{j}", vtype="B") for j in range(1, n)] + [0]
 
     # Column by column from the right, the digits of FIRST and SECOND in the column
     # plus the carry in equal the digit of TOTAL plus 10 times the carry out. Working
     # column by column keeps every coefficient at most 10; a weighted sum over the whole
     # numbers would need coefficients up to 10**19, beyond what floating-point arithmetic
     # keeps exact.
-    for j in range(20):
+    for j in range(n):
         a, b, s = (word[-1 - j] for word in (FIRST, SECOND, TOTAL))
         model.addCons(
             value[index[a]] + value[index[b]] + carry[j]

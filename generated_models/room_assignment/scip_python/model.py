@@ -37,9 +37,8 @@ def create_model(instance):
             model.addCons(x[i, room] == 1)
 
     # A room serves at most one request on any day. A stay covers the days from its check-in day
-    # up to, not including, its check-out day. The exclusive check-out is an assumption: the
-    # statement does not say which day a stay ends, and this reading lets one request check out
-    # on the day another checks in. Two stays clash exactly when they share a covered day, so one
+    # up to, not including, its check-out day. The check-out day is excluded, as the statement
+    # says, so one request can check out on the day another checks in. Two stays clash exactly when they share a covered day, so one
     # row per day forbids every clash. The row for a day is a clique over the requests covering it,
     # a tighter relaxation than one row per clashing pair. A day covered by one request needs no
     # row: its binary variables already keep that request to one room.

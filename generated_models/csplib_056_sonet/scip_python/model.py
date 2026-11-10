@@ -39,8 +39,7 @@ def create_model(instance):
             model.addCons(quicksum(shared) >= 1)
 
     # total_adms counts the ADMs: one for each node on each ring. The objective is this
-    # integer variable, tied to the sum, rather than the bare sum: SCIP enumerates other
-    # optimal solutions only when the objective is held in a bounded variable.
+    # integer variable, tied to the sum.
     # The upper bound r * n follows from counting: each of the n nodes is on at most
     # r rings, one ADM per ring.
     total_adms = model.addVar(vtype="I", lb=0, ub=r * n, name="total_adms")

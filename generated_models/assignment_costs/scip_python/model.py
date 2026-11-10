@@ -24,14 +24,10 @@ def create_model(instance):
     x = model.addMatrixVar((n_tasks, n_people), vtype="B", name="x")
 
     # Each task is assigned to exactly one person.
-    for i in range(n_tasks):
-        model.addCons(quicksum(x[i, j] for j in range(n_people)) == 1,
-                      name=f"task_{i}_gets_one_person")
+    model.addMatrixCons(x.sum(axis=1) == 1)
 
     # Each person takes at most one task (the description says not everyone has to be used).
-    for j in range(n_people):
-        model.addCons(quicksum(x[i, j] for i in range(n_tasks)) <= 1,
-                      name=f"person_{j}_at_most_one_task")
+    model.addMatrixCons(x.sum(axis=0) <= 1)
 
     # The total cost of the assignment is as small as possible.
     model.setObjective(quicksum(cost[i][j] * x[i, j]

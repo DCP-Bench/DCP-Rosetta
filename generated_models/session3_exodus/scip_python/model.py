@@ -81,8 +81,8 @@ def create_model(instance):
 
     # ages[a] is the number of the child with age AGES[a]
     ages = age_is.T @ labels
-    # children[c] is the number of child c. The labels above fix it to c + 1, so the
-    # variable is pinned by its bounds and prints like the other outputs.
+    # children[c] is the number of child c. It is always c + 1, so its bounds are set to
+    # that value; it is a variable only so it can be printed like the other outputs.
     children = model.addMatrixVar((5,), vtype="I", lb=labels, ub=labels, name="children")
     # countries[k] is the number of the child whose family is from country k
     countries = country_is.T @ labels

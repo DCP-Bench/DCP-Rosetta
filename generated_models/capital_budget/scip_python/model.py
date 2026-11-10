@@ -38,8 +38,7 @@ def create_model(instance):
     # z is the total NPV of the chosen investments.
     model.addCons(z == quicksum(v * xi for v, xi in zip(npv, x)))
 
-    # Maximise the total NPV of the chosen investments. The objective is held in the
-    # bounded integer z, so the optimum can be pinned when all optimal choices are listed.
+    # Maximise the total NPV of the chosen investments.
     model.setObjective(z, "maximize")
 
     return model, {"x": x, "z": z}

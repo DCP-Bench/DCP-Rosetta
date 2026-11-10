@@ -31,6 +31,8 @@ def create_model(instance):
     x = (b * np.arange(n)).sum(axis=1)
 
     # Step i joins position i to position i+1, and is a rise or a fall by one size k.
+    # The step |x[i+1] - x[i]| is not written with abs: that would be a nonlinear constraint on
+    # one-hot expressions, so the sign is made explicit with rise/fall binaries and all stays linear.
     # rise[i, k-1] is 1 when step i rises by k, and fall[i, k-1] is 1 when it falls by k.
     rise = model.addMatrixVar((n - 1, n - 1), vtype="B", name="rise")
     fall = model.addMatrixVar((n - 1, n - 1), vtype="B", name="fall")
@@ -38,11 +40,11 @@ def create_model(instance):
     model.addMatrixCons(rise.sum(axis=1) + fall.sum(axis=1) == 1)
     # each size 1, ..., n-1 is taken by exactly one step, rising or falling: the sizes are a permutation
     model.addMatrixCons(rise.sum(axis=0) + fall.sum(axis=0) == 1)
-    # Fixing all the steps fixes the series apart from its first entry, so the solver branches on the steps first.
+    # Fixing all the steps fixes the series apart from its first entry, so the solver branches on the steps first (a speed choice only).
     for var in list(rise.flatten()) + list(fall.flatten()):
         model.chgVarBranchPriority(var, 1)
 
-    # Link the steps to the positions. For each size k, the two matrix constraints below give, for
+    # Link the steps to the positions. For each size k, the four matrix constraints below give, for
     # every position i and pitch class v:
     #   if step i rises by k and position i holds v, then position i+1 holds v + k;
     #   if step i falls by k and position i holds v, then position i+1 holds v - k;

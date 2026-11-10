@@ -29,9 +29,7 @@ def create_model(instance):
     ship = model.addMatrixVar((n_origins, n_destinations, n_products), vtype="I", lb=0, ub=ship_ub, name="ship")
 
     # total_cost is the total shipping cost of the plan, and the objective. It is a variable
-    # of its own, equal to the cost sum, because the runner blocks the variables an output is
-    # built from when it looks for another solution: blocking the shipments would rule out
-    # every plan, while blocking total_cost rules out only that cost.
+    # of its own, equal to the cost sum.
     # Its upper bound: every unit shipped costs at most the largest entry of cost, and the
     # demand constraints make exactly sum(demand) units shipped.
     total_cost = model.addVar(vtype="I", lb=0, ub=int(cost.max() * demand.sum()), name="total_cost")
