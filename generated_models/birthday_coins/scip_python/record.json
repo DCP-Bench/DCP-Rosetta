@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791984078.897342,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "1a0780fdf1a70649f1f1446673789f6afc9d92f6289ad66e6417bbbe57e3a095"
+    },
+    "created_at": 1794252194.5176828,
     "problem_id": "birthday_coins",
     "profile": {
       "compilation_timeout": 120,
@@ -14,32 +18,58 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "40aadab0fd29fa497a607153b940e0a2a014bd5a422d76c49cd51f4a61aea109",
+    "run_id": "wording-20261109t191601z-d18d",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "6831ac9b034c5bc0f777fee8f45f7d98d8e39ceb92a5976f81ec87ae01d7b19c",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "Docker version 29.9.2, build a82e528"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:13e70d7204c31e0add9887fbdd656cc290d2b99e17f82254a0252f0da2821d4f",
+      "recipe": "sha256:884fe6bbdccbed960998e2b16f7a086e2ce41beaac5898e0f7ce271209bb6488",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.0017926510190591216,
-        "execution_wall_seconds": 0.7497754149953835,
+        "checking_seconds": 0.006676300195977092,
+        "execution_wall_seconds": 1.8551192998420447,
         "first_solution": {
-          "half_crowns": 8
+          "half_crowns": 7
         },
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
@@ -50,14 +80,17 @@
           "half_crowns"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5420235139899887,
+        "reference_setup_seconds": 2.107976699946448,
         "runner_status": {
+          "build_seconds": 0.012868691000221588,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 0.019398831000216887,
+          "read_seconds": 0.0037155599998186517,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       }
     ],
@@ -70,15 +103,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "5f9ec9d87a24138cf814af2f27da3e0c0492a1bcfb397732323b207045505dd3",
+    "model_hash": "e849da2e139cbfb50f16c497300744d9606213c554501528150a987bb5752945",
     "problem_id": "birthday_coins",
     "reason": "accepted",
-    "reference_hash": "458dbc09aad47a607001bdee9cff395fd9f07f5d7ebeb8cd16074cce9a9cfe9e",
+    "reference_hash": "ba2c99feae0490e265ca389a4e3dde1df5877abedbed75083cc14a870d01effa",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.10"
     },
     "requested": {
       "instance_count": 99,
@@ -87,13 +120,13 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 1,
+    "solutions_checked": 2,
     "solver_id": "scip_python",
-    "total_wall_seconds": 1.3830802350421436,
+    "total_wall_seconds": 5.043809599941596,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",
