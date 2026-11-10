@@ -65,6 +65,10 @@ domain, posts `eq(fresh, objective)` and optimises the fresh one (`freshObjectiv
 view's `removeAbove` computes `v - o` unchecked, so optimising the view directly wrapped and reported `unsat` on
 satisfiable models. The readiness check `offset_objective` (`minus(x, 5)` over 0..3) guards this.
 
+State the problem's own objective, in the brief's direction. The driver reports the fresh variable's value,
+which equals the declared objective's (MaxiCP optimises it in the declared direction, with no negated copy), as
+the `objective` of every solution and of every `incumbent`.
+
 ## Solving
 
 - **Branching:** the driver searches with `firstFailBinary` over every variable made with `m.intVar`,
@@ -79,7 +83,8 @@ satisfiable models. The readiness check `offset_objective` (`minus(x, 5)` over 0
 - **Optimisation:** `optimize` with the bound tightened at each improving solution. The last solution is the
   optimum only when the search is `completed`; a search stopped by the deadline is `timeout` and nothing is
   emitted ("Candidate optimum was not proven"). A completed search with no solution is `unsat`. Otherwise the
-  driver posts `objective == optimum` at the root and enumerates optima (below).
+  driver posts `objective == optimum` at the root and enumerates optima (below). Each improving solution is
+  reported as an `incumbent` (objective, seconds since the model was built).
 - **Enumeration:** each solution is followed by a no-good on the declared output variables (constants excluded),
   so solutions are distinct on the outputs, and the search starts again from the root. Under the limit, the
   end of the search gives `complete` (or `unsat` with no solution at all). With no output variable, one

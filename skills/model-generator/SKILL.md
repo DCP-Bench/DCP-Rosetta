@@ -55,13 +55,17 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    Prefer problems with several instances when you want the evaluator itself to
    catch a hardcoded model. An integration reported as not `ready` cannot be
    used at all; legacy directories under `generated_models/` are not coverage.
+   One whose blocker starts "Licence pending" needs a solver licence this machine
+   lacks: work on the others, and name it in the report.
 5. **Read the contract.** `generation.brief PROBLEM` prints the problem
    description, the declared output names with their shapes, the objective
-   direction, and every instance field with its shape.
+   direction, and every instance field with its shape. The description is also
+   `bench/dataset/<problem>/description.md`, easier to read when it is long.
 
    **Start blind**: model from the brief, the instance JSON, the two contracts,
    the solver skill and the evaluator's feedback, without opening the reference
-   (`bench/dataset/<problem>/<problem>.cpmpy.py`) or other integrations' models. If
+   (`bench/dataset/<problem>/<problem>.cpmpy.py`), the links under `sources` in the
+   problem's `metadata.json` (some are published models) or other integrations' models. If
    that is not working, read the reference and say so in the attempt's
    `lessons.md`. Never execute its solve tail, never carry over a constraint it
    keeps commented out between `<SYMMETRY_BREAKING_CONSTRAINT_START>` and
@@ -155,7 +159,14 @@ one model it recognises.
   `skills/solver-setup` yourself and recording the setup skill *before* writing
   any integration file; certifying an existing one whose `readiness.json` is
   missing or stale is a separate, smaller job. Neither is a reason to rebuild a
-  working integration.
+  working integration. A licensed solver never stops the campaign: solver-setup
+  may return **licence_pending** (all done except the steps that need the
+  licence). Carry on with the other integrations.
+- **An evaluation comes back `licence_unavailable`.** The solver refused its
+  licence, which may be missing, expired or unreachable. That says nothing about the
+  model, and `manage evaluate` does not count it as an attempt. Set that integration
+  aside for the rest of the run, retry the same file once the licence works, and
+  never edit a model or block a pair because of it.
 - **A failure taught you something general.** Put it where the next model will
   read it, with evidence and a reproducer, never on a hunch:
 
@@ -221,12 +232,17 @@ you keep the decisions and they do the modelling.
   shared with every certified image; a new integration gets its own `run.py` and
   its own Dockerfile dependencies.
 - An unavailable Docker engine, a missing licence, or an exhausted budget is a
-  concrete blocker to report — not a reason to claim the work is finished.
+  concrete blocker to report — not a reason to claim the work is finished. A
+  missing licence holds back only its own integration. Never wait for the user
+  to supply one, and never open a licence file.
 
 ## Finish
 
 Report: each accepted model with its retained path and the coverage actually
 achieved; pairs left exhausted or blocked with the reason; integrations created
 or repaired; skill changes applied or left pending; and the budget you used.
+If any integration is licence-pending, end with the output of
+`python -m evaluation.licences todo`. If a PushNotification tool is available, send one
+notification naming the licences the user should acquire.
 Say plainly what you did not verify. If the run was interrupted, checkpoint it
 as interrupted — never as complete.

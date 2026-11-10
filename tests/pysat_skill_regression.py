@@ -14,11 +14,13 @@ pre-check in the run that produced this script: the pysat model of
 `divisible_by_1_through_9` reported its ten digits plus nine quotients
 (`generation/runs/20261102-divisible-digits/attempts/divisible_by_1_through_9/pysat/attempt-001/lessons.md`).
 """
-import subprocess
 import sys
 from pathlib import Path
 
-IMAGE = "dcp-eval/pysat:v1"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from evaluation.engine import current  # noqa: E402
+from evaluation.execution import integration  # noqa: E402
+
 
 SCRIPT = """
 from pysat.formula import IDPool
@@ -36,8 +38,7 @@ print(len(xs), len(ys))
 
 def defect():
     """(shared length, copied length) measured in the image."""
-    result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--entrypoint", "python",
-                             IMAGE, "-c", SCRIPT], capture_output=True, text=True, timeout=120)
+    result = current().tool(integration("pysat"), "python", ["-c", SCRIPT], timeout=120)
     if result.returncode != 0:
         raise SystemExit(f"reproducer failed: {result.stderr.strip()}")
     shared, copied = map(int, result.stdout.split())

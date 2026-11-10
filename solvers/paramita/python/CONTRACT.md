@@ -6,28 +6,37 @@ and `finish` from [runner/runtime.py](../../../runner/runtime.py) and does its o
 
 ## Submission file
 
-One Python file, `model.py`, written against `paramita.modelling` (paramita 1.2.0) and
-the standard library; no modelling layer of the integration's own is installed beside
-paramita, and no other file of yours is staged. Do not create or call a solver: the
-runner encodes and solves.
+One Python file, `model.py`, written against `paramita.modelling`, `paramita.containers`
+(paramita 1.2.0) and the standard library; no modelling layer of the integration's own is
+installed beside paramita, and no other file of yours is staged. The model encodes its own
+constraints, so it imports the encoder (`to_cnf`) and the container classes itself. Do not
+create or call a solver in `create_model`: the runner solves. The standalone run block
+creates its own solver and imports `numpy`, which is fine: the runner never executes it.
 
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[subject_to, dict] | tuple[subject_to, dict, tuple[str, expr]]:
+def create_model(instance) -> (tuple[tuple[CnfFormula, DimacsVariablePool], dict]
+                               | tuple[tuple[WcnfFormula, DimacsVariablePool], dict, objective]):
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return a tuple
-(not a list) of length 2 or 3:
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+Models retained before 2026-11-02 name it `build(instance)`, which the runner still
+accepts by name, but only if it returns the form below; write `create_model`. It must
+return exactly `(formula, pool), outputs` for a satisfaction problem and
+`(formula, pool), outputs, objective` for an optimisation:
 
-- `(subject_to, outputs)` for a satisfaction problem;
-- `(subject_to, outputs, objective)` for an optimisation problem.
+- `formula` is a `paramita.containers.CnfFormula` for a satisfaction problem, or a
+  `WcnfFormula` for an optimisation problem;
+- `pool` is the `DimacsVariablePool` the model encoded with; the runner decodes with it;
+- `outputs` is described below;
+- `objective` is the problem's own objective (see [Objective](#objective)).
 
-`subject_to` is one Boolean expression or a list of them, built from `Bool` variables
-with `&`, `|`, `~`, `And`, `Or`, `Not`, `If`, `Iff` and PB comparisons over weighted
-sums of Bools (`2 * a + 3 * b + c <= 4`). Something else in `subject_to` fails when
-the runner encodes it: `error` (`execution_error`). Anything the module prints, at import or in `build`, goes to
-stderr.
+Anything else is refused with `error` (`execution_error`) and a message naming the form:
+a list, a formula without its pool, a formula that is neither class, a pool that is not a
+`DimacsVariablePool`, empty `outputs`, an optimisation without `objective`, or an
+`objective` that is not one expression. The runner encodes nothing: it copies the clauses into a solver. Anything the
+module prints, at import or in `create_model`, goes to stderr.
 
 ## Instance
 
@@ -39,8 +48,8 @@ problem without instance fields still receives `instance`.
 ## Outputs
 
 `outputs` is a non-empty `dict` mapping each declared output name to a leaf or a nested
-`list`/`tuple` of leaves. Values are read from the solver's assignment of the named
-Bools. A leaf is one of:
+`list`/`tuple` of leaves. Each is read with `evaluate` over the solver's assignment of
+the named Bools, decoded through `pool`. A leaf is one of:
 
 - a `Bool`, or any Boolean expression over Bools (`a & b`, `x + y == n`): reported as a
   JSON Boolean;
@@ -59,26 +68,46 @@ inside such a sum counts as 0 or 1.
 
 ## Objective
 
-The third element of the returned tuple: `("minimize", expr)` or `("maximize", expr)`, a
-tuple of exactly two items whose `expr` is a linear integer expression over Bools
-(`sum(w * b) + c`). Anything else, including a bare `Bool` or a Boolean expression such
-as `x == 1`, is refused with `error` (`an objective must be a linear integer expression
-over Bools`); write a single Bool as `1 * b`. An objective that is also an output is the
-same expression in both places. Leave the objective out for a satisfaction problem.
+Stated twice, for two readers:
+
+- **What EvalMaxSAT optimises: the soft clauses of a `WcnfFormula`**, encoded by
+  `add_to_weighted_container(soft, subject_to, to_cnf, formula, pool)`: the hard clauses
+  are the constraints, and the soft clauses are maximised (EvalMaxSAT maximises the
+  satisfied soft weight). A model that minimises passes the negated objective. A soft
+  clause with weight 0 still counts as one. A `CnfFormula`, or a `WcnfFormula` without
+  soft clauses (only its hard clauses are kept), is a satisfaction problem.
+- **What the runner reports: the third value, `objective`**, the problem's own objective
+  in its own terms and direction (the value the description's objective takes, constant
+  included): an integer expression over Bools (`sum(v * x) + c`, `-e`), a Bool (1 when
+  true) or an `int`. For a maximisation it is usually the expression given to
+  `add_to_weighted_container`; for a minimisation, the expression whose negation was given
+  (`add_to_weighted_container(-makespan, ...)`, return `makespan`). The runner evaluates it
+  in Python integers on each optimum and reports it as the solution's `objective` (runner
+  protocol 2), which the evaluator compares with the reference's optimum. It is never
+  optimised.
+
+Failures, all `execution_error`: a `WcnfFormula` with soft clauses returned without
+`objective` (models retained before protocol 2 returned two values: at protocol 2 the
+runner cannot report their objective), refused before the search; an `objective` that is a
+list, dict or anything but an expression, Bool or int, refused likewise; and two optima of
+the same benefit whose `objective` values differ, which means the expression and the soft
+clauses disagree (the status names both values). An expression that agrees with the soft
+clauses but is scaled, offset or negated is caught by the evaluator as
+`objective_mismatch`. A satisfaction model may return `objective` too; it is then reported
+but not checked.
 
 ## Solving
 
-- Fixed by the runner: every constraint is encoded with `to_cnf` and its default PB
-  encoder (`BestEncoder`), through one `DimacsVariablePool` per encoding. Satisfaction
-  uses `SatSolver.from_name("Cadical300")` (CaDiCaL 3.0.0) through `add_to_container`;
-  optimisation uses `MaxSatSolver.from_name("EvalMaxSAT2022")` through
-  `add_to_weighted_container`, which maximises its objective argument: `maximize`
-  passes the expression, `minimize` its negation. The constant that call returns plus
-  `benefit()` must equal the declared objective's value in the model, or the run is an
-  `error` (`the MaxSAT objective does not match the declared objective`).
+- Fixed by the runner: a `CnfFormula` or a `WcnfFormula` without soft clauses is loaded
+  into `SatSolver.from_name("Cadical300")` (CaDiCaL 3.0.0) with `add_clauses`; a
+  `WcnfFormula` with soft clauses is loaded into `MaxSatSolver.from_name("EvalMaxSAT2022")`:
+  the hard clauses, then `add_clause(clause, weight)` per soft clause.
 - Satisfaction status: CaDiCaL `True` is an answer; `False` before any answer is
   `unsat`, after one `complete`; still undecided at the deadline is `timeout`. Reaching
   the solution limit is `limit`, which is not a failure.
+- Each solution record carries `objective`, the returned objective's value on it (when
+  one was returned). EvalMaxSAT runs to the proven optimum without exposing improving
+  solutions, so there are no `incumbent` records.
 - Optimisation status: only a proven optimum (`OPTIMAL`) is reported; `UNSATISFIABLE`
   is `unsat`; a search not finished at the deadline is `timeout` (`the optimum was not
   proven`), with nothing reported, which the evaluator records as `execution_timeout`;
@@ -89,24 +118,25 @@ same expression in both places. Leave the objective out for a satisfaction probl
   value is re-solved, not emitted. Unsat after a blocking clause is `complete`, and so is
   an output that names no Bool (nothing to block). A Bool the solver never saw is
   unconstrained and reported `false`.
-- Optimisation enumeration: the first optimal assignment is emitted at once. Then, in a
-  second forked child (so a crash there cannot lose the optimum already emitted), the
-  runner encodes the constraints again into a fresh CaDiCaL instance, adds the hard PB
-  constraint `expr == optimum` and a block of the first answer, and enumerates the
-  remaining optimal outputs as above. A child that crashes or raises, or does not finish
-  by the deadline, ends the run as `timeout` (`the optimum was proven, the enumeration
-  was not`); the solutions already emitted stand.
-- Time: the budget runs from before `build`, so building spends it. EvalMaxSAT has no
-  budget, so it runs in a forked child that is killed 0.5 s before the runner's deadline
-  (itself 0.5 s before the budget). CaDiCaL supports only a conflict budget, so it runs
+- Optimisation enumeration: EvalMaxSAT has no budget and ignores interrupts, so it runs
+  in a forked child that solves, sends the output Bools of an optimum, adds a hard
+  blocking clause over them and solves again, until the answer is no longer optimal or
+  its benefit falls below the first optimum's. The parent emits each optimum as it
+  arrives, the first at once. A child that crashes or raises, or does not finish by the
+  deadline, ends the run as `timeout` (`the optimum was proven, the enumeration was
+  not`); the solutions already emitted stand.
+- Time: the budget runs from before `create_model`, so building spends it. The forked
+  EvalMaxSAT child is waited on until 0.5 s before the runner's deadline (itself 0.5 s
+  before the budget) and then killed. CaDiCaL supports only a conflict budget, so it runs
   in calls of 5000 conflicts and the clock is checked between them. A SIGALRM at the
-  budget turns a hang in Python (in `build`, or while waiting on a solver) into
+  budget turns a hang in Python (in `create_model`, or while waiting on a solver) into
   `timeout`.
-- Stack and recursion: the default PB encoder recurses once per term, so a PB constraint
-  over about a thousand Bools overflows the default 8 MB stack (signal 11). Before
-  anything else the runner raises its stack soft limit to the hard limit and re-executes
-  itself, and sets Python's recursion limit to 1 000 000, so a flat `sum` over thousands
-  of Bools (a chain of nested additions) does not exceed it either.
+- Stack and recursion: the default PB encoder, which the model calls through `to_cnf`,
+  recurses once per term, so a PB constraint over about a thousand Bools overflows the
+  default 8 MB stack (signal 11). Before anything else the runner raises its stack soft
+  limit to the hard limit and re-executes itself, and sets Python's recursion limit to
+  1 000 000, so a flat `sum` over thousands of Bools (a chain of nested additions) does
+  not exceed it either.
 - A legacy request is `unsupported`.
 
 ## Compilation
@@ -135,6 +165,14 @@ runner (`python /opt/runner/run.py`); for an ad hoc run override it, e.g. `docke
 
 ## Traps
 
+- Every Bool an output uses must appear in the formula. The runner reads a Bool the
+  formula never mentions as `false`, and a standalone run cannot read it at all (its
+  `truth` has no entry for it). Constrain it, or leave it out of `outputs`.
+- A satisfaction problem must not add soft clauses: a `WcnfFormula` with soft clauses
+  is an optimisation, and only its optima would be reported.
+- A `WcnfFormula` is not a `ClauseContainer` for `add_to_container`. An optimisation
+  model passes all its hard constraints through `add_to_weighted_container`'s
+  `subject_to`, as `And(constraints)`; `And` of an empty list raises.
 - Integers are 32-bit inside paramita. A coefficient outside that range is a `TypeError`
   while building (`execution_error`); a constraint or objective whose value leaves it
   wraps around without an error, and the evaluator then rejects the wrong value. Only
@@ -147,31 +185,171 @@ runner (`python /opt/runner/run.py`); for an ad hoc run override it, e.g. `docke
   integer output over Bools that several assignments map to one value (a unary sum
   without order constraints, a sum over many Bools) costs a re-solve per assignment with
   the same value.
-- The enumeration of further optima encodes `objective == optimum` as one PB constraint;
-  over a wide objective this can be slow or crash, which ends the run as `timeout` after
-  the first optimum.
 - A `dict` inside an output is walked as one and comes out as a JSON object
   (`invalid_output`): return lists.
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_paramita.py](../../../tests/fixtures/model_paramita.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
-from paramita.modelling import Bool
+# knapsack: a Paramita (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then install Paramita with its EvalMaxSAT solver (the build needs Linux, git, cmake,
+# a C++ compiler and zlib) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
+#   python knapsack.py knapsack.json
+
+from paramita.containers import WcnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_weighted_container, to_cnf
 
 
-def build(instance):
-    n = instance["n"]
-    # x and y each take a value in 0..n as a unary sum of Bools, with the order
-    # constraint that a higher Bool is set only when the one below it is.
-    xs = [Bool(f"x{i}") for i in range(n)]
-    ys = [Bool(f"y{i}") for i in range(n)]
-    order = [~xs[i + 1] | xs[i] for i in range(n - 1)] + [~ys[i + 1] | ys[i] for i in range(n - 1)]
-    x = sum(xs)
-    y = sum(ys)
-    if not instance["optimize"]:
-        return order + [x + y == n], {"x": x, "y": y}
-    return order + [x + y >= n], {"x": x, "y": y}, ("minimize", x + y)
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    # x[i] is true when the hiker packs item i
+    x = [Bool(f"x_{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    fits = sum(w * xi for w, xi in zip(weights, x)) <= capacity
+
+    # Pack the most valuable selection.
+    packed_value = sum(v * xi for v, xi in zip(values, x))
+
+    # Encode into a weighted formula: the constraint as hard clauses, the value to maximise
+    # as soft clauses. The pool gives each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(packed_value, fits, to_cnf, formula, pool)
+
+    # The objective in the problem's terms: the packed value, maximised.
+    return (formula, pool), {"x": x}, packed_value
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs, objective = create_model(instances[index])
+
+    solver = MaxSatSolver.from_name("EvalMaxSAT2022")
+    # copy the formula into the solver: the hard clauses, then each soft clause with its weight
+    solver.add_clauses(formula.hard_clauses())
+    for weight, clause in formula.soft_clauses():
+        solver.add_clause(clause, weight)
+
+    if solver.solve() == MAXSAT_ANSWER.OPTIMAL:
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
+    else:
+        print("No solution")
+```
+
+## Standalone run
+
+Every model carries a header and a run block like the example's, with `knapsack` replaced
+by the problem id, so a reader can copy it from the catalogue and run it with paramita and
+numpy. The header lists the plugin build commands for the one solver the model uses:
+EvalMaxSAT for an optimisation model (as in the example), CaDiCaL for a satisfaction model.
+Nothing else goes in either: the header is the first lines of the file, the run block the
+last, and the model sits between them. The runner loads the file as module `candidate`, so
+the block never runs during evaluation.
+
+The run block copies the formula into the solver, because paramita has no call that loads
+a formula object into a solver: `add_clauses(formula.hard_clauses())` and
+`add_clause(clause, weight)` per soft clause for EvalMaxSAT, as in the example, or
+`add_clauses(formula.clauses())` for CaDiCaL. An optimisation unpacks
+`(formula, pool), outputs, objective` and prints `evaluate(objective, truth)` after the
+outputs, as in the example. Outputs are read with `evaluate(e, truth)`
+over the solver's model by name, where `truth` maps every variable name in the model to its
+value (decoded through `pool`); `numpy.vectorize` applies it to nested lists. The header and run block of a satisfaction
+model, `bin_packing`:
+
+```python
+# bin_packing: a Paramita (Python) model from DCP Rosetta.
+# Download the `bin_packing.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/bin_packing.html
+# Then install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python bin_packing.py bin_packing.json
+```
+
+```python
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs = create_model(instances[index])
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")
+```
+
+A problem whose instance file is empty (`bench/dataset/<problem>/<problem>.json` is `[]`)
+has all its data fixed by the statement. Its header and run block are:
+
+```python
+# abbots_puzzle: a Paramita (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python abbots_puzzle.py
+```
+
+```python
+if __name__ == "__main__":
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    (formula, pool), outputs = create_model({})
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")
 ```

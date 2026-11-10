@@ -33,7 +33,11 @@ def create_model(instance):
     for s in selected:
         formula.append([s], weight=1)
 
-    return formula, {"selected_movies": selected}
+    # The objective in the problem's terms: the number of offers accepted (RC2's cost is the
+    # number turned down).
+    objective = [(1, s) for s in selected]
+
+    return formula, {"selected_movies": selected}, objective
 
 
 if __name__ == "__main__":
@@ -45,7 +49,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

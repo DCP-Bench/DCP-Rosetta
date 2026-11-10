@@ -49,7 +49,7 @@ METADATA_KEYS = ("name", "note")
 # Reasons that say the model is wrong on this instance. Everything else a
 # rejection can carry is a timeout, the memory limit, an infrastructure fault
 # or a bad request, which say nothing about the model.
-MODEL_FAILURES = ("invalid_solution", "suboptimal_solution", "no_solution", "execution_error",
+MODEL_FAILURES = ("invalid_solution", "suboptimal_solution", "objective_mismatch", "no_solution", "execution_error",
                   "compilation_error", "invalid_output", "output_limit")
 
 
@@ -253,7 +253,7 @@ def recheck_one(problem, folder, record, model, ids):
         row["flag"] = {"problem": problem, "solver": record["solver"], "model": row["model"],
                        "instance": failed[-1]["id"], "instance_hash": failed[-1]["instance_hash"],
                        "reason": result["reason"], "detail": result.get("detail"),
-                       "image": result.get("image"), "limits": result["limits"],
+                       "image": result.get("image"), "engine": result.get("engine"), "limits": result["limits"],
                        "evaluation": failed[-1], "recorded": time.strftime("%Y-%m-%d")}
     else:
         row.update(outcome="inconclusive", detail=result.get("detail"))

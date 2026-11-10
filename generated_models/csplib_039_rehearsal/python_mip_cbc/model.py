@@ -87,9 +87,10 @@ def create_model(instance):
 
         presence.append(depart - arrive)
 
-    # Minimise the total time the players are present. Their playing time is the same for every
-    # order, so this also minimises the time they wait.
-    model.objective = mip.xsum(presence)
+    # Minimise the total waiting time: the time the players are present, less the time they spend
+    # playing, which is the same for every order.
+    playing_time = sum(duration[i] for p in range(n_players) for i in range(n_pieces) if rehearsal[p][i])
+    model.objective = mip.xsum(presence) - playing_time
 
     return model, {"rehearsal_order": rehearsal_order}
 

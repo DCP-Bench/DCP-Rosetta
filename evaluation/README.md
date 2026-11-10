@@ -28,13 +28,14 @@ immediately, tolerated or not.
 Solutions are checked before the runner's exit status is consulted, so a
 rejected solution is a rejection even when the run later timed out or crashed.
 `reason` separates model rejection (`invalid_solution`, `suboptimal_solution`,
-`no_solution`) from inconclusive runs (`reference_timeout`,
+`objective_mismatch`, `no_solution`) from inconclusive runs (`reference_timeout`,
 `execution_timeout`, `memory_limit`, `execution_error`), protocol violations (`invalid_output`, `output_limit`)
 and infrastructure failure (`infrastructure_error`).
 
 ## Setup
 
-Python 3.12, `requirements.txt`, and a running Docker Linux engine. Images
+Python 3.12, `requirements.txt`, and a running Docker Linux engine (or podman or
+Apptainer; see below). Images
 target linux/amd64 and pin their solver versions. Build them explicitly —
 `evaluate()` never builds or installs anything:
 
@@ -43,6 +44,93 @@ python -m evaluation.build                      # every integration, or name spe
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python
 python -m evaluation.check examples/abbots.py --problem abbots_puzzle --solver cpmpy_python --solution-limit 2
 ```
+
+### Container engines: Docker, podman, Apptainer
+
+On a new machine, run `make engine` once. It checks the three engines, sets up the one
+you pick, and saves the choice for this checkout in `.dcp-engine.json`. For Apptainer
+it installs an unprivileged Apptainer from the Apptainer PPA (Ubuntu, no root) and
+enables lingering. For podman it writes the configuration below. Then it lists which
+images are current and how to get the rest, and runs a smoke test.
+`make engine-check` only reports.
+
+[`engine.py`](engine.py) runs the images on one of the three engines. `DCP_ENGINE` picks it
+(`docker`, `podman` or `apptainer`); unset, the saved choice applies, else the first one on
+`PATH`. `DCP_APPTAINER`, `DCP_APPTAINER_IMAGES` and `DCP_TASKSET` override saved
+settings the same way. Each
+result's `engine` field records the engine, its version, and how it enforced the CPU
+limit: `cpu_limit` is `quota` (a CPU-time quota, as Docker sets) or `cores`. With
+`cores`, the run gets `ceil(cpus)` whole cores of its own, and its affinity can't be
+widened because `sched_setaffinity` fails. The cores come from `DCP_TASKSET` (e.g.
+`0-7`), or else every core the evaluator may use. A run that finds no free core fails
+as an `infrastructure_error`, so run at most pool ÷ `ceil(cpus)` evaluations at once.
+An admin can make it `quota` by delegating the `cpu` controller to users
+(`Delegate=cpu cpuset io memory pids` in a drop-in for `user@.service`).
+
+**Docker** is the reference: the readiness checks and the CI use it.
+
+**Rootless podman** builds from the same Dockerfiles. It also works for a user
+without an `/etc/subuid` range or `cpu` delegation (tested with podman 3.4 and all
+integrations). It needs `gcc` once, `fuse-overlayfs` and `taskset`, and this
+configuration:
+
+```toml
+# ~/.config/containers/storage.conf: graphroot on a local disk, not NFS
+[storage]
+driver = "overlay"
+graphroot = "/local/disk/containers"
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+ignore_chown_errors = "true"        # only needed without a subuid range
+
+# ~/.config/containers/registries.conf: resolve bare names like docker does
+unqualified-search-registries = ["docker.io"]
+short-name-mode = "permissive"
+```
+
+Without a subuid range, candidates run as root inside the container. That root is
+still the unprivileged host user, and every other restriction is kept
+(`test_isolation` checks the host mapping, not the uid). Builds squash every file's
+owner to root, so export Docker-built images for other machines rather than these.
+
+**Apptainer** (unprivileged, 1.1 or later) is for machines with neither. It can't
+build from a Dockerfile. Build and export the images where Docker or podman runs:
+
+```sh
+python -m evaluation.build cpmpy_python
+python -m evaluation.export --to exported/ cpmpy_python     # exported/cpmpy_python.tar
+```
+
+then copy the folder over and convert it into `DCP_APPTAINER_IMAGES` (default
+`images/`). The SIF keeps the recipe label, so readiness compares the same recipe:
+
+```sh
+export DCP_ENGINE=apptainer DCP_APPTAINER=/path/to/bin/apptainer   # if not on PATH
+python -m evaluation.build --archive exported/ cpmpy_python       # images/cpmpy_python.sif
+```
+
+An unprivileged user can't set cgroup limits or a seccomp filter on Apptainer
+directly. So each run is a transient `systemd-run --user` service, which bounds memory
+(no swap), tasks and CPUs, and records the kernel's OOM kill. This needs a systemd user
+manager. On a server whose ssh sessions don't start one, enable lingering once with
+`loginctl enable-linger`. The evaluator finds the manager under `/run/user/$UID`.
+
+The container has:
+
+- no network;
+- a read-only image and `/input`;
+- no capabilities;
+- your own uid;
+- a per-run scratch directory as `/tmp`.
+
+That `/tmp` is bounded by the disk, not by 512 MB as under Docker. An image's identity
+is the SHA-256 of its SIF file.
+
+Rootless podman and Apptainer both need a systemd user session that outlives your
+logins, or they fail once you log out. For podman you can set
+`cgroup_manager = "cgroupfs"` under `[engine]` in
+`~/.config/containers/containers.conf` instead. `--memory` limits and their
+`memory_limit` verdicts work on every engine.
 
 The CLI prints one JSON result and exits 0 on acceptance, 1 otherwise. The
 Python API is `from evaluation import evaluate`. Call it under an
@@ -79,6 +167,45 @@ passes — inspect `instances` for the one that failed. Wall time includes
 startup and compilation, so it is not comparable to the runner's
 `solve_seconds`.
 
+### Solver licences
+
+A commercial solver's licence is never built into an image. The integration declares it
+under `licence` in `metadata.json` (see `skills/solver-setup/references/integration.md`),
+and each machine says where its own copy is, outside the repository:
+
+```sh
+make licences                                         # which licences this machine has
+python -m evaluation.licences todo                    # the missing ones, and how to get them
+python -m evaluation.licences set hexaly ~/.config/dcp-rosetta/licences/hexaly/license.dat
+python -m evaluation.licences check hexaly            # file checks, then a pilot solve
+```
+
+`set` saves the path in `.dcp-licences.json` (per checkout, like `.dcp-engine.json`), and
+`DCP_LICENCE_<ID>` overrides it. Keep the file at mode 600.
+
+Configure only a licence that works in a container. A named-user licence tied to one host
+fails with a host-ID mismatch, because a run has no network and so no host ID. Gurobi's WLS
+needs internet while it runs. A size-limited solver such as Gurobi falls back to its free
+edition when nothing is configured, so leave it unset rather than point it at such a licence.
+`solvers/<solver>/LICENCE.md` says which licences work for that solver and how to get them.
+
+[`licences.py`](licences.py) binds each run its licence read-only, with the solver's
+variables:
+- a key file as a per-run copy in a private temporary directory;
+- a licensed install directly;
+- a licence server through a Unix-socket relay, so the run keeps `--network=none`.
+
+What a run prints is redacted before it is parsed or stored: the licence's lines and its
+host path become `[licence redacted]`. A submission can read the licence, but cannot
+carry it into a result. Results name only the edition: `licence` is `licensed` or
+`size-limited`.
+
+A licence failure is never the model's fault. Without the licence configured, an
+integration that needs one stops with `licence_unavailable` before any container
+starts. When the solver refuses its licence (a message listed under `errors`), the
+reason is also `licence_unavailable`. `generation` then neither counts the attempt nor
+offers the integration's pairs until the licence works.
+
 ## Submitting a model
 
 Pick an integration: any integration folder (`solvers/<solver>/<interface>/`) with a `metadata.json`. What a model
@@ -111,11 +238,30 @@ lowered. The names are
 already in the brief a modeller works from, and no solution is ever included:
 
 ```json
-{"type":"solution","values":{"x":0,"y":2}}
+{"type":"solution","values":{"x":0,"y":2},"objective":2}
 {"type":"status","status":"limit","solve_seconds":0.01}
 ```
 
-Solution records are followed by exactly one status.
+Solution records are followed by exactly one status. For an optimisation, a solution record carries
+`objective`, the solution's objective value **in the problem's own terms**: the value the problem's
+objective takes on this solution, as the reference computes it. That is the model's objective, which must
+be the problem's own (see [solvers/CONTRACT.md](../solvers/CONTRACT.md)), and not whatever the solver
+reports internally: a MaxSAT solver's cost of falsified soft clauses, a maximisation the solver negated
+to minimise, an objective without the constant its preprocessing dropped. Where the solver's value is not
+the problem's, the runner translates it, or computes it from the solution with the model's objective
+expression. Integrations at `protocol_version` 2 must report it; earlier ones may.
+
+During an optimisation search a runner may also report each improving solution it finds, before proving
+the optimum, as it finds it (flushed, so a run cut off at its limit keeps them):
+
+```json
+{"type":"incumbent","objective":12,"seconds":0.31}
+```
+
+`objective` is the solution's integer objective value in the problem's own terms, as for a solution record,
+`seconds` the time since the search started (after the model was built), nondecreasing. Incumbents come anywhere before the status and are evidence for
+anytime measures, never results: the evaluator checks their shape, keeps them per instance as `incumbents`
+(`[[seconds, objective], ...]`) and otherwise ignores them. They carry no values.
 
 | Status | Meaning |
 | --- | --- |
@@ -138,8 +284,12 @@ Zero solutions never pass. Returning fewer than N distinct solutions requires
 `complete`, which is the runner's report that the *submitted* model has no more
 — it is not read as a claim about the reference. Anything less from a runner
 that neither reached the count nor reported exhaustion is `invalid_output`.
-Optimization runners emit only final optimal outputs; the evaluator re-derives
-optimality itself and never trusts a claimed objective.
+Optimization runners emit only final optimal outputs (and, optionally, incumbent
+records along the way); the evaluator re-derives optimality itself and never trusts a claimed objective.
+It does check every reported objective against the reference, after the solutions are accepted: a solution's
+`objective` must be the reference's optimum, and the incumbents must improve and end at it. Otherwise the
+run is `objective_mismatch`: the model's objective is scaled, offset or negated, or the runner reports the
+solver's internal value. Curves of improving solutions are only comparable across solvers because of this.
 
 ## Adding an integration
 

@@ -418,6 +418,14 @@ fn emit(record: Value) {
     println!("{record}");
 }
 
+/// An improving solution of the optimisation search (anytime evidence, not a result): its objective and the
+/// seconds since the search started, flushed at once so a run cut off at its limit keeps it.
+fn incumbent(objective: i32, search_start: Instant) {
+    use std::io::Write;
+    emit(json!({"type": "incumbent", "objective": objective, "seconds": search_start.elapsed().as_secs_f64()}));
+    let _ = std::io::stdout().flush();
+}
+
 /// Nanoseconds the submission took to build the model (posting into the solver), for benchmarking.
 static BUILD_NANOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 /// Nanoseconds from `run`'s start until the request was read, and when `run` started (benchmarking).
@@ -473,6 +481,7 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
     READ_NANOS.store(started.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
     let model = build(&instance, &mut solver);
     BUILD_NANOS.store(building.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
+    let search_start = Instant::now();
 
     if model.outputs.is_empty() {
         status("error", "the model declared no outputs", budget.spent());
@@ -485,6 +494,14 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
             eprintln!("warning: the brief declares {wanted:?} but the model declared {given:?}");
         }
     }
+
+    // An optimisation's solution records carry the objective variable's value on the solution: the problem's own
+    // value, since Pumpkin neither scales nor negates the variable the model declared (also when maximising).
+    let objective_var = model.objective.map(|(_, var)| var);
+    let record = |values: Value, objective: Option<i32>| match objective {
+        Some(value) => json!({"type": "solution", "values": values, "objective": value}),
+        None => json!({"type": "solution", "values": values}),
+    };
 
     let mut brancher = solver.default_brancher();
     let mut resolver = ResolutionResolver::default();
@@ -500,7 +517,8 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
                 Dir::Max => OptimisationDirection::Maximise,
             },
             objective,
-            |_: &Solver, _: SolutionReference, _: &DefaultBrancher, _: &ResolutionResolver| {
+            move |_: &Solver, solution: SolutionReference, _: &DefaultBrancher, _: &ResolutionResolver| {
+                incumbent(solution.get_integer_value(objective), search_start);
                 std::ops::ControlFlow::<()>::Continue(())
             },
         );
@@ -526,7 +544,7 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
 
         let best = optimum.get_integer_value(objective);
         let reference = optimum.as_reference();
-        emit(json!({"type": "solution", "values": model.render(&reference)}));
+        emit(record(model.render(&reference), Some(best)));
         emitted = 1;
         if emitted >= limit {
             status("limit", "", budget.spent());
@@ -560,7 +578,8 @@ pub fn run(build: fn(&Instance, &mut Solver) -> Model) {
             {
                 SatisfactionResult::Satisfiable(satisfiable) => {
                     let solution = satisfiable.solution();
-                    emit(json!({"type": "solution", "values": model.render(&solution)}));
+                    let objective = objective_var.map(|var| solution.get_integer_value(var));
+                    emit(record(model.render(&solution), objective));
                     emitted += 1;
                     blocking = model.blocking_clause(&solution);
                 }

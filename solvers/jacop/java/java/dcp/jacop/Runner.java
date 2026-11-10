@@ -42,8 +42,12 @@ public final class Runner {
     private static final PrintStream PROTOCOL = new PrintStream(
             new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
 
+    private static final long PROGRAM_START = System.nanoTime();
     private final long started = System.nanoTime();
     private final double budget;
+    // Seconds from the program's start until the request was read, and to build the model: the benchmark's phases.
+    private static double readSeconds = 0;
+    private static double buildSeconds = 0;
 
     private Runner(double budget) {
         this.budget = budget;
@@ -52,6 +56,7 @@ public final class Runner {
     public static void main(String[] args) throws Exception {
         System.setOut(System.err);
         JSONObject request = new JSONObject(new JSONTokener(System.in));
+        readSeconds = (System.nanoTime() - PROGRAM_START) / 1e9;
         Runner runner = new Runner(request.getDouble("execution_timeout"));
         try {
             runner.run(request);
@@ -81,6 +86,9 @@ public final class Runner {
         record.put("status", kind);
         record.put("detail", detail);
         record.put("solve_seconds", spent());
+        record.put("build_seconds", buildSeconds);
+        record.put("read_seconds", readSeconds);
+        record.put("main_seconds", (System.nanoTime() - PROGRAM_START) / 1e9);
         PROTOCOL.println(record);
     }
 
@@ -98,7 +106,9 @@ public final class Runner {
         Store store = new Store();
         Method build = Class.forName("Submission").getDeclaredMethod("build", JSONObject.class, Store.class);
         build.setAccessible(true);
+        long building = System.nanoTime();
         Object returned = build.invoke(null, request.getJSONObject("instance"), store);
+        buildSeconds = (System.nanoTime() - building) / 1e9;
         if (!(returned instanceof Model model)) {
             status("error", "build must return a dcp.jacop.Model, returned "
                     + (returned == null ? "null" : returned.getClass().getName()));
@@ -131,6 +141,7 @@ public final class Runner {
         List<IntVar> leaves = model.leaves();
         int base = store.level;
         int emitted = 0;
+        Integer objective = null;
         // Propagate once at the base level before any search. JaCoP drops a
         // constraint that is first found satisfied inside a search level and
         // does not restore it when that level is removed, so every constraint
@@ -152,7 +163,11 @@ public final class Runner {
                 status("timeout", "the optimum was not proven");
                 return;
             }
-            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", optimum.values()));
+            // The problem's objective: the model's objective variable, whose value is the cost JaCoP
+            // minimised, or its negation for a maximisation.
+            objective = model.maximize ? -optimum.cost() : optimum.cost();
+            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", optimum.values())
+                    .put("objective", objective));
             emitted = 1;
             if (emitted >= limit) {
                 status("limit", "");
@@ -177,7 +192,10 @@ public final class Runner {
                 status(next.timedOut() ? "timeout" : emitted > 0 ? "complete" : "unsat", "");
                 return;
             }
-            PROTOCOL.println(new JSONObject().put("type", "solution").put("values", next.values()));
+            JSONObject record = new JSONObject().put("type", "solution").put("values", next.values());
+            // Further optima of an optimisation, enumerated with the cost fixed at the optimum.
+            if (objective != null) record.put("objective", objective.intValue());
+            PROTOCOL.println(record);
             emitted++;
             if (emitted < limit && !block(store, leaves, next.leafValues())) {
                 status("complete", "");

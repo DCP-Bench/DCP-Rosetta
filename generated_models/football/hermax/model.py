@@ -50,15 +50,17 @@ def create_model(instance):
     m.obj += -spent
 
     # z is the total price of the squad, in GBP thousands.
-    return m, {"z": spent}
+    # The objective in the problem's terms: the total price spent, whose negation the solver minimises.
+    return m, {"z": spent}, spent
 
 
 if __name__ == "__main__":
-    model, outputs = create_model({})
+    model, outputs, objective = create_model({})
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

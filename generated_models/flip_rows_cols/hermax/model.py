@@ -55,11 +55,12 @@ def create_model(instance):
     # Minimise the total of all entries after the flips.
     m.obj += total
 
+    # The objective in the problem's terms: the overall sum after the flips, the cost minimised above.
     return m, {
         # the sign of a row or column: 1 when not flipped, -1 when flipped
         "row_signs": [1 - 2 * row_flip[i] for i in range(rows)],
         "col_signs": [1 - 2 * col_flip[j] for j in range(cols)],
-    }
+    }, total
 
 
 if __name__ == "__main__":
@@ -69,11 +70,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

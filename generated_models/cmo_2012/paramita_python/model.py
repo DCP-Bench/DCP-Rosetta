@@ -1,98 +1,149 @@
-"""CMO 2012: given positive integers a and b with a - b prime and a * b a
-perfect square n^2, find the smallest a that is no less than min_a.
-Print a, b, n and p, where p = a - b."""
+# cmo_2012: a Paramita (Python) model from DCP Rosetta.
+# Download the `cmo_2012.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+# Then install Paramita with its EvalMaxSAT solver (the build needs Linux, git, cmake,
+# a C++ compiler and zlib) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
+#   python cmo_2012.py cmo_2012.json
 
-from paramita.modelling import Bool, If, Iff
-
-
-def primes_up_to(m):
-    # the primes up to the instance bound: the candidate values of p
-    sieve = [True] * (m + 1)
-    result = []
-    for k in range(2, m + 1):
-        if sieve[k]:
-            result.append(k)
-            for multiple in range(k * k, m + 1, k):
-                sieve[multiple] = False
-    return result
+from paramita.containers import WcnfFormula
+from paramita.modelling import (
+    And, Bool, DimacsVariablePool, If, Iff, add_to_weighted_container, to_cnf,
+)
 
 
-def binary_number(name, bits):
-    # a non-negative integer as bits with weights 1, 2, 4, ...
-    B = [Bool(f"{name}_bit_{i}") for i in range(bits)]
-    return B, sum((2 ** i) * B[i] for i in range(bits))
+def is_prime(value):
+    """True when value is a prime number, by trial division."""
+    if value < 2:
+        return False
+    divisor = 2
+    while divisor * divisor <= value:
+        if value % divisor == 0:
+            return False
+        divisor += 1
+    return True
 
 
-def unary_number(name, length):
-    # an integer 0..length as a count of true Booleans u_1 >= u_2 >= ...
-    U = [Bool(f"{name}_ge_{t}") for t in range(1, length + 1)]
-    cons = [If(U[t + 1], U[t]) for t in range(length - 1)]
-    return U, cons, sum(U)
+def binary_number(name, n_digits):
+    # digits[i] is the binary digit of weight 2 ** i
+    digits = [Bool(f"{name}_bit_{i}") for i in range(n_digits)]
+    return digits, sum((2 ** i) * digits[i] for i in range(n_digits))
 
 
-def product_bits(name, X, Y):
-    # the bits of X * Y, built column by column: the partial products X_i and Y_j
-    # (weight 2^(i+j)) are summed per column together with the carry from the
-    # column below, and the result bit of each column is what is left over.
-    bits = len(X)
-    width = 2 * bits
-    cons = []
-    result = []
-    carry = None  # no carry into the lowest column
-    for k in range(width):
+def unary_count(name, length):
+    # ge[t] is true when the count is at least t + 1
+    ge = [Bool(f"{name}_ge_{t}") for t in range(1, length + 1)]
+    # a count of at least t + 2 is also at least t + 1
+    cons = [If(ge[t + 1], ge[t]) for t in range(length - 1)]
+    return ge, cons, sum(ge)
+
+
+def product_bits(name, x_bits, y_bits):
+    # the binary digits of x * y, lowest first, and the rules that fix them
+    n_digits = len(x_bits)  # binary digits in each factor
+    n_product_digits = 2 * n_digits  # binary digits in the product
+    cons = []  # the rules of the multiplication
+    result = []  # the digits of the product
+    carry = None  # the count carried into the next column; none for the lowest column
+    for k in range(n_product_digits):
+        # t is true when digit i of x and digit j of y are both 1, and i + j = k
         column = []
-        for i in range(bits):
+        for i in range(n_digits):
             j = k - i
-            if 0 <= j < bits:
+            if 0 <= j < n_digits:
                 t = Bool(f"{name}_pp_{i}_{j}")
-                cons.append(Iff(t, X[i] & Y[j]))
+                cons.append(Iff(t, x_bits[i] & y_bits[j]))
                 column.append(t)
         r = Bool(f"{name}_bit_{k}")
         result.append(r)
-        # the carry out of this column, as a unary count up to the bit width
-        out_u, out_cons, out_count = unary_number(f"{name}_carry_{k}", bits)
+        out_ge, out_cons, out_count = unary_count(f"{name}_carry_{k}", n_digits)
         cons += out_cons
         carry_in = 0 if carry is None else carry
-        # column sum + carry in = result bit + 2 * carry out
+        # the products and the carry in add up to the digit plus twice the carry out
         cons.append(sum(column) + carry_in == r + 2 * out_count)
         carry = out_count
-    # nothing is left above the top column
+    # nothing is carried past the top column
     cons.append(carry == 0)
     return result, cons
 
 
-def build(instance):
-    min_a = instance["min_a"]
-    max_val = instance["max_val"]
-    bits = max_val.bit_length()
+def create_model(instance):
+    """Given two positive integers a and b, where a - b is a prime number and a * b is
+    a perfect square n^2, find the smallest value of a no less than a given minimum."""
+    min_a = instance["min_a"]        # the smallest value a may take
+    max_val = instance["max_val"]    # the largest value any of a, b, n and p may take
+    n_digits = max_val.bit_length()  # binary digits needed to write max_val
 
-    A_bits, a = binary_number("a", bits)
-    B_bits, b = binary_number("b", bits)
-    N_bits, n = binary_number("n", bits)
-    cons = []
+    a_bits, a = binary_number("a", n_digits)  # a: the larger integer
+    b_bits, b = binary_number("b", n_digits)  # b: the smaller integer
+    n_bits, n = binary_number("n", n_digits)  # n: the square root of a * b
+    _, p = binary_number("p", n_digits)       # p: the prime a - b
 
-    # a and b are positive integers no larger than the bound
-    cons.append(b >= 1)
-    cons.append(a <= max_val)
-    cons.append(b <= max_val)
-    cons.append(n <= max_val)
+    constraints = []  # the rules the pair of numbers must follow
 
-    # a is no less than the given minimum
-    cons.append(a >= min_a)
+    # b is at least 1, and a, b and n are no larger than max_val.
+    constraints += [b >= 1, a <= max_val, b <= max_val, n <= max_val]
 
-    # a - b is a prime number: p is a binary number equal to one of the primes up to the bound
-    P_bits, p = binary_number("p", bits)
-    primes = primes_up_to(max_val)
-    P = {q: Bool(f"p_is_{q}") for q in primes}
-    cons.append(sum(P.values()) == 1)
-    cons += [If(P[q], p == q) for q in primes]
-    cons.append(p <= max_val)
-    cons.append(a - b == p)
+    # a is no less than min_a.
+    constraints.append(a >= min_a)
 
-    # a * b is a perfect square n^2: the two products have equal bits
-    ab_bits, ab_cons = product_bits("ab", A_bits, B_bits)
-    nn_bits, nn_cons = product_bits("nn", N_bits, N_bits)
-    cons += ab_cons + nn_cons
-    cons += [Iff(x, y) for x, y in zip(ab_bits, nn_bits)]
+    primes = [q for q in range(2, max_val + 1) if is_prime(q)]  # the primes up to max_val, the possible values of p
+    # p_is[q] is true when p is the prime q
+    p_is = {q: Bool(f"p_is_{q}") for q in primes}
 
-    return cons, {"a": a, "b": b, "n": n, "p": p}, ("minimize", a)
+    # p is one of the primes up to max_val.
+    constraints.append(sum(p_is.values()) == 1)
+    constraints += [If(p_is[q], p == q) for q in primes]
+    constraints.append(p <= max_val)
+
+    # a - b is the prime p.
+    constraints.append(a - b == p)
+
+    # a * b is a perfect square: the digits of a * b are those of n * n.
+    ab_bits, ab_cons = product_bits("ab", a_bits, b_bits)
+    nn_bits, nn_cons = product_bits("nn", n_bits, n_bits)
+    constraints += ab_cons + nn_cons
+    constraints += [Iff(x, y) for x, y in zip(ab_bits, nn_bits)]
+
+    # a is as small as possible.
+
+    # Encode into a weighted formula: the constraints as hard clauses, the value to
+    # minimise as soft clauses, negated because MaxSAT maximises. The pool gives
+    # each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(-a, And(constraints), to_cnf, formula, pool)
+
+    # The objective in the problem's terms: the value of a, minimised (its negation is
+    # what the soft clauses maximise).
+    return (formula, pool), {"a": a, "b": b, "n": n, "p": p}, a
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs, objective = create_model(instances[index])
+
+    solver = MaxSatSolver.from_name("EvalMaxSAT2022")
+    # copy the formula into the solver: the hard clauses, then each soft clause with its weight
+    solver.add_clauses(formula.hard_clauses())
+    for weight, clause in formula.soft_clauses():
+        solver.add_clause(clause, weight)
+
+    if solver.solve() == MAXSAT_ANSWER.OPTIMAL:
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
+    else:
+        print("No solution")

@@ -1,53 +1,81 @@
-# Cryptarithmetic puzzle: solve the addition
-#   B A I J J A J I I A H F C F E B B J E A
-# + D H F G A B C D I D B I F F A G F E J E
-# = G J E G A C D D H F A F J B F I H E E F
-# where all letters are distinct digits from 0 to 9, and the first letter of
-# each number cannot be zero. Output: the digit of each letter A..J.
-#
-# The puzzle is fixed by the problem statement, so the model does not read the
-# instance argument.
+# crypta: a Paramita (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+# Install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python crypta.py
 
-from paramita.modelling import Bool
-
-# The three numbers, letter by letter, from the most significant position.
-FIRST = "BAIJJAJIIAHFCFEBBJEA"
-SECOND = "DHFGABCDIDBIFFAGFEJE"
-RESULT = "GJEGACDDHFAFJBFIHEEF"
-LETTERS = "ABCDEFGHIJ"
-# First letter of each of the three numbers.
-LEADING = ("B", "D", "G")
-DIGITS = range(10)
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, add_to_container, to_cnf
 
 
-def build(instance):
-    # each letter is one digit: one-hot Bools, exactly one value per letter
-    x = {L: [Bool(f"x_{L}_{v}") for v in DIGITS] for L in LETTERS}
-    cons = [sum(x[L]) == 1 for L in LETTERS]
+def create_model(instance):
+    """Cryptarithmetic puzzle: each letter A to J stands for a different digit from
+    0 to 9, no number starts with a zero, and the addition of the two twenty-letter
+    numbers gives the third."""
+    first = "BAIJJAJIIAHFCFEBBJEA"  # the first number
+    second = "DHFGABCDIDBIFFAGFEJE"  # the second number
+    total = "GJEGACDDHFAFJBFIHEEF"  # the sum
+    leading = "BDG"  # the first letter of each of the three numbers
+    letters = "ABCDEFGHIJ"
+    digits = range(10)
 
-    # the value of a letter, as an integer expression over its one-hot Bools
-    val = {L: sum(v * x[L][v] for v in range(1, 10)) for L in LETTERS}
+    # stands_for[L][v] is true when letter L stands for digit v.
+    stands_for = {L: [Bool(f"{L}_is_{v}") for v in digits] for L in letters}
+    # The digit of each letter.
+    value = {L: sum(v * stands_for[L][v] for v in range(1, 10)) for L in letters}
 
-    # all letters are distinct: every digit is used by exactly one letter
-    cons += [sum(x[L][v] for L in LETTERS) == 1 for v in DIGITS]
+    # carry[k] is true when column k from the right carries 1 into the column to its left.
+    carry = [Bool(f"carry_{k}") for k in range(len(total))]
 
-    # the first letter of each number cannot be zero
-    cons += [~x[L][0] for L in LEADING]
+    constraints = []
 
-    # carry[k] is the carry out of column k, counted from the right (column 0 is the last digit)
-    carry = [Bool(f"carry_{k}") for k in range(len(RESULT))]
-    # the sum has no digit beyond the last column, so the top carry is zero
-    cons.append(~carry[len(RESULT) - 1])
+    # Each letter stands for exactly one digit.
+    constraints += [sum(stands_for[L]) == 1 for L in letters]
+    # Different letters stand for different digits.
+    constraints += [sum(stands_for[L][v] for L in letters) == 1 for v in digits]
+    # No number starts with zero.
+    constraints += [~stands_for[L][0] for L in leading]
+    # The sum has no column beyond the leftmost, so nothing is carried out of it.
+    constraints.append(~carry[len(total) - 1])
 
-    # column by column: digit of the first number + digit of the second number
-    # + carry from the column to the right = digit of the result + 10 * carry out
-    for k in range(len(RESULT)):
-        i = len(RESULT) - 1 - k
-        a, b, r = val[FIRST[i]], val[SECOND[i]], val[RESULT[i]]
+    # Column by column from the right: the digits of the two numbers, plus the carry from
+    # the column to the right, give the digit of the sum plus ten times the carry out.
+    for k in range(len(total)):
+        i = len(total) - 1 - k
+        a, b, r = value[first[i]], value[second[i]], value[total[i]]
         if k == 0:
-            cons.append(a + b == r + 10 * carry[k])
+            constraints.append(a + b == r + 10 * carry[k])
         else:
-            cons.append(a + b + carry[k - 1] == r + 10 * carry[k])
+            constraints.append(a + b + carry[k - 1] == r + 10 * carry[k])
 
-    outputs = {L: val[L] for L in LETTERS}
-    return cons, outputs
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {L: value[L] for L in letters}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    (formula, pool), outputs = create_model({})
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

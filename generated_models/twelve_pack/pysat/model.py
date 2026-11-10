@@ -42,7 +42,9 @@ def create_model(instance):
     for v in range(target + 1, high + 1):
         formula.append([-total.ge(v)], weight=1)
 
-    return formula, {"counts": counts}
+    # The objective in the problem's terms: the number of items bought (RC2's cost is that
+    # number minus the target).
+    return formula, {"counts": counts}, total
 
 
 if __name__ == "__main__":
@@ -54,7 +56,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

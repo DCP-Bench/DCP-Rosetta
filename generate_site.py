@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
+from bench.dcp_bench.problems import reference_body
 from evaluation.results import digest
 
 DATASET_JSONL = Path("bench") / "dcp-bench-open.jsonl"
@@ -30,6 +31,8 @@ SOLVERS_DIR = Path("solvers")
 REPO_URL = "https://github.com/DCP-Bench/DCP-Rosetta"
 # The problems live in DCP-Bench, checked out as the bench/ submodule.
 BENCH_URL = "https://github.com/DCP-Bench/DCP-Bench-Open"
+# The solver skills, mirrored from solvers/<solver>/skills/<name>/ to skills/<name>/.
+SKILLS_URL = "https://github.com/DCP-Bench/DCP-skills"
 # Where the deploy workflow publishes site/: link previews need absolute URLs.
 SITE_URL = "https://dcp-bench.github.io/DCP-Rosetta/"
 
@@ -286,26 +289,14 @@ def generated_by_label(raw: str) -> str:
     return label
 
 
-def parse_metadata(metadata: list) -> dict:
-    fields = {}
-    for line in metadata:
-        m = re.match(r"#\s*([A-Za-z][A-Za-z ]*?)\s*:\s*(.*)$", line.strip())
-        if m:
-            key = m.group(1).strip().lower().replace(" ", "_")
-            fields[key] = m.group(2).strip()
-    return fields
-
-
 def reference_model_code(problem_id: str, fallback: str) -> str:
-    """Load the runnable reference model body, omitting metadata and its description."""
+    """Load the runnable reference model body, omitting its origin comments."""
     path = Path("bench") / "dataset" / problem_id / f"{problem_id}.cpmpy.py"
     try:
         code = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return fallback
-    description = re.search(r'""".*?"""|\'\'\'.*?\'\'\'', code, re.DOTALL)
-    if description:
-        code = code[description.end():].lstrip("\r\n")
+    code = reference_body(code)
     trailing_newline = "\n" if code.endswith("\n") else ""
     return "\n".join(line.rstrip() for line in code.splitlines()) + trailing_newline
 
@@ -1047,6 +1038,15 @@ def binding_browse_button(binding: str, count: int) -> str:
             f'title="The problems with a {esc(label)} model of this solver">{esc(label)} models &rarr;</a>')
 
 
+def skill_href(page: str) -> str:
+    """A skill file's GitHub page: in the public DCP-skills repository for a
+    solver skill, else in this one."""
+    parts = page.split("/")
+    if len(parts) > 3 and parts[0] == "solvers" and parts[2] == "skills":
+        return f"{SKILLS_URL}/blob/main/skills/{'/'.join(parts[3:])}"
+    return f"{REPO_URL}/blob/main/{page}"
+
+
 def skill_button(solver: str) -> str:
     """Opens on GitHub the skill a modelling agent follows to write models for
     one integration: the interface entry it reads when the skill serves several
@@ -1059,7 +1059,7 @@ def skill_button(solver: str) -> str:
     name = Path(skill).name
     entry = interface_entry(root / skill, interface) if interface else None
     page = entry.relative_to(root).as_posix() if entry else f"{skill}/SKILL.md"
-    href = f"{REPO_URL}/blob/main/{page}"
+    href = skill_href(page)
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(name)}">skill&#8599;</a>')
 
@@ -1072,7 +1072,7 @@ def solver_skill_button(solver: str) -> str:
         return skill_button(solver if solver in INTEGRATIONS else (info.get("bindings") or [solver])[0])
     if not info.get("skill"):
         return ""
-    href = f"{REPO_URL}/blob/main/{info['skill']}/SKILL.md"
+    href = skill_href(f"{info['skill']}/SKILL.md")
     return (f'<a class="skill" href="{esc(href)}" target="_blank" rel="noopener" '
             f'title="The modelling skill {esc(Path(info["skill"]).name)}, for every interface">skill&#8599;</a>')
 
@@ -1091,7 +1091,7 @@ def binding_list(bindings: list, found: dict, anchored: set, modelled: dict, tot
         label = LANGUAGES.get(INTEGRATIONS[binding].get("language"), ("", binding))[1]
         skill, interface = integration_skill(root, binding)
         entry = interface_entry(root / skill, interface) if skill and interface else None
-        skill_link = (f'<a class="binding-skill" href="{esc(f"{REPO_URL}/blob/main/{entry.relative_to(root).as_posix()}")}" '
+        skill_link = (f'<a class="binding-skill" href="{esc(skill_href(entry.relative_to(root).as_posix()))}" '
                       f'target="_blank" rel="noopener" title="The {esc(label)} part of the modelling skill">skill&#8599;</a>'
                       if entry else "")
         cells.append(f'<span class="binding"{anchor}>{esc(label)}{skill_link}</span>'
@@ -1533,11 +1533,6 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
         shutil.copyfile(Path("bench") / "dataset" / pid / f"{pid}.json", OUTPUT_DIR / "problems" / f"{pid}.json")
 
 
-# Metadata that is not a source of the problem: the collection shows in the
-# page header, `name` is the problem's title.
-NOT_SOURCES = ("generated_by", "category", "problem_instances", "timeout", "name")
-
-
 def link_text(url: str) -> str:
     """Name a link by where it goes: "GitHub · hakank/hakank · cabling.py",
     "csplib.org · prob006"."""
@@ -1556,15 +1551,14 @@ def sources_html(meta: dict) -> str:
     """The reference model's sources as one list: each bare URL as a link
     named by its site and page, each citation or note as written.
 
-    The metadata keys are left out. They vary from file to file
-    (source_model, model_source, source_and_problem_instances, ...) and
-    say less than the links themselves.
+    Their kinds are left out; they say less than the links themselves.
+    Sources of instances alone are left out too: this list is about the model.
     """
     items, seen = [], set()
-    for key, value in meta.items():
-        value = mirrored(value.strip())
-        if key in NOT_SOURCES or not value:
+    for source in meta["sources"]:
+        if source["kind"] == "instances":
             continue
+        value = mirrored(source.get("url") or source["text"])
         if URL_RE.fullmatch(value) and url_end(value) == len(value):
             if value not in seen:
                 seen.add(value)
@@ -1605,12 +1599,12 @@ def main() -> None:
             data = json.loads(line)
             # The reference model says whether it optimises: an objective can be a
             # keyword of Model, which a search of the source for minimize( misses.
-            if not isinstance(data.get("is_optimization"), bool):
+            if not isinstance(data.get("is_optimization"), bool) or not isinstance(data.get("metadata"), dict):
                 raise SystemExit(
-                    f"{DATASET_JSONL}: {data['id']} has no is_optimization. "
+                    f"{DATASET_JSONL}: {data['id']} predates is_optimization or the structured metadata. "
                     "Rebuild it with `python jsonl_convert.py` inside bench/."
                 )
-            meta = parse_metadata(data.get("metadata", []))
+            meta = data["metadata"]
             problems.append(
                 {
                     "id": data["id"],

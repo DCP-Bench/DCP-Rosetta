@@ -102,14 +102,16 @@ def create_model(instance):
     for p in players:
         formula.append([x[p]], weight=price[p])
 
-    return formula, {"z": z}
+    # The objective in the problem's terms: z, the total price of the players bought (RC2's
+    # cost is the total price of the players left out).
+    return formula, {"z": z}, z
 
 
 if __name__ == "__main__":
     import numpy as np
     from pysat.examples.rc2 import RC2Stratified
 
-    formula, outputs = create_model({})
+    formula, outputs, objective = create_model({})
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

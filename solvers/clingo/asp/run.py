@@ -29,6 +29,7 @@ from runtime import emit  # noqa: E402
 from runtime import finish as runtime_finish  # noqa: E402
 
 import clingo  # noqa: E402
+import clingo.ast  # noqa: E402
 STARTED = time.monotonic()  # the runner's own clock (benchmarking): read_seconds and main_seconds count from here
 
 INPUT = Path("/input")
@@ -167,16 +168,43 @@ def outputs_of(model, wanted):
     return result
 
 
+def objective_sign(program):
+    """How a one-level cost reads as the program's objective value: 1 when every optimisation statement is a
+    `#minimize` (or weak constraint), -1 when every one is a `#maximize`, None when they mix or cannot be told.
+
+    clingo stores `#maximize { w }` as the cost -w, and its syntax tree is the same as `#minimize { -w }`'s, so
+    the program is parsed twice, once with `#maximize`/`#maximise` spelled `#minimize`: a statement that
+    changes came from a `#maximize`. Only for the objectives the runner reports; the search never sees this.
+    """
+    def statements(text):
+        found = []
+        clingo.ast.parse_string(text, lambda s: found.append(str(s))
+                                if s.ast_type == clingo.ast.ASTType.Minimize else None)
+        return found
+    try:
+        plain = statements(program)
+        renamed = statements(program.replace("#maximize", "#minimize").replace("#maximise", "#minimize"))
+    except Exception:
+        return None
+    if not plain or len(plain) != len(renamed):
+        return None
+    changed = [a != b for a, b in zip(plain, renamed)]
+    return -1 if all(changed) else (None if any(changed) else 1)
+
+
 def solve(request):
     global BUILD_SECONDS
     deadline = time.monotonic() + request["execution_timeout"]
+    program = (INPUT / "model.lp").read_text(encoding="utf-8")
+    sign = objective_sign(program)
     building = time.monotonic()
     control = clingo.Control(["0"])
     control.configuration.solve.opt_mode = "optN"
-    control.add("base", [], facts(request["instance"]) + "\n" +
-                (INPUT / "model.lp").read_text(encoding="utf-8"))
+    control.add("base", [], facts(request["instance"]) + "\n" + program)
     control.ground([("base", [])])
     BUILD_SECONDS = time.monotonic() - building
+    search_start = time.monotonic()
+    best = None  # the lowest one-level cost reported as an incumbent so far
 
     wanted = declared_names(request.get("outputs"))
     seen, count, optimizing = set(), 0, False
@@ -194,6 +222,18 @@ def solve(request):
                 # answer once some model was proven optimal.
                 return finish("complete" if count else ("timeout" if optimizing else "unsat"))
             optimizing = optimizing or bool(model.cost)
+            # The problem has one integer objective, which the runner reports on every solution: the program's
+            # own sum, read from a one-level cost with a known direction. Anything else has no such value.
+            if model.cost and (sign is None or len(model.cost) != 1):
+                handle.cancel()
+                return finish("error", "The objective must be one priority level stated with #minimize (or weak "
+                                       "constraints) only or #maximize only, so that its value is the problem's "
+                                       f"objective; clingo reports the cost {list(model.cost)}")
+            # Each strictly better model of the optimisation phase is an incumbent.
+            if model.cost and (best is None or model.cost[0] < best):
+                best = model.cost[0]
+                emit({"type": "incumbent", "objective": sign * best,
+                      "seconds": time.monotonic() - search_start})
             if model.cost and not model.optimality_proven:
                 handle.resume()
                 continue
@@ -201,7 +241,11 @@ def solve(request):
             key = json.dumps(values, sort_keys=True)
             if key not in seen:
                 seen.add(key)
-                emit({"type": "solution", "values": values})
+                record = {"type": "solution", "values": values}
+                if model.cost:
+                    # clingo minimises: a #maximize's sum is the negated cost.
+                    record["objective"] = sign * model.cost[0]
+                emit(record)
                 count += 1
             handle.resume()
     finish("limit")

@@ -72,8 +72,8 @@ def create_model(instance):
     grand_total = sum(matrix[i][j] for i, j in all_cells)  # the total before flipping
     solver.addConstraint(flipped_terms(all_cells), True, -grand_total, True, 1000 - grand_total)
 
-    # The smallest total of the matrix after flipping.
-    solver.setObjective(flipped_terms(all_cells), minimize=True)
+    # The smallest total of the matrix after flipping: the total before flipping plus the change.
+    solver.setObjective(flipped_terms(all_cells), minimize=True, offset=grand_total)
 
     return solver, {"row_signs": row_signs, "col_signs": col_signs}
 

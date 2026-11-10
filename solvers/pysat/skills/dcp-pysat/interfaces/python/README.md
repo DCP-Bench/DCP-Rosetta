@@ -98,6 +98,22 @@ Outside those ranges the method raises `AssertionError: Value is outside ...` be
 
 A `WCNF` with no soft clauses is solved as a satisfaction problem.
 
+**The objective value is the problem's own, not `rc2.cost`.** The cost misses the
+objective's constant and, for a maximisation, is the shortfall (profit = total profit -
+cost). So state the objective a second time, as an expression over the model's variables
+in the problem's terms and direction, and evaluate it on the solution to report the value:
+an `Integer` or `LinearExpr` (`makespan`, `x + y + 3`), or a list of `(coefficient, term)`
+pairs over literals (1 when true), Integers, and `True` for a constant:
+
+```python
+objective = [(v, xi) for xi, v in zip(x, values)]       # knapsack: total packed value
+objective = makespan                                      # an Integer
+objective = [(c, lit) for lit, c in zip(is_open, cost)] + [(fixed, True)]  # open sites' cost + a fixed charge
+```
+
+On every optimum the expression and the cost must agree: `cost = objective - c` for a
+minimisation and `c - objective` for a maximisation, the same constant `c` each time.
+
 **Colour count** (minimise the number of colours; graph colouring with `K` colour classes and `K` at least the chromatic number):
 
 ```python
@@ -184,7 +200,9 @@ statement, not of the API:
   over hand-written clauses), and variables kept as lists or nested lists so they print as a whole.
 
 Build the model in one function that returns the formula and the variables to print: a `CNF`
-for a satisfaction problem, a `WCNF` whose soft clauses are the objective otherwise. For example:
+for a satisfaction problem; for an optimisation a `WCNF` whose soft clauses are the objective,
+and as a third value the objective itself in the problem's terms (above), with a comment. For
+example:
 
 ```python
 def create_model(instance):
@@ -210,7 +228,11 @@ def create_model(instance):
         if v > 0:
             formula.append([xi], weight=v)
 
-    return formula, {"x": x}
+    # The objective in the problem's terms: the total value of the packed items
+    # (RC2's cost is the value left behind).
+    objective = [(v, xi) for xi, v in zip(x, values)]
+
+    return formula, {"x": x}, objective
 ```
 
 Solve a `CNF` with `Solver(bootstrap_with=formula)` and a `WCNF` with `RC2Stratified(formula).compute()`.
@@ -234,6 +256,7 @@ Clause counts, horizon and start-domain rules for job-shop sized models: [schedu
 | `AttributeError: 'LinearExpr' object has no attribute 'vpool'` | An expression passed to `add_alldifferent`, `add_equal` or `add_not_equal` | Put the expression through `add_linear` |
 | A list of Integers has extra entries (auxiliary Integers) after the model is built | `IntegerEngine(vars=xs)` keeps `xs`, and `engine.add_var(v)` appends to it | Pass a copy: `IntegerEngine(vars=list(xs), vpool=pool)` |
 | Integer values come out wrong after `compute()` | RC2 omits unused variables; `decode` indexes by variable number | Pad the model to `pool.top` (Quick start) |
+| The reported optimum is off by a constant, or is the shortfall of a maximisation | `rc2.cost` reported as the objective | Evaluate the objective expression on the model (Objective recipes) |
 | RC2 is very slow with many distinct weights | Plain `RC2` | Use `RC2Stratified`, and prefer unit weights where the objective allows |
 | `rc2.compute()` returns `None` | Hard clauses unsatisfiable, or interrupted | Check `rc2.interrupted`; check the hard clauses |
 | `NotImplementedError: Limited solve is currently unsupported by Lingeling` | Lingeling has no limited solve | Use `glucose42` for time limits |

@@ -26,7 +26,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -62,6 +62,27 @@ OPTIMAL = HEAD + "satisfy(x + y >= n)\nminimize(x + y)\n"
 MAXIMAL = HEAD + "satisfy(x + y >= n)\nmaximize(x + y)\n"
 # Does not parse: the runner reports an error and no solution.
 MALFORMED = HEAD + "satisfy(x + y == n\n"
+# objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
+# constant term, with three optima (so the solutions enumerated at the optimum carry it too), and a
+# minimisation with a negative optimum.
+OBJECTIVE_MAX_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.maximize(3 + x + y)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+OBJECTIVE_MIN_REF = OBJECTIVE_MAX_REF.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+OBJECTIVE_MAX = HEAD + "satisfy(x + y <= n)\nmaximize(3 + x + y)\n"
+OBJECTIVE_MIN = HEAD + "satisfy(x + y >= 1)\nminimize(x - 2 * y - 4)\n"
 UNSATISFIABLE = HEAD + "satisfy(x == 1, x == 0)\n"
 # Golomb rulers with 14 marks. The shortest is 127 long, so in 0..126 there is
 # none, and ACE cannot show that within the budget. In the optimisation variant
@@ -402,6 +423,14 @@ def main():
                                            and all(item.get("solutions_received", 0) == 0
                                                    for item in result["instances"]))
         check("minimization_step_one", STEP, reference=STEP_REF)
+        # ACE's first solution (x = n) is not optimal: its `o` lines are relayed as incumbents, ending at n - 1.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", MAXIMAL, reference=MAXIMIZING), minimize=False)
+        maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
+        minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
+        results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
+                                       and minimised["accepted"])
         result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         result = evaluate(candidate("output_shapes", SHAPES), "readiness", SOLVER,

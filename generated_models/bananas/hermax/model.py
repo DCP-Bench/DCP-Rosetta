@@ -41,17 +41,20 @@ def create_model(instance):
                     mangoes_units * mangoes, apples_units * apples]) == budget_units)
 
     # Minimise the bananas and apples bought, which are the fruits the buyer does not like.
-    m.obj += sum_expr([bananas, apples])
+    disliked = sum_expr([bananas, apples])
+    m.obj += disliked
 
-    return m, {"apples": apples, "bananas": bananas, "mangoes": mangoes, "oranges": oranges}
+    # The objective in the problem's terms: bananas plus apples bought, the cost minimised above.
+    return m, {"apples": apples, "bananas": bananas, "mangoes": mangoes, "oranges": oranges}, disliked
 
 
 if __name__ == "__main__":
-    model, outputs = create_model({})
+    model, outputs, objective = create_model({})
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

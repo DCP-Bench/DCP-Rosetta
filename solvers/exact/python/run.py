@@ -93,6 +93,15 @@ def finish(status, detail="", **metadata):
                    main_seconds=time.monotonic() - STARTED, **metadata)
 
 
+def objective_value(solver):
+    """The model's objective on the last solution, in the problem's terms: its terms evaluated on the
+    solution, plus the offset. (Exact's own value, from toOptimum, is negated for a maximisation.)"""
+    terms, _minimise, offset = solver.objective
+    variables = sorted({name for _, name in terms})
+    values = dict(zip(variables, solver.getLastSolutionFor(variables)))
+    return int(offset + sum(coefficient * values[name] for coefficient, name in terms))
+
+
 def main():
     global BUILD_SECONDS, READ_SECONDS
     request = json.loads(Path("/input/request.json").read_text())
@@ -145,7 +154,10 @@ def main():
             return finish("timeout", f"the search did not finish ({state})",
                           solve_seconds=spent)
         values = dict(zip(names, solver.getLastSolutionFor(names)))
-        emit({"type": "solution", "values": mapped(outputs, values.__getitem__)})
+        record = {"type": "solution", "values": mapped(outputs, values.__getitem__)}
+        if solver.objective is not None:
+            record["objective"] = objective_value(solver)
+        emit(record)
         emitted += 1
         if emitted >= limit:
             break

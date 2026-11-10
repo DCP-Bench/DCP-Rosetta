@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import patch
 from bench.dcp_bench.reference import ReferenceSession
 from evaluation.check import evaluate
-from evaluation.execution import OOM_REREADS, _copied_sources, execute, recipe, validate_records
+from evaluation.engine import Docker
+from evaluation.execution import _copied_sources, check_objectives, execute, incumbents, recipe, validate_records
 from evaluation.legacy import solver_id
 from evaluation.results import EvaluationError
 
@@ -30,7 +31,8 @@ print(json.dumps(solution))
 def built_image():
     """Stand in for the cpmpy_python image, which CI builds only after these tests run."""
     return patch.multiple("evaluation.check", image_identity=lambda metadata: "sha256:test",
-                          image_recipe=lambda metadata: "sha256:recipe")
+                          image_recipe=lambda metadata: "sha256:recipe",
+                          container_engine=lambda: {"name": "docker", "version": "Docker version test", "cpu_limit": "quota"})
 
 
 class OrchestrationTests(unittest.TestCase):
@@ -41,10 +43,57 @@ class OrchestrationTests(unittest.TestCase):
             with built_image(), patch("evaluation.check.execute", return_value=(records, timing or {})):
                 return evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE, instances=[], **kwargs)
 
+    def test_reported_objectives_are_the_problems_own(self):
+        status = {"type": "status", "status": "limit"}
+        solution = lambda objective=None: {"type": "solution", "values": {"x": 1},
+                                           **({} if objective is None else {"objective": objective})}
+        incumbent = lambda objective, seconds: {"type": "incumbent", "objective": objective, "seconds": seconds}
+        self.assertEqual(check_objectives([incumbent(9, 0.1), incumbent(7, 0.2), solution(7), status], 7, 2), [7])
+        self.assertEqual(check_objectives([solution(), status], 7, 1), [None])  # before protocol 2: may be absent
+        for records, protocol in (
+                ([solution(), status], 2),                          # protocol 2: the objective is required
+                ([solution(70), status], 2),                        # a scaled objective
+                ([solution(-7), status], 1),                        # a negated one, whenever it is reported
+                ([incumbent(-9, 0.1), incumbent(-7, 0.2), solution(), status], 1),  # incumbents on the solver's scale
+                ([incumbent(9, 0.1), incumbent(8, 0.2), solution(7), status], 2),   # they must end at the optimum
+                ([incumbent(9, 0.1), incumbent(6, 0.2), incumbent(7, 0.3), solution(7), status], 2)):  # and improve
+            with self.assertRaises(EvaluationError) as raised:
+                check_objectives(records, 7, protocol)
+            self.assertIn(raised.exception.reason, ("objective_mismatch", "invalid_output"))
+        with self.assertRaises(EvaluationError) as raised:
+            check_objectives([solution(70), status], 7, 2)
+        self.assertEqual(raised.exception.reason, "objective_mismatch")
+
     def test_runner_records_are_validated(self):
         for records in ([], [{}], [{"type": "status", "status": "success"}],
                         [{"type": "status", "status": "limit"}, {"type": "solution", "values": {}}]):
             with self.assertRaises(EvaluationError): validate_records(records)
+
+    def test_incumbents_are_evidence_not_results(self):
+        status = {"type": "status", "status": "limit"}
+        solution = {"type": "solution", "values": {"x": 0, "y": 2}}
+        records = [{"type": "incumbent", "objective": 5, "seconds": 0.1},
+                   {"type": "incumbent", "objective": 2, "seconds": 0.4}, solution, status]
+        self.assertEqual(validate_records(records), ([{"x": 0, "y": 2}], status))
+        self.assertEqual(incumbents(records), [[0.1, 5], [0.4, 2]])
+        for bad in ({"type": "incumbent", "objective": 2.5, "seconds": 1}, {"type": "incumbent", "objective": 2},
+                    {"type": "incumbent", "objective": True, "seconds": 1},
+                    {"type": "incumbent", "objective": 2, "seconds": -1}):
+            with self.assertRaises(EvaluationError): validate_records([bad, solution, status])
+        with self.assertRaises(EvaluationError):  # time runs forward
+            validate_records([{"type": "incumbent", "objective": 5, "seconds": 2},
+                              {"type": "incumbent", "objective": 4, "seconds": 1}, solution, status])
+        with self.assertRaises(EvaluationError): validate_records([{"type": "incumbent", "objective": 5, "seconds": 2}])
+        result = self.run_records([{"type": "incumbent", "objective": 2, "seconds": 0.01},
+                                   {"type": "solution", "values": {"x": 0, "y": 2}}, {"type": "status", "status": "limit"}])
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["instances"][0]["incumbents"], [[0.01, 2]])
+        from evaluation import improving_incumbents
+        self.assertFalse(improving_incumbents(result))  # this fixture's reference does not optimise: no optimum
+        result["instances"][0]["optimum"] = 2
+        self.assertTrue(improving_incumbents(result))
+        result["instances"][0]["incumbents"] = [[0.01, 3], [0.02, 3], [0.03, 2]]
+        self.assertFalse(improving_incumbents(result))
 
     def test_solution_count_is_bounded(self):
         """Duplicate records must not each cost a reference solve."""
@@ -172,7 +221,7 @@ class OrchestrationTests(unittest.TestCase):
         Docker can set OOMKilled after the exit, so an unset flag after an exit
         137 is read again, and the detail gives the reading at exit and the last one.
         """
-        rereads = OOM_REREADS
+        rereads = Docker.OOM_REREADS
         for flags, reason, inspections, readings in (
                 (["true"], "memory_limit", 1, "OOMKilled was true at exit"),
                 (["false", "false", "true"], "memory_limit", 3, "OOMKilled was false at exit and true 0.5 s later"),
@@ -188,8 +237,8 @@ class OrchestrationTests(unittest.TestCase):
                 return {"run": (137, "", "Killed"), "rm": (0, "", "")}[command[1]]
 
             with self.subTest(flags=flags), tempfile.TemporaryDirectory() as temp, \
-                    patch("evaluation.execution.run_process", side_effect=docker), \
-                    patch("evaluation.execution.time.sleep"):
+                    patch("evaluation.engine.run_process", side_effect=docker), \
+                    patch("evaluation.execution._engine", Docker), patch("evaluation.engine.time.sleep"):
                 model = Path(temp) / "model.py"
                 model.write_text("# stub")
                 with self.assertRaises(EvaluationError) as raised:
@@ -208,7 +257,8 @@ class OrchestrationTests(unittest.TestCase):
             commands.append(command[1])
             return {"run": (1, "", "Traceback"), "inspect": (0, "false\n", ""), "rm": (0, "", "")}[command[1]]
 
-        with tempfile.TemporaryDirectory() as temp, patch("evaluation.execution.run_process", side_effect=docker):
+        with tempfile.TemporaryDirectory() as temp, patch("evaluation.engine.run_process", side_effect=docker), \
+                patch("evaluation.execution._engine", Docker):
             model = Path(temp) / "model.py"
             model.write_text("# stub")
             with self.assertRaises(EvaluationError) as raised:

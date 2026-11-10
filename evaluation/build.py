@@ -1,8 +1,13 @@
-"""Explicitly build the pilot images; evaluation itself never builds images."""
-import argparse
-import subprocess
+"""Explicitly build the pilot images; evaluation itself never builds images.
 
-from .execution import PLATFORM, RECIPE_LABEL, ROOT, integration, integration_folder, integration_folders, recipe
+Docker and podman build from each integration's Dockerfile. Apptainer converts the
+docker-archives `evaluation.export` wrote where the images were built: pass their
+folder as --archive.
+"""
+import argparse
+
+from .engine import current
+from .execution import integration, integration_folders, recipe
 
 
 def main():
@@ -10,7 +15,9 @@ def main():
     parser.add_argument("solver_ids", nargs="*")
     parser.add_argument("--gha-cache", action="store_true",
                         help="Reuse layers from the GitHub Actions cache; needs a docker-container builder")
+    parser.add_argument("--archive", help="apptainer: the folder of <id>.tar files from evaluation.export")
     args = parser.parse_args()
+    engine = current()
     ids = args.solver_ids or list(integration_folders())
     for solver_id in ids:
         metadata = integration(solver_id)
@@ -21,9 +28,7 @@ def main():
                  f"--cache-to=type=gha,scope={solver_id},mode=min,ignore-error=true", "--load"] if args.gha_cache else []
         # The label is what readiness compares, so an image counts as current on
         # any machine that built it from the same files.
-        subprocess.run(["docker", "build", f"--platform={PLATFORM}", "-t", metadata["image"],
-                        "--label", f"{RECIPE_LABEL}={recipe(solver_id)}", *cache,
-                        "-f", str(integration_folder(solver_id) / "Dockerfile"), str(ROOT)], check=True)
+        engine.build(solver_id, metadata, recipe(solver_id), cache, archive=args.archive)
 
 
 if __name__ == "__main__":

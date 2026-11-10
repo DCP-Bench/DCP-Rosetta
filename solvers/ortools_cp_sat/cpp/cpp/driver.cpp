@@ -1,9 +1,12 @@
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <set>
 #include <nlohmann/json.hpp>
 #include "ortools/sat/cp_model.h"
 #include "ortools/sat/cp_model_solver.h"
+#include "ortools/sat/model.h"
+#include "ortools/sat/sat_parameters.pb.h"
 
 using nlohmann::json;
 using namespace operations_research;
@@ -52,19 +55,38 @@ int main() {
     auto building = std::chrono::steady_clock::now();
     g_read_seconds = std::chrono::duration<double>(building - g_main_start).count();
     Build(request.at("instance"), model, outputs);
-    g_build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
+    auto search_start = std::chrono::steady_clock::now();
+    g_build_seconds = std::chrono::duration<double>(search_start - building).count();
     if (model.Build().has_floating_point_objective()) { Status("unsupported", 0, "Use an integer objective"); return 0; }
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     auto start = std::chrono::steady_clock::now();
     double seconds = 0;
     int count = 0, limit = request.at("solution_limit");
+    // An optimisation's proven optimum, from the first solve: CpSolverResponse::objective_value() is in the model's
+    // own terms (CP-SAT applies the objective's offset and scaling factor, which turns a Maximize back from the
+    // minimisation it solves), so it is the problem's value. Every later solution is pinned to it.
+    bool optimising = model.Build().has_objective();
+    long long best = 0;
     while (count < limit) {
       double left = request.at("execution_timeout").get<double>() - std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
       if (left <= 0) { Status("timeout", seconds); return 0; }
       // CP-SAT 9.11-9.15 dual presolve reductions can drop the optimum; keep them off.
       SatParameters params; params.set_max_time_in_seconds(left); params.set_num_search_workers(1);
       params.set_keep_all_feasible_solutions_in_presolve(true);
-      const auto response = SolveWithParameters(model.Build(), params);
+      // SolveWithParameters, spelled out so a solution observer can report each improving solution of the
+      // optimisation search (the first solve, while the model still has its objective) as an incumbent:
+      // anytime evidence, not a result, with the seconds since the search started.
+      const CpModelProto proto = model.Build();
+      sat::Model solver;
+      solver.Add(NewSatParameters(params));
+      if (count == 0 && proto.has_objective()) {
+        solver.Add(NewFeasibleSolutionObserver([search_start](const CpSolverResponse& found) {
+          double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - search_start).count();
+          std::cout << json({{"type", "incumbent"}, {"objective", std::llround(found.objective_value())},
+                             {"seconds", elapsed}}).dump() << std::endl;
+        }));
+      }
+      const auto response = SolveCpModel(proto, &solver);
       seconds += response.wall_time();
       if (response.status() == CpSolverStatus::INFEASIBLE) { Status(count ? "complete" : "unsat", seconds); return 0; }
       if (response.status() == CpSolverStatus::MODEL_INVALID) { Status("error", seconds, "Invalid CP-SAT model"); return 0; }
@@ -74,7 +96,10 @@ int main() {
       }
       std::vector<int> indices;
       json values = Read(outputs, response, indices);
-      std::cout << json({{"type", "solution"}, {"values", values}}).dump() << std::endl;
+      if (optimising && count == 0) best = std::llround(response.objective_value());
+      json record = {{"type", "solution"}, {"values", values}};
+      if (optimising) record["objective"] = best;
+      std::cout << record.dump() << std::endl;
       ++count;
       if (count == limit) break;
       if (model.Build().has_floating_point_objective()) { Status("unsupported", seconds, "Use an integer objective"); return 0; }

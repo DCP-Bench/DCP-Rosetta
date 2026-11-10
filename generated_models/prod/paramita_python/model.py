@@ -1,34 +1,86 @@
-# Production planning: choose the quantities X[j] of the products j so that the total
-# profit is maximised, subject to one shared time budget and per-product upper bounds.
+# prod: a Paramita (Python) model from DCP Rosetta.
+# Download the `prod.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/prod.html
+# Then install Paramita with its EvalMaxSAT solver (the build needs Linux, git, cmake,
+# a C++ compiler and zlib) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
+#   python prod.py prod.json
+
 from math import lcm
 
-from paramita.modelling import Bool, If
+from paramita.containers import WcnfFormula
+from paramita.modelling import And, Bool, DimacsVariablePool, If, add_to_weighted_container, to_cnf
 
 
-def build(instance):
-    a, c, u, b = instance["a"], instance["c"], instance["u"], instance["b"]
+def create_model(instance):
+    """Choose a production quantity x[j] for each product j, between 0 and u[j], so that the
+    time used, the sum of x[j] / a[j], stays at most b, and the total profit, the sum of
+    c[j] * x[j], is as large as possible."""
+    a = instance["a"]  # a[j]: one unit of product j uses 1 / a[j] of the time budget
+    c = instance["c"]  # c[j]: the profit of one unit of product j
+    u = instance["u"]  # u[j]: the most units of product j that can be made
+    b = instance["b"]  # the time budget
     products = range(len(a))
 
-    # Each quantity X[j] is an integer in 0..u[j], written in unary: ge[j][k] is true
-    # exactly when X[j] >= k + 1. There are u[j] such bits, so 0 <= X[j] <= u[j] holds
-    # by construction.
-    ge = [[Bool(f"ge_{j}_{k}") for k in range(u[j])] for j in products]
+    # at_least[j][k] is true when x[j] is at least k + 1, for k = 0 .. u[j] - 1.
+    # The true statements of product j count its quantity x[j].
+    at_least = [[Bool(f"x_{j}_at_least_{k + 1}") for k in range(u[j])] for j in products]
 
+    # Making at least k + 2 units of product j means making at least k + 1 units.
     cons = []
-    # the bits of X[j] are an order: X[j] >= k + 2 implies X[j] >= k + 1
     for j in products:
         for k in range(u[j] - 1):
-            cons.append(If(ge[j][k + 1], ge[j][k]))
+            cons.append(If(at_least[j][k + 1], at_least[j][k]))
 
-    # X[j] as the sum of its unary bits
-    x = [sum(ge[j]) for j in products]
+    # x[j] is the number of units of product j made.
+    x = [sum(at_least[j]) for j in products]
 
-    # the sum of (1/a[j]) * X[j] over all products must be at most b (the time budget).
-    # Multiplying both sides by L = lcm(a) gives integer coefficients L / a[j].
-    L = lcm(*a)
-    cons.append(sum((L // a[j]) * bit for j in products for bit in ge[j]) <= L * b)
+    # The time used stays within the budget. Both sides are multiplied by lcm(a), so that
+    # every coefficient is a whole number.
+    scale = lcm(*a)
+    cons.append(sum((scale // a[j]) * bit for j in products for bit in at_least[j]) <= scale * b)
 
-    # the total profit is the sum of c[j] * X[j] over all products
-    total_profit = sum(c[j] * bit for j in products for bit in ge[j])
+    # The total profit is the profit of every unit made.
+    total_profit = sum(c[j] * bit for j in products for bit in at_least[j])
 
-    return cons, {"x": x, "total_profit": total_profit}, ("maximize", total_profit)
+    # Maximise the total profit.
+
+    # Encode into a weighted formula: the constraints as hard clauses, the value to
+    # maximise as soft clauses. The pool gives each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(total_profit, And(cons), to_cnf, formula, pool)
+
+    # The objective in the problem's terms: the total profit, maximised (the soft
+    # clauses maximise it).
+    return (formula, pool), {"x": x, "total_profit": total_profit}, total_profit
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs, objective = create_model(instances[index])
+
+    solver = MaxSatSolver.from_name("EvalMaxSAT2022")
+    # copy the formula into the solver: the hard clauses, then each soft clause with its weight
+    solver.add_clauses(formula.hard_clauses())
+    for weight, clause in formula.soft_clauses():
+        solver.add_clause(clause, weight)
+
+    if solver.solve() == MAXSAT_ANSWER.OPTIMAL:
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
+    else:
+        print("No solution")

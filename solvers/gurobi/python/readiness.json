@@ -1,10 +1,10 @@
 {
   "accepted": true,
   "integration_files": {
-    "checks": "648a4616356809a518c66501abc4af17b59ef181f3fbe430843d737a6d76bc02",
-    "dockerfile": "9b88fd7653bfa9e9381a2c7af54b48f826a2c56127ef8870fbcf4317e346e9ff",
-    "metadata": "73ff71ec21a46d970552e8e38ecdfe2dde583b7d66fcda3a31f80e2486004c82",
-    "runner": "955835a7104392e3675da17f83e76da689d911d2bc5d05eef9cb353a4d8bfe25"
+    "checks": "5ee0868c6976d086cfb6cb410fee300f7b9f0f54ee5a09eba448e2fdd66e9251",
+    "dockerfile": "408001123b367f0af66571c4185023a49cfbe2dc60432f85a171ed769ef06391",
+    "metadata": "40b5b0eb65e0adc673fac757bd4de9b8421ab9944e39bbf1f99a3e7cc5d66376",
+    "runner": "124eb1f518284664f9e6b01a67b54fcd5052bd5603f7273824090e159dc4c493"
   },
   "metadata": {
     "enumeration": true,
@@ -13,11 +13,26 @@
     "id": "gurobipy_python",
     "image": "dcp-eval/gurobipy_python:v1",
     "language": "python",
-    "protocol_version": 1,
+    "licence": {
+      "env": {
+        "GRB_LICENSE_FILE": "/run/licence/gurobi.lic"
+      },
+      "errors": [
+        "No Gurobi license",
+        "token server",
+        "HostID mismatch"
+      ],
+      "id": "gurobi",
+      "kind": "server",
+      "port": 41954,
+      "target": "/run/licence/gurobi.lic",
+      "without": "size-limited"
+    },
+    "protocol_version": 2,
     "solver": "gurobi"
   },
-  "recipe": "sha256:9022d1a16a59ff58ff9cd4ef3e7ec1084e29813968353b340fd223e280aa01a7",
-  "report_sha256": "516b631ec43981c9ea8689a5c2885bd251e32d4e092d407886bbb53cbfbfc48f",
+  "recipe": "sha256:6a387beb3ff090e1ee215d8607ac8ddc959b745f2213a26c3576db05d5d356c6",
+  "report_sha256": "0f672b465812694bf6e011fe6a0f1f09d9fdcbf3535608e34f10f3f15226d51a",
   "schema": 2,
   "solver_id": "gurobipy_python",
   "tests": [
@@ -25,7 +40,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "changed_instances",
@@ -35,7 +50,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "empty_output",
@@ -45,7 +60,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "enumeration",
@@ -55,7 +70,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "exhausted_enumeration",
@@ -65,7 +80,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "expression_output",
@@ -75,7 +90,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "fractional_output",
@@ -85,7 +100,27 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
+        }
+      ],
+      "name": "incumbents",
+      "passed": true
+    },
+    {
+      "evidence": [
+        {
+          "path": "solvers/gurobi/python/readiness/readiness-result.json",
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
+        }
+      ],
+      "name": "incumbents_maximize",
+      "passed": true
+    },
+    {
+      "evidence": [
+        {
+          "path": "solvers/gurobi/python/readiness/readiness-result.json",
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "isolation",
@@ -95,7 +130,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "library_stdout",
@@ -105,7 +140,17 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
+        }
+      ],
+      "name": "licence_missing",
+      "passed": true
+    },
+    {
+      "evidence": [
+        {
+          "path": "solvers/gurobi/python/readiness/readiness-result.json",
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "malformed_output",
@@ -115,7 +160,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "matrix_output",
@@ -125,7 +170,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "maximization",
@@ -135,7 +180,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "minimization",
@@ -145,7 +190,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "missing_image",
@@ -155,7 +200,17 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
+        }
+      ],
+      "name": "objective_values",
+      "passed": true
+    },
+    {
+      "evidence": [
+        {
+          "path": "solvers/gurobi/python/readiness/readiness-result.json",
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "optimal_enumeration",
@@ -165,7 +220,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "proven_optimum",
@@ -175,7 +230,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "satisfaction",
@@ -185,7 +240,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "size_limit",
@@ -195,7 +250,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "timeout_cleanup",
@@ -205,7 +260,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "unbounded_enumeration",
@@ -215,7 +270,7 @@
       "evidence": [
         {
           "path": "solvers/gurobi/python/readiness/readiness-result.json",
-          "sha256": "bedf2d111ef80e55da28d6b421ded63b9ba4fc624efd0b78de5a6d548458c680"
+          "sha256": "070df769d026569274cd8c49c6d0661471f6ef41d32bfbae121cd1259de5b44a"
         }
       ],
       "name": "unproven_optimum",

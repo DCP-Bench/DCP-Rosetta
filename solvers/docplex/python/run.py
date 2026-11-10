@@ -45,6 +45,7 @@ import time
 sys.path.insert(0, "/opt/runner")
 from runtime import emit, finish  # noqa: E402
 
+import cplex  # noqa: E402
 from docplex.mp.model import Model  # noqa: E402
 from docplex.mp.utils import DOcplexLimitsExceeded  # noqa: E402
 
@@ -219,14 +220,61 @@ def pin(model, objective):
     model.remove_objective()
 
 
-def attempt(model, deadline):
-    """Solve once inside the remaining budget; say what CPLEX actually concluded."""
+class Incumbents:
+    """Reports the improving solutions of the optimisation solve as incumbents.
+
+    A CPLEX generic callback in the global-progress context only, which is informational:
+    the search is unchanged (same nodes and iterations as without it, single thread). It
+    is called when the incumbent or the bound moves, and reports each improving incumbent
+    objective (the model's, with its constant) when it is an integer, with the seconds
+    since solve() was called. The record goes to the protocol stream directly, as solve()
+    runs with sys.stdout redirected to stderr. A model presolve solves outright gets no
+    call: its proven optimum is then reported when the solve returns.
+    """
+
+    def __init__(self, model):
+        self.model, self.protocol = model, sys.stdout
+        self.minimize = model.is_minimized()
+        self.last = None
+        self.start = time.monotonic()
+
+    def invoke(self, context):
+        if context.in_global_progress() and context.get_long_info(cplex.callbacks.Context.info.feasible):
+            self.report(context.get_incumbent_objective())
+
+    def report(self, value):
+        rounded = round(value)
+        if abs(value - rounded) > TOLERANCE:
+            return  # not an integer objective value
+        if self.last is not None and (rounded >= self.last if self.minimize else rounded <= self.last):
+            return
+        self.last = rounded
+        print(json.dumps({"type": "incumbent", "objective": int(rounded), "seconds": time.monotonic() - self.start}),
+              file=self.protocol, flush=True)
+
+    def attach(self):
+        self.model.get_cplex().set_callback(self, cplex.callbacks.Context.id.global_progress)
+
+    def detach(self):
+        self.model.get_cplex().set_callback(None, 0)
+
+
+def attempt(model, deadline, incumbents=False):
+    """Solve once inside the remaining budget; say what CPLEX actually concluded. With
+    `incumbents`, the optimisation solve's improving solutions are reported as found."""
     left = deadline - time.monotonic()
     if left <= 0:
         return "timeout"
     model.parameters.timelimit = left
-    with contextlib.redirect_stdout(sys.stderr):
-        solution = model.solve(log_output=False)
+    follower = Incumbents(model) if incumbents else None
+    if follower:
+        follower.attach()
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            solution = model.solve(log_output=False)
+    finally:
+        if follower:
+            follower.detach()
     code = model.solve_details.status_code
     if code in AMBIGUOUS:
         # Presolve stopped before telling the two apart; without its dual
@@ -240,6 +288,8 @@ def attempt(model, deadline):
             solution = model.solve(log_output=False)
         code = model.solve_details.status_code
     if code in PROVEN and solution is not None:
+        if follower:
+            follower.report(solution.objective_value)
         return "solved"
     if code in INFEASIBLE:
         return "infeasible"
@@ -263,7 +313,7 @@ def solve(request):
     objective = model.objective_expr if model.has_objective() else None
     variables = cut_variables(outputs)
 
-    verdict = attempt(model, deadline)
+    verdict = attempt(model, deadline, incumbents=objective is not None)
     if verdict == "infeasible":
         return finish("unsat")
     if verdict == "unbounded":
@@ -280,13 +330,19 @@ def solve(request):
             return finish("unsupported", "Enumeration needs integer declared outputs; "
                                          f"{continuous[0]} is continuous")
 
+    # The model's objective expression, kept for the solution records after the enumeration unsets it.
+    goal = objective
     seen, count, index = set(), 0, 0
     while True:
         values = resolved(outputs, read)
         key = json.dumps(values, sort_keys=True)
         if key not in seen:
             seen.add(key)
-            emit({"type": "solution", "values": values})
+            record = {"type": "solution", "values": values}
+            if goal is not None:
+                # Evaluated on the solution, with its constant, in the model's own sense.
+                record["objective"] = read(value_of(goal))
+            emit(record)
             count += 1
             if count >= limit:
                 return finish("limit")

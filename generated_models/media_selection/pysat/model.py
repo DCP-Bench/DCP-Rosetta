@@ -75,7 +75,9 @@ def create_model(instance):
         elif media_costs[m] < 0:
             formula.append([is_selected[m]], weight=-media_costs[m])
 
-    return formula, {"is_selected": is_selected, "min_total_cost": min_total_cost}
+    # The objective in the problem's terms: the total cost of the chosen media (RC2's cost
+    # differs from it by a fixed amount when some cost is negative).
+    return formula, {"is_selected": is_selected, "min_total_cost": min_total_cost}, min_total_cost
 
 
 if __name__ == "__main__":
@@ -87,7 +89,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

@@ -1,0 +1,139 @@
+{
+ "skill_name": "dcp-hexaly",
+ "evals": [
+  {
+   "id": 1,
+   "prompt": "Write a Hexaly model in Python that places n queens on an n x n board so that none attack each other; n comes from a JSON file. Say clearly when no placement exists.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A hexaly.optimizer program with a constant objective that reports a placement on FEASIBLE or OPTIMAL and does not call INFEASIBLE a proof.",
+   "assertions": [
+    "Reads interfaces/python.md",
+    "Adds an objective (minimize(0)) before close()",
+    "Treats INFEASIBLE as no proof; claims infeasibility only on INCONSISTENT or a proven positive minimum of violations"
+   ]
+  },
+  {
+   "id": 2,
+   "prompt": "With Hexaly from Python, list every solution of the 6-queens puzzle and be sure none is missing.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A re-solve loop with soft no-goods over the queen positions that stops on a proven minimum of 1.",
+   "assertions": [
+    "Reopens and closes the model between solves",
+    "Uses soft no-goods in the objective rather than only hard or-of-!= constraints",
+    "Sets the gap limit to 0 and 4 threads"
+   ]
+  },
+  {
+   "id": 3,
+   "prompt": "Solve a 0/1 knapsack with Hexaly in Python and print the best value only if it is proven optimal.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A maximise model that sets set_gap_limit(0) and checks OPTIMAL before printing.",
+   "assertions": [
+    "Calls optimizer.param.set_gap_limit(0)",
+    "Checks the status is OPTIMAL, not FEASIBLE",
+    "Uses model.maximize"
+   ]
+  },
+  {
+   "id": 4,
+   "prompt": "Using Hexaly's Python API, find every way to pick items so the total value is maximal under a weight limit (all optimal knapsack selections).",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "Solve with the objective, pin it to the optimum after remove_objective, then enumerate with soft no-goods.",
+   "assertions": [
+    "Removes the objective and constrains the objective expression to the optimum",
+    "Enumerates with a loop that proves completeness"
+   ]
+  },
+  {
+   "id": 5,
+   "prompt": "Colour a graph with as few colours as possible using Hexaly (Python); the graph is in a JSON file with extra name and note fields.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "An integer colour per node, pairwise != on edges, minimise the maximum colour, proven optimal.",
+   "assertions": [
+    "Uses model.max for the number of colours",
+    "Ignores JSON keys it does not use",
+    "Checks OPTIMAL"
+   ]
+  },
+  {
+   "id": 6,
+   "prompt": "Solve the cryptarithm SEND + MORE = MONEY with Hexaly in Python.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "Integer digits, all different, the column sum as one linear equation, a constant objective.",
+   "assertions": [
+    "Expresses all-different with pairwise != or count(distinct(...))",
+    "Adds minimize(0)"
+   ]
+  },
+  {
+   "id": 7,
+   "prompt": "Write a job-shop scheduler with Hexaly in Python that minimises the makespan.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "Interval decisions with length constraints, precedences with <, a list per machine with a lambda, minimise the maximum end, 4 threads.",
+   "assertions": [
+    "Uses model.interval and model.length",
+    "Orders each machine with a list decision or pairwise disjunctions",
+    "Sets nb_threads to at least 4"
+   ]
+  },
+  {
+   "id": 8,
+   "prompt": "I want to use Hexaly for a small scheduling problem. How do I get started?",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "Routes to the Python interface: pip install hexaly, the licence file, the quick start.",
+   "assertions": [
+    "Mentions that a licence file is needed and where Hexaly looks for it",
+    "Points to interfaces/python.md"
+   ]
+  },
+  {
+   "id": 9,
+   "prompt": "Write a MiniZinc model for the n-queens problem.",
+   "expected_skill": null,
+   "expected_output": "The skill is not used.",
+   "assertions": [
+    "dcp-hexaly is not loaded"
+   ]
+  },
+  {
+   "id": 10,
+   "prompt": "Solve this knapsack with OR-Tools CP-SAT in Python.",
+   "expected_skill": null,
+   "expected_output": "The skill is not used.",
+   "assertions": [
+    "dcp-hexaly is not loaded"
+   ]
+  },
+  {
+   "id": 11,
+   "prompt": "With Hexaly in Python, solve a 9x9 sudoku given as a file, and tell me whether the solution is the only one.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A model with a Boolean per (cell, value) and linear sums, a constant objective, and a second solve (or soft no-good) to show that no other solution exists, with the gap limit 0 and 4 threads.",
+   "assertions": [
+    "Reads references/formulations.md or uses a Boolean per (cell, value) with sum == 1 per cell, row, column and box",
+    "Adds an objective (minimize(0)) before close()",
+    "Claims uniqueness only from a proven minimum of 1 or more in a soft no-good solve, never from an INFEASIBLE status"
+   ]
+  },
+  {
+   "id": 12,
+   "prompt": "Using Hexaly from Python, solve the cryptarithm CROSS + ROADS = DANGER (each letter a different digit, no leading zero) and say whether the answer is unique. My list-of-ten-digits model runs for minutes without an answer.",
+   "expected_skill": "dcp-hexaly",
+   "expected_output": "A one-hot Boolean model with one equation per column and a carry, instead of the permutation list.",
+   "assertions": [
+    "Replaces the permutation list by one Boolean per (letter, digit) with linear sums",
+    "Adds the sum as one equation per column with a small integer carry",
+    "Uses a proven result from a soft no-good solve to claim uniqueness"
+   ]
+  },
+  {
+   "id": 13,
+   "prompt": "What does Hexaly's academic licence cost and how do I renew it?",
+   "expected_skill": null,
+   "expected_output": "The skill is not used; this is a licensing question, not modelling.",
+   "assertions": [
+    "dcp-hexaly is not loaded"
+   ]
+  }
+ ]
+}

@@ -1,63 +1,76 @@
-# Mario's gold route: Mario drives from his house to Luigi's house, visiting houses
-# to collect gold, within a fuel limit. Maximise the gold collected.
-from paramita.modelling import Bool, If, Iff, Or
+# mario: a Paramita (Python) model from DCP Rosetta.
+# Download the `mario.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/mario.html
+# Then install Paramita with its EvalMaxSAT solver (the build needs Linux, git, cmake,
+# a C++ compiler and zlib) and run the model on the first instance:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
+#   python mario.py mario.json
+
+from paramita.containers import WcnfFormula
+from paramita.modelling import (
+    And, Bool, DimacsVariablePool, If, Iff, Or, add_to_weighted_container, to_cnf,
+)
 
 
-def build(instance):
-    n = instance["nHouses"]
-    mario = instance["marioHouse"]
-    luigi = instance["luigiHouse"]
-    fuel = instance["arc_fuel"]
-    gold = instance["goldInHouse"]
-    fuel_limit = instance["fuelLimit"]
-    houses = range(n)
+def create_model(instance):
+    """Mario drives from his house to Luigi's house, visiting houses on the way to collect
+    their gold, and the fuel used on the drive stays within the limit. He collects as much
+    gold as possible."""
+    n_houses = instance["nHouses"]        # the number of houses, numbered 0 to n_houses - 1
+    mario = instance["marioHouse"]        # the house where Mario starts
+    luigi = instance["luigiHouse"]        # the house where Mario ends
+    fuel = instance["arc_fuel"]           # fuel[i][j]: the fuel to drive from house i to house j
+    gold = instance["goldInHouse"]        # gold[i]: the gold in house i
+    fuel_limit = instance["fuelLimit"]    # the most fuel the drive may use
+    houses = range(n_houses)
 
-    # arc[i][j]: Mario drives straight from house i to house j (one-hot successor encoding).
-    # Arcs out of Luigi's house go only to Mario's house, and only Luigi's house enters Mario's house.
-    arc = [[None] * n for _ in houses]
+    # arc[i][j] is true when Mario drives straight from house i to house j.
+    # Luigi's house is left only for Mario's house, and Mario's house is entered only from Luigi's house.
+    arc = [[None] * n_houses for _ in houses]
     for i in houses:
         for j in houses:
             if i == j:
                 continue
             if (i == luigi) != (j == mario):
                 continue
-            # an arc that alone uses more fuel than the limit can never be driven
             if fuel[i][j] > fuel_limit:
                 continue
             arc[i][j] = Bool(f"arc_{i}_{j}")
 
+    # The drives that leave house i.
     def out_arcs(i):
         return [arc[i][j] for j in houses if arc[i][j] is not None]
 
+    # The drives that enter house j.
     def in_arcs(j):
         return [arc[i][j] for i in houses if arc[i][j] is not None]
 
-    # visited[i]: house i is on the route (it has an outgoing arc). Gold is collected per visited house.
+    # visited[i] is true when house i is on the route.
     visited = [Bool(f"visited_{i}") for i in houses]
 
-    # pos[(i, k)]: house i is at least k stops after Mario's house (unary order encoding of the stop number).
-    pos = {(i, k): Bool(f"pos_{i}_ge_{k}") for i in houses for k in range(1, n)}
+    # pos[(i, k)] is true when house i comes at least k stops after Mario's house.
+    pos = {(i, k): Bool(f"pos_{i}_ge_{k}") for i in houses for k in range(1, n_houses)}
 
-    cons = []
+    cons = []  # the rules of the route
 
-    # a house is on the route exactly when it has an outgoing arc (at most one, see below)
+    # A house is on the route exactly when a drive leaves it.
     cons += [Iff(visited[i], Or(out_arcs(i))) for i in houses]
 
-    # the order bits of one house form a prefix: at least k+1 stops implies at least k stops
+    # A house at least k + 1 stops after Mario's house is also at least k stops after it.
     for i in houses:
-        cons += [If(pos[(i, k + 1)], pos[(i, k)]) for k in range(1, n - 1)]
-    # Mario's house is the first stop, at position 0
-    cons += [~pos[(mario, k)] for k in range(1, n)]
+        cons += [If(pos[(i, k + 1)], pos[(i, k)]) for k in range(1, n_houses - 1)]
+    # Mario's house is stop 0.
+    cons += [~pos[(mario, k)] for k in range(1, n_houses)]
 
-    # Mario starts his route: one outgoing arc from Mario's house
+    # Mario's house is left once, and Luigi's house is left once, for Mario's house.
     cons.append(sum(out_arcs(mario)) == 1)
-    # Luigi's succeeding house is Mario's house
     cons.append(sum(out_arcs(luigi)) == 1)
-    # the route ends at Luigi's house: exactly one arc enters it, and Mario's house is only entered from Luigi's house
+    # Luigi's house is entered once, and Mario's house is entered once, from Luigi's house.
     cons.append(sum(in_arcs(luigi)) == 1)
     cons.append(sum(in_arcs(mario)) == 1)
 
-    # a visited house is entered once and left once, never visited twice
+    # Every other house is entered as often as it is left, and at most once each way.
     for i in houses:
         if i in (mario, luigi):
             continue
@@ -65,26 +78,63 @@ def build(instance):
         cons.append(sum(out_arcs(i)) <= 1)
         cons.append(sum(in_arcs(i)) <= 1)
 
-    # the route has no side loops away from Mario: along each travelled arc (i, j) the stop number grows
-    # by at least one, so no cycle can form without Mario's house (the closing arc Luigi -> Mario is excluded)
+    # A drive from house i into a house j other than Mario's raises the stop count by at least one,
+    # which rules out loops that do not pass Mario's house.
     for i in houses:
         for j in houses:
-            a = arc[i][j]
-            if a is None or j == mario:
+            drive = arc[i][j]
+            if drive is None or j == mario:
                 continue
-            cons.append(If(a, pos[(j, 1)]))
+            cons.append(If(drive, pos[(j, 1)]))
             if i != mario:
-                for k in range(1, n - 1):
-                    cons.append(If(a, If(pos[(i, k)], pos[(j, k + 1)])))
-                cons.append(If(a, ~pos[(i, n - 1)]))
+                for k in range(1, n_houses - 1):
+                    cons.append(If(drive, If(pos[(i, k)], pos[(j, k + 1)])))
+                cons.append(If(drive, ~pos[(i, n_houses - 1)]))
 
-    # the fuel used on the travelled arcs must not exceed the fuel limit
+    # The fuel of the drives made stays within the fuel limit.
     cons.append(sum(fuel[i][j] * arc[i][j] for i in houses for j in houses if arc[i][j] is not None) <= fuel_limit)
 
-    # the succeeding house of house i: the house it drives to, or i itself when the house is not on the route
+    # s[i] is the house that follows house i on the route, or i itself when house i is not on the route.
     s = [i + sum((j - i) * arc[i][j] for j in houses if arc[i][j] is not None) for i in houses]
 
-    # total gold collected: the gold of each house on the route
+    # The gold collected: the gold of each house on the route.
     total_gold = sum(gold[i] * visited[i] for i in houses)
 
-    return cons, {"s": s}, ("maximize", total_gold)
+    # Encode into a weighted formula: the constraints as hard clauses, the value to
+    # maximise as soft clauses. The pool gives each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(total_gold, And(cons), to_cnf, formula, pool)
+
+    # The objective in the problem's terms: the gold collected, maximised (the soft
+    # clauses maximise it).
+    return (formula, pool), {"s": s}, total_gold
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import MAXSAT_ANSWER, MaxSatSolver
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    (formula, pool), outputs, objective = create_model(instances[index])
+
+    solver = MaxSatSolver.from_name("EvalMaxSAT2022")
+    # copy the formula into the solver: the hard clauses, then each soft clause with its weight
+    solver.add_clauses(formula.hard_clauses())
+    for weight, clause in formula.soft_clauses():
+        solver.add_clause(clause, weight)
+
+    if solver.solve() == MAXSAT_ANSWER.OPTIMAL:
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+        print("objective =", evaluate(objective, truth))
+    else:
+        print("No solution")

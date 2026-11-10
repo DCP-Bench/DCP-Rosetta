@@ -30,7 +30,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -67,6 +67,28 @@ OPTIMAL = HEAD + "DIRECTION x + y\nsuch that x + y >= n\n"
 # The objective is a sum, unparenthesised, and has the same optimum as OPTIMAL.
 SUM_OPTIMAL = (HEAD + "find c : matrix indexed by [int(1..2)] of int(0..n)\n"
                "minimising sum i : int(1..2) . c[i]\nsuch that x + y >= n, c[1] = x, c[2] = y\n")
+# objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
+# constant term, with three optima (so the solutions enumerated at the optimum carry it too), and a
+# minimisation with a negative optimum.
+OBJECTIVE_MAX_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.maximize(3 + x + y)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+OBJECTIVE_MIN_REF = OBJECTIVE_MAX_REF.replace("x + y <= n", "x + y >= 1").replace(
+    "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
+OBJECTIVE_HEAD = LANG + "given n : int(0..100)\nfind x : int(0..n)\nfind y : int(0..n)\n"
+OBJECTIVE_MAX = OBJECTIVE_HEAD + "maximising 3 + x + y\nsuch that x + y <= n\n"
+OBJECTIVE_MIN = OBJECTIVE_HEAD + "minimising x - 2 * y - 4\nsuch that x + y >= 1\n"
 # Does not parse: Savile Row exits with an error.
 MALFORMED = HEAD + "such that x + y = n blah\n"
 UNSATISFIABLE = HEAD + "such that x + y = n, x = n, y = n, n > 0\n"
@@ -262,6 +284,22 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimising"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximising"), reference=MAXIMIZING)
+        # Minion's improving solutions, followed in its solutions file: minimising x - 2y - 4, the first
+        # (-6) is not optimal and the last is the optimum -8.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF))
+        # Maximising, they end at the optimum 4; the probe and enumeration runs that solution_limit=2 adds
+        # report none.
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximising"), reference=MAXIMIZING,
+                  solution_limit=2),
+            minimize=False)
+        # Every reported objective is the problem's own: the last improving solution's (solution_limit=1)
+        # and the probe's (solution_limit=3, enumerated at the optimum).
+        maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
+        minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
+        results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
+                                       and minimised["accepted"])
         # Enumeration of an optimisation goes through the fixed-objective re-run.
         check("optimum_enumeration", OPTIMAL.replace("DIRECTION", "minimising"), reference=OPTIMIZING,
               solution_limit=5)

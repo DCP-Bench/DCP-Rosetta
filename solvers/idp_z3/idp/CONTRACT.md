@@ -185,6 +185,13 @@ that is `Int` or a type `<: Int`) and define it in the theory
 with arguments or a non-integer codomain, is an error. No such symbol means a
 satisfaction problem.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`, the objective symbol's value in that
+solution's Z3 model (`model.eval` of the ground `minimize()`/`maximize()` term), so
+its constant and direction are the theory's own. Each improving solution Z3's optimiser
+reports (`set_on_model`), and last the proven optimum if z3 did not hand it over, is an `incumbent` record with the same term evaluated in that
+model.
+
 ## Solving
 
 The runner does not call `Theory.expand` or `Theory.optimize` (`expand` blocks on every
@@ -194,7 +201,9 @@ asserts the theory's assignments into `theory.solver` (a `z3.Solver`) and, for a
 optimisation, `theory.optimize_solver` (a `z3.Optimize`), with z3 defaults otherwise.
 
 - **Optimisation**: one `Optimize.check()` on the objective term. `unsat` is `unsat`; any
-  other non-`sat` answer is `timeout` ("Candidate optimum was not proven"). The optimum is
+  other non-`sat` answer is `timeout` ("Candidate optimum was not proven"). Each strictly
+  better model z3 hands to `set_on_model` during that check is reported as an `incumbent`
+  record, `seconds` from the end of the build. The optimum is
   proven only when the objective's lower and upper bounds are equal finite integers;
   unequal bounds are `timeout`, and non-integer (infinite) bounds are `error` ("The
   objective is unbounded: between L and H"). The optimum is then pinned on the solver

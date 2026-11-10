@@ -44,8 +44,9 @@ python -m generation.instances recheck PROBLEM --instances json:K ... --flag   #
    leaves out problems with no data fields, whose data is written into the
    model itself. Adding an instance to one of those means rewriting its
    reference, which is out of scope here.
-3. **Read the problem before looking for data.** Read the description, the
-   reference (`bench/dataset/<problem>/<problem>.cpmpy.py`) and `generation.brief`.
+3. **Read the problem before looking for data.** Read the description
+   (`bench/dataset/<problem>/description.md`), the reference
+   (`bench/dataset/<problem>/<problem>.cpmpy.py`) and `generation.brief`.
    Then decide whether the problem can take another instance at all.
    - The description is the text a model is written from, and a new instance
      must not contradict it. A value the description states is fixed for
@@ -62,9 +63,9 @@ python -m generation.instances recheck PROBLEM --instances json:K ... --flag   #
      matrix must be symmetric, whether demand can exceed capacity. `check`
      cannot see these. An instance that breaks one can still build and solve
      while meaning something else.
-4. **Find candidates, published ones first.** Start from the problem's own
-   `# Source`, `# Source description` and `# Problem instances` headers. The
-   dataset's sources are listed in `bench/SOURCES.md`: CSPLib problem pages, Hakan
+4. **Find candidates, published ones first.** Start from the `sources` in the
+   problem's `metadata.json` (they repeat the comments at the top of its
+   reference), the `instances` ones first. The dataset's sources are listed in `bench/SOURCES.md`: CSPLib problem pages, Hakan
    Kjellerstrand's model pages, the CPMpy examples, the ComplexOR repository and
    the APLAI course material. Check whether the source has further data for the
    same model. Translate faithfully: index base, units, row against column

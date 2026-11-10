@@ -97,6 +97,10 @@ Call the protected **`minimize(v)`** or **`maximize(v)`** once in the constructo
 call throws (`error`). Export it with `output(...)` only if it is a declared output. No
 call for a satisfaction problem. Do not bound it with a value known from elsewhere.
 
+The variable's value is the objective the runner reports, on every solution and incumbent:
+the driver reads it from the solution (Gecode neither scales nor negates it), so it must be
+the problem's own value, constant terms included (`expr(*this, 3 + x + y)`).
+
 **Restarts** (optional): `restarts(scale)`, e.g. `restarts(100)`, makes the driver search
 with Luby restarts of that scale (still complete, since the cutoff grows without bound).
 Pair it with AFC or CHB branching. It is not a default: it can slow the optimality proof.

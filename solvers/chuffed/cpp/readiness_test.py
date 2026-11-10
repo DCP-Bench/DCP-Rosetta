@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -218,6 +218,44 @@ STEP = (HEAD + "  int n = instance.at(\"n\");\n"
         "  int_linear(one, copy, IRT_EQ, obj);\n"
         "  optimize(obj, OPT_MIN);\n"
         "  outputs = {{\"x\", dcp::out(x)}};\n" + TAIL)
+# incumbents_maximize: the same with the smallest value first and the objective maximised, so the first
+# solution is x = n - 1 = optimum - 1 and the incumbents rise to n.
+STEP_MAX_REF = EASY_MIN.replace("x >= n", "(x >= n - 1) & (x <= n)").replace("model.minimize", "model.maximize")
+STEP_MAX = STEP.replace("VAL_MAX", "VAL_MIN").replace("OPT_MIN", "OPT_MAX")
+# objective_values: every reported objective must be the problem's own value. A maximisation whose objective has
+# a constant term (3 + x + y under x + y <= n, optimum 5) and a minimisation with a negative optimum (x - y - 3,
+# optimum -5).
+OBJECTIVE_REF = """
+# Data
+n = 2
+# End of data
+import cpmpy as cp
+import json
+x = cp.intvar(0, n, name="x")
+y = cp.intvar(0, n, name="y")
+model = cp.Model(x + y <= n)
+model.DIRECTION(EXPRESSION)
+model.solve()
+solution = {"x": int(x.value()), "y": int(y.value())}
+print(json.dumps(solution))
+"""
+CONSTANT_MAX_REF = OBJECTIVE_REF.replace("DIRECTION", "maximize").replace("EXPRESSION", "3 + x + y")
+NEGATIVE_MIN_REF = OBJECTIVE_REF.replace("DIRECTION", "minimize").replace("EXPRESSION", "x - y - 3")
+
+
+def objective_model(coefficients, rhs, direction):
+    # obj is tied to x and y by sum(coefficients * [x, y, obj]) == rhs.
+    a, b, c = coefficients
+    return (HEAD + DECLARE + "  int_linear(terms, IRT_LE, n);\n"
+            "  IntVar* obj = newIntVar(-10, 10);\n"
+            f"  vec<int> coefficients; coefficients.push({a}); coefficients.push({b}); coefficients.push({c});\n"
+            "  vec<IntVar*> all; all.push(x); all.push(y); all.push(obj);\n"
+            f"  int_linear(coefficients, all, IRT_EQ, {rhs});\n"
+            f"  optimize(obj, {direction});\n" + EXPORT + TAIL)
+
+
+CONSTANT_MAX = objective_model((1, 1, -1), -3, "OPT_MAX")  # obj = 3 + x + y
+NEGATIVE_MIN = objective_model((1, -1, -1), 3, "OPT_MIN")  # obj = x - y - 3
 # optimum_enumeration: four values in 0..2 with a sum of at least n and a sum objective:
 # ten optima, of which three are enumerated.
 SUM = (HEAD + "  int n = instance.at(\"n\");\n"
@@ -396,6 +434,14 @@ def main():
                                            and all(item.get("solutions_received", 0) == 0
                                                    for item in result["instances"]))
         check("minimization_step_one", STEP, reference=STEP_REF)
+        # VAL_MAX makes the first solution x = n (objective 2) before the optimum 1: both are reported.
+        results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", STEP_MAX, reference=STEP_MAX_REF), minimize=False)
+        # Acceptance includes every reported objective being the reference's optimum.
+        objective_max = check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAX_REF)["accepted"]
+        objective_min = check("objective_values", NEGATIVE_MIN, reference=NEGATIVE_MIN_REF)["accepted"]
+        results["objective_values"] = objective_max and objective_min
         result = check("optimum_enumeration", SUM, reference=SUM_REF, solution_limit=3)
         results["optimum_enumeration"] = result["accepted"] and result["solutions_checked"] == 3
         # The 32-bit refusal is the documented limit, raised by Build as an execution_error.

@@ -55,9 +55,11 @@ def create_model(instance):
         m &= (s[i] == sum(j * x[i][j] for j in range(n)))
 
     # Maximise the gold collected: a house is on the route when x[i][i] is false.
-    m.obj += -sum(gold[i] * ~x[i][i] for i in range(n))
+    collected = sum(gold[i] * ~x[i][i] for i in range(n))
+    m.obj += -collected
 
-    return m, {"s": s}
+    # The objective in the problem's terms: the gold collected, whose negation the solver minimises.
+    return m, {"s": s}, collected
 
 
 if __name__ == "__main__":
@@ -67,11 +69,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1792048966.1438432,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/paramita/python/CONTRACT.md": "490986169c678491e8649e5b0626cfcd4f30564d27cd6ddb2b6ebc01fd10fbf8"
+    },
+    "created_at": 1793715496.6021862,
     "problem_id": "de_bruijn_sequence",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "993f824f0acfe3254701b3d66d60fb0a33a62a0a93a5b703a804c1108244b949",
-    "run_id": "20261015-paramita-models",
-    "schema": 2,
-    "skill_bundle_hash": "4f049b29a7079dd11f39c7f6c2e0d4348c891b646138eb6bb1fc54dfa6904a13",
-    "skill_source": "solvers/paramita_python/skills/paramita",
+    "readiness_hash": "b3b88441c69f9961140deb3365140610d582167c88fbeffb6e519cad83300ccc",
+    "run_id": "paramita-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "cb1fffbea823a10d5e0327f8aa252e17705f028d",
+      "commit": "9734876382e2e56c313b68dd40b84957b16847ee",
       "modified": false,
-      "path": "solvers/paramita_python/skills/paramita"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "9734876382e2e56c313b68dd40b84957b16847ee",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "5b2d17dd39fbaadf55f4fc3913eca40868b7e93329f6aa9b6694722615b74ba7",
+        "source": "solvers/paramita/skills/dcp-paramita",
+        "version": {
+          "commit": "9734876382e2e56c313b68dd40b84957b16847ee",
+          "modified": true,
+          "path": "solvers/paramita/skills/dcp-paramita"
+        }
+      }
+    ],
     "solver_id": "paramita_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:399034ce572b49769dec3df8ab3466e7c823e9ddeb2da1ddc34d39be38d0e285",
+      "id": "sha256:eaf32561e571d4e61b766ec6098e489ffc60ca1619a9d640a8b723b7bafc8fff",
+      "recipe": "sha256:386d178421226d1b926dc10731848115e78a89cc4b80e1bd2a4b948df4e6332c",
       "tag": "dcp-eval/paramita_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.006728325970470905,
-        "execution_wall_seconds": 0.39811651897616684,
+        "checking_seconds": 0.006621167995035648,
+        "execution_wall_seconds": 0.4544136410113424,
         "first_solution": {
           "de_bruijn": [
             1,
@@ -67,10 +92,13 @@
           "de_bruijn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6701904149958864,
+        "reference_setup_seconds": 0.535349054960534,
         "runner_status": {
+          "build_seconds": 0.021414840943180025,
           "detail": "",
-          "solve_seconds": 0.020449463976547122,
+          "main_seconds": 0.023000663961283863,
+          "read_seconds": 0.00014990800991654396,
+          "solve_seconds": 0.022817213903181255,
           "status": "limit",
           "type": "status"
         },
@@ -80,8 +108,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004505336983129382,
-        "execution_wall_seconds": 0.3980476410361007,
+        "checking_seconds": 0.006285362993367016,
+        "execution_wall_seconds": 0.39846568496432155,
         "first_solution": {
           "de_bruijn": [
             1,
@@ -103,10 +131,13 @@
           "de_bruijn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5939159099943936,
+        "reference_setup_seconds": 0.4236228429945186,
         "runner_status": {
+          "build_seconds": 0.006826267926953733,
           "detail": "",
-          "solve_seconds": 0.005557585973292589,
+          "main_seconds": 0.008247914025560021,
+          "read_seconds": 0.00014386209659278393,
+          "solve_seconds": 0.008070204989053309,
           "status": "limit",
           "type": "status"
         },
@@ -116,8 +147,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013840818020980805,
-        "execution_wall_seconds": 0.5005520309787244,
+        "checking_seconds": 0.011562841013073921,
+        "execution_wall_seconds": 0.5004734279355034,
         "first_solution": {
           "de_bruijn": [
             1,
@@ -163,10 +194,13 @@
           "de_bruijn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7863923049881123,
+        "reference_setup_seconds": 0.7575237079290673,
         "runner_status": {
+          "build_seconds": 0.07948448206298053,
           "detail": "",
-          "solve_seconds": 0.09528663702076301,
+          "main_seconds": 0.084090361953713,
+          "read_seconds": 0.0001375179272145033,
+          "solve_seconds": 0.08392065903171897,
           "status": "limit",
           "type": "status"
         },
@@ -176,8 +210,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013090474996715784,
-        "execution_wall_seconds": 0.49179256800562143,
+        "checking_seconds": 0.008280442911200225,
+        "execution_wall_seconds": 0.4488636610331014,
         "first_solution": {
           "de_bruijn": [
             0,
@@ -218,10 +252,13 @@
           "de_bruijn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6156144230044447,
+        "reference_setup_seconds": 0.5425767450360581,
         "runner_status": {
+          "build_seconds": 0.049731701030395925,
           "detail": "",
-          "solve_seconds": 0.05284098000265658,
+          "main_seconds": 0.05453117110300809,
+          "read_seconds": 0.0001533840550109744,
+          "solve_seconds": 0.05434271402191371,
           "status": "limit",
           "type": "status"
         },
@@ -231,8 +268,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.005496060999576002,
-        "execution_wall_seconds": 0.39843118499265984,
+        "checking_seconds": 0.005179725005291402,
+        "execution_wall_seconds": 0.4490502419648692,
         "first_solution": {
           "de_bruijn": [
             0,
@@ -262,10 +299,13 @@
           "de_bruijn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6226621110108681,
+        "reference_setup_seconds": 0.4821883210679516,
         "runner_status": {
+          "build_seconds": 0.018745172070339322,
           "detail": "",
-          "solve_seconds": 0.0161452810280025,
+          "main_seconds": 0.02173481206409633,
+          "read_seconds": 0.00014347198884934187,
+          "solve_seconds": 0.021558067062869668,
           "status": "limit",
           "type": "status"
         },
@@ -277,21 +317,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "01d270ebf76cf24bd831ee782aef13ff7ca172105fee9250a080d71ebac7615a",
+    "model_hash": "235b1510ae0cc9f839841a9df214f4f40ce15c6707392d018823666d3a39ddbf",
     "problem_id": "de_bruijn_sequence",
     "reason": "accepted",
     "reference_hash": "e18902d2bfe7e7e7d1fe9ad044b8b84ba5de06ed8088a2fe9baebc76d2229004",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.13.5"
     },
     "requested": {
       "instance_count": 99,
@@ -302,11 +342,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "paramita_python",
-    "total_wall_seconds": 5.812435695959721,
+    "total_wall_seconds": 5.318448654026724,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

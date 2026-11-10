@@ -55,9 +55,11 @@ def create_model(instance):
             m &= meet.at_most_one()
 
     # Minimise the number of host boats.
-    m.obj += sum(is_host[b] for b in range(n_boats))
+    num_hosts = sum(is_host[b] for b in range(n_boats))
+    m.obj += num_hosts
 
-    return m, {"visits": visits, "is_host": is_host}
+    # The objective in the problem's terms: the number of host boats, the cost minimised above.
+    return m, {"visits": visits, "is_host": is_host}, num_hosts
 
 
 if __name__ == "__main__":
@@ -67,11 +69,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

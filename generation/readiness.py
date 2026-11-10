@@ -11,6 +11,7 @@ from typing import Any
 
 from evaluation.execution import ROOT as EVALUATION_ROOT, image_recipe, integration, integration_folder, recipe
 from evaluation.results import EvaluationError
+from evaluation.licences import available as licence_available
 
 
 ROOT = EVALUATION_ROOT
@@ -115,6 +116,10 @@ def _required(metadata: dict[str, Any]) -> set[str]:
         names.add("unsupported_enumeration")
     if metadata.get("compilation") is True:
         names.add("compilation_error")
+    # A licensed integration shows that a run without its licence is licence_unavailable,
+    # never a verdict on the model (see evaluation.licences).
+    if metadata.get("licence") is not None:
+        names.add("licence_missing")
     # Level 2 adds one check per runner bug class the modelling campaigns exposed: tiny
     # x + y models never reach them. An integration opts in with "readiness_level": 2;
     # new integrations start there, existing ones move up one at a time.
@@ -198,6 +203,9 @@ def run_checks(solver_id: str, output_dir: str | Path) -> Path:
     script = integration_folder(solver_id, ROOT) / CHECK_SCRIPT
     if not script.is_file():
         raise ReadinessError(f"Integration has no {CHECK_SCRIPT}: write one before claiming readiness")
+    licensed, reason = licence_available(solver_id)
+    if not licensed:
+        raise ReadinessError(f"licence_unavailable: readiness needs the solver to run; {reason}")
     directory = Path(output_dir).resolve()
     directory.mkdir(parents=True, exist_ok=True)
     try:

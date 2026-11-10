@@ -55,14 +55,22 @@ where `Obj` is a variable or an expression (the driver ties an expression to a f
 variable with `#=`). Everything else in `Options` (e.g. `ff`, `split`) is passed to
 `solve/2`; `Options` must be a list, `[]` for satisfaction.
 
+State the problem's own objective, in the brief's direction. The driver reports the value of its
+objective variable (equal to `Obj`; `cp` and `sat` optimise it in the stated direction) as each
+solution's `objective`, and the same variable's value at each `$report` as an incumbent.
+
 ## Solving
 
-- The driver adds no solve options of its own: it calls `solve(Options, LabelVars)` of
+- The driver adds no search options of its own: it calls `solve(Options, LabelVars)` of
   the imported module (`cp` or `sat`) with the submission's `Options`, plus the
-  objective option in the first phase. Under `cp` it then runs
+  objective option and a `$report` in the first phase. Under `cp` it then runs
   `once(solve_suspended([]))` on each solution.
-- Optimum phase: `once(solve([$min(V)|Options], LabelVars))`; both modules return the
-  first solution only once it is proven optimal. Failure there is `unsat`.
+- Optimum phase: `once(solve([$min(V), $report(...)|Options], LabelVars))`; both modules
+  return the first solution only once it is proven optimal. Failure there is `unsat`.
+  The `$report` goal (a callback that leaves the search as it is) records each improving
+  solution's objective as an `incumbent`, with the seconds since that `solve` call;
+  `run.py` relays these while the driver runs. A submission's own `$report` in `Options`
+  replaces it, and no incumbents are reported.
 - Enumeration phase: the model is rebuilt, `V #= Optimum` is posted, and the driver
   backtracks into `solve/2` for the next labelling of `LabelVars`; nothing else is added.
   A solution whose output object repeats one already reported is dropped. It stops at

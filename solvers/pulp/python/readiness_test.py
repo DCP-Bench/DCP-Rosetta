@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -38,6 +38,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 HEADER = "import pulp\n\n\ndef build(instance):\n    n = instance['n']\n"
 BOUNDED = ("    x = pulp.LpVariable('x', 0, n, cat='Integer')\n"
@@ -90,6 +95,11 @@ ISOLATED = HEADER + ("    import os, socket\n"
                      "    return problem, {'x': x, 'y': y}\n")
 
 
+# The fixture's objective as 3 + x + y (maximised) and as x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = OPTIMAL.replace("SENSE", "LpMaximize").replace("problem += x + y\n", "problem += 3 + x + y\n")
+NEGATIVE_OPTIMAL = OPTIMAL.replace("SENSE", "LpMinimize").replace("problem += x + y\n", "problem += x - y - 3\n")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -119,12 +129,26 @@ def main():
             and exhausted["instances"][0]["runner_status"]["status"] == "complete")
         check("minimization", OPTIMAL.replace("SENSE", "LpMinimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("SENSE", "LpMaximize"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
         check("expression_output", EXPRESSION, solution_limit=2)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})
         check("fractional_output", FRACTIONAL, expected={"execution_error", "invalid_output"})
-        check("unproven_optimum", UNPROVEN, expected={"execution_timeout"}, execution_timeout=5)
+        unproven = check("unproven_optimum", UNPROVEN, expected={"execution_timeout"}, execution_timeout=5)
+        # CBC's preprocessing solves these models outright and logs no incumbent, so the proven optimum is
+        # reported as one when the solve returns; the enumeration solve that solution_limit=2 adds reports none.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("SENSE", "LpMinimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("SENSE", "LpMaximize"), reference=MAXIMIZING,
+                  solution_limit=2),
+            minimize=False)
+        # The knapsack's incumbents come from CBC's log, as it finds them, and are kept though the run times out.
+        logged = [objective for _, objective in unproven["instances"][0].get("incumbents", [])]
+        results["incumbents_from_log"] = bool(logged) and all(a < b for a, b in zip(logged, logged[1:]))
         check("timeout_cleanup", SLOW, expected={"execution_timeout"}, execution_timeout=2)
 
     try:

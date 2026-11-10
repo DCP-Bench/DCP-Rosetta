@@ -1,4 +1,4 @@
-"""Resource-bounded Docker execution. No implicit builds or dependency installation."""
+"""Resource-bounded container execution (see evaluation.engine). No implicit builds or dependency installation."""
 import hashlib
 import json
 from pathlib import Path
@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 import threading
 import time
-import uuid
 
 from .results import EvaluationError, strict_json
 
@@ -164,68 +163,29 @@ def recipe(solver_id, root=ROOT):
     return "sha256:" + digest.hexdigest()
 
 
-def _inspect(metadata, template):
-    code, stdout, stderr = run_process(["docker", "image", "inspect", metadata["image"], "--format", template], 15)
-    if code:
-        raise EvaluationError("infrastructure_error", f"Image unavailable; start Docker and explicitly build {metadata['id']}. {stderr.strip()}")
-    return stdout.strip()
+def _engine():
+    from .engine import current
+    return current()
 
 
 def image_identity(metadata):
-    """The local image ID. It names the bytes run on this machine only; see recipe."""
-    identity = _inspect(metadata, "{{.Id}}")
-    if not identity.startswith("sha256:"):
-        raise EvaluationError("infrastructure_error", "Docker did not return an image identity")
-    return identity
+    """The local image's identity. It names the bytes run on this machine only; see recipe."""
+    return _engine().image_identity(metadata)
 
 
 def image_recipe(metadata):
     """The recipe digest evaluation.build stamped on the local image, or None if it has none."""
-    try:
-        labels = json.loads(_inspect(metadata, "{{json .Config.Labels}}")) or {}
-    except ValueError as error:
-        raise EvaluationError("infrastructure_error", f"Docker returned unreadable labels: {error}") from error
-    return labels.get(RECIPE_LABEL)
+    return _engine().image_recipe(metadata)
 
 
-OOM_REREADS = 8
-OOM_REREAD_INTERVAL = 0.25
-
-
-def oom_flag(name):
-    code, stdout, stderr = run_process(["docker", "inspect", "--format", "{{.State.OOMKilled}}", name], 15)
-    if code or stdout.strip() not in ("true", "false"):
-        raise EvaluationError("infrastructure_error", f"Could not inspect container {name}: {stderr.strip()}")
-    return stdout.strip() == "true"
-
-
-def killed_for_memory(name, exit_code):
-    """Whether the kernel killed any process in the exited container at its memory limit.
-
-    Docker sets this for the runner and for a solver process the runner started
-    alike, and exit 137 alone cannot tell it apart from a SIGKILL a submission
-    sent itself. Docker can record the kill after the exit that `docker run`
-    returns on, so after an exit 137 an unset flag is read again for up to
-    OOM_REREADS * OOM_REREAD_INTERVAL seconds. Returns the flag and, after an
-    exit 137, the readings for the detail of the failed run.
-    """
-    first = oom_flag(name)
-    if exit_code != 137:
-        return first, None
-    if first:
-        return True, "OOMKilled was true at exit"
-    later = False
-    for reread in range(1, OOM_REREADS + 1):
-        time.sleep(OOM_REREAD_INTERVAL)
-        later = oom_flag(name)
-        if later:
-            break
-    return later, f"OOMKilled was false at exit and {str(later).lower()} {reread * OOM_REREAD_INTERVAL:g} s later"
+def container_engine():
+    """What runs the containers here, recorded with each result: the engine, its version,
+    and how it enforces the CPU limit ("quota", or "cores"; see evaluation.engine)."""
+    return _engine().describe()
 
 
 def execute(model_path, instance, metadata, image, *, solution_limit, execution_timeout,
             compilation_timeout, memory_mb, cpus, legacy=False, model_bytes=None, outputs=None):
-    name = "dcp-eval-" + uuid.uuid4().hex
     started = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="dcp_candidate_") as temp:
         staging = Path(temp)
@@ -244,46 +204,90 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
         (staging / "request.json").write_text(json.dumps(request, allow_nan=False), encoding="utf-8")
         for path in staging.iterdir():
             path.chmod(0o644)
-        # No --rm: the container has to outlive its exit so killed_for_memory can
-        # inspect it. The finally clause below removes it.
-        command = ["docker", "run", "--pull=never", "--name", name,
-                   "--network=none", "--read-only", "--user=65534:65534", "--cap-drop=ALL",
-                   "--security-opt=no-new-privileges", "--pids-limit=128", "--log-driver=none",
-                   "--memory", f"{memory_mb}m", "--memory-swap", f"{memory_mb}m", "--cpus", str(cpus),
-                   "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
-                   "--mount", f"type=bind,source={staging},target=/input,readonly",
-                   "--workdir=/tmp", "--env=HOME=/tmp", "--env=PYTHONDONTWRITEBYTECODE=1", image]
         budget = execution_timeout + (compilation_timeout if metadata.get("compilation", False) else 0) + 10
+        from . import licences
+        # The licence is bound read-only for this run only, and what the run printed is
+        # redacted before anything reads it: the submission can read the licence too.
+        with licences.supply(metadata) as licence:
+            run = _engine().run(metadata, image, staging, memory_mb=memory_mb, cpus=cpus, timeout=budget,
+                                licence=licence)
+        code, stdout, stderr = run.code, run.stdout, run.stderr
+        if licence is not None:
+            stdout, stderr = licence.redact(stdout), licence.redact(stderr)
+        if code and licences.licence_error(metadata, licences.failure_message(stderr)):
+            raise EvaluationError("licence_unavailable", f"The solver refused its licence: {stderr[-4000:]}")
+        if code:
+            exited = f"exited {code}" + (f" ({run.readings})" if run.readings else "")
+            if run.oom_killed:
+                raise EvaluationError("memory_limit", f"The kernel killed a process at the {memory_mb} MB "
+                                                      f"memory limit and the runner {exited}: {stderr[-4000:]}")
+            raise EvaluationError("execution_error", f"Runner {exited}: {stderr[-4000:]}")
         try:
-            code, stdout, stderr = run_process(command, budget)
-            try:
-                oom_killed, readings = killed_for_memory(name, code)
-            except EvaluationError as error:
-                raise EvaluationError(error.reason, f"{error.detail}; the run exited {code}: {stderr[-4000:]}") from error
-            if code:
-                exited = f"exited {code}" + (f" ({readings})" if readings else "")
-                if oom_killed:
-                    raise EvaluationError("memory_limit", f"The kernel killed a process at the {memory_mb} MB "
-                                                          f"memory limit and the runner {exited}: {stderr[-4000:]}")
-                raise EvaluationError("execution_error", f"Runner {exited}: {stderr[-4000:]}")
-            try:
-                records = [strict_json(line) for line in stdout.splitlines() if line.strip()]
-            except (ValueError, TypeError, RecursionError) as e:
-                raise EvaluationError("invalid_output", f"Malformed runner JSON: {e}") from e
-            return records, {"execution_wall_seconds": time.perf_counter() - started, "stderr": stderr[-4000:],
-                             "oom_killed": oom_killed}
-        finally:
-            # docker-client termination alone does not terminate the container.
-            try:
-                code, _, detail = run_process(["docker", "rm", "--force", name], 15)
-                if code and "No such container" not in detail:
-                    raise EvaluationError("infrastructure_error", f"Container cleanup failed for {name}: {detail}")
-            except EvaluationError as error:
-                raise EvaluationError("infrastructure_error", f"Could not confirm cleanup of {name}: {error}") from error
+            records = [strict_json(line) for line in stdout.splitlines() if line.strip()]
+        except (ValueError, TypeError, RecursionError) as e:
+            raise EvaluationError("invalid_output", f"Malformed runner JSON: {e}") from e
+        return records, {"execution_wall_seconds": time.perf_counter() - started, "stderr": stderr[-4000:],
+                         "oom_killed": run.oom_killed}
+
+
+def incumbents(records):
+    """The improving solutions a runner reported during an optimisation search, as [seconds, objective]: its
+    `incumbent` records (seconds since the search started), in order. They are evidence for an anytime
+    measure, never a result: the evaluator checks their shape and otherwise ignores them."""
+    found = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "incumbent":
+            continue
+        objective, seconds = x.get("objective"), x.get("seconds")
+        if (not isinstance(objective, int) or isinstance(objective, bool) or not isinstance(seconds, (int, float))
+                or isinstance(seconds, bool) or seconds < 0 or (found and seconds < found[-1][0])):
+            raise EvaluationError("invalid_output", "An incumbent record needs an integer objective and "
+                                                    "nondecreasing seconds since the search started")
+        found.append([seconds, objective])
+    return found
+
+
+# From this protocol version on, every solution record of an optimisation carries its objective.
+OBJECTIVE_PROTOCOL = 2
+
+
+def check_objectives(records, optimum, protocol_version=1):
+    """The objective values a runner reported for an optimisation whose solutions the reference accepted as
+    optimal: each must be the problem's own value, so the optimum, as the reference states it. A model whose
+    objective is scaled, offset or negated, or a runner that passes on the solver's internal value (a MaxSAT
+    cost, a negated maximisation), fails here. The improving solutions must improve and end at that optimum.
+    Returns the objectives reported with the solutions (None where a runner before OBJECTIVE_PROTOCOL gave none)."""
+    reported = []
+    for x in records:
+        if not isinstance(x, dict) or x.get("type") != "solution":
+            continue
+        value = x.get("objective")
+        if value is None and protocol_version < OBJECTIVE_PROTOCOL:
+            reported.append(None)
+            continue
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise EvaluationError("invalid_output", "A solution record of an optimisation needs its integer objective")
+        if value != optimum:
+            raise EvaluationError("objective_mismatch", f"The runner reported objective {value} for a solution the "
+                                  f"reference accepts as optimal, whose objective is {optimum}: the model's objective "
+                                  "must be the problem's own value, without scaling, offset or change of sign")
+        reported.append(value)
+    found = [objective for _, objective in incumbents(records)]
+    if found:
+        falling, rising = (all(b < a for a, b in zip(found, found[1:])), all(b > a for a, b in zip(found, found[1:])))
+        if found[-1] != optimum or not (falling or rising):
+            raise EvaluationError("objective_mismatch", f"The improving solutions reported {found[:3]}"
+                                  f"{' ... ' + str(found[-1]) if len(found) > 3 else ''}; they must improve and end "
+                                  f"at the optimum, {optimum}, in the problem's own objective")
+    return reported
 
 
 def validate_records(records):
     if not records or not all(isinstance(x, dict) for x in records):
+        raise EvaluationError("invalid_output", "Expected runner JSON records")
+    incumbents(records)  # their shape; they may come anywhere before the status
+    records = [x for x in records if x.get("type") != "incumbent"]
+    if not records:
         raise EvaluationError("invalid_output", "Expected runner JSON records")
     if records[-1].get("type") != "status" or any(x.get("type") != "solution" for x in records[:-1]):
         raise EvaluationError("invalid_output", "Expected solution records followed by exactly one status")

@@ -46,10 +46,12 @@ def create_model(instance):
     # The total population covered: the populations of the covered regions added up.
     total_population_covered = sum_expr(population[r] * covered[r] for r in range(num_regions))
 
+    # The objective in the problem's terms: the total population covered; the solver minimises
+    # the population left uncovered, its complement to the whole population.
     return m, {
         "build_tower": build_tower,
         "total_population_covered": total_population_covered,
-    }
+    }, total_population_covered
 
 
 if __name__ == "__main__":
@@ -59,11 +61,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

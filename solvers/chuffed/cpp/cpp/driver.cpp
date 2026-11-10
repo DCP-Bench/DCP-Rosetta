@@ -90,11 +90,13 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
   try {
     g_fd = fd;
     std::atexit(OnExit);
+    int protocol = dup(1);  // the protocol stream, kept for incumbent records
     dup2(2, 1);  // anything Chuffed prints to stdout must not reach the protocol
     json outputs;
     auto building = std::chrono::steady_clock::now();
     Build(request.at("instance"), outputs);
-    double build_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - building).count();
+    auto search_start = std::chrono::steady_clock::now();
+    double build_seconds = std::chrono::duration<double>(search_start - building).count();
     if (!outputs.is_object() || outputs.empty()) throw std::runtime_error("Expected output dictionary");
     std::set<int> used;
     Collect(outputs, used);
@@ -132,6 +134,15 @@ void Child(int fd, const json& request, int phase, long long best, int limit, do
       json line = {{"values", Read(outputs)}};
       if (objective != nullptr) line["objective"] = objective->getVal();
       WriteLine(fd, line);
+      // An improving solution of the phase-1 branch and bound (anytime evidence, not a result): written straight
+      // to the protocol stream, unbuffered, with the seconds since this child's search started. The parent
+      // prints nothing while a child runs.
+      if (phase == 1 && has_objective && protocol >= 0) {
+        double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - search_start).count();
+        std::string text = json({{"type", "incumbent"}, {"objective", objective->getVal()}, {"seconds", elapsed}}).dump() + "\n";
+        ssize_t ignored = write(protocol, text.data(), text.size());  // one short line: a single atomic write
+        (void)ignored;
+      }
     });
     DriverProblem problem;
     engine.solve(&problem);
@@ -242,8 +253,13 @@ void Status(const std::string& status, double seconds, const std::string& detail
                      {"detail", detail}}).dump() << std::endl;
 }
 
-void Solution(const json& values) {
-  std::cout << json({{"type", "solution"}, {"values", values}}).dump() << std::endl;
+// A solution; for an optimisation with its objective, the proven optimum: the value of the model's objective
+// variable (engine.opt_var) on the solution, the problem's own value (Chuffed neither scales nor negates the
+// variable, also for OPT_MAX).
+void Solution(const json& values, const long long* objective = nullptr) {
+  json record = {{"type", "solution"}, {"values", values}};
+  if (objective != nullptr) record["objective"] = *objective;
+  std::cout << record.dump() << std::endl;
 }
 }  // namespace
 
@@ -291,7 +307,7 @@ int main() {
     if (first.values.empty()) { Status("unsat", seconds()); return 0; }
     json optimum = first.values.back();
     long long best = first.objectives.back();
-    Solution(optimum);
+    Solution(optimum, &best);
     if (limit == 1) { Status("limit", seconds()); return 0; }
 
     Phase second = RunPhase(request, 2, best, limit, deadline);
@@ -301,7 +317,7 @@ int main() {
     for (const auto& values : second.values) {
       if (count >= limit) break;
       if (!seen.insert(values.dump()).second) continue;
-      Solution(values);
+      Solution(values, &best);
       ++count;
     }
     if (count >= limit) Status("limit", seconds());

@@ -40,7 +40,9 @@ def create_model(instance):
     # Minimise how far the total score is from the target score.
     m.obj += deviation
 
-    return m, {"hits": hits}
+    # The objective in the problem's terms: the distance of the total score from the target
+    # score, the deviation minimised above (equal to that distance at an optimum).
+    return m, {"hits": hits}, deviation
 
 
 if __name__ == "__main__":
@@ -50,11 +52,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

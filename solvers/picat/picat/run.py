@@ -5,7 +5,8 @@ solve it, so the solving side lives in `driver.pi` next to this file and runs in
 a separate `picat` process. This module owns that process: it turns the JSON
 instance into a Picat term, starts the driver, keeps it inside the execution
 budget, and turns what the driver recorded into the runner protocol, emitting
-exactly one status whatever the driver did.
+exactly one status whatever the driver did. The incumbents of an optimisation
+search are relayed while the driver runs; its solutions and status once it stops.
 
 The driver writes its records to a file rather than to standard output, so that
 anything the submission or Picat prints is relayed to stderr as a log and never
@@ -34,6 +35,8 @@ STATUSES = ("complete", "limit", "timeout", "unsat", "error", "unsupported")
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # The driver's own phase timings (benchmarking), relayed with its status.
 TIMING = ("build_seconds", "read_seconds", "main_seconds")
+# How often the runner looks for incumbents the driver has recorded while it searches.
+POLL_SECONDS = 0.1
 
 
 def atom(text):
@@ -85,6 +88,19 @@ def term(value):
     raise ValueError(f"Instance value of type {type(value).__name__} is not JSON")
 
 
+def relay_incumbents(recorded):
+    """Emit the incumbent records the driver has completed since the last call, as it finds them, so a run
+    cut off at its limit keeps them; everything else it records is relayed once it has stopped."""
+    while True:
+        position = recorded.tell()
+        line = recorded.readline()
+        if not line.endswith(b"\n"):
+            recorded.seek(position)  # not yet complete: read again next time
+            return
+        if b'"type":"incumbent"' in line:
+            emit(strict_loads(line.decode("utf-8")))
+
+
 def run_driver(request, workdir):
     """Run the driver and return (records, killed, stderr text)."""
     request_file = workdir / "request.txt"
@@ -96,14 +112,22 @@ def run_driver(request, workdir):
     budget = max(0.5, request["execution_timeout"] - MARGIN_SECONDS)
     killed = False
     with tempfile.TemporaryFile("w+") as log:
+        deadline = time.monotonic() + budget
         driver = subprocess.Popen([PICAT, DRIVER, str(request_file), str(record_file)],
                                   stdin=subprocess.DEVNULL, stdout=log, stderr=log, cwd=workdir)
-        try:
-            driver.wait(timeout=budget)
-        except subprocess.TimeoutExpired:
-            driver.kill()
-            driver.wait()
-            killed = True
+        with record_file.open("rb") as recorded:
+            while True:
+                try:
+                    driver.wait(timeout=max(0.0, min(POLL_SECONDS, deadline - time.monotonic())))
+                    break
+                except subprocess.TimeoutExpired:
+                    relay_incumbents(recorded)
+                    if time.monotonic() >= deadline:
+                        driver.kill()
+                        driver.wait()
+                        killed = True
+                        break
+            relay_incumbents(recorded)
         log.seek(0)
         output = log.read()
     lines = [line for line in record_file.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -134,7 +158,9 @@ def relay(records, killed, solution_limit, output, returncode):
     if statuses and (len(statuses) != 1 or statuses[0] is not records[-1]):
         return finish("error", "The driver did not end with exactly one status record")
     for record in solutions:
-        emit({"type": "solution", "values": record["values"]})
+        # An optimisation's objective, which the driver reads from its objective variable.
+        extra = {"objective": record["objective"]} if "objective" in record else {}
+        emit({"type": "solution", "values": record["values"], **extra})
     if killed:
         return finish("timeout", "The execution budget ran out")
     if not statuses:

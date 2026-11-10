@@ -39,6 +39,14 @@ integer (`0`/`1` for a Boolean).
 Set it on the model: `model.minimize(expr)` or `model.maximize(expr)`, with an integer
 linear expression. No objective for a satisfaction problem.
 
+The objective is the problem's own value: do not scale, offset or negate it. Each
+solution record carries it as `objective`. CP-SAT stores an objective as integer terms
+plus an offset and a scaling factor, and a maximisation with its terms and offset negated
+and a factor of -1; the runner computes `scaling_factor * (terms + offset)` exactly from
+the solution's values, which is the expression given to `minimize`/`maximize`, constant
+included. Solutions enumerated at the optimum carry the same value. No improving
+solutions are reported.
+
 ## Solving
 
 - Every solve uses a fresh `CpSolver` with `num_search_workers = 1`,

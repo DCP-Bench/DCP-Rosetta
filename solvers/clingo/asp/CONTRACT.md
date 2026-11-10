@@ -62,9 +62,15 @@ the usual form, but extra shown predicates do no harm.
 
 ## Objective
 
-Use clingo's own `#minimize { ... }.` or `#maximize { ... }.` (integer weights, any
-priority levels). See [Solving](#solving) for how the runner reaches and enumerates the
-optimum.
+Use clingo's own `#minimize { ... }.` or `#maximize { ... }.` (integer weights), at **one
+priority level** and in **one direction**: all `#minimize` (or weak constraints), or all
+`#maximize`. Its sum is the problem's own objective, constant included (a constant is an
+element of its own, `3,offset`). The runner reports that sum on every solution and incumbent:
+clingo minimises and stores a `#maximize`'s sum as the negated cost, so the runner negates it
+back (it tells the direction by parsing the program twice, `objective_sign` in
+[run.py](run.py)). A program with several priority levels, or mixing `#minimize` and
+`#maximize`, has no single objective value to report and ends as `error`. See
+[Solving](#solving) for how the runner reaches and enumerates the optimum.
 
 ## Solving
 
@@ -73,6 +79,8 @@ optimum.
   and makes one asynchronous `solve` call.
 - With an objective, models whose `optimality_proven` is false are skipped; only proven
   optimal models are reported. Without one, every answer set is a candidate.
+- Each strictly cheaper model is reported as it is found as an `incumbent` record (`seconds` from
+  right after grounding), with the objective in the problem's terms (cost, or -cost for `#maximize`).
 - Nothing is added to the program between models: clingo enumerates answer sets itself,
   and the runner drops a model whose declared outputs repeat ones already reported
   (other shown atoms and hidden atoms do not count). It stops at `limit` once enough

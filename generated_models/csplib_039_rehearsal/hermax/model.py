@@ -18,6 +18,7 @@ def create_model(instance):
     total = sum(duration)                  # the length of the rehearsal when every piece is played once
 
     m = Model()
+    waiting = []  # waiting[k]: the waiting time of one player who plays in some piece
 
     # at[s][j] is true when piece j is rehearsed in slot s
     at = m.bool_matrix("at", num_pieces, num_pieces)
@@ -65,9 +66,13 @@ def create_model(instance):
 
         # Objective, for player p: the time present (from arrival to leaving) less the time
         # spent playing. Minimising the sum over players minimises the total waiting time.
-        m.obj += leave - arrive - sum(duration[j] for j in pieces)
+        player_wait = leave - arrive - sum(duration[j] for j in pieces)
+        m.obj += player_wait
+        waiting.append(player_wait)
 
-    return m, {"rehearsal_order": rehearsal_order}
+    # The objective in the problem's terms: the total waiting time of all players, the sum of
+    # the per-player costs minimised above.
+    return m, {"rehearsal_order": rehearsal_order}, sum(waiting)
 
 
 if __name__ == "__main__":
@@ -77,11 +82,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -38,6 +38,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 GOOD = ("from pychoco.model import Model\n"
         "def build(instance):\n"
@@ -57,6 +62,13 @@ OPTIMAL = ("from pychoco.model import Model\n"
            "    model.arithm(x, '+', y, '>=', n).post()\n"
            "    model.scalar([x, y], [1, 1], '=', total).post()\n"
            "    return model, {'x': x, 'y': y}, {'objective': total, 'maximize': DIRECTION}\n")
+# The objective variable fixed to 3 + x + y (maximised) and to x - y - 3 (minimised), for objective_values.
+CONSTANT_OPTIMAL = (OPTIMAL.replace("intvar(0, 2 * n, name='total')", "intvar(-10, 10, name='total')")
+                    .replace("scalar([x, y], [1, 1], '=', total)", "scalar([x, y, total], [1, 1, -1], '=', -3)")
+                    .replace("DIRECTION", "True"))
+NEGATIVE_OPTIMAL = (OPTIMAL.replace("intvar(0, 2 * n, name='total')", "intvar(-10, 10, name='total')")
+                    .replace("scalar([x, y], [1, 1], '=', total)", "scalar([x, y, total], [1, -1, -1], '=', 3)")
+                    .replace("DIRECTION", "False"))
 # Two distinct solutions that share their declared outputs: the runner must
 # report one of them, not two, because enumeration counts declared outputs.
 DUPLICATES = ("from pychoco.model import Model\n"
@@ -125,6 +137,15 @@ def main():
         check("changed_instances", GOOD, instances=[{"n": 3, "optimize": False}], instance_count=2)
         check("minimization", OPTIMAL.replace("DIRECTION", "False"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "True"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
+        # Each solve() of the branch and bound is reported: strictly better, ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", OPTIMAL.replace("DIRECTION", "False"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "True"), reference=MAXIMIZING),
+            minimize=False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

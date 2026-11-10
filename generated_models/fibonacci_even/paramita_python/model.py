@@ -1,41 +1,74 @@
-from paramita.modelling import Bool, Iff
+# fibonacci_even: a Paramita (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/fibonacci_even.html
+# Install Paramita with its CaDiCaL solver (the build needs Linux, git, cmake
+# and a C++ compiler) and run the model:
+#   pip install paramita numpy
+#   paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+#   python fibonacci_even.py
 
-# Fibonacci even: the sequence 1, 2, 3, 5, 8, ... (each new term is the sum of the
-# previous two); the answer is the sum of its even-valued terms that do not
-# exceed four million. The instance has no fields; the problem fixes the bound.
-
-BITS = 22  # every term up to the 32nd (3524578) fits in 22 bits
-LIMIT = 4_000_000  # problem bound: "do not exceed four million"
-N = 32  # horizon: F_33 = 5702887 > LIMIT, and the terms grow from the third term on,
-        # so the first 32 terms contain every term that does not exceed LIMIT
+from paramita.containers import CnfFormula
+from paramita.modelling import Bool, DimacsVariablePool, Iff, add_to_container, to_cnf
 
 
-def build(instance):
-    # each term t_i is a binary integer: sum of 2**k * bit[i][k]
-    t = [[Bool(f"t_{i}_{k}") for k in range(BITS)] for i in range(N)]
+def create_model(instance):
+    """Each new term in the Fibonacci sequence is the sum of the previous two.
+    Starting from 1 and 2, find the sum of the even-valued terms that do not
+    exceed four million."""
+    n_terms = 32  # the first 32 terms include every term that does not exceed four million
+    n_bits = 22   # every term used fits in 22 bits, since the largest, 3524578, is below 2**22
 
-    def val(i):
-        return sum(2**k * t[i][k] for k in range(BITS))
+    # bits[i][k] is bit k of term i, where bit 0 is the lowest and counts 1
+    bits = [[Bool(f"term_{i}_bit_{k}") for k in range(n_bits)] for i in range(n_terms)]
 
-    cons = []
-    # the sequence starts with 1 and 2
-    cons.append(val(0) == 1)
-    cons.append(val(1) == 2)
-    # each new term is the sum of the previous two terms
-    for i in range(N - 2):
-        cons.append(val(i + 2) == val(i) + val(i + 1))
+    # term(i) is the value of term i, read from its bits
+    def term(i):
+        return sum(2**k * bits[i][k] for k in range(n_bits))
 
-    # a term is even when its lowest bit is 0; an even term contributes its
-    # higher bits: g[i][k] <-> bit k of term i is set and term i is even
+    # The sequence starts with 1 and 2.
+    constraints = [term(0) == 1, term(1) == 2]
+
+    # Each later term is the sum of the two terms before it.
+    for i in range(n_terms - 2):
+        constraints.append(term(i + 2) == term(i) + term(i + 1))
+
+    # A term is even when its lowest bit is not set. even_bits[i][k] is true when
+    # term i is even and bit k of term i is set. The even terms are the sum of these bits.
     contributions = []
-    for i in range(N):
-        for k in range(1, BITS):
-            g = Bool(f"even_{i}_{k}")
-            cons.append(Iff(g, t[i][k] & ~t[i][0]))
-            contributions.append(2**k * g)
+    for i in range(n_terms):
+        for k in range(1, n_bits):
+            even_bit = Bool(f"even_{i}_bit_{k}")
+            constraints.append(Iff(even_bit, bits[i][k] & ~bits[i][0]))
+            contributions.append(2**k * even_bit)
 
-    # res: the sum of the even-valued terms (all of them are within the bound,
-    # because the horizon covers exactly the terms that do not exceed LIMIT)
+    # res is the sum of the even-valued terms.
     res = sum(contributions)
 
-    return cons, {"res": res}
+    # Encode the constraints into a formula of clauses. The pool gives each Bool its number
+    # in the clauses.
+    formula = CnfFormula()
+    pool = DimacsVariablePool()
+    for constraint in constraints:
+        add_to_container(constraint, to_cnf, formula, pool)
+
+    return (formula, pool), {"res": res}
+
+
+if __name__ == "__main__":
+    import numpy as np
+    from paramita.modelling import evaluate
+    from paramita.solvers import SatSolver
+
+    (formula, pool), outputs = create_model({})
+
+    solver = SatSolver.from_name("Cadical300")
+    # copy the formula into the solver
+    solver.add_clauses(formula.clauses())
+
+    if solver.solve():
+        # the value of every variable by name: a literal is true when it is positive
+        truth = {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()}
+        value = np.vectorize(lambda e: evaluate(e, truth))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution")

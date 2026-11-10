@@ -49,6 +49,11 @@ print(json.dumps(solution))
 '''
 OPTIMIZING = REFERENCE.replace("optimize = False", "optimize = True")
 MAXIMIZING = OPTIMIZING.replace("model.minimize", "model.maximize")
+# objective_values: every objective the runner reports is the problem's own value. A maximisation whose
+# objective has a constant term (which a solver may drop, or negate with the objective) and a minimisation
+# with a negative optimum; accepted means the runner reported exactly the reference's optimum, 7 and -5.
+CONSTANT_MAXIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.maximize(3 + x + y)")
+NEGATIVE_MINIMUM = OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(x - y - 3)")
 
 HEAD = '''from exact import Exact
 
@@ -66,11 +71,16 @@ GOOD = HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n, True, n)\
 OPTIMAL = (HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n)\n'
            '    return solver, {"x": "x", "y": "y"}, ("DIRECTION", [(1, "x"), (1, "y")])\n')
 # The objective set on the solver inside create_model, as Exact's own examples do. The
-# runner records it; the offset must not shift the optimum it pins.
+# runner records it; the offset must not shift the optimum it pins, and is part of the objective's value.
 ON_SOLVER = (HEAD.replace("def build", "def create_model")
              + '    solver.addConstraint([(1, "x"), (1, "y")], True, n)\n'
              '    solver.setObjective([(1, "x"), (1, "y")], minimize=MINIMIZE, offset=5)\n'
              + EXPORT)
+# The objective with an offset, which is part of the problem's objective value: 3 + x + y maximised and
+# x - y - 3 minimised, for objective_values.
+CONSTANT_OPTIMAL = ON_SOLVER.replace("minimize=MINIMIZE, offset=5", "minimize=False, offset=3")
+NEGATIVE_OPTIMAL = ON_SOLVER.replace('[(1, "x"), (1, "y")], minimize=MINIMIZE, offset=5',
+                                     '[(1, "x"), (-1, "y")], minimize=True, offset=-3')
 # Solves, then corrupts the protocol stream the runner owns.
 MALFORMED = (HEAD + '    solver.addConstraint([(1, "x"), (1, "y")], True, n, True, n)\n'
              "    import os\n"
@@ -174,8 +184,13 @@ def main():
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING)
         check("maximization", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING)
-        check("objective_on_solver_min", ON_SOLVER.replace("MINIMIZE", "True"), reference=OPTIMIZING)
-        check("objective_on_solver_max", ON_SOLVER.replace("MINIMIZE", "False"), reference=MAXIMIZING)
+        results["objective_values"] = all(
+            check("objective_values", source, reference=reference)["accepted"]
+            for source, reference in ((CONSTANT_OPTIMAL, CONSTANT_MAXIMUM), (NEGATIVE_OPTIMAL, NEGATIVE_MINIMUM)))
+        check("objective_on_solver_min", ON_SOLVER.replace("MINIMIZE", "True"),
+              reference=OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(5 + x + y)"))
+        check("objective_on_solver_max", ON_SOLVER.replace("MINIMIZE", "False"),
+              reference=MAXIMIZING.replace("model.maximize(x + y)", "model.maximize(5 + x + y)"))
         check("native_api", NATIVE)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})

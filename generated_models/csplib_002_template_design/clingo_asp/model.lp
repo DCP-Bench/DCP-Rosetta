@@ -40,8 +40,8 @@ items_ge(T,I,X) :- layout(T,I,K), K >= 1, demand(I,D), X = K+1..D, printed_ge(T,
 % must carry at least the total demand, n_slots * sheets >= total demand.
 :- n_slots(S), total_demand(DT), #sum { S,T : template(T) ; S,T,P : printed_ge(T,P) } < DT.
 
-% Minimise the number of printed sheets (every template has its first sheet, so count the extra ones).
-#minimize { 1,T,P : printed_ge(T,P) }.
+% Minimise the number of printed sheets: every template has its first sheet, and each printed_ge atom is one more.
+#minimize { 1,T,first : template(T) ; 1,T,P : printed_ge(T,P) }.
 
 #show production/2.
 #show layout/3.

@@ -36,7 +36,10 @@ def create_model(instance):
     for i in range(n_shifts):
         formula.append([-x[i]], weight=1)
 
-    return formula, {"x": x}
+    # The objective in the problem's terms: the number of shifts chosen (as RC2's cost).
+    objective = [(1, xi) for xi in x]
+
+    return formula, {"x": x}, objective
 
 
 if __name__ == "__main__":
@@ -48,7 +51,7 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    formula, outputs = create_model(instances[index])
+    formula, outputs, objective = create_model(instances[index])
 
     # falsify as little soft-clause weight as possible
     model = RC2Stratified(formula).compute()

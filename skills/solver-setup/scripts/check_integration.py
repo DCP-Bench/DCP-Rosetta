@@ -21,7 +21,7 @@ import sys
 
 REQUIRED_KEYS = {"id", "name", "language", "framework", "solver", "paradigms", "image",
                  "extension", "enumeration", "protocol_version"}
-OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level"}
+OPTIONAL_KEYS = {"optimization", "compilation", "instance_binding", "readiness_level", "licence"}
 BINDINGS = {"any", "rectangular_uniform", "reshaped"}
 FILES = ("metadata.json", "Dockerfile", "run.py", "readiness_test.py")
 
@@ -75,6 +75,10 @@ def check_metadata(root, solver_id, metadata):
     if "instance_binding" in metadata:
         check("metadata: instance_binding value", metadata["instance_binding"] in BINDINGS,
               f"one of {sorted(BINDINGS)}")
+    if "licence" in metadata:
+        from evaluation.licences import problems
+        found = problems(metadata["licence"])
+        check("metadata: licence declaration", not found, "; ".join(found))
 
     others = {}
     from evaluation.execution import integration_folders
@@ -84,10 +88,10 @@ def check_metadata(root, solver_id, metadata):
                 others[other] = json.loads((folder / "metadata.json").read_text(encoding="utf-8"))
             except ValueError:
                 pass
-    versions = {item.get("protocol_version") for item in others.values()}
-    check("metadata: protocol_version matches the others",
-          not versions or metadata.get("protocol_version") in versions,
-          f"{metadata.get('protocol_version')!r}, others use {sorted(versions, key=str)}")
+    # 2: an optimisation's solution records carry their objective (evaluation/README.md). Integrations at 1
+    # predate it and are upgraded as they are re-certified; a new one starts at 2.
+    check("metadata: protocol_version is 1 or 2 (2 for a new integration)",
+          metadata.get("protocol_version") in (1, 2), f"{metadata.get('protocol_version')!r}")
     clash = [other for other, item in others.items() if item.get("name") == metadata.get("name")]
     check("metadata: name is distinct", not clash, f"shared with {clash}")
     clash = [other for other, item in others.items() if item.get("image") == metadata.get("image")]
@@ -123,6 +127,11 @@ def check_dockerfile(relative, folder):
     check("Dockerfile: copies its run.py", f"{relative}/run.py" in text,
           f"COPY {relative}/run.py into the image")
     check("Dockerfile: has an ENTRYPOINT", re.search(r"^\s*ENTRYPOINT\s", text, re.M | re.I) is not None)
+    # A licence is bound at run time (evaluation.licences), never built into an image.
+    check("Dockerfile: no build secrets", "type=secret" not in text,
+          "declare the licence in metadata.json instead; an image must hold no licence")
+    keys = re.findall(r"\S*(?:licen[cs]e\.dat|\.lic\b|licen[cs]e[_-]?key)\S*", text, re.I)
+    check("Dockerfile: copies in no licence file", not keys, f"{keys}: declare the licence in metadata.json")
     sources = []
     for line in re.findall(r"^\s*(?:COPY|ADD)\s+(.+)$", text, re.M | re.I):
         if "--from=" in line:  # a later build stage, not the build context

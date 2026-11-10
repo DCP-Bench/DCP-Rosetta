@@ -52,9 +52,11 @@ def create_model(instance):
                 m &= (neighbours != 3)
 
     # Maximise the number of live cells: minimise the negated count.
-    m.obj += -sum(grid[i][j] for i in range(rows) for j in range(cols))
+    live = sum(grid[i][j] for i in range(rows) for j in range(cols))
+    m.obj += -live
 
-    return m, {"grid": grid}
+    # The objective in the problem's terms: the number of live cells, whose negation the solver minimises.
+    return m, {"grid": grid}, live
 
 
 if __name__ == "__main__":
@@ -64,11 +66,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

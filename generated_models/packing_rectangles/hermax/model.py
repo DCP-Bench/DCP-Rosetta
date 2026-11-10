@@ -59,7 +59,8 @@ def create_model(instance):
     # Minimise the area of the enclosing rectangle.
     m.obj += area
 
-    return m, {"pos_x": pos_x, "pos_y": pos_y, "total_x": total_x, "total_y": total_y}
+    # The objective in the problem's terms: the area of the enclosing rectangle, the cost minimised above.
+    return m, {"pos_x": pos_x, "pos_y": pos_y, "total_x": total_x, "total_y": total_y}, area
 
 
 if __name__ == "__main__":
@@ -69,11 +70,12 @@ if __name__ == "__main__":
     instances = json.load(open(sys.argv[1]))
     index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    model, outputs = create_model(instances[index])
+    model, outputs, objective = create_model(instances[index])
     result = model.solve()
 
     if result.ok:  # optimum, sat, or a best solution found before a time limit
         for name, output in outputs.items():
             print(name, "=", result[output])
+        print("objective =", result[objective])
     else:
         print("No solution:", result.status)

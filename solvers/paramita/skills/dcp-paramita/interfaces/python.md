@@ -9,27 +9,30 @@ Encodings and modelling advice: [references/python/modelling.md](../references/p
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install paramita
-python3 -c "import importlib.metadata as m; print('paramita', m.version('paramita'))"
+paramita plugins build cmake '#sat-solvers/cadical-3.0.0'
+paramita plugins build cmake '#maxsat-solvers/mse22-EvalMaxSAT2022'
 ```
 
-The solver plugins are not in the wheel. Build them from
-[paramita-plugins](https://codeberg.org/paramita/paramita-plugins) at commit
-`a9c15a0bbaca86e89eaa1cff5d4d62a4218596cb` (tested), into the install prefix paramita
-searches ([plugin docs](https://ulog.udl.cat/static/doc/paramita/)):
+The solver plugins are not in the wheel. Each `paramita plugins build` fetches
+[paramita-plugins](https://codeberg.org/paramita/paramita-plugins), builds one plugin and
+installs it where paramita looks by default (`~/.local/share/paramita/plugins`). It needs
+Linux, git, cmake and a C++ compiler; EvalMaxSAT also needs zlib. Satisfaction needs only
+CaDiCaL, optimisation only EvalMaxSAT. The pblib encoders
+(`'#pb-to-cnf-encoders/pblib'`) are optional: paramita encodes pseudo-Boolean constraints
+without them.
+
+To build the exact versions tested here, check out commit
+`a9c15a0bbaca86e89eaa1cff5d4d62a4218596cb` of paramita-plugins and build from it:
 
 ```bash
 git clone https://codeberg.org/paramita/paramita-plugins && git -C paramita-plugins checkout a9c15a0bbaca86e89eaa1cff5d4d62a4218596cb
-P="$PWD/paramita-plugins"; PREFIX="$HOME/.local/paramita"
-paramita plugins build cmake -j 4 -i "$PREFIX" "file://$P#sat-solvers/cadical-3.0.0"
-paramita plugins build cmake -j 4 -i "$PREFIX" "file://$P#maxsat-solvers/mse22-EvalMaxSAT2022"
-paramita plugins build cmake -j 4 -i "$PREFIX" "file://$P#pb-to-cnf-encoders/pblib"
+P="$PWD/paramita-plugins"
+paramita plugins build cmake -j 4 "file://$P#sat-solvers/cadical-3.0.0"
+paramita plugins build cmake -j 4 "file://$P#maxsat-solvers/mse22-EvalMaxSAT2022"
 ```
 
-The pysat encoders (`file://$P#pb-to-cnf-encoders/pysat`) are optional and are not used
-below. They build a `libpairwise.so` of the same name as pblib's, so install them to a
-second search path. If the
-EvalMaxSAT build fails while configuring, its `FindZLIB.cmake` is downloading zlib from
-zlib.net; use a system zlib or the zlib 1.3.2 GitHub release (SHA-256
+If the EvalMaxSAT build fails while configuring, its `FindZLIB.cmake` is downloading zlib
+from zlib.net; use a system zlib or the zlib 1.3.2 GitHub release (SHA-256
 `bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16`).
 
 Verify: `SatSolver.from_name("Cadical300")` and `MaxSatSolver.from_name("EvalMaxSAT2022")`
@@ -131,6 +134,12 @@ returns the objective's constant part; the optimum is `constant + ms.benefit()`.
 minimise, pass the negated objective and negate the result. `subject_to` must be one
 expression: wrap a list with `And(list)`. `ms.solve()` returns `MAXSAT_ANSWER.OPTIMAL`,
 `SATISFIABLE`, `UNSATISFIABLE` or `UNKNOWN`; only `OPTIMAL` is a proven result.
+
+**The objective's value is the problem's own, not `ms.benefit()`.** The benefit misses
+the constant, and is negated for a minimisation. Keep the problem's objective as its own
+expression, in its own direction, and evaluate it on the model to report the value:
+`evaluate(objective, truth)` (32-bit; sum the terms in Python for wider values). For a
+minimised makespan, `add_to_weighted_container(-makespan, ...)` and report `makespan`.
 See [knapsack-max](../assets/python/knapsack-max/README.md) and
 [colouring-json](../assets/python/colouring-json/README.md).
 
@@ -147,6 +156,65 @@ finished is a timeout, not a result.
 Bools segfaults on the default 8 MB stack (2000 was fine). Run under `ulimit -s unlimited`
 (or a larger stack), or split the sum into smaller ones.
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is true when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- the plainest expression that says it (`sum(w * xi for w, xi in zip(weights, x)) <= capacity`),
+  and variables kept as lists or nested lists so they print as a whole.
+
+Build the model in one function that encodes it into a formula, as a CNF or WCNF file
+holds a problem: a `CnfFormula` for a satisfaction problem, or a `WcnfFormula` whose hard
+clauses are the constraints and whose soft clauses are the objective (maximised; negate
+an objective to minimise it). Return the formula with the pool that numbered its Bools,
+the variables to print and, for an optimisation, the objective in the problem's own terms
+and direction (the expression whose value is reported, above), with a comment. For example:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    # x[i] is true when the hiker packs item i
+    x = [Bool(f"x_{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    fits = sum(w * xi for w, xi in zip(weights, x)) <= capacity
+
+    # Pack the most valuable selection.
+    packed_value = sum(v * xi for v, xi in zip(values, x))
+
+    # Encode into a weighted formula: the constraint as hard clauses, the value to maximise
+    # as soft clauses. The pool gives each Bool its number in the clauses.
+    formula = WcnfFormula()
+    pool = DimacsVariablePool()
+    add_to_weighted_container(packed_value, fits, to_cnf, formula, pool)
+
+    # The objective in the problem's terms: the packed value, maximised.
+    return (formula, pool), {"x": x}, packed_value
+```
+
+A satisfaction model adds its constraints one by one with
+`add_to_container(constraint, to_cnf, formula, pool)`. Every Bool that is printed must
+appear in some constraint, or the solver's model has no value for it.
+
+To solve, copy the formula into a solver; paramita has no call that loads a formula
+object into one. For a `CnfFormula`, `solver.add_clauses(formula.clauses())` on a
+`SatSolver`; for a `WcnfFormula`, `add_clauses(formula.hard_clauses())` and then
+`add_clause(clause, weight)` for each of `formula.soft_clauses()` on a `MaxSatSolver`.
+Read each output with
+`evaluate(e, {pool.decode_literal(abs(lit)).name: lit > 0 for lit in solver.model()})`; it
+gives a Boolean for a Bool and an integer for a sum, and `numpy.vectorize` applies it to a
+nested list in one call.
+
 ## Common issues
 
 | Problem | Likely cause | Fix |
@@ -158,6 +226,6 @@ Bools segfaults on the default 8 MB stack (2000 was fine). Run under `ulimit -s 
 | A constraint silently forces a Bool false, e.g. `If(a, sum([]) >= 1)` makes `a` false | `sum([]) >= 1` is Python `False`, and `If` with a Python bool on one side is not a dropped constraint | build the constraint only when the list is non-empty |
 | A unary chain gives too small a value (e.g. a makespan of 0) | an end time that is always at least `t` (end >= t with `t` at most the duration) was left out of the clauses instead of asserted | assert such a fact as a unit clause (`m[t]`, `s[b][t]`), not as an `If` with a constant |
 | `SyntaxError` at the top of the file | a comment such as `# ... encoding: ...` in lines 1-2 is a Python coding declaration | move encoding notes below line 2 |
-| Optimum or direction looks wrong | objective not negated for a minimise, or the constant part not added | `optimum = constant + ms.benefit()`; negate for minimise |
+| Optimum or direction looks wrong | objective not negated for a minimise, or the constant part not added | `optimum = constant + ms.benefit()`; negate for minimise; or evaluate the objective expression on the model |
 
 Solver-level issues are in [SKILL.md](../SKILL.md#common-issues).

@@ -1,7 +1,8 @@
 """Runner protocol for the pysat integration. Runs inside the image only.
 
 A submission defines `create_model(instance)` (`build` in models retained earlier)
-returning `(formula, outputs)`, where `outputs` maps each declared output name to a literal, a
+returning `(formula, outputs)`, or `(formula, outputs, objective)` for an optimisation,
+where `outputs` maps each declared output name to a literal, a
 `pysat.integer.Integer`, a `pysat.integer.LinearExpr` over Integers, a plain
 bool, or nested lists of those, and `formula` is one of:
 
@@ -17,9 +18,22 @@ bool, or nested lists of those, and `formula` is one of:
 The submission builds the formula with PySAT's own tools: `IDPool` for variable
 identifiers, `CardEnc` and `PBEnc` for cardinality and pseudo-Boolean
 constraints, `IntegerEngine` plus `Integer` for finite-domain variables, and
-`WCNF.append(clause, weight=w)` for soft clauses. An objective returned as a
-third element is refused: it would have to be translated into soft clauses by
-the runner, which is the modelling the submission is there to show.
+`WCNF.append(clause, weight=w)` for soft clauses.
+
+The soft clauses are what RC2 optimises, but their cost is not the problem's
+objective: it lacks the objective's constant, and a maximisation pays its
+shortfall. So an optimisation also returns `objective`, the problem's own
+objective as an expression over the model's variables, in the problem's terms
+and direction: an `Integer`, a `LinearExpr` over Integers, or a list of
+`(coefficient, term)` pairs whose term is a literal (1 when true, negative
+literals included), an
+`Integer`, a `LinearExpr` or a bool (a constant: `(c, True)` adds c). The runner
+evaluates it on every solution and reports it as the solution's `objective`
+(runner protocol 2). It never optimises it: the soft clauses stay the objective
+the solver sees. A WCNF with soft clauses but no objective is refused with an
+error, since the runner cannot report what the problem's objective is. Two
+optima RC2 reports at the same cost must have the same objective value, or the
+expression and the soft clauses disagree and the run ends with an error.
 
 Stratified RC2 (`RC2Stratified`) works through the soft clauses heaviest first.
 On objectives with many distinct weights, which is what a weighted sum gives,
@@ -100,18 +114,75 @@ def load(instance):
         spec.loader.exec_module(module)
         create_model = getattr(module, "create_model", None) or module.build
         result = create_model(instance)
-    if isinstance(result, tuple) and len(result) == 3:
-        raise ValueError("an objective is declared with the soft clauses of a "
-                         "pysat.formula.WCNF, not returned as a third value")
-    if not isinstance(result, tuple) or len(result) != 2:
-        raise ValueError("create_model(instance) must return (formula, outputs)")
-    formula, outputs = result
+    if not isinstance(result, tuple) or len(result) not in (2, 3):
+        raise ValueError("create_model(instance) must return (formula, outputs), or "
+                         "(formula, outputs, objective) for an optimisation")
+    formula, outputs = result[:2]
+    objective = normalise_objective(result[2]) if len(result) == 3 else None
     if not isinstance(formula, (CNF, WCNF)):
         raise ValueError("the first value must be a pysat.formula.CNF, or a "
                          "pysat.formula.WCNF when the problem has an objective")
     if not isinstance(outputs, dict) or not outputs:
         raise ValueError("create_model(instance) must return a nonempty output dictionary")
-    return formula, outputs
+    if isinstance(formula, WCNF) and formula.soft and objective is None:
+        raise ValueError("an optimisation (a WCNF with soft clauses) must return its objective "
+                         "as a third value, (formula, outputs, objective): the problem's own "
+                         "objective as an expression over the model's variables, which the "
+                         "runner reports on each solution; the soft clauses' cost is not it")
+    return formula, outputs, objective
+
+
+def normalise_objective(objective):
+    """The objective as (constant, [(coefficient, term)]), each term a literal,
+    an Integer or a LinearExpr. Refuses anything else before the search starts."""
+    if isinstance(objective, (Integer, LinearExpr)):
+        return 0, [(1, objective)]
+    if not isinstance(objective, (list, tuple)):
+        raise ValueError("the objective must be an Integer, a LinearExpr over Integers, or a list "
+                         f"of (coefficient, term) pairs; got {type(objective).__name__}")
+    constant, terms = 0, []
+    for pair in objective:
+        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+            raise ValueError("each objective term must be a (coefficient, term) pair; got "
+                             f"{pair!r}")
+        coefficient, term = pair
+        if not isinstance(coefficient, int) or isinstance(coefficient, bool):
+            raise ValueError(f"an objective coefficient must be an int; got {coefficient!r}")
+        if isinstance(term, bool):
+            constant += coefficient * term
+        elif isinstance(term, (int, Integer, LinearExpr)):
+            terms.append((coefficient, term))
+        else:
+            raise ValueError("an objective term must be a literal, an Integer, a LinearExpr or "
+                             f"a bool; got {type(term).__name__}")
+    return constant, terms
+
+
+def objective_value(objective, model, truth):
+    """The problem's objective on this assignment (see normalise_objective)."""
+    constant, terms = objective
+    total = constant
+    for coefficient, term in terms:
+        if isinstance(term, Integer):
+            total += coefficient * term.decode(model)
+        elif isinstance(term, LinearExpr):
+            total += coefficient * evaluate(term, model)
+        else:
+            # A literal counts 1 when true; -v is true when variable v is false.
+            total += coefficient * ((term in truth) if term > 0 else (-term not in truth))
+    return total
+
+
+def objective_leaves(objective):
+    """The objective's terms, for sizing the dense model."""
+    return [] if objective is None else [term for _, term in objective[1]]
+
+
+def solution(values, objective, model, truth):
+    record = {"type": "solution", "values": values}
+    if objective is not None:
+        record["objective"] = objective_value(objective, model, truth)
+    return record
 
 
 def leaves(node, found):
@@ -161,7 +232,7 @@ def evaluate(expression, model):
     return int(total)
 
 
-def dense(model, outputs):
+def dense(model, outputs, objective=None):
     """The model as a list indexed by variable, which `Integer.decode` expects.
 
     RC2 returns only the variables that occur in the formula, so a variable an
@@ -169,7 +240,7 @@ def dense(model, outputs):
     Missing variables are false, which is what a solver would be free to pick.
     """
     top = max([abs(lit) for lit in model] + [0])
-    for leaf in leaves(outputs, []):
+    for leaf in leaves(outputs, []) + objective_leaves(objective):
         if isinstance(leaf, Integer):
             top = max(top, leaf.vpool.top)
         elif isinstance(leaf, LinearExpr):
@@ -202,7 +273,7 @@ def blocking_clause(outputs, model, truth):
     return clause
 
 
-def satisfy(formula, outputs, request, started):
+def satisfy(formula, outputs, objective, request, started):
     """Enumerate solutions of a satisfaction problem with Glucose."""
     global BUILD_SECONDS
     if isinstance(formula, WCNF):
@@ -235,13 +306,13 @@ def satisfy(formula, outputs, request, started):
             if not answer:
                 spent = time.monotonic() - started
                 return finish("complete" if emitted else "unsat", solve_seconds=spent)
-            model = dense(solver.get_model(), outputs)
+            model = dense(solver.get_model(), outputs, objective)
             truth = {lit for lit in model if lit > 0}
             values = render(outputs, model, truth)
             key = json.dumps(values, sort_keys=True)
             if key not in seen:
                 seen.add(key)
-                emit({"type": "solution", "values": values})
+                emit(solution(values, objective, model, truth))
                 emitted += 1
                 if emitted >= limit:
                     break
@@ -254,11 +325,14 @@ def satisfy(formula, outputs, request, started):
     finish("limit", solve_seconds=time.monotonic() - started)
 
 
-def optimise(formula, outputs, request, started):
+def optimise(formula, outputs, objective, request, started):
     """Enumerate optimal solutions of a weighted formula with RC2."""
     global BUILD_SECONDS
     limit = request["solution_limit"]
     best = None
+    # The objective value of the first optimum: every later one, at the same cost,
+    # must have it too, or the objective expression and the soft clauses disagree.
+    best_value = None
     emitted = 0
     # Declared outputs already reported; see blocking_clause on LinearExpr.
     seen = set()
@@ -291,13 +365,19 @@ def optimise(formula, outputs, request, started):
             elif rc2.cost > best:
                 # Every remaining answer is worse, so the optimal ones are done.
                 return finish("complete", solve_seconds=spent)
-            model = dense(found, outputs)
+            model = dense(found, outputs, objective)
             truth = {lit for lit in model if lit > 0}
-            values = render(outputs, model, truth)
-            key = json.dumps(values, sort_keys=True)
+            record = solution(render(outputs, model, truth), objective, model, truth)
+            if best_value is None:
+                best_value = record["objective"]
+            elif record["objective"] != best_value:
+                return finish("error", "the objective expression disagrees with the soft clauses: "
+                              f"two optima of cost {best} have objective values {best_value} and "
+                              f"{record['objective']}", solve_seconds=spent)
+            key = json.dumps(record["values"], sort_keys=True)
             if key not in seen:
                 seen.add(key)
-                emit({"type": "solution", "values": values})
+                emit(record)
                 emitted += 1
                 if emitted >= limit:
                     break
@@ -322,10 +402,10 @@ def main():
     signal.setitimer(signal.ITIMER_REAL, request["execution_timeout"])
 
     started = time.monotonic()
-    formula, outputs = load(request["instance"])
+    formula, outputs, objective = load(request["instance"])
     if isinstance(formula, WCNF) and formula.soft:
-        return optimise(formula, outputs, request, started)
-    return satisfy(formula, outputs, request, started)
+        return optimise(formula, outputs, objective, request, started)
+    return satisfy(formula, outputs, objective, request, started)
 
 
 if __name__ == "__main__":

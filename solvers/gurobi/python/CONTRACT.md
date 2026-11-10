@@ -39,6 +39,11 @@ A value that is not within 1e-6 of an integer is rejected (`execution_error`).
 variable terms (never set, or a constant) is a satisfaction problem; more than one
 objective (`NumObj > 1`) is `unsupported`.
 
+The objective reported with each solution is the objective expression evaluated on that
+solution (its constant included, integer variables rounded), in the model's own direction.
+The incumbents are Gurobi's `MIPSOL_OBJ`, which already has the model's constant
+(`ObjCon`) and direction (Gurobi maximises natively).
+
 ## Solving
 
 - Forced over the submission's own parameters: `OutputFlag = 0` (no solver log),
@@ -48,6 +53,9 @@ objective (`NumObj > 1`) is `unsupported`.
   `error` (objective unbounded); `TIME_LIMIT` is `timeout`; any other status is `error`.
   On `INF_OR_UNBD` the runner re-solves once with `DualReductions = 0` and maps the new
   status. `SIZE_LIMIT_EXCEEDED` is `unsupported`, any other `GurobiError` `error`.
+- Incumbents: the first solve of an optimisation passes a `MIPSOL` callback (it only reads)
+  that reports each improving integer `MIPSOL_OBJ` as an `incumbent`, with the seconds
+  since `optimize()` was called. Later solves pass none.
 - Enumeration is not pool-based: after the first proven solve the objective is pinned by
   two constraints (±0.5 around the optimum for an integral objective) and replaced by 0;
   each next solve adds a no-good over the integer variables under the declared outputs
@@ -74,6 +82,14 @@ information`. Its banner (`Restricted license - for non-production use only - ex
 2027-11-29`) is printed from C to file descriptor 1; the runner keeps the protocol on its
 own copy of that descriptor and sends fd 1, and everything the submission prints, to
 stderr. For an ad hoc run, `--entrypoint sh` bypasses `/opt/runner/run.py`.
+
+On a machine configured with a Gurobi token server (`python -m evaluation.licences set
+gurobi FILE`), the evaluator binds a client licence at `/run/licence/gurobi.lic`
+(`GRB_LICENSE_FILE`) and relays the server through a socket. The container still has no
+network, and the size limit is lifted. A model must work either way: everything
+above holds without the server, and the result's `licence` says which edition ran
+(`licensed` or `size-limited`). If the server refuses or cannot be reached, the result is
+`licence_unavailable`, which says nothing about the model.
 
 ## Traps
 
