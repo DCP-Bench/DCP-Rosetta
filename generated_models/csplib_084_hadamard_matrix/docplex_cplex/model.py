@@ -1,19 +1,23 @@
-"""Hadamard matrix by Legendre pairs (two-circulant construction): find two sequences a and b of
-odd length l with entries -1 or 1, each adding up to 1, such that for every shift s in
-1..(l-1)/2 the periodic autocorrelations add up to -2: PAF(a, s) + PAF(b, s) = -2, where
-PAF(a, s) is the sum over i of a[i] * a[(i + s) mod l].
+# csplib_084_hadamard_matrix: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_084_hadamard_matrix.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_084_hadamard_matrix.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_084_hadamard_matrix.py csplib_084_hadamard_matrix.json
 
-The model reports the two sequences.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Hadamard matrix by Legendre pairs (two-circulant construction): find two sequences a and b of
+    odd length l with entries -1 or 1, each adding up to 1, such that for every shift s in
+    1..(l-1)/2 the periodic autocorrelations add up to -2: PAF(a, s) + PAF(b, s) = -2, where
+    PAF(a, s) is the sum over i of a[i] * a[(i + s) mod l]."""
     l = instance["l"]  # length of the sequences (odd)
     m = (l - 1) // 2   # the shifts 1..m are constrained
 
     model = Model("hadamard_matrix")
-    idx = range(l)
+    idx = range(l)  # the positions of a sequence
     # Each sequence adds up to 1, so (l + 1) / 2 of its entries are 1 and the rest -1.
     ones = (l + 1) // 2
 
@@ -58,3 +62,25 @@ def build(instance):
         model.add_constraint(paf_a(s) + paf_b(s) == -2)
 
     return model, {"a": a, "b": b}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

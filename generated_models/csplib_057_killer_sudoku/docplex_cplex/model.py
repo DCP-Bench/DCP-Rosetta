@@ -1,15 +1,19 @@
-"""Killer sudoku: fill an n-by-n grid with 1..n so that every row, column and 3-by-3 box holds
-different numbers, and the numbers in each cage are different and add up to the cage's sum.
+# csplib_057_killer_sudoku: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_057_killer_sudoku.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_057_killer_sudoku.py csplib_057_killer_sudoku.json
 
-The model reports the filled grid.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Killer sudoku: fill an n-by-n grid with 1..n so that every row, column and 3-by-3 box holds
+    different numbers, and the numbers in each cage are different and add up to the cage's sum."""
     n = instance["n"]              # size of the grid
     cages = instance["problem"]    # cages as [sum, [[row, col], ...]], rows and columns 1-based
-    # The reference fixes the boxes at 3 by 3 cells (a problem constant, not instance data).
+    # A box of the grid is 3 by 3 cells, fixed by the rules of Sudoku.
     box = 3
 
     rows = range(n)
@@ -19,19 +23,15 @@ def build(instance):
 
     # has[r, c, v] is 1 when cell (r, c) holds the number v; every cell holds one number.
     has = {(r, c, v): model.binary_var(name=f"has_{r}_{c}_{v}") for r in rows for c in rows for v in values}
-    for r in rows:
-        for c in rows:
-            model.add_constraint(model.sum(has[r, c, v] for v in values) == 1)
+    model.add_constraints(model.sum(has[r, c, v] for v in values) == 1 for r in rows for c in rows)
 
     # x[r][c] is the number in cell (r, c).
     x = [[model.sum(v * has[r, c, v] for v in values) for c in rows] for r in rows]
 
     # All rows and columns must hold different numbers: each number once per row and column.
     for v in values:
-        for r in rows:
-            model.add_constraint(model.sum(has[r, c, v] for c in rows) == 1)
-        for c in rows:
-            model.add_constraint(model.sum(has[r, c, v] for r in rows) == 1)
+        model.add_constraints(model.sum(has[r, c, v] for c in rows) == 1 for r in rows)
+        model.add_constraints(model.sum(has[r, c, v] for r in rows) == 1 for c in rows)
 
     # Every 3-by-3 box holds different numbers.
     for i in range(n // box):
@@ -44,8 +44,29 @@ def build(instance):
     for total, segment in cages:
         cells = [(r - 1, c - 1) for r, c in segment]
         model.add_constraint(model.sum(x[r][c] for r, c in cells) == total)
-        if len(cells) > 1:
-            for v in values:
-                model.add_constraint(model.sum(has[r, c, v] for r, c in cells) <= 1)
+        for v in values:
+            model.add_constraint(model.sum(has[r, c, v] for r, c in cells) <= 1)
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

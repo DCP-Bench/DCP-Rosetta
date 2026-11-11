@@ -1,17 +1,20 @@
-"""Age changing (Enigma 1224): applying the four operations +2, /8, -3 and *7 in some order to my
-age gives my husband's age, and applying the same four operations in a different order to his
-age gives mine. What are our two ages?
+# age_changing: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python age_changing.py
 
-The model reports my age and my husband's age. The puzzle has no instance data; the operations,
-the age range 16..120 and the bound 1..1000 on intermediate values are the reference's own.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Age changing (Enigma 1224): applying the four operations +2, /8, -3 and *7 in some order to my
+    age gives my husband's age, and applying the same four operations in a different order to his
+    age gives mine. Both ages are between 16 and 120, and every intermediate result is a positive
+    integer, so a division by 8 is exact. What are our two ages?"""
     n = 4                          # number of operations (puzzle constant)
-    age_low, age_high = 16, 120    # ages considered (reference bounds)
-    low, high = 1, 1000            # intermediate values (reference bounds)
+    age_low, age_high = 16, 120    # both ages lie between 16 and 120
+    low, high = 1, 1000            # intermediate results are positive integers; none exceeds (120 + 2) * 7 = 854, the most +2 then *7 can give
     ops = range(n)                 # 0: +2, 1: /8, 2: -3, 3: *7
     steps = range(n)
 
@@ -37,9 +40,7 @@ def build(instance):
     # The two orders differ: at most n - 1 steps apply the same operation in both. same[i, k]
     # is at least 1 when both orders apply operation k at step i.
     same = {(i, k): model.binary_var(name=f"same_{i}_{k}") for i in steps for k in ops}
-    for i in steps:
-        for k in ops:
-            model.add_constraint(same[i, k] >= order1[i, k] + order2[i, k] - 1)
+    model.add_constraints(same[i, k] >= order1[i, k] + order2[i, k] - 1 for i in steps for k in ops)
     model.add_constraint(model.sum(same.values()) <= n - 1)
 
     # Starting from my age, the operations give my husband's age.
@@ -61,3 +62,19 @@ def build(instance):
             model.add_indicator(order[i, 3], new == 7 * old)
 
     return model, {"m": m, "h": h}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

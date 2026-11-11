@@ -1,10 +1,20 @@
-"""Handshaking: at Hilary and Jocelyn's party everyone but Hilary shook a different number of hands; how many did Hilary shake?"""
+# handshaking: a CPLEX (Python) model from DCP Rosetta.
+# Download the `handshaking.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python handshaking.py handshaking.json
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    n = 2 + 2 * instance["num_couples"]  # the guests' couples plus Hilary (0) and Jocelyn (1)
+def create_model(instance):
+    """Hilary and Jocelyn are married and invite a number of couples for dinner; everybody shakes
+    hands with some of the others, but nobody with themselves or their spouse. Jocelyn asks everyone
+    else how many hands they shook, and all the answers are different. How many did Hilary shake?"""
+    n = 2 + 2 * instance["num_couples"]  # the invited couples plus the hosts Hilary and Jocelyn
     people = range(n)
+    hilary, jocelyn = 0, 1  # the two hosts, who are married
     # Spouses sit next to each other: 0 and 1, 2 and 3, and so on.
     spouse = [p + 1 if p % 2 == 0 else p - 1 for p in people]
 
@@ -18,10 +28,11 @@ def build(instance):
     def hands(p):
         return model.sum(shake[i, j] for (i, j) in pairs if p in (i, j))
 
-    # Everyone except Hilary shook a different number of hands. Those are n - 1
-    # people with counts in 0..n-2, so every count occurs exactly once.
-    others = range(1, n)
+    # Jocelyn asks everyone else and all the answers differ. Those are n - 1 people with
+    # counts in 0..n-2, so every count occurs exactly once.
+    others = [p for p in people if p != jocelyn]
     counts = range(n - 1)
+    # has[p, c] is 1 when person p shook c hands
     has = model.binary_var_matrix(others, counts, name="has")
     for p in others:
         model.add_constraint(model.sum(has[p, c] for c in counts) == 1, ctname=f"one_count_{p}")
@@ -31,7 +42,29 @@ def build(instance):
 
     # hil is the number of hands Hilary shook. It is a variable of its own so that
     # the declared output is this one number, not every handshake behind it.
-    hil = model.integer_var(0, n - 2, name="hil")
-    model.add_constraint(hil == hands(0), ctname="hilary")
+    hil = model.integer_var(0, n - 2, name="hil")  # n - 2: not with themselves or their spouse
+    model.add_constraint(hil == hands(hilary), ctname="hilary")
 
     return model, {"hil": hil}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

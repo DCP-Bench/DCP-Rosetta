@@ -1,14 +1,18 @@
-"""Four islands: four islands joined by bridges in a square, A-B on top and C-D below, each
-with a different name, export and tourist attraction. Place every name, export and
-attraction on the map from six clues.
-"""
+# four_islands: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python four_islands.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data. Map positions: A = 0 (north-west), B = 1
-    # (north-east), C = 2 (south-west), D = 3 (south-east).
-    n = 4
+def create_model(instance):
+    """Four islands: four islands joined by bridges in a square, A-B on top and C-D below, each
+    with a different name, export and tourist attraction. Place every name, export and
+    attraction on the map from six clues."""
+    n = 4  # four islands, four exports and four tourist attractions
+    # The map positions: A = 0 (north-west), B = 1 (north-east), C = 2 (south-west), D = 3 (south-east).
     A, B, C, D = range(n)
     positions = range(n)
 
@@ -19,15 +23,14 @@ def build(instance):
         # one position and no two share one (all different).
         at = {(k, p): model.binary_var(name=f"{names[k]}_at_{p}") for k in range(n)
               for p in positions}
-        for k in range(n):
-            model.add_constraint(model.sum(at[k, p] for p in positions) == 1)
-        for p in positions:
-            model.add_constraint(model.sum(at[k, p] for k in range(n)) == 1)
-        where = [model.integer_var(0, n - 1, name=names[k]) for k in range(n)]
-        for k in range(n):
-            model.add_constraint(where[k] == model.sum(p * at[k, p] for p in positions))
+        model.add_constraints(model.sum(at[k, p] for p in positions) == 1 for k in range(n))
+        model.add_constraints(model.sum(at[k, p] for k in range(n)) == 1 for p in positions)
+        # where[k] is the map position of item k, encoded A = 0 .. D = 3
+        where = [model.sum(p * at[k, p] for p in positions) for k in range(n)]
         return where, [{p: at[k, p] for p in positions} for k in range(n)]
 
+    # island, export and attraction list the map position of each name, export and attraction
+    # (in the order of the statement); the names after them are the same items by position.
     island, (Pwana, Quero, Rayou, Skern) = placed(["Pwana", "Quero", "Rayou", "Skern"])
     export, (alabaster, bananas, coconuts, durian_fruit) = placed(
         ["alabaster", "bananas", "coconuts", "durian_fruit"])
@@ -64,3 +67,19 @@ def build(instance):
            "clue6")
 
     return model, {"island": island, "export": export, "attraction": attraction}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

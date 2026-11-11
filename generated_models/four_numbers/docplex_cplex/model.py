@@ -1,13 +1,19 @@
-"""Four numbers: find three integers in 1..10 from whose subset sums every given number can be made."""
+# four_numbers: a CPLEX (Python) model from DCP Rosetta.
+# Download the `four_numbers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_numbers.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python four_numbers.py four_numbers.json
+
 from docplex.mp.model import Model
 
-# The three numbers to find each lie in 1..10, as the problem states.
-LOW, HIGH = 1, 10
-PARTS = range(3)
 
-
-def build(instance):
-    numbers = instance["numbers"]
+def create_model(instance):
+    """Four numbers: find three integers in 1..10 from whose subset sums every given number can be made."""
+    # The three numbers to find each lie in 1..10, as the problem states.
+    LOW, HIGH = 1, 10
+    PARTS = range(3)  # the three numbers to find
+    numbers = instance["numbers"]  # the given numbers, each the sum of a subset of the three
     targets = range(len(numbers))
 
     model = Model("four_numbers")
@@ -30,7 +36,28 @@ def build(instance):
             model.add_constraint(part[i, j] >= x[j] - HIGH * (1 - uses[i, j]), ctname=f"on_low_{i}_{j}")
 
     # Each given number is the sum of its subset of the three.
-    for i in targets:
-        model.add_constraint(model.sum(part[i, j] for j in PARTS) == numbers[i], ctname=f"sum_{i}")
+    model.add_constraints(model.sum(part[i, j] for j in PARTS) == numbers[i] for i in targets)
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

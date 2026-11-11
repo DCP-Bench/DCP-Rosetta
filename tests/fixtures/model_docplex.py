@@ -1,7 +1,7 @@
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     model = Model()
     x = model.integer_var(0, n, name="x")

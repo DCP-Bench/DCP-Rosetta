@@ -1,26 +1,31 @@
-"""SEND + MORE = MONEY: give each letter a different digit so the sum holds, with no word
-starting with zero.
-"""
+# send_more_money: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/send_more_money.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python send_more_money.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data.
-    letters = "sendmory"
-    digits = range(10)
+def create_model(instance):
+    """SEND + MORE = MONEY: each letter stands for a different digit from 0 to 9 so that the sum
+    holds, and the first letter of each word is not zero."""
+    letters = "sendmory"  # the eight different letters
+    digits = range(10)    # the digits 0 to 9
 
     model = Model("send_more_money")
 
-    # is_digit[c, d] is 1 when letter c stands for digit d; each letter is one digit and
-    # the letters are all different.
+    # is_digit[c, d] is 1 when letter c stands for digit d
     is_digit = {(c, d): model.binary_var(name=f"{c}_is_{d}") for c in letters for d in digits}
-    for c in letters:
-        model.add_constraint(model.sum(is_digit[c, d] for d in digits) == 1)
-    for d in digits:
-        model.add_constraint(model.sum(is_digit[c, d] for c in letters) <= 1)
-    value = {c: model.integer_var(0, 9, name=c) for c in letters}
-    for c in letters:
-        model.add_constraint(value[c] == model.sum(d * is_digit[c, d] for d in digits))
+
+    # Each letter stands for exactly one digit.
+    model.add_constraints(model.sum(is_digit[c, d] for d in digits) == 1 for c in letters)
+
+    # Different letters stand for different digits.
+    model.add_constraints(model.sum(is_digit[c, d] for c in letters) <= 1 for d in digits)
+
+    # value[c] is the digit that letter c stands for
+    value = {c: model.sum(d * is_digit[c, d] for d in digits) for c in letters}
     s, e, n, d, m, o, r, y = (value[c] for c in letters)
 
     # SEND + MORE = MONEY.
@@ -32,3 +37,19 @@ def build(instance):
     model.add_constraint(m >= 1)
 
     return model, dict(value)
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

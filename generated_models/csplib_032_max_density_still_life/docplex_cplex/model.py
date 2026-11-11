@@ -1,20 +1,26 @@
-"""Maximum density still life: on an n-by-m patch of Conway's Game of Life board (every cell
-outside it dead), find a pattern that does not change from one generation to the next with as
-many live cells as possible.
+# csplib_032_max_density_still_life: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_032_max_density_still_life.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_032_max_density_still_life.py csplib_032_max_density_still_life.json
 
-The model reports the pattern, 1 for a live cell.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Maximum density still life: on an n-by-m patch of Conway's Game of Life board (every cell
+    outside it dead), find a pattern that does not change from one generation to the next with as
+    many live cells as possible."""
     n = instance["n"]  # rows of the active grid
     m = instance["m"]  # columns of the active grid
 
     model = Model("still_life")
 
+    # grid[i][j] is 1 when cell (i, j) of the active grid is alive, and 0 when it is dead
     grid = [[model.binary_var(name=f"grid_{i}_{j}") for j in range(m)] for i in range(n)]
 
+    # The pattern is stable: every cell of the grid keeps its state in the next generation.
     for i in range(n):
         for j in range(m):
             around = [grid[i + a][j + b] for a in (-1, 0, 1) for b in (-1, 0, 1)
@@ -25,7 +31,7 @@ def build(instance):
 
             # A live cell has exactly 2 or 3 live neighbours (the bounds switch off when dead).
             model.add_constraint(k >= 2 * alive)
-            if deg > 3:
+            if deg > 3:  # with at most 3 neighbours the upper bound holds anyway
                 model.add_constraint(k <= 3 + (deg - 3) * (1 - alive))
 
             # A dead cell does not have exactly 3 live neighbours: it has at most 2 (many = 0)
@@ -51,3 +57,28 @@ def build(instance):
     model.maximize(model.sum(grid[i][j] for i in range(n) for j in range(m)))
 
     return model, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

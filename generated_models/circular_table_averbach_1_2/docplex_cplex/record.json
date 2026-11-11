@@ -1,8 +1,12 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-002",
-    "created_at": 1791056164.8923252,
+    "attempt_id": "attempt-004",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/docplex/python/CONTRACT.md": "0eee53fcab85b36c5921abb68c1057e1c84caf77a4c1fee887ea4e67ed0b6028"
+    },
+    "created_at": 1794406060.75018,
     "problem_id": "circular_table_averbach_1_2",
     "profile": {
       "compilation_timeout": 300,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "3211425c281e6b48ef8dc97ce88d0142a565be19e690fc63a4b29d3d42c4b493",
-    "run_id": "20261001T1218Z-cplex-5db7",
-    "schema": 2,
-    "skill_bundle_hash": "454908cca933908ca47d701ac50039c07b0b4b7d9b63be3e482a19367d17bf21",
-    "skill_source": "solvers\\docplex_cplex\\skills\\docplex",
+    "readiness_hash": "904db7b0b8e5ff55036c355c0722bd6f981482482e949cf5058aa17322d067bd",
+    "run_id": "docplex-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "4fb9a2c9b715629c058923ca1d6f082bc7bb725d",
+      "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
       "modified": false,
-      "path": "solvers/docplex_cplex/skills/docplex"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "486cd51897d926d23e72f9ad63d050ea64076563fca81ce6abb84a6b8ef92de7",
+        "source": "solvers/docplex/skills/dcp-docplex",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": true,
+          "path": "solvers/docplex/skills/dcp-docplex"
+        }
+      }
+    ],
     "solver_id": "docplex_cplex"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:770f3496791ae63eeaec1bf6d8122a38bb8cb841d34bce784ef90f02594e1464",
+      "id": "sha256:d3e433d12e33854b9f1ec9f868488f98de09255e9e6723392109d264f0df498b",
+      "recipe": "sha256:4c817ac7ee4346e516fd77c314a128f33872f7439d290a19ceabbd7139f90db0",
       "tag": "dcp-eval/docplex_cplex:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005541400008951314,
-        "execution_wall_seconds": 1.1529191999870818,
+        "checking_seconds": 0.00676637701690197,
+        "execution_wall_seconds": 0.7976323569891974,
         "first_solution": {
           "american": 1,
           "english": 2,
@@ -60,7 +90,7 @@
           "french"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1240369000006467,
+        "reference_setup_seconds": 0.2537052190164104,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -80,15 +110,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b6a574e31704a7c706ffce083f1e771952766f0419306dba7fcebc6f59b934f4",
+    "model_hash": "bc60353d6b2e8fe0999d388d4e0d302000fd48b23010fec019707b791f0d2696",
     "problem_id": "circular_table_averbach_1_2",
     "reason": "accepted",
-    "reference_hash": "1cdb485034ffc93c1616b223477b17af6781f491a41aac63b8bc00b81a878281",
+    "reference_hash": "0a29e97583e9b3ba33c5a00dc1e0fe627eba124ad02da88789ceafc7d88b672f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -99,7 +129,7 @@
     "skipped_instances": [],
     "solutions_checked": 2,
     "solver_id": "docplex_cplex",
-    "total_wall_seconds": 2.8339986999926623,
+    "total_wall_seconds": 1.5267936379823368,
     "unperformed_instances": []
   },
   "generated_by": {

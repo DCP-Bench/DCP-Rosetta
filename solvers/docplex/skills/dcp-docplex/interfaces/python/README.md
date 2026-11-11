@@ -44,6 +44,64 @@ Prints `integer optimal solution 8.0 0 4.0`. Run it as `python3 quick.py`.
 A model is a script that reads its data, solves, checks the status and prints the answer; the
 template, with its three rules, is in [program-shape.md](program-shape.md).
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective, and on a problem constant
+  where it appears (`# fixed by the rules of Sudoku`);
+- every count and bound a named value (`n_items = len(values)`), `range(n + 1)` rather than a
+  bare `range(101)`, and `2 * n_bushels` rather than a 200 whose origin the reader must derive;
+- the plainest expression that says it: `model.sum(w * xi for w, xi in zip(weights, x)) <= capacity`,
+  and `model.add_constraints(... for ...)` with a generator where a loop only adds one row per
+  item (a loop stays where each group has its own clue or bound);
+- a domain or bound the statement does not give (taken from the data or chosen to keep a
+  variable finite) with a comment that says so and, when it has one, why it cannot cut off
+  an optimum;
+- decisions kept as lists or nested lists so they print as a whole: `binary_var_matrix` and
+  `*_var_dict` return dicts, so list their entries (`[[x[i, j] for j in cols] for i in rows]`).
+
+An output may be a variable, a linear expression or a number, and each is read the same way
+after a solve (`solution_value`). So a digit chosen through one-hot binaries can be returned as
+`model.sum(d * holds[r, c, d] for d in digits)`, with no integer variable and no linking
+constraint added only to read it.
+
+Build the model in one function that creates the `Model`, adds the constraints, states the
+objective when there is one, and returns the model with the variables to print; constants of
+the problem go inside it, not at the top of the file:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+    n_items = len(values)
+
+    model = Model("knapsack")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = model.binary_var_list(n_items, name="x")
+
+    # The packed items weigh no more than the backpack can carry.
+    model.add_constraint(model.sum(weights[i] * x[i] for i in range(n_items)) <= capacity)
+
+    # Pack the most valuable selection.
+    model.maximize(model.sum(values[i] * x[i] for i in range(n_items)))
+
+    return model, {"x": x}
+```
+
+Solve with `model.parameters.mip.tolerances.mipgap = 0` (the default gap stops within 0.01% of
+the optimum), call `model.solve()`, and print `solution.objective_value` and each output
+through `solution_value` when it returns a solution; when it returns `None`,
+`model.solve_details.status` says why.
+
 ## Modelling
 
 Full API: [`Model`](https://ibmdecisionoptimization.github.io/docplex-doc/mp/docplex.mp.model.html)

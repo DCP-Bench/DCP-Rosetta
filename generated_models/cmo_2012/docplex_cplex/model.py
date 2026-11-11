@@ -1,14 +1,18 @@
-"""CMO 2012: find the smallest a, not below a given minimum, such that a - b is a prime p and
-a * b is a perfect square n * n, for some positive integer b.
+# cmo_2012: a CPLEX (Python) model from DCP Rosetta.
+# Download the `cmo_2012.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python cmo_2012.py cmo_2012.json
 
-All of a, b, n and p are at most max_val.
-"""
 from math import isqrt
-
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """CMO 2012: find the smallest a, not below a given minimum, such that a - b is a prime p and
+    a * b is a perfect square n * n, for some positive integer b. None of a, b, n and p exceeds
+    max_val."""
     min_a = instance["min_a"]      # a must be at least this
     max_val = instance["max_val"]  # upper bound of a, b, n and p
 
@@ -24,7 +28,7 @@ def build(instance):
     a = model.sum((2 ** k) * a_bit[k] for k in range(digits))
     n = model.integer_var(0, max_val, name="n")
     b = model.integer_var(1, max_val, name="b")  # b is larger than 0
-    model.add_range(min_a, a, max_val)
+    model.add_range(min_a, a, max_val)  # a is at least min_a and at most max_val
     model.add_constraint(n == model.sum((2 ** k) * n_bit[k] for k in range(digits)))
 
     # p = a - b is a prime number: between 2 and max_val.
@@ -66,3 +70,28 @@ def build(instance):
     model.minimize(a)
 
     return model, {"a": a, "b": b, "n": n, "p": p}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

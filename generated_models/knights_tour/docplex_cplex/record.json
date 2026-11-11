@@ -1,8 +1,12 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791056006.042986,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/docplex/python/CONTRACT.md": "0eee53fcab85b36c5921abb68c1057e1c84caf77a4c1fee887ea4e67ed0b6028"
+    },
+    "created_at": 1794405409.3787668,
     "problem_id": "knights_tour",
     "profile": {
       "compilation_timeout": 300,
@@ -14,79 +18,105 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "3211425c281e6b48ef8dc97ce88d0142a565be19e690fc63a4b29d3d42c4b493",
-    "run_id": "20261001T1218Z-cplex-b-3e61",
-    "schema": 2,
-    "skill_bundle_hash": "454908cca933908ca47d701ac50039c07b0b4b7d9b63be3e482a19367d17bf21",
-    "skill_source": "solvers\\docplex_cplex\\skills\\docplex",
+    "readiness_hash": "904db7b0b8e5ff55036c355c0722bd6f981482482e949cf5058aa17322d067bd",
+    "run_id": "docplex-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "4fb9a2c9b715629c058923ca1d6f082bc7bb725d",
+      "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
       "modified": false,
-      "path": "solvers/docplex_cplex/skills/docplex"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "486cd51897d926d23e72f9ad63d050ea64076563fca81ce6abb84a6b8ef92de7",
+        "source": "solvers/docplex/skills/dcp-docplex",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": true,
+          "path": "solvers/docplex/skills/dcp-docplex"
+        }
+      }
+    ],
     "solver_id": "docplex_cplex"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:770f3496791ae63eeaec1bf6d8122a38bb8cb841d34bce784ef90f02594e1464",
+      "id": "sha256:d3e433d12e33854b9f1ec9f868488f98de09255e9e6723392109d264f0df498b",
+      "recipe": "sha256:4c817ac7ee4346e516fd77c314a128f33872f7439d290a19ceabbd7139f90db0",
       "tag": "dcp-eval/docplex_cplex:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.16965150000760332,
-        "execution_wall_seconds": 1.2714191999984905,
+        "checking_seconds": 0.05193335801595822,
+        "execution_wall_seconds": 0.9167689250025433,
         "first_solution": {
           "x": [
             [
-              35,
-              10,
-              25,
-              12,
-              29,
-              18
+              11,
+              24,
+              33,
+              16,
+              13,
+              4
             ],
             [
-              26,
-              15,
-              28,
+              32,
               17,
-              24,
-              13
+              12,
+              5,
+              34,
+              15
+            ],
+            [
+              25,
+              10,
+              23,
+              14,
+              3,
+              6
+            ],
+            [
+              18,
+              31,
+              2,
+              27,
+              22,
+              35
             ],
             [
               9,
-              34,
-              11,
-              14,
+              26,
+              29,
+              20,
+              7,
+              0
+            ],
+            [
+              30,
               19,
-              30
-            ],
-            [
-              2,
-              27,
-              16,
-              21,
-              6,
-              23
-            ],
-            [
-              33,
               8,
               1,
-              4,
-              31,
-              20
-            ],
-            [
-              0,
-              3,
-              32,
-              7,
-              22,
-              5
+              28,
+              21
             ]
           ]
         },
@@ -99,7 +129,7 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3635982000123477,
+        "reference_setup_seconds": 0.5480594359978568,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -111,89 +141,89 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.3422664999961853,
-        "execution_wall_seconds": 2.08272860001307,
+        "checking_seconds": 0.10327490599593148,
+        "execution_wall_seconds": 0.9943814449943602,
         "first_solution": {
           "x": [
             [
-              0,
-              15,
-              2,
-              61,
-              20,
-              13,
-              8,
-              63
-            ],
-            [
-              3,
-              18,
-              59,
-              14,
-              9,
-              62,
-              21,
-              12
-            ],
-            [
-              16,
-              1,
-              4,
-              19,
-              60,
-              11,
-              28,
-              7
-            ],
-            [
               41,
-              58,
-              17,
-              10,
-              29,
-              6,
-              47,
-              22
-            ],
-            [
-              56,
+              16,
               37,
-              42,
-              5,
-              46,
-              23,
-              30,
-              27
-            ],
-            [
-              43,
-              40,
-              57,
-              24,
+              12,
               53,
-              50,
-              33,
-              48
+              22,
+              35,
+              24
             ],
             [
-              36,
-              55,
               38,
-              45,
-              34,
-              31,
+              13,
+              40,
+              17,
+              36,
+              25,
+              52,
+              55
+            ],
+            [
+              15,
+              42,
+              11,
               26,
+              21,
+              54,
+              23,
+              34
+            ],
+            [
+              10,
+              39,
+              14,
+              49,
+              18,
+              3,
+              56,
               51
             ],
             [
-              39,
+              43,
+              48,
+              27,
+              20,
+              61,
+              50,
+              33,
+              4
+            ],
+            [
+              28,
+              9,
+              60,
+              45,
+              2,
+              19,
+              62,
+              57
+            ],
+            [
+              47,
               44,
-              35,
-              54,
-              25,
-              52,
-              49,
+              7,
+              30,
+              59,
+              0,
+              5,
               32
+            ],
+            [
+              8,
+              29,
+              46,
+              1,
+              6,
+              31,
+              58,
+              63
             ]
           ]
         },
@@ -206,7 +236,7 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 4.363345100005972,
+        "reference_setup_seconds": 1.1478948639996815,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -218,129 +248,129 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.574583800000255,
-        "execution_wall_seconds": 5.982422299988684,
+        "checking_seconds": 0.18762705801054835,
+        "execution_wall_seconds": 2.5031914559949655,
         "first_solution": {
           "x": [
             [
-              33,
-              80,
-              53,
-              82,
-              37,
-              78,
-              21,
-              4,
-              99,
-              0
-            ],
-            [
-              52,
-              83,
-              32,
-              79,
-              54,
-              23,
-              98,
-              1,
-              20,
-              3
-            ],
-            [
-              31,
-              34,
-              81,
-              38,
-              77,
-              36,
-              55,
-              22,
-              5,
-              8
-            ],
-            [
-              40,
-              51,
-              84,
-              35,
-              26,
-              97,
-              24,
-              7,
-              2,
-              19
-            ],
-            [
-              87,
-              30,
               39,
-              76,
+              48,
+              67,
+              50,
+              93,
+              28,
+              65,
+              84,
+              7,
+              90
+            ],
+            [
+              68,
+              51,
+              40,
+              27,
+              66,
               85,
-              56,
-              11,
+              92,
+              89,
               64,
-              9,
+              83
+            ],
+            [
+              47,
+              38,
+              49,
+              94,
+              29,
+              26,
+              63,
+              8,
+              91,
               6
             ],
             [
-              50,
+              52,
+              69,
+              30,
               41,
               86,
-              27,
-              16,
-              25,
-              96,
-              57,
-              18,
-              65
-            ],
-            [
-              29,
-              88,
-              49,
-              94,
-              75,
-              12,
-              17,
-              10,
-              63,
-              58
-            ],
-            [
-              42,
-              91,
-              28,
-              15,
-              46,
               95,
-              62,
-              71,
-              66,
-              69
+              88,
+              5,
+              82,
+              97
             ],
             [
-              89,
-              48,
-              93,
-              44,
-              61,
-              74,
-              13,
-              68,
-              59,
-              72
-            ],
-            [
-              92,
-              43,
-              90,
-              47,
-              14,
-              45,
-              60,
-              73,
+              37,
+              46,
+              53,
               70,
-              67
+              25,
+              62,
+              9,
+              96,
+              11,
+              4
+            ],
+            [
+              54,
+              31,
+              42,
+              45,
+              76,
+              87,
+              24,
+              3,
+              98,
+              81
+            ],
+            [
+              43,
+              36,
+              71,
+              32,
+              61,
+              2,
+              75,
+              10,
+              23,
+              12
+            ],
+            [
+              58,
+              55,
+              44,
+              1,
+              18,
+              77,
+              20,
+              15,
+              80,
+              99
+            ],
+            [
+              35,
+              72,
+              57,
+              60,
+              33,
+              74,
+              17,
+              78,
+              13,
+              22
+            ],
+            [
+              56,
+              59,
+              34,
+              73,
+              0,
+              19,
+              14,
+              21,
+              16,
+              79
             ]
           ]
         },
@@ -353,7 +383,7 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 8.14480690000346,
+        "reference_setup_seconds": 2.7028283860126976,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -365,44 +395,44 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.10075070000311825,
-        "execution_wall_seconds": 1.2081631000037305,
+        "checking_seconds": 0.046167268010322005,
+        "execution_wall_seconds": 0.7946568229817785,
         "first_solution": {
           "x": [
             [
-              0,
+              24,
               5,
               16,
               11,
-              24
+              0
             ],
             [
-              15,
+              17,
               10,
               1,
               6,
-              17
+              15
             ],
             [
-              2,
-              19,
               4,
               23,
+              14,
+              19,
               12
             ],
             [
               9,
-              14,
-              21,
               18,
+              21,
+              2,
               7
             ],
             [
-              20,
+              22,
               3,
               8,
               13,
-              22
+              20
             ]
           ]
         },
@@ -415,7 +445,7 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5985356000019237,
+        "reference_setup_seconds": 0.44015491200843826,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -427,72 +457,72 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.23695149998820852,
-        "execution_wall_seconds": 2.9781556999951135,
+        "checking_seconds": 0.08221114601474255,
+        "execution_wall_seconds": 1.044872469996335,
         "first_solution": {
           "x": [
             [
-              0,
-              17,
-              24,
+              48,
+              5,
+              8,
+              37,
+              26,
               21,
-              28,
-              15,
-              48
+              18
             ],
             [
-              37,
-              20,
-              27,
-              16,
-              25,
+              7,
+              38,
+              47,
               22,
+              19,
+              36,
+              25
+            ],
+            [
+              4,
+              9,
+              6,
+              27,
+              24,
+              17,
+              20
+            ],
+            [
+              39,
+              46,
+              23,
+              16,
+              33,
+              28,
+              35
+            ],
+            [
+              10,
+              3,
+              42,
+              45,
+              30,
+              13,
+              32
+            ],
+            [
+              43,
+              40,
+              1,
+              12,
+              15,
+              34,
               29
             ],
             [
-              18,
-              1,
-              38,
-              23,
-              30,
-              47,
-              14
-            ],
-            [
-              41,
-              36,
-              19,
-              26,
-              39,
-              10,
-              31
-            ],
-            [
               2,
-              5,
-              40,
-              33,
-              44,
-              13,
-              46
-            ],
-            [
-              35,
-              42,
-              7,
-              4,
               11,
-              32,
-              9
-            ],
-            [
-              6,
-              3,
-              34,
-              43,
-              8,
-              45,
-              12
+              44,
+              41,
+              0,
+              31,
+              14
             ]
           ]
         },
@@ -505,7 +535,7 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.782114699992235,
+        "reference_setup_seconds": 0.7775066400063224,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -525,15 +555,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "abba5ae01a28ed31aa919cd85a87be7a4d4c08b52118c2ba548d135bc2a7576e",
+    "model_hash": "af50a091c0a005a984d4ad7cc6f32f63fdb134a80b5dfa881b745b2ca945b089",
     "problem_id": "knights_tour",
     "reason": "accepted",
-    "reference_hash": "927c57181e65d293357f7f57663443c41936b0e2e306df030d3de12d6592a7e5",
+    "reference_hash": "252eb5400007fdca7b9e76656ef258e5b72fe6a041dff6cdf1aad63533f22660",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -544,7 +574,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "docplex_cplex",
-    "total_wall_seconds": 34.895841200006544,
+    "total_wall_seconds": 12.770668441982707,
     "unperformed_instances": []
   },
   "generated_by": {

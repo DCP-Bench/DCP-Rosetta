@@ -1,13 +1,18 @@
-"""Zebra puzzle: five houses in a row, each with a different colour, nationality, pet, drink
-and job. Place everything from the clues; houses are numbered 0..4 from the left.
-"""
+# zebra: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python zebra.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data; the items and clues are from the statement.
-    n_houses = 5
+def create_model(instance):
+    """Zebra puzzle: five houses in a row, each with a different colour, nationality, pet, drink
+    and job. Place everything from the clues; houses are numbered 0..4 from the left."""
+    n_houses = 5  # five houses in a row, numbered 0..4 from the left
     houses = range(n_houses)
+    # the five items of each group, as listed in the puzzle; the output keeps this order
     groups = {
         "colors": ["yellow", "green", "red", "white", "blue"],
         "nations": ["italy", "spain", "japan", "england", "norway"],
@@ -29,10 +34,10 @@ def build(instance):
         for h in houses:
             model.add_constraint(model.sum(at[e, h] for e in items) == 1)
 
-    def house(e):
-        return model.sum(h * at[e, h] for h in houses if h)
+    def house(e):  # the number of the house of item e
+        return model.sum(h * at[e, h] for h in houses)
 
-    def same_house(a, b):
+    def same_house(a, b):  # items a and b are in the same house
         for h in houses:
             model.add_constraint(at[a, h] == at[b, h])
 
@@ -63,3 +68,19 @@ def build(instance):
 
     outputs = {name: [house(e) for e in items] for name, items in groups.items()}
     return model, outputs
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

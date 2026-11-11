@@ -1,6 +1,7 @@
 """Runner protocol for the docplex_cplex integration. Runs inside the image only.
 
-A submission defines `build(instance)` returning `(model, outputs)`, where
+A submission defines `create_model(instance)` (`build` in models retained earlier)
+returning `(model, outputs)`, where
 `model` is a `docplex.mp.model.Model`. Its own objective says whether this is
 an optimization: `has_objective()` is false until `minimize` or `maximize` is
 given a non-constant expression, so the submission needs no extra convention.
@@ -160,14 +161,15 @@ def load(instance):
     module = importlib.util.module_from_spec(spec)
     with contextlib.redirect_stdout(sys.stderr):
         spec.loader.exec_module(module)
-        returned = module.build(instance)
+        create_model = getattr(module, "create_model", None) or module.build
+        returned = create_model(instance)
     if not isinstance(returned, tuple) or len(returned) != 2:
-        raise ValueError("build(instance) must return (model, outputs)")
+        raise ValueError("create_model(instance) must return (model, outputs)")
     model, outputs = returned
     if not isinstance(model, Model):
-        raise ValueError("build(instance) must return a docplex.mp.model.Model")
+        raise ValueError("create_model(instance) must return a docplex.mp.model.Model")
     if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("build(instance) must return a nonempty output dictionary")
+        raise ValueError("create_model(instance) must return a nonempty output dictionary")
     return model, outputs
 
 

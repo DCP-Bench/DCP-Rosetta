@@ -1,22 +1,26 @@
-"""Solitaire battleships: place a fleet of ships on a grid and report what each cell holds.
+# csplib_014_solitaire_battleships: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_014_solitaire_battleships.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_014_solitaire_battleships.py csplib_014_solitaire_battleships.json
 
-The fleet lists how many ships there are of each size (a ship of size 1 is a submarine).
-Ships are straight, horizontal or vertical, and no two ships touch, not even diagonally. The
-row and column sums say how many cells of each row and column are occupied by ships, and some
-cells are given as hints. Each cell is reported as water, a submarine, or a ship part: left,
-right, top, bottom or middle, with the cell codes taken from the instance.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
-    rows = instance["rows"]
-    cols = instance["cols"]
+def create_model(instance):
+    """Solitaire battleships: find the grid in which each cell is water, a submarine or a ship
+    part (left, right, top, bottom, middle). The fleet's ships are straight, horizontal or
+    vertical, no two ships occupy adjacent cells, not even diagonally, the row and column sums
+    say how many cells of each are occupied by ships, and some cells are given as hints."""
+    rows = instance["rows"]  # number of rows of the grid
+    cols = instance["cols"]  # number of columns of the grid
     rowsum = instance["rowsum"]            # ship cells wanted in each row
     colsum = instance["colsum"]            # ship cells wanted in each column
     fleet_counts = instance["fleet_counts"]  # rows [ship size, how many ships of that size]
     hints = instance["hints"]              # rows [row, column, cell code] given at the start
-    WATER, CIRCLE = instance["WATER"], instance["CIRCLE"]  # CIRCLE is a submarine
+    # the codes of what a cell holds: water, a submarine (CIRCLE), or a part of a longer ship
+    WATER, CIRCLE = instance["WATER"], instance["CIRCLE"]
     LEFT, RIGHT = instance["LEFT"], instance["RIGHT"]
     TOP, BOTTOM, MIDDLE = instance["TOP"], instance["BOTTOM"], instance["MIDDLE"]
 
@@ -93,3 +97,25 @@ def build(instance):
 
     grid = [[code_of(r, c) for c in range(cols)] for r in range(rows)]
     return model, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

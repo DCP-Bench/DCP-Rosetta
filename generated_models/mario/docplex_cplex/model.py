@@ -1,17 +1,20 @@
-"""Mario: plan a route from Mario's house to Luigi's house through other houses, collecting as much
-gold as possible, without the fuel spent on the way exceeding the fuel limit.
+# mario: a CPLEX (Python) model from DCP Rosetta.
+# Download the `mario.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/mario.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python mario.py mario.json
 
-The model reports the successor of every house: s[i] is the house visited after house i, s[i] = i
-for a house not on the route, and Luigi's house is followed by Mario's house.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
-    n = instance["nHouses"]
-    mario = instance["marioHouse"]
-    luigi = instance["luigiHouse"]
-    fuel_limit = instance["fuelLimit"]
+def create_model(instance):
+    """Mario: plan a route from Mario's house to Luigi's house through other houses, collecting as much
+    gold as possible, without the fuel spent on the way exceeding the fuel limit."""
+    n = instance["nHouses"]             # the number of houses
+    mario = instance["marioHouse"]      # the house where Mario starts
+    luigi = instance["luigiHouse"]      # the house where Mario ends
+    fuel_limit = instance["fuelLimit"]  # the most fuel Mario can spend
     arc_fuel = instance["arc_fuel"]   # arc_fuel[i][j]: fuel to go from house i to house j
     gold = instance["goldInHouse"]    # gold collected by visiting a house
     houses = range(n)
@@ -24,9 +27,8 @@ def build(instance):
 
     # Every house has exactly one successor, and every house is the successor of exactly one
     # house (the successors are all different).
-    for i in houses:
-        model.add_constraint(model.sum(go[i, j] for j in houses) == 1)
-        model.add_constraint(model.sum(go[j, i] for j in houses) == 1)
+    model.add_constraints(model.sum(go[i, j] for j in houses) == 1 for i in houses)
+    model.add_constraints(model.sum(go[j, i] for j in houses) == 1 for i in houses)
 
     # The route ends at Luigi's house, which loops back to Mario's house.
     model.add_constraint(go[luigi, mario] == 1)
@@ -47,5 +49,31 @@ def build(instance):
     # Maximize the gold of the houses on the route (those that are not their own successor).
     model.maximize(model.sum(gold[i] * (1 - go[i, i]) for i in houses))
 
+    # s[i] is the house that follows house i (i itself when it is not on the route).
     s = [model.sum(j * go[i, j] for j in houses) for i in houses]
     return model, {"s": s}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

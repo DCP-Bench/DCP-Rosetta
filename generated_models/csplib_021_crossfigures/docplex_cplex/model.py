@@ -1,17 +1,20 @@
-"""CSPLib 21, crossfigures: fill a 9 x 9 grid with digits so that the numbers read across
-and down answer the given arithmetic clues.
-"""
-import math
+# csplib_021_crossfigures: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python csplib_021_crossfigures.py
 
+import math
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data. The grid, the clue positions and the clues are fixed
-    # by the problem statement and mirrored from the reference.
-    n = 9
+def create_model(instance):
+    """CSPLib 21, crossfigures: fill a 9 x 9 grid with digits so that the numbers read across
+    and down answer the given arithmetic clues."""
+    n = 9  # the grid is 9 by 9 cells
     B = -2  # black square
     Z = -1  # white square
+    # The grid of the puzzle: B marks a black square, Z a white square.
     valid = [[Z, Z, Z, Z, B, Z, Z, Z, Z],
              [Z, Z, B, Z, Z, Z, B, Z, Z],
              [Z, B, Z, Z, B, Z, Z, B, Z],
@@ -67,8 +70,9 @@ def build(instance):
             terms.append(v * p)
         return model.sum(terms)
 
-    # The reference allows numbers up to 9999; primes and squares in that range.
-    top = 9999
+    # The longest clue has 4 digits, so a clue's number is at most 9999: the primes and squares
+    # up to that are the candidates for the "prime number" and "square number" clues.
+    top = 10 ** 4 - 1
 
     def is_prime(v):
         return v >= 2 and all(v % d for d in range(2, math.isqrt(v) + 1))
@@ -129,3 +133,19 @@ def build(instance):
     model.add_constraint(D(28) == D(21) + 27)               # 21 down plus twenty-seven
 
     return model, {"M": M}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

@@ -12,10 +12,12 @@ else is installed (no NumPy), and no other file of yours is staged.
 ## Entrypoint
 
 ```python
-def build(instance) -> tuple[docplex.mp.model.Model, dict]:
+def create_model(instance) -> tuple[docplex.mp.model.Model, dict]:
 ```
 
-The runner imports the file and calls `build(instance)` once. It must return a 2-tuple
+The runner imports the file as module `candidate` and calls `create_model(instance)` once.
+Models retained before 2026-11-11 name it `build(instance)`, which the runner still
+accepts; write `create_model`. It must return a 2-tuple
 (not a list) `(model, outputs)` with `model` a `docplex.mp.model.Model`. Anything the
 module prints goes to stderr.
 
@@ -66,8 +68,8 @@ direction (CPLEX maximises natively and keeps the constant as the objective offs
   binary, two indicator constraints per general integer; fixed variables skipped).
   A repeated output value is re-solved, not emitted. Infeasible after a no-good, or no
   unfixed variable left to move, is `complete`.
-- Time: the deadline is set before `build` runs, so building spends the budget. Each solve
-  gets the time left; a SIGALRM at budget + 5 s, armed over `build` and the whole loop,
+- Time: the deadline is set before `create_model` runs, so building spends the budget. Each solve
+  gets the time left; a SIGALRM at budget + 5 s, armed over `create_model` and the whole loop,
   turns a hang in Python into `timeout`.
 
 ## Compilation
@@ -104,22 +106,113 @@ No environment variables of note; the container runs without network. For an ad 
 
 ## Example
 
-The pilot fixture [tests/fixtures/model_docplex.py](../../../tests/fixtures/model_docplex.py)
-(instance fields `n`, `optimize`; outputs `x`, `y`):
+A complete submission, with the standalone run below:
 
 ```python
+# knapsack: a CPLEX (Python) model from DCP Rosetta.
+# Download the `knapsack.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python knapsack.py knapsack.json
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    n = instance["n"]
-    model = Model()
-    x = model.integer_var(0, n, name="x")
-    y = model.integer_var(0, n, name="y")
-    if instance["optimize"]:
-        model.add_constraint(x + y >= n)
-        model.minimize(x + y)
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+    n_items = len(values)
+
+    model = Model("knapsack")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = model.binary_var_list(n_items, name="x")
+
+    # The packed items weigh no more than the backpack can carry.
+    model.add_constraint(model.sum(weights[i] * x[i] for i in range(n_items)) <= capacity)
+
+    # Pack the most valuable selection.
+    model.maximize(model.sum(values[i] * x[i] for i in range(n_items)))
+
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
     else:
-        model.add_constraint(x + y == n)
-    return model, {"x": x, "y": y}
+        print("No solution:", model.solve_details.status)
 ```
+
+## Standalone run
+
+Every model carries the header and the run block of the example, with `knapsack` replaced by
+the problem id, so a reader can copy it from the catalogue and run it with `docplex` and
+`cplex`. Nothing else goes in either: the header is the first lines of the file, the run
+block the last, and the model sits between them. The runner loads the file as module
+`candidate`, so the block never runs during evaluation.
+
+The block sets the relative gap to 0 as the runner does (the default stops within 0.01% of the
+optimum and still reports a solution), solves once, and when `solve()` returns a solution prints
+the objective value and each output as integers, a list for a list. A model with no objective
+leaves out the `mipgap` line and the objective line, and its comment reads `# a solution`.
+Otherwise `solve()` returns `None` and `model.solve_details.status` says why (`infeasible`,
+`infeasible or unbounded`, ...). The `value` helper reads a variable or a linear expression
+through `solution_value`, and goes through lists of any depth. A model without instance data
+calls `create_model({})`, takes no instances file, and has no `Download` line, no `json` and
+`sys` imports and no `instances` lines:
+
+```python
+# abbots_puzzle: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python abbots_puzzle.py
+
+from docplex.mp.model import Model
+
+
+def create_model(instance):
+    ...
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)
+```
+
+The CPLEX that comes with `pip install cplex` is the Community Edition, and refuses a model
+above 1000 variables or 1000 constraints; the header says so.

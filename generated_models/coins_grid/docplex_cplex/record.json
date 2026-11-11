@@ -1,8 +1,12 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791003725.1858308,
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/docplex/python/CONTRACT.md": "0eee53fcab85b36c5921abb68c1057e1c84caf77a4c1fee887ea4e67ed0b6028"
+    },
+    "created_at": 1794405486.4887927,
     "problem_id": "coins_grid",
     "profile": {
       "compilation_timeout": 300,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "3211425c281e6b48ef8dc97ce88d0142a565be19e690fc63a4b29d3d42c4b493",
-    "run_id": "20261001T1218Z-cplex-5db7",
-    "schema": 2,
-    "skill_bundle_hash": "454908cca933908ca47d701ac50039c07b0b4b7d9b63be3e482a19367d17bf21",
-    "skill_source": "solvers\\docplex_cplex\\skills\\docplex",
+    "readiness_hash": "904db7b0b8e5ff55036c355c0722bd6f981482482e949cf5058aa17322d067bd",
+    "run_id": "docplex-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "152d21b9d22d19fb4c7fd6ef7bc95e324e693637",
+      "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
       "modified": false,
-      "path": "solvers/docplex_cplex/skills/docplex"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "486cd51897d926d23e72f9ad63d050ea64076563fca81ce6abb84a6b8ef92de7",
+        "source": "solvers/docplex/skills/dcp-docplex",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": true,
+          "path": "solvers/docplex/skills/dcp-docplex"
+        }
+      }
+    ],
     "solver_id": "docplex_cplex"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:770f3496791ae63eeaec1bf6d8122a38bb8cb841d34bce784ef90f02594e1464",
+      "id": "sha256:d3e433d12e33854b9f1ec9f868488f98de09255e9e6723392109d264f0df498b",
+      "recipe": "sha256:4c817ac7ee4346e516fd77c314a128f33872f7439d290a19ceabbd7139f90db0",
       "tag": "dcp-eval/docplex_cplex:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.030758200002310332,
-        "execution_wall_seconds": 1.1354558000020916,
+        "checking_seconds": 0.015772532002301887,
+        "execution_wall_seconds": 0.6972174069960602,
         "first_solution": {
           "x": [
             [
@@ -164,6 +194,12 @@
           "z": 200
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0035989560128655285,
+            200
+          ]
+        ],
         "instance_hash": "625a8b557c5b2f517308bcd553333eb1b35a9211255c473707403c50f419bbb2",
         "is_optimization": true,
         "oom_killed": false,
@@ -173,7 +209,7 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3298384999943664,
+        "reference_setup_seconds": 0.3667996879958082,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -185,8 +221,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01640149999730056,
-        "execution_wall_seconds": 1.0615778999999748,
+        "checking_seconds": 0.01179911699728109,
+        "execution_wall_seconds": 0.6962659590062685,
         "first_solution": {
           "x": [
             [
@@ -256,6 +292,12 @@
           "z": 84
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.004933434014674276,
+            84
+          ]
+        ],
         "instance_hash": "4bf68e120c73eac5cc28cb20bbe4797a46dcaeaaf11572c1bcdc37fd79704dab",
         "is_optimization": true,
         "oom_killed": false,
@@ -265,7 +307,7 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.413726200000383,
+        "reference_setup_seconds": 0.3477742889954243,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -277,8 +319,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02062370000203373,
-        "execution_wall_seconds": 1.2811838000052376,
+        "checking_seconds": 0.006186618993524462,
+        "execution_wall_seconds": 0.6932354090095032,
         "first_solution": {
           "x": [
             [
@@ -365,6 +407,12 @@
           "z": 0
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0018722910026554018,
+            0
+          ]
+        ],
         "instance_hash": "5c1d641cadca868eee8fb2776f748e8a617e8d2dad9c29dbe126447c60cd088d",
         "is_optimization": true,
         "oom_killed": false,
@@ -374,7 +422,7 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3591602000014973,
+        "reference_setup_seconds": 0.2800028620113153,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -386,8 +434,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016388199997891206,
-        "execution_wall_seconds": 1.1955512999993516,
+        "checking_seconds": 0.004391115013277158,
+        "execution_wall_seconds": 0.6952063420030754,
         "first_solution": {
           "x": [
             [
@@ -442,6 +490,12 @@
           "z": 210
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0017083069833461195,
+            210
+          ]
+        ],
         "instance_hash": "5ef20ffe474ed10f3b298de2986463ad606355f257a91eba6944a87c2c14513c",
         "is_optimization": true,
         "oom_killed": false,
@@ -451,7 +505,7 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6832532000044012,
+        "reference_setup_seconds": 0.3265430300089065,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -463,8 +517,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.05024709999997867,
-        "execution_wall_seconds": 1.186993999996048,
+        "checking_seconds": 0.010981654020724818,
+        "execution_wall_seconds": 0.6953334779827856,
         "first_solution": {
           "x": [
             [
@@ -639,6 +693,12 @@
           "z": 234
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.00413326799753122,
+            234
+          ]
+        ],
         "instance_hash": "83026c32375cd4ac1687e50dcad64a40125844a3315e337495e252392e519255",
         "is_optimization": true,
         "oom_killed": false,
@@ -648,7 +708,7 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8238166000010096,
+        "reference_setup_seconds": 0.3309808390040416,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -668,15 +728,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a77172637ce2083b9224b5d420247096c66c0233e51fdd61ebe500db603e6127",
+    "model_hash": "e270d43e551ff90e6850cd61d31f23e3593eb60e6fcfa1e52f18c20fa3c5bd5d",
     "problem_id": "coins_grid",
     "reason": "accepted",
-    "reference_hash": "ac5da00c0d5604174f36e085e3cfea21306969d0a26d498c9144cc4c15475840",
+    "reference_hash": "81c33003ed07d3ff832acdfd106e0a0102e07c71648190433a001b698edf4a3b",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -687,7 +747,7 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "docplex_cplex",
-    "total_wall_seconds": 15.16989669999748,
+    "total_wall_seconds": 5.627177857997594,
     "unperformed_instances": []
   },
   "generated_by": {

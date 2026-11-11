@@ -1,33 +1,33 @@
-"""CSPLib 41, n-fractions puzzle: find distinct non-zero digits A..I with
-A / BC + D / EF + G / HI = 1, where BC, EF and HI are two-digit numbers.
-"""
+# csplib_041_n_fractions: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_041_n_fractions.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python csplib_041_n_fractions.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data. Digits are 1..9 and the two-digit numbers lie in
-    # 1..81 (= 9 * 9), the domain the reference declares for them.
-    n = 9
+def create_model(instance):
+    """CSPLib 41, n-fractions puzzle: find distinct non-zero digits A..I with
+    A / BC + D / EF + G / HI = 1, where BC, EF and HI are two-digit numbers."""
+    n = 9  # nine letters A..I, each a digit from 1 to 9
     digits = range(1, n + 1)
     letters = "ABCDEFGHI"
-    top = n * n            # bound on BC, EF, HI
+    top = 10 * n + n       # bound on BC, EF, HI: tens and units digits are at most n
     top2 = top * top       # bound on a product of two of them
 
     model = Model("n_fractions")
-    # The products below are linearised with bounds of up to 6561; with CPLEX's default
+    # The products below are linearised with bounds of up to top2 (9801); with CPLEX's default
     # integrality tolerance (1e-5) a "zero" binary could let such a product carry about
-    # 0.07, so integer values are required exactly.
+    # 0.1, so integer values are required exactly.
     model.parameters.mip.tolerances.integrality = 0
 
     # is_digit[l, v] is 1 when letter l is digit v; the nine letters are distinct digits.
     is_digit = {(l, v): model.binary_var(name=f"{l}_is_{v}") for l in letters for v in digits}
-    for l in letters:
-        model.add_constraint(model.sum(is_digit[l, v] for v in digits) == 1)
-    for v in digits:
-        model.add_constraint(model.sum(is_digit[l, v] for l in letters) <= 1)
-    value = {l: model.integer_var(1, n, name=l) for l in letters}
-    for l in letters:
-        model.add_constraint(value[l] == model.sum(v * is_digit[l, v] for v in digits))
+    model.add_constraints(model.sum(is_digit[l, v] for v in digits) == 1 for l in letters)
+    model.add_constraints(model.sum(is_digit[l, v] for l in letters) <= 1 for v in digits)
+    # value[l] is the digit that letter l stands for.
+    value = {l: model.sum(v * is_digit[l, v] for v in digits) for l in letters}
 
     # The two-digit numbers BC, EF and HI.
     def two_digit(tens, units, name):
@@ -75,3 +75,19 @@ def build(instance):
         == times_number("B", "C", EF_HI, top2, "BC_EF_HI"))
 
     return model, dict(value)
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

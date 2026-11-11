@@ -1,15 +1,18 @@
-"""Rectangle packing: place rectangular items, without rotating them, inside an enclosing rectangle
-so that no two items overlap and every item lies within it, minimizing the enclosing area.
+# packing_rectangles: a CPLEX (Python) model from DCP Rosetta.
+# Download the `packing_rectangles.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/packing_rectangles.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python packing_rectangles.py packing_rectangles.json
 
-The model reports the lower-left corner of every item and the width and height of the enclosing
-rectangle.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
-    widths = instance["widths"]
-    heights = instance["heights"]
+def create_model(instance):
+    """Rectangle packing: place rectangular items, without rotating them, inside an enclosing rectangle
+    so that no two items overlap and every item lies within it, minimizing the enclosing area."""
+    widths = instance["widths"]    # widths[i]: the width of item i
+    heights = instance["heights"]  # heights[i]: the height of item i
     n = len(widths)
     items = range(n)
 
@@ -20,10 +23,12 @@ def build(instance):
 
     model = Model("packing_rectangles")
 
+    # (pos_x[i], pos_y[i]) is the lower-left corner of item i in the enclosing rectangle.
     pos_x = [model.integer_var(0, max_x, name=f"pos_x_{i}") for i in items]
     pos_y = [model.integer_var(0, max_y, name=f"pos_y_{i}") for i in items]
 
-    # The area total_x * total_y multiplies two variables, which CPLEX refuses. The width is
+    # total_x and total_y are the width and height of the enclosing rectangle. Their area
+    # multiplies two variables, which CPLEX refuses. The width is
     # therefore chosen from its possible values: wide[a] = 1 when total_x = a, and
     # part[a] = wide[a] * total_y is linearised with the standard four inequalities.
     xs = range(min_x, max_x + 1)
@@ -42,13 +47,11 @@ def build(instance):
     # Implied, not an extra rule: the enclosing rectangle covers the items' total area, so a
     # width a needs a height of at least ceil(total area / a).
     total_area = sum(w * h for w, h in zip(widths, heights))
-    for a in xs:
-        model.add_constraint(part[a] >= -(-total_area // a) * wide[a])
+    model.add_constraints(part[a] >= -(-total_area // a) * wide[a] for a in xs)
 
     # Every item has to be within the enclosing rectangle.
-    for i in items:
-        model.add_constraint(pos_x[i] + widths[i] <= total_x)
-        model.add_constraint(pos_y[i] + heights[i] <= total_y)
+    model.add_constraints(pos_x[i] + widths[i] <= total_x for i in items)
+    model.add_constraints(pos_y[i] + heights[i] <= total_y for i in items)
 
     # No overlap: every item is fully left of, right of, below or above every other item.
     # One indicator per side, at least one of them on.
@@ -66,3 +69,28 @@ def build(instance):
     model.minimize(area)
 
     return model, {"pos_x": pos_x, "pos_y": pos_y, "total_x": total_x, "total_y": total_y}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

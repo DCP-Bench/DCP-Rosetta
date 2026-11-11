@@ -1,14 +1,20 @@
-"""Thick as thieves: six suspects, at most two guilty; the innocent tell the truth and the
-guilty lie. From their statements, find who is guilty.
-"""
+# session1_thick_as_thieves: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python session1_thick_as_thieves.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data.
+def create_model(instance):
+    """Six suspects were interviewed about a robbery. The getaway car held at most two, so at least
+    four are innocent. The innocent tell the truth and the guilty lie. From their statements,
+    find who is guilty."""
     model = Model("thick_as_thieves")
     names = ["artie", "bill", "crackitt", "dodgy", "edgy", "fingers"]
-    guilty = {x: model.binary_var(name=x) for x in names}  # 1 means guilty
+    # guilty[x] is 1 when suspect x is guilty, and 0 when innocent
+    guilty = {x: model.binary_var(name=x) for x in names}
     artie, bill, crackitt, dodgy, edgy, fingers = (guilty[x] for x in names)
 
     # The getaway car held at most two, so at most two are guilty.
@@ -34,3 +40,19 @@ def build(instance):
     model.add_constraint(fingers + artie + dodgy <= 2)
 
     return model, dict(guilty)
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)
