@@ -1,33 +1,59 @@
+# session3_kidney_exchange: a PyCSP3 model from DCP Rosetta.
+# Download the `session3_kidney_exchange.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python session3_kidney_exchange.py session3_kidney_exchange.json
+
 from pycsp3 import *
 
-# Kidney exchange: n people on a waiting list; compatible[i] is the set of people that person i can
-# donate to (people are numbered from 1 in the instance). Anyone who gives a kidney must receive one,
-# and no person receives more than one kidney. Maximise the number of people that receive a kidney.
-n = data.num_people
-compatible = data["compatible"]
 
-# transplants[i][j] is 1 iff person i donates to person j (0-based indices here)
-transplants = VarArray(size=[n, n], dom={0, 1})
+def create_model(instance):
+    """At a hospital, n people are on a waiting list for a kidney transplant. Compatibility
+    is given as a directed graph: a person can donate to the people listed for them. Maximise
+    the number of people who receive a new kidney: anyone who gives a kidney must receive one,
+    and no person receives more than one kidney."""
+    n_people = instance["num_people"]  # the number of people on the waiting list
+    # compatible[i] is the list of people that person i + 1 can donate to. The listed people are
+    # numbered from 1 (no entry is 0), so each is shifted by - 1 to a 0-based index.
+    compatible = instance["compatible"]
 
-# succ[i] is the person that i donates to; succ[i] == i means that i takes no part in an exchange
-succ = VarArray(size=n, dom=range(n))
+    # donates_to[i] is the person (0-based) that person i donates a kidney to. donates_to[i] == i
+    # means person i takes no part in an exchange.
+    donates_to = VarArray(size=n_people, dom=lambda i: sorted({i, *(j - 1 for j in compatible[i])}))
 
-# participates[i] is 1 iff person i gives and receives a kidney
-participates = VarArray(size=n, dom={0, 1})
+    # transplants[i][j] is 1 when person i donates a kidney to person j (0-based), 0 otherwise
+    transplants = VarArray(size=[n_people, n_people], dom={0, 1})
 
-satisfy(
-    # nobody donates to himself or herself, and a person donates only to people compatible with him or her
-    [transplants[i][j] == 0 for i in range(n) for j in range(n) if i == j or (j + 1) not in compatible[i]],
-    # a donation is recorded in transplants exactly when the donor's successor is the recipient
-    [(transplants[i][j] == 1) == (succ[i] == j) for i in range(n) for j in range(n) if j != i],
-    # no person receives more than one kidney, and the exchanges form disjoint cycles
-    AllDifferent(succ),
-    # anyone who gives a kidney must receive one: a person in an exchange has a donor and a recipient
-    [Sum(transplants[i]) == Sum(transplants[j][i] for j in range(n)) for i in range(n)],
-    # a person takes part in an exchange exactly when he or she gives a kidney
-    [(participates[i] == 1) == (succ[i] != i) for i in range(n)],
-    [Sum(transplants[i]) == participates[i] for i in range(n)],
-)
+    satisfy(
+        # No person receives more than one kidney, and a person who takes no part is not given a kidney.
+        # Anyone who gives a kidney must receive one, so the donations form disjoint cycles: since each person donates
+        # to one person (themselves if they take no part) and nobody receives two, donates_to is a permutation.
+        AllDifferent(donates_to),
+        # transplants[i][j] is 1 exactly when person i donates to person j.
+        [(transplants[i][j] == 1) == (donates_to[i] == j) for i in range(n_people) for j in range(n_people) if j != i],
+        # A person does not donate to themselves.
+        [transplants[i][i] == 0 for i in range(n_people)],
+    )
 
-# the number of people that receive a kidney is as large as possible
-maximize(Sum(participates))
+    # The number of people who receive a kidney: a person receives one exactly when they take part,
+    # that is when they donate to someone else (donates_to[i] != i), since a participant's donor is
+    # another person in the cycle.
+    maximize(Sum(donates_to[i] != i for i in range(n_people)))
+
+    return {"transplants": transplants}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        print("transplants", "=")
+        for row in outputs["transplants"]:
+            print(values(row))
+    else:
+        print("No solution:", status())

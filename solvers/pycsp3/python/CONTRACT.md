@@ -12,44 +12,48 @@ shape.
 
 One plain PyCSP3 script, `model.py`, starting with `from pycsp3 import *`. It may import
 `pycsp3`, `lxml` and the standard library; nothing else is installed (no NumPy). No other
-file of yours is staged, so helpers go in the same file. It must not call `solve()`, and
-it is run once per round (see [Solving](#solving)), so it must build the same model each
-time.
+file of yours is staged, so helpers go in the same file. It must not call `solve()` outside
+its standalone run block, and it is run once per round (see [Solving](#solving)), so it must
+build the same model each time.
 
 ## Entrypoint
 
-There is no function. The runner executes the whole file with
-`runpy.run_path(model.py, run_name="__main__")` in a fresh child process, then reads the
-module-level names equal to the declared outputs from the resulting namespace. The model
-posts constraints with `satisfy(...)` and at most one `minimize(...)` or `maximize(...)`.
-The runner replaces `pycsp3.solve` beforehand: a call from the model raises `RuntimeError:
-the model must not call solve(); the runner solves it`.
+```python
+def create_model(instance) -> dict:
+```
+
+The runner runs the file as the module `candidate` (so its `if __name__ == "__main__":` block
+does not run), then calls `create_model(instance)` once per round, in a fresh child process.
+PyCSP3 holds its model in the library, so there is no model object to return: the function
+posts its constraints with `satisfy(...)` and at most one `minimize(...)` or `maximize(...)`,
+and returns the dict of outputs. The runner replaces `pycsp3.solve` beforehand: a call from
+`create_model` raises `RuntimeError: the model must not call solve(); the runner solves it`.
+
+Models retained before the standalone form define no function: the runner runs the whole file
+and reads the module-level names equal to the declared outputs, with the instance as `data`.
+That form is still accepted; write `create_model`.
 
 ## Instance
 
-`from pycsp3 import *` gives the instance as `data`, an object holding every field of the
-instance JSON, unconverted: a field is an attribute, `data.n`, or an item, `data["n"]`
-(both work for names such as `_SHIP`). Values are plain Python `int`, `bool`, `str` and
-`list`, 0-based; lists of lists may be ragged and keep their lengths, and nothing is turned
-into a named tuple. Metadata such as `name` or `note` is present, and a model that never
-reads it is unaffected. A missing field raises `AttributeError: 'Instance' object has no
-attribute ...` (`execution_error`).
-
-The runner bypasses pycsp3's own data loading (which builds named tuples and cannot take
-field names with a leading underscore): it starts pycsp3 with a placeholder
-`-data=<round dir>/placeholder.json` and `-output=<round dir>/` on `sys.argv`, and sets
-`pycsp3.data` before the model's star import binds it.
+`instance` is the JSON object as a plain Python `dict`: integers, Booleans, strings and
+nested `list`s, 0-based, unconverted; lists of lists may be ragged and keep their lengths.
+Metadata such as `name` or `note` is present, and a model that never reads it is unaffected.
+A missing field raises `KeyError` (`execution_error`). A legacy model reads it as `data`:
+`data.n` or `data["n"]`, an object with the same fields (pycsp3's own data loading, which
+builds named tuples and cannot take field names with a leading underscore, is bypassed).
 
 ## Outputs
 
-Each declared output is a module-level name equal to the output name, bound to a `Var`, a
-`VarArray`, or a nested list of them with the declared shape; a plain `int` leaf is also
+`create_model` returns a non-empty `dict` mapping each declared output name to a `Var`, a
+`VarArray`, or a nested list of them with the declared shape (a legacy model binds the
+names at module level instead); a plain `int` leaf is also
 accepted as a constant. After solving, the runner reads each variable's recorded value for
 every solution ACE printed and reports it as a plain integer: a Boolean output (`dom={0,
 1}`) is reported as 0/1. Auxiliary variables are never reported. Errors, all
 `execution_error`:
 
-- an output name not defined: `NameError: the model does not define the declared output 'x'`;
+- an output name missing from the returned dict: `NameError: the model does not provide the declared output 'x'`;
+- a return value that is not a dict: `TypeError: create_model must return a dict ...`;
 - an output variable that no constraint mentions (ACE reports only those):
   `ValueError: declared output 'z' has a variable that no constraint mentions, so ACE does
   not report it; constrain it, e.g. satisfy(z >= 0)`;
@@ -68,7 +72,7 @@ At most one `minimize(term)` or `maximize(term)` with an integer term, in the di
 the brief gives; none for a satisfaction problem. The runner wraps both functions: in the
 first round it records the direction and passes the call through; in later rounds the same
 call posts `satisfy(term == optimum)` instead, so the objective must be the same term
-every time the file runs. Minimising a maximisation problem (or the reverse) is
+every time `create_model` runs. Minimising a maximisation problem (or the reverse) is
 `suboptimal_solution`, verified with a knapsack model.
 
 The objective is the problem's own value: do not scale, offset or negate it. Each
@@ -181,6 +185,93 @@ dcp-eval/pycsp3_ace:v1 -c 'cd /tmp && python ...'`.
 - No problem is withheld for its instance shape: ragged and mixed fields arrive as
   Python lists, and handling them is the model's job.
 
+## Standalone run
+
+The header comment names what to install, and the run block at the end of the file runs only
+when the file is run directly. PyCSP3 solves the model it holds, so the block calls
+`create_model`, `solve()` and `values(...)`:
+
+```python
+# <problem>: a PyCSP3 model from DCP Rosetta.
+# Download the `<problem>.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python <problem>.py <problem>.json
+```
+
+```python
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())
+```
+
+`solve()` runs ACE and returns `OPTIMUM` (an optimisation, optimum proven), `SAT` (a
+satisfaction problem solved; for an optimisation, a solution not proven optimal), `UNSAT` or
+`UNKNOWN`. The block differs per model: `is OPTIMUM` for an optimisation, `is SAT` for a
+satisfaction problem.
+
+**Reading the outputs.** `values(a)` reads a `VarArray` or a nested list of variables in its
+own shape; a single `Var` is read with `value(v)` (`values` would return a list). When all outputs
+are arrays the loop above is used as it stands; when all are single `Var`s the loop prints
+`value(variable)`; when a model has both, the block prints each output on a line of its own:
+
+```python
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        print("x", "=", values(outputs["x"]))
+        print("total", "=", value(outputs["total"]))
+    else:
+        print("No solution:", status())
+```
+
+**Matrices.** `values(m)` flattens a matrix into one list, so a matrix output (a `VarArray` of two dimensions or a list
+of lists of variables) is printed row by row, after a line with its name:
+
+```python
+        print("x", "=")
+        for row in outputs["x"]:
+            print(values(row))
+```
+
+**A problem with no instance data** (the instance is `{}`) has a shorter header, with no download
+line, and a run block with no file handling:
+
+```python
+# <problem>: a PyCSP3 model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+# Run it (after `pip install pycsp3`, which also needs Java for its ACE solver) with:
+#   python <problem>.py
+
+...
+
+if __name__ == "__main__":
+    outputs = create_model({})
+    if solve() is SAT:
+        for name, variable in outputs.items():
+            print(name, "=", value(variable))
+    else:
+        print("No solution:", status())
+```
+
+The docstring of `create_model` is the problem statement, in the description's own words or a
+faithful short paraphrase of them (never a narrowing: "any two landings", not "consecutive
+landings"), no longer than needed: no instruction about printing, and no remark about the
+instance.
+
+The run block may print each output by name (`print("x", "=", values(outputs["x"]))`) instead of
+looping, for any model; the loop is the form for a model whose outputs are all arrays or all
+single `Var`s, and the form the examples show.
+
 ## Example
 
 The pilot fixture [tests/fixtures/model_pycsp3.py](../../../tests/fixtures/model_pycsp3.py)
@@ -191,12 +282,15 @@ The pilot fixture [tests/fixtures/model_pycsp3.py](../../../tests/fixtures/model
 # ruff: noqa: F403, F405
 from pycsp3 import *
 
-n = data.n
-x = Var(range(n + 1))
-y = Var(range(n + 1))
-if data.optimize:
-    satisfy(x + y >= n)
-    minimize(x + y)
-else:
-    satisfy(x + y == n)
+
+def create_model(instance):
+    n = instance["n"]
+    x = Var(range(n + 1))
+    y = Var(range(n + 1))
+    if instance["optimize"]:
+        satisfy(x + y >= n)
+        minimize(x + y)
+    else:
+        satisfy(x + y == n)
+    return {"x": x, "y": y}
 ```

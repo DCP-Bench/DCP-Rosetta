@@ -1,52 +1,64 @@
-import builtins
-from math import sqrt
+# tsp: a PyCSP3 model from DCP Rosetta.
+# Download the `tsp.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/tsp.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python tsp.py tsp.json
 
 from pycsp3 import *
 
-# Travelling salesman: visit every city exactly once and return to the start, with the
-# shortest total distance. The distance between two cities is the Euclidean distance rounded to an integer.
-locations = data.locations
-n = len(locations)
 
-# dist[i][j] is the rounded Euclidean distance between city i and city j
-dist = [[round(sqrt((locations[i][0] - locations[j][0]) ** 2 + (locations[i][1] - locations[j][1]) ** 2))
-         for j in range(n)] for i in range(n)]
-max_dist = builtins.max(builtins.max(row) for row in dist)
+def create_model(instance):
+    """Find the shortest route that visits each city exactly once and returns to the
+    origin city, where the distance between two cities is the Euclidean distance between
+    their points rounded to an integer."""
+    locations = instance["locations"]  # locations[i] is the [x, y] position of city i
+    n_cities = len(locations)
 
-# every city is left by one leg, and each leg is at least the shortest leg leaving that city
-shortest_leg = [builtins.min(dist[i][j] for j in range(n) if j != i) for i in range(n)]
+    # dist[i][j] is the distance from city i to city j, rounded to the nearest integer
+    # (the Euclidean distance of integer points is never exactly halfway, so round() is unambiguous)
+    dist = [[round(((x_i - x_j) ** 2 + (y_i - y_j) ** 2) ** 0.5) for x_j, y_j in locations]
+            for x_i, y_i in locations]
 
-# nearest-neighbour tour: its length is an upper bound on the optimal travel distance
-visited = [False] * n
-tour_length, here = 0, 0
-visited[0] = True
-for _ in range(n - 1):
-    nxt = builtins.min((j for j in range(n) if not visited[j]), key=lambda j: dist[here][j])
-    tour_length += dist[here][nxt]
-    visited[nxt] = True
-    here = nxt
-tour_length += dist[here][0]
+    # Each leg of a route is one of the distances in dist, so none exceeds the longest one.
+    longest_leg = max(max(row) for row in dist)
 
-# succ[i] is the city visited right after city i
-succ = VarArray(size=n, dom=range(n))
+    # successor[i] is the city visited right after city i (cities are numbered from 0)
+    successor = VarArray(size=n_cities, dom=range(n_cities))
 
-# leg[i] is the distance of the leg leaving city i
-leg = VarArray(size=n, dom=range(0, max_dist + 1))
+    # legs[i] is the distance of the leg from city i to its successor
+    legs = VarArray(size=n_cities, dom=range(longest_leg + 1))
 
-# travel_distance is the total length of the tour, between the sum of the shortest legs and the heuristic tour
-travel_distance = Var(dom=range(builtins.sum(shortest_leg), tour_length + 1))
+    # travel_distance is the length of the whole route: a route has n_cities legs, each at most longest_leg
+    travel_distance = Var(dom=range(n_cities * longest_leg + 1))
 
-satisfy(
-    # the successors form one tour that visits every city once
-    Circuit(succ),
-    # the leg from each city has the distance to the city that follows it
-    [Table(scope=[succ[i], leg[i]], supports=[(j, dist[i][j]) for j in range(n) if j != i])
-     for i in range(n)],
-    # the travel distance is the sum of the legs
-    travel_distance == Sum(leg),
-    # each leg is at least the shortest leg leaving its city
-    [leg[i] >= shortest_leg[i] for i in range(n)],
-)
+    satisfy(
+        # The successors form one circuit through all cities, so each city is visited exactly once.
+        Circuit(successor),
+        # The leg from city i to its successor has the distance between those two cities. A city is never its own
+        # successor, so every city is visited: ACE's Circuit also accepts a successor equal to the city itself,
+        # which skips the city, so j == i is left out of the supports.
+        [Table(scope=[successor[i], legs[i]], supports=[(j, dist[i][j]) for j in range(n_cities) if j != i])
+         for i in range(n_cities)],
+        # The travel distance is the sum of the legs.
+        travel_distance == Sum(legs),
+    )
 
-# minimise the travel distance
-minimize(travel_distance)
+    # The route is as short as possible.
+    minimize(travel_distance)
+
+    return {"travel_distance": travel_distance}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        for name, variable in outputs.items():
+            print(name, "=", value(variable))
+    else:
+        print("No solution:", status())

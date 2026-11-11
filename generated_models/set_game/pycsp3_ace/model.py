@@ -1,34 +1,54 @@
-from itertools import product
+# set_game: a PyCSP3 model from DCP Rosetta.
+# Download the `set_game.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/set_game.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python set_game.py set_game.json
 
 from pycsp3 import *
 
-# Find three different cards that form a set: for each of the four features, the
-# three cards show that feature either all the same or all different.
 
-cards = data.cards_data  # cards[i] holds the four feature values of card i, each 1 to 3
-n_cards = len(cards)
-n_features = 4
+def create_model(instance):
+    """Find three different cards of a Set deck that form a set: for each of the four
+    features (number, shading, colour, shape) the three cards show that feature either
+    all the same or all different."""
+    cards = instance["cards_data"]  # cards[i] is [number, shading, colour, shape] of card i, as codes
+    n_cards = len(cards)
+    n_features = len(cards[0])
+    set_size = 3  # a set is three cards
 
-# winning_cards[k] is the index of the k-th card of the set
-winning_cards = VarArray(size=3, dom=range(n_cards))
+    # The feature codes that occur on the cards: each feature of a chosen card takes one of them.
+    codes = sorted({code for card in cards for code in card})
 
-# value[k][f] is the value of feature f on the k-th card of the set
-value = VarArray(size=[3, n_features], dom=range(1, 4))
+    # winning_cards[k] is the index of the k-th card of the set
+    winning_cards = VarArray(size=set_size, dom=range(n_cards))
 
-# the allowed triples of values for one feature: all the same, or all different
-same_or_different = [t for t in product(range(1, 4), repeat=3)
-                     if t[0] == t[1] == t[2] or len(set(t)) == 3]
+    # card_features[k][f] is feature f of the k-th card of the set
+    card_features = VarArray(size=[set_size, n_features], dom=codes)
 
-satisfy(
-    # the three cards of the set are different cards
-    AllDifferent(winning_cards),
+    satisfy(
+        # The three cards are different cards.
+        AllDifferent(winning_cards),
+        # The features of each chosen card are those of the card with that index.
+        [Table(scope=[winning_cards[k]] + list(card_features[k]),
+               supports=[(i, *card) for i, card in enumerate(cards)])
+         for k in range(set_size)],
+        # For each feature the three cards are all the same or all different, so the number of distinct values is not two.
+        [NValues(card_features[:, f]) != 2 for f in range(n_features)],
+    )
 
-    # the value of each feature on a card is the value the card shows
-    [Table(scope=[winning_cards[k], value[k][f]],
-           supports=[(i, cards[i][f]) for i in range(n_cards)])
-     for k in range(3) for f in range(n_features)],
+    return {"winning_cards": winning_cards}
 
-    # for each feature the three cards are all the same or all different
-    [Table(scope=[value[0][f], value[1][f], value[2][f]], supports=same_or_different)
-     for f in range(n_features)],
-)
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

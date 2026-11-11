@@ -2,11 +2,14 @@
 # ruff: noqa: F403, F405
 from pycsp3 import *
 
-n = data.n
-x = Var(range(n + 1))
-y = Var(range(n + 1))
-if data.optimize:
-    satisfy(x + y >= n)
-    minimize(x + y)
-else:
-    satisfy(x + y == n)
+
+def create_model(instance):
+    n = instance["n"]
+    x = Var(range(n + 1))
+    y = Var(range(n + 1))
+    if instance["optimize"]:
+        satisfy(x + y >= n)
+        minimize(x + y)
+    else:
+        satisfy(x + y == n)
+    return {"x": x, "y": y}

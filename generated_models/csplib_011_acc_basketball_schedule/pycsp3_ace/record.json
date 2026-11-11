@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-002",
-    "created_at": 1791958730.2764587,
+    "agent": "claude-code (claude-sonnet-5-5)",
+    "attempt_id": "attempt-003",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ac1377f095808b6eadd66d8ca7f331698d98a48baa9ca6a561b55e6cdbb9ba85"
+    },
+    "created_at": 1794397422.0112054,
     "problem_id": "csplib_011_acc_basketball_schedule",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "63066773497046d8aaf50357495334915e0e45a8",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "63066773497046d8aaf50357495334915e0e45a8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "7f72bf8dad0f3b28def8eea9bdeeccfd08d88651849d9febfb25e0a24f42bd4b",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "63066773497046d8aaf50357495334915e0e45a8",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 1.6393309299601242,
-        "execution_wall_seconds": 52.112517986039165,
+        "checking_seconds": 0.7289132160076406,
+        "execution_wall_seconds": 63.33016556099756,
         "first_solution": {
           "config": [
             [
@@ -53,69 +83,69 @@
             ],
             [
               5,
+              7,
               6,
+              8,
               4,
-              3,
-              2,
               0,
+              2,
               1,
+              3
+            ],
+            [
+              4,
+              2,
+              1,
+              5,
+              0,
+              3,
+              6,
               8,
               7
             ],
             [
+              8,
+              6,
               4,
               7,
-              8,
+              2,
               5,
+              1,
+              3,
+              0
+            ],
+            [
+              2,
+              8,
               0,
               3,
               6,
-              1,
-              2
-            ],
-            [
-              0,
-              2,
-              1,
-              8,
-              5,
-              4,
               7,
-              6,
-              3
-            ],
-            [
-              6,
-              8,
-              2,
               4,
-              3,
-              7,
-              0,
               5,
               1
             ],
             [
               1,
               0,
-              6,
-              7,
-              8,
-              5,
               2,
+              4,
               3,
-              4
+              8,
+              7,
+              6,
+              5
             ],
             [
-              8,
-              1,
               3,
-              2,
+              1,
               7,
+              0,
+              8,
               6,
               5,
-              4,
-              0
+              2,
+              4
             ],
             [
               7,
@@ -130,112 +160,112 @@
             ],
             [
               5,
-              6,
-              4,
-              3,
-              2,
-              0,
-              1,
-              8,
-              7
-            ],
-            [
-              2,
-              3,
-              0,
-              1,
+              7,
               6,
               8,
               4,
-              7,
-              5
-            ],
-            [
-              3,
-              5,
-              7,
-              0,
-              4,
-              1,
-              8,
-              2,
-              6
-            ],
-            [
-              4,
-              7,
-              8,
-              5,
-              0,
-              3,
-              6,
-              1,
-              2
-            ],
-            [
               0,
               2,
               1,
-              8,
-              5,
-              4,
-              7,
-              6,
               3
             ],
             [
               6,
-              8,
-              2,
-              4,
               3,
-              7,
+              8,
+              1,
+              5,
+              4,
               0,
+              7,
+              2
+            ],
+            [
+              0,
+              5,
+              3,
+              2,
+              7,
+              1,
+              8,
+              4,
+              6
+            ],
+            [
+              4,
+              2,
+              1,
+              5,
+              0,
+              3,
+              6,
+              8,
+              7
+            ],
+            [
+              8,
+              6,
+              4,
+              7,
+              2,
+              5,
+              1,
+              3,
+              0
+            ],
+            [
+              2,
+              8,
+              0,
+              3,
+              6,
+              7,
+              4,
               5,
               1
             ],
             [
               1,
               0,
-              6,
-              7,
-              8,
-              5,
               2,
-              3,
-              4
-            ],
-            [
-              8,
-              1,
-              3,
-              2,
-              7,
-              6,
-              5,
               4,
-              0
-            ],
-            [
-              2,
               3,
-              0,
-              1,
-              6,
               8,
-              4,
               7,
+              6,
               5
             ],
             [
               3,
-              5,
+              1,
               7,
               0,
+              8,
+              6,
+              5,
+              2,
+              4
+            ],
+            [
+              6,
+              3,
+              8,
+              1,
+              5,
               4,
+              0,
+              7,
+              2
+            ],
+            [
+              0,
+              5,
+              3,
+              2,
+              7,
               1,
               8,
-              2,
+              4,
               6
             ]
           ],
@@ -255,67 +285,67 @@
               0,
               2,
               2,
-              1,
-              0,
-              2,
-              0,
-              0,
-              2
-            ],
-            [
-              2,
-              0,
-              2,
-              2,
-              0,
-              0,
-              1,
-              2,
-              0
-            ],
-            [
-              1,
-              2,
-              0,
-              0,
-              2,
-              0,
-              0,
-              2,
-              2
-            ],
-            [
-              0,
               2,
               1,
               2,
               0,
-              2,
-              2,
               0,
               0
             ],
             [
               2,
               0,
+              2,
+              2,
+              0,
+              0,
+              1,
+              0,
+              2
+            ],
+            [
+              0,
+              2,
               0,
               0,
               2,
               1,
+              0,
+              2,
+              2
+            ],
+            [
+              0,
               2,
               2,
+              1,
+              0,
+              2,
+              2,
+              0,
               0
+            ],
+            [
+              2,
+              0,
+              1,
+              0,
+              2,
+              0,
+              2,
+              0,
+              2
             ],
             [
               0,
               1,
-              2,
               0,
               2,
               2,
+              2,
               0,
-              0,
-              2
+              2,
+              0
             ],
             [
               2,
@@ -332,12 +362,12 @@
               2,
               0,
               0,
+              0,
               1,
-              2,
               0,
               2,
               2,
-              0
+              2
             ],
             [
               0,
@@ -351,14 +381,14 @@
               0
             ],
             [
-              2,
-              2,
-              0,
-              0,
               1,
-              0,
+              2,
+              2,
               0,
               2,
+              0,
+              0,
+              0,
               2
             ],
             [
@@ -369,25 +399,25 @@
               2,
               2,
               1,
-              0,
-              2
-            ],
-            [
-              1,
-              0,
               2,
-              2,
-              0,
-              2,
-              2,
-              0,
               0
             ],
             [
               2,
               0,
-              1,
+              2,
+              2,
               0,
+              1,
+              2,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              1,
               2,
               0,
               0,
@@ -397,27 +427,27 @@
             [
               0,
               2,
-              2,
-              2,
-              0,
               1,
-              0,
-              0,
-              2
-            ],
-            [
               2,
-              1,
               0,
               2,
               0,
-              0,
-              2,
               2,
               0
             ],
             [
               2,
+              1,
+              2,
+              0,
+              0,
+              0,
+              2,
+              0,
+              2
+            ],
+            [
+              2,
               2,
               0,
               0,
@@ -428,14 +458,14 @@
               2
             ],
             [
-              0,
-              0,
-              2,
-              2,
               1,
-              2,
+              0,
+              0,
               2,
               0,
+              2,
+              2,
+              2,
               0
             ]
           ]
@@ -450,9 +480,12 @@
           "where"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.630574547976721,
+        "reference_setup_seconds": 1.3946249299915507,
         "runner_status": {
+          "build_seconds": 0.6102516651153564,
           "detail": "",
+          "main_seconds": 62.63072429600288,
+          "read_seconds": 0.0005625300109386444,
           "status": "limit",
           "type": "status"
         },
@@ -464,21 +497,21 @@
     "instances_available": 1,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "23e046e3595b4c47f5d299e5bc22d742bd2f6ee3b7696f2ef669f71f93786e25",
+    "model_hash": "0edd83a7182ec0696221fd0ab7da270ddcf72b44c6fa68d2337a640dd01f5d6d",
     "problem_id": "csplib_011_acc_basketball_schedule",
     "reason": "accepted",
-    "reference_hash": "b83cab83d405ef77af719b07a10e930ccdf8b24d1c6e0ae67ed91770745074b4",
+    "reference_hash": "ffa02a0d25e02db505edfe3ba177cee6ac57d4100dec759693400fc6f8758d8d",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -489,11 +522,11 @@
     "skipped_instances": [],
     "solutions_checked": 2,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 56.47956308798166,
+    "total_wall_seconds": 65.86120566699537,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

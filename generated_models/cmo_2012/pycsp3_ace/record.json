@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791957717.8100762,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-003",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "32c5919dea2942136ae4eb23ad116ee17e93e7ec56f630b4bf1f3ba9a530b459"
+    },
+    "created_at": 1794386471.17002,
     "problem_id": "cmo_2012",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "6770d83833dbec8e4e087b4caa277e31bb1489ce",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "6770d83833dbec8e4e087b4caa277e31bb1489ce",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "091d0ae4d65f71bb31f1100ea20b0a417634c6d29da749a96ac6b6ff43b31473",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "6770d83833dbec8e4e087b4caa277e31bb1489ce",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.2221026589977555,
-        "execution_wall_seconds": 3.91354877903359,
+        "checking_seconds": 0.08489483298035339,
+        "execution_wall_seconds": 2.606112868990749,
         "first_solution": {
           "a": 2025,
           "b": 1936,
@@ -45,6 +75,16 @@
           "p": 89
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.5431303977966309,
+            10000
+          ],
+          [
+            0.7737636566162109,
+            2025
+          ]
+        ],
         "instance_hash": "86aaded0a3025c913e53baf946e76ee64070da510cdcfa3bf1c681b93190bea1",
         "is_optimization": true,
         "oom_killed": false,
@@ -56,9 +96,12 @@
           "p"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.296133036026731,
+        "reference_setup_seconds": 1.8938513890025206,
         "runner_status": {
+          "build_seconds": 0.22199440002441406,
           "detail": "",
+          "main_seconds": 1.8921531760133803,
+          "read_seconds": 0.0006086610083002597,
           "status": "complete",
           "type": "status"
         },
@@ -68,8 +111,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0067480639554560184,
-        "execution_wall_seconds": 3.354804052039981,
+        "checking_seconds": 0.007751750992611051,
+        "execution_wall_seconds": 1.8054754679906182,
         "first_solution": {
           "a": 4,
           "b": 1,
@@ -77,6 +120,12 @@
           "p": 3
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.39811134338378906,
+            4
+          ]
+        ],
         "instance_hash": "8b09a40fb2e0df1ba95ad5a78e9fefd5216cf39679bc21691b13ec273c928036",
         "is_optimization": true,
         "oom_killed": false,
@@ -88,9 +137,12 @@
           "p"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6541947390069254,
+        "reference_setup_seconds": 0.2957113159936853,
         "runner_status": {
+          "build_seconds": 0.11407089233398438,
           "detail": "",
+          "main_seconds": 1.1338968799973372,
+          "read_seconds": 0.0008830770093481988,
           "status": "complete",
           "type": "status"
         },
@@ -100,8 +152,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.012326470983680338,
-        "execution_wall_seconds": 3.605008610000368,
+        "checking_seconds": 0.018602216005092487,
+        "execution_wall_seconds": 1.6992130970174912,
         "first_solution": {
           "a": 100,
           "b": 81,
@@ -109,6 +161,12 @@
           "p": 19
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.36965131759643555,
+            100
+          ]
+        ],
         "instance_hash": "c504ac742fdb5aa774880f75816ef1452e7ee927c656aec4f41d33347c86262b",
         "is_optimization": true,
         "oom_killed": false,
@@ -120,9 +178,12 @@
           "p"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7310322760022245,
+        "reference_setup_seconds": 0.35894294301397167,
         "runner_status": {
+          "build_seconds": 0.08243513107299805,
           "detail": "",
+          "main_seconds": 1.0634286679851357,
+          "read_seconds": 0.0006190839922055602,
           "status": "complete",
           "type": "status"
         },
@@ -132,8 +193,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03377413604175672,
-        "execution_wall_seconds": 3.8590505699976347,
+        "checking_seconds": 0.020834683993598446,
+        "execution_wall_seconds": 2.3056068640144076,
         "first_solution": {
           "a": 1156,
           "b": 1089,
@@ -141,6 +202,12 @@
           "p": 67
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.4873921871185303,
+            1156
+          ]
+        ],
         "instance_hash": "d0aff4eec8d846ea8624737dd17806f3fe296360275b3cf83c38cd3f7c849321",
         "is_optimization": true,
         "oom_killed": false,
@@ -152,9 +219,12 @@
           "p"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1719567109830678,
+        "reference_setup_seconds": 0.42230632301652804,
         "runner_status": {
+          "build_seconds": 0.09070324897766113,
           "detail": "",
+          "main_seconds": 1.691530441021314,
+          "read_seconds": 0.0006634200108237565,
           "status": "complete",
           "type": "status"
         },
@@ -164,8 +234,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.034090090019162744,
-        "execution_wall_seconds": 3.8108505550189875,
+        "checking_seconds": 0.02442048001103103,
+        "execution_wall_seconds": 2.7125419410003815,
         "first_solution": {
           "a": 1600,
           "b": 1521,
@@ -173,6 +243,12 @@
           "p": 79
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.899824857711792,
+            1600
+          ]
+        ],
         "instance_hash": "3a43d9ca3180ed4834ebf0735449f284b886b2fe7eb1ebdd003f5f7fa2da0d5d",
         "is_optimization": true,
         "oom_killed": false,
@@ -184,9 +260,12 @@
           "p"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3151364030200057,
+        "reference_setup_seconds": 0.6791550059861038,
         "runner_status": {
+          "build_seconds": 0.09414196014404297,
           "detail": "",
+          "main_seconds": 1.9201096549804788,
+          "read_seconds": 0.0006705889827571809,
           "status": "complete",
           "type": "status"
         },
@@ -198,21 +277,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b6c6b2df93546c2759e146dd628773cb91976fb1a9ba89644cef66a9926221e0",
+    "model_hash": "698e26b0d7c52dfce651dde55cc2e479ea6b96aefe6fd1988903d3d2b72b1340",
     "problem_id": "cmo_2012",
     "reason": "accepted",
-    "reference_hash": "75047afaa3d314fb9e4b9da415a11013feddabded98302a9b86f15f16bfb44de",
+    "reference_hash": "3b568f129b8873f3ddddb9b07e173cf756b808527e1818968e17442d94efe5e0",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -223,11 +302,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 26.28654473501956,
+    "total_wall_seconds": 15.430867496994324,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

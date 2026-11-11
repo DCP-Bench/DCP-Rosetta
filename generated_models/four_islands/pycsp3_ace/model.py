@@ -1,52 +1,71 @@
+# four_islands: a PyCSP3 model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+# Run it (after `pip install pycsp3`, which also needs Java for its ACE solver) with:
+#   python four_islands.py
+
 from pycsp3 import *
 
-# four islands on a 2 by 2 map: A=0 (north west), B=1 (north east), C=2 (south west), D=3 (south east)
-# islands are connected by bridges between neighbours in the same row or column
-POS = range(4)
+
+def create_model(instance):
+    """Four islands, Pwana, Quero, Rayou and Skern, lie at the map positions A, B, C
+    and D: A and B on the top row, C and D on the bottom row, with bridges A-B, C-D,
+    A-C and B-D. Each island has a different primary export (alabaster, bananas,
+    coconuts, durian fruit) and a different tourist attraction (resort hotel, ice
+    skating rink, jai alai stadium, koala preserve). Using the six clues, find the
+    map position of each island, of each export and of each attraction."""
+    n = 4  # four islands, four exports and four attractions
+    A, B, C, D = range(n)  # map positions, encoded as A=0, B=1, C=2, D=3
+    # Names for the indices of the island, export and attraction lists, in the order the output lists them.
+    pwana, quero, rayou, skern = range(n)
+    alabaster, bananas, coconuts, durian_fruit = range(n)
+    resort_hotel, ice_skating_rink, jai_alai_stadium, koala_preserve = range(n)
+
+    # Pairs (x, y) of positions where x is due west of y.
+    west_of = [(A, B), (C, D)]
+    # Pairs (x, y) of positions where y is due south of x.
+    south_of = [(A, C), (B, D)]
+    # Pairs of positions joined by an east-west bridge, in either order.
+    east_west_bridge = [(A, B), (B, A), (C, D), (D, C)]
+    # Pairs of positions joined by a north-south bridge, in either order.
+    north_south_bridge = [(A, C), (C, A), (B, D), (D, B)]
+    # Pairs of positions with no bridge between them (the two diagonals).
+    no_bridge = [(A, D), (D, A), (B, C), (C, B)]
+
+    # island[i] is the map position of island i.
+    island = VarArray(size=n, dom=range(n))
+    # export[e] is the map position of the island whose export is e.
+    export = VarArray(size=n, dom=range(n))
+    # attraction[a] is the map position of the island with tourist attraction a.
+    attraction = VarArray(size=n, dom=range(n))
+
+    satisfy(
+        # The four islands are on four different positions.
+        AllDifferent(island),
+        # Each export belongs to a different island.
+        AllDifferent(export),
+        # Each attraction belongs to a different island.
+        AllDifferent(attraction),
+        # The island with the koala preserve is due south of Pwana.
+        Table(scope=[island[pwana], attraction[koala_preserve]], supports=south_of),
+        # The island with the alabaster quarry is due west of Quero.
+        Table(scope=[export[alabaster], island[quero]], supports=west_of),
+        # The island with the resort hotel is due east of the island exporting durian fruit.
+        Table(scope=[export[durian_fruit], attraction[resort_hotel]], supports=west_of),
+        # Skern and the island with the jai alai stadium are connected by a north-south bridge.
+        Table(scope=[island[skern], attraction[jai_alai_stadium]], supports=north_south_bridge),
+        # Rayou and the island exporting bananas are connected by an east-west bridge.
+        Table(scope=[island[rayou], export[bananas]], supports=east_west_bridge),
+        # The islands with the ice skating rink and the jai alai stadium are not connected by a bridge.
+        Table(scope=[attraction[ice_skating_rink], attraction[jai_alai_stadium]], supports=no_bridge),
+    )
+
+    return {"island": island, "export": export, "attraction": attraction}
 
 
-def row(p):
-    return p // 2
-
-
-def col(p):
-    return p % 2
-
-
-def pairs(relation):
-    # the (p, q) map positions for which the relation holds
-    return [(p, q) for p in POS for q in POS if relation(p, q)]
-
-
-# island[i] is the map position of the island named i: Pwana=0, Quero=1, Rayou=2, Skern=3
-island = VarArray(size=4, dom=POS)
-# export[j] is the map position of the island with export j: alabaster=0, bananas=1, coconuts=2, durian fruit=3
-export = VarArray(size=4, dom=POS)
-# attraction[k] is the map position of the island with attraction k: resort hotel=0, ice skating rink=1,
-# jai alai stadium=2, koala preserve=3
-attraction = VarArray(size=4, dom=POS)
-
-satisfy(
-    # each island has a different name, export and attraction
-    AllDifferent(island),
-    AllDifferent(export),
-    AllDifferent(attraction),
-    # the island with the koala preserve is due south of Pwana
-    Table(scope=[attraction[3], island[0]],
-          supports=pairs(lambda p, q: col(p) == col(q) and row(p) > row(q))),
-    # the island with the largest alabaster quarry is due west of Quero
-    Table(scope=[export[0], island[1]],
-          supports=pairs(lambda p, q: row(p) == row(q) and col(p) < col(q))),
-    # the island with the resort hotel is due east of the one that exports durian fruit
-    Table(scope=[attraction[0], export[3]],
-          supports=pairs(lambda p, q: row(p) == row(q) and col(p) > col(q))),
-    # Skern and the island with the jai alai stadium are connected by a north-south bridge
-    Table(scope=[island[3], attraction[2]],
-          supports=pairs(lambda p, q: col(p) == col(q) and abs(row(p) - row(q)) == 1)),
-    # Rayou and the island that exports bananas are connected by an east-west bridge
-    Table(scope=[island[2], export[1]],
-          supports=pairs(lambda p, q: row(p) == row(q) and abs(col(p) - col(q)) == 1)),
-    # the islands with the ice skating rink and the jai alai stadium are not connected by a bridge
-    Table(scope=[attraction[1], attraction[2]],
-          supports=pairs(lambda p, q: not (abs(row(p) - row(q)) + abs(col(p) - col(q)) == 1))),
-)
+if __name__ == "__main__":
+    outputs = create_model({})
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

@@ -1,37 +1,63 @@
+# session1_thick_as_thieves: a PyCSP3 model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+# Run it (after `pip install pycsp3`, which also needs Java for its ACE solver) with:
+#   python session1_thick_as_thieves.py
+
 from pycsp3 import *
 
-# Thick as thieves: six suspects, each guilty (1) or not guilty (0). At least four are
-# innocent, and at least one is guilty. The innocent ones tell the truth and the guilty
-# ones lie. Each statement is checked against that rule.
 
-artie = Var(dom={0, 1})
-bill = Var(dom={0, 1})
-crackitt = Var(dom={0, 1})
-dodgy = Var(dom={0, 1})
-edgy = Var(dom={0, 1})
-fingers = Var(dom={0, 1})
+def create_model(instance):
+    """Following a robbery at Sparkles the Jeweller's, Inspector Korner of the Yard interviewed six of the usual
+    suspects. He knew that the getaway car had been barely big enough to hold two, so he reckoned that at least four of
+    them were innocent. He also supposed that the innocent ones would tell the truth, while the guilty one or ones would
+    lie. If the good inspector's suppositions were correct, who is guilty?"""
+    # artie is 1 when Artie is guilty, 0 when he is innocent.
+    artie = Var(dom={0, 1})
+    # bill is 1 when Bill is guilty, 0 when he is innocent.
+    bill = Var(dom={0, 1})
+    # crackitt is 1 when Crackitt is guilty, 0 when he is innocent.
+    crackitt = Var(dom={0, 1})
+    # dodgy is 1 when Dodgy is guilty, 0 when he is innocent.
+    dodgy = Var(dom={0, 1})
+    # edgy is 1 when Edgy is guilty, 0 when he is innocent.
+    edgy = Var(dom={0, 1})
+    # fingers is 1 when Fingers is guilty, 0 when he is innocent.
+    fingers = Var(dom={0, 1})
+    suspects = [artie, bill, crackitt, dodgy, edgy, fingers]
 
-guilty = [artie, bill, crackitt, dodgy, edgy, fingers]
+    car_seats = 2  # the getaway car was barely big enough to hold two
 
-satisfy(
-    # at least four of the suspects are innocent, and one or more is guilty
-    Sum(guilty) <= 2,
-    Sum(guilty) >= 1,
+    satisfy(
+        # The inspector reckoned at least four were innocent, so at most car_seats of them are guilty.
+        Sum(suspects) <= car_seats,
+        # Someone is guilty: the robbery had a culprit (the statement speaks of "the guilty one or ones").
+        Sum(suspects) >= 1,
+        # Artie's "It wasn't me" and Crackitt's "No I wasn't" are true exactly when their speakers are innocent,
+        # so they add no constraint.
+        # Bill's "Crackitt was in it up to his neck" is true exactly when Bill is innocent.
+        (bill == 0) == (crackitt == 1),
+        # Dodgy's "If Crackitt did it, Bill did it with him" is true exactly when Dodgy is innocent.
+        (dodgy == 0) == (crackitt <= bill),
+        # Edgy's "Nobody did it alone" is true exactly when Edgy is innocent.
+        (edgy == 0) == (Sum(suspects) != 1),
+        # Fingers' "it was Artie and Dodgy together" is true exactly when Fingers is innocent.
+        (fingers == 0) == And(artie == 1, dodgy == 1, Sum(suspects) == 2),
+    )
 
-    # Artie says "It wasn't me": true for an innocent Artie, false for a guilty one, so it
-    # needs no constraint of its own
+    return {
+        "artie": artie,
+        "bill": bill,
+        "crackitt": crackitt,
+        "dodgy": dodgy,
+        "edgy": edgy,
+        "fingers": fingers,
+    }
 
-    # Bill says "Crackitt was in it up to his neck": true exactly when Bill is innocent
-    (bill == 0) == (crackitt == 1),
 
-    # Crackitt says "No I wasn't": the same holds for Crackitt, so it needs no constraint
-
-    # Dodgy says "If Crackitt did it, Bill did it with him": the statement is Crackitt implies Bill
-    (dodgy == 0) == (crackitt <= bill),
-
-    # Edgy says "Nobody did it alone": the statement is false exactly when one suspect is guilty
-    (edgy == 0) == (Sum(guilty) != 1),
-
-    # Fingers says "it was Artie and Dodgy together": the guilty ones are exactly Artie and Dodgy
-    (fingers == 0) == And(artie == 1, dodgy == 1, bill == 0, crackitt == 0, edgy == 0),
-)
+if __name__ == "__main__":
+    outputs = create_model({})
+    if solve() is SAT:
+        for name, variable in outputs.items():
+            print(name, "=", value(variable))
+    else:
+        print("No solution:", status())

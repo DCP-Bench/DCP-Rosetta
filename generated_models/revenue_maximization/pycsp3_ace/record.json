@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791959138.7364354,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ca37e2d464e28bfa3c834efb90c42fc26dafae4ed339fe036e945931ef50801c"
+    },
+    "created_at": 1794389896.3154154,
     "problem_id": "revenue_maximization",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b078659adab06263d373a86bbf94ce6ceaaaeb4ac0a344d54eaba97e6a4ba54d",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.0048468419699929655,
-        "execution_wall_seconds": 5.083625209983438,
+        "checking_seconds": 0.001934036990860477,
+        "execution_wall_seconds": 1.6964625020045787,
         "first_solution": {
           "max_revenue": 8000,
           "packages_to_sell": [
@@ -46,6 +76,60 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.3821115493774414,
+            0
+          ],
+          [
+            0.3848450183868408,
+            150
+          ],
+          [
+            0.3855464458465576,
+            300
+          ],
+          [
+            0.386502742767334,
+            450
+          ],
+          [
+            0.38730812072753906,
+            600
+          ],
+          [
+            0.3881111145019531,
+            750
+          ],
+          [
+            0.3888514041900635,
+            900
+          ],
+          [
+            0.3895843029022217,
+            1050
+          ],
+          [
+            0.39032936096191406,
+            1200
+          ],
+          [
+            0.39096999168395996,
+            1350
+          ],
+          [
+            0.39154624938964844,
+            1500
+          ],
+          [
+            0.3961460590362549,
+            7500
+          ],
+          [
+            0.39696288108825684,
+            8000
+          ]
+        ],
         "instance_hash": "0711271f105839cb9c8436d9963fbbfc9da557751f04e50a14a71848f0002430",
         "is_optimization": true,
         "oom_killed": false,
@@ -55,9 +139,12 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9743639620137401,
+        "reference_setup_seconds": 0.3115987609780859,
         "runner_status": {
+          "build_seconds": 0.0894312858581543,
           "detail": "",
+          "main_seconds": 1.1030333289818373,
+          "read_seconds": 0.0005964839947409928,
           "status": "complete",
           "type": "status"
         },
@@ -67,8 +154,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004143500991631299,
-        "execution_wall_seconds": 4.878040446026716,
+        "checking_seconds": 0.0019539899949450046,
+        "execution_wall_seconds": 1.696911076985998,
         "first_solution": {
           "max_revenue": 9664,
           "packages_to_sell": [
@@ -80,6 +167,104 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.3619520664215088,
+            0
+          ],
+          [
+            0.36391758918762207,
+            160
+          ],
+          [
+            0.36443305015563965,
+            320
+          ],
+          [
+            0.3647470474243164,
+            480
+          ],
+          [
+            0.3650476932525635,
+            640
+          ],
+          [
+            0.3653109073638916,
+            800
+          ],
+          [
+            0.36554527282714844,
+            960
+          ],
+          [
+            0.36575770378112793,
+            1120
+          ],
+          [
+            0.3659653663635254,
+            1280
+          ],
+          [
+            0.36652112007141113,
+            1320
+          ],
+          [
+            0.3666868209838867,
+            1378
+          ],
+          [
+            0.3712325096130371,
+            8608
+          ],
+          [
+            0.37157273292541504,
+            8710
+          ],
+          [
+            0.3718533515930176,
+            8812
+          ],
+          [
+            0.37210607528686523,
+            8914
+          ],
+          [
+            0.3723294734954834,
+            9016
+          ],
+          [
+            0.3725779056549072,
+            9118
+          ],
+          [
+            0.37279391288757324,
+            9220
+          ],
+          [
+            0.37300610542297363,
+            9322
+          ],
+          [
+            0.37319183349609375,
+            9424
+          ],
+          [
+            0.3776559829711914,
+            9500
+          ],
+          [
+            0.3779597282409668,
+            9602
+          ],
+          [
+            0.37862586975097656,
+            9624
+          ],
+          [
+            0.3789079189300537,
+            9664
+          ]
+        ],
         "instance_hash": "efafb6a000e9d38f15defd72114626e651e4987c240db9005c093aa9ff097d42",
         "is_optimization": true,
         "oom_killed": false,
@@ -89,9 +274,12 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7954979640198871,
+        "reference_setup_seconds": 0.2975920680037234,
         "runner_status": {
+          "build_seconds": 0.0823523998260498,
           "detail": "",
+          "main_seconds": 1.0568886699911673,
+          "read_seconds": 0.0006389000045601279,
           "status": "complete",
           "type": "status"
         },
@@ -101,8 +289,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006077166995964944,
-        "execution_wall_seconds": 5.632955990964547,
+        "checking_seconds": 0.002621772000566125,
+        "execution_wall_seconds": 2.2253090020094533,
         "first_solution": {
           "max_revenue": 24211,
           "packages_to_sell": [
@@ -115,6 +303,56 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.6351654529571533,
+            0
+          ],
+          [
+            0.6374533176422119,
+            164
+          ],
+          [
+            0.6380293369293213,
+            328
+          ],
+          [
+            0.6387374401092529,
+            492
+          ],
+          [
+            0.6391699314117432,
+            656
+          ],
+          [
+            0.639693021774292,
+            820
+          ],
+          [
+            0.6400713920593262,
+            984
+          ],
+          [
+            0.6405000686645508,
+            1148
+          ],
+          [
+            0.6408262252807617,
+            1312
+          ],
+          [
+            0.641190767288208,
+            1476
+          ],
+          [
+            0.6416280269622803,
+            1640
+          ],
+          [
+            0.6479477882385254,
+            24211
+          ]
+        ],
         "instance_hash": "6a73fec3ee25dd19235b76f4e4fd3775f2b96627506229ce888efe8ff473ad4a",
         "is_optimization": true,
         "oom_killed": false,
@@ -124,9 +362,12 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0349228820414282,
+        "reference_setup_seconds": 0.32314212500932626,
         "runner_status": {
+          "build_seconds": 0.1413872241973877,
           "detail": "",
+          "main_seconds": 1.55055816899403,
+          "read_seconds": 0.0007558159995824099,
           "status": "complete",
           "type": "status"
         },
@@ -136,8 +377,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0049561039777472615,
-        "execution_wall_seconds": 4.684493517037481,
+        "checking_seconds": 0.0022298840049188584,
+        "execution_wall_seconds": 1.8966400169883855,
         "first_solution": {
           "max_revenue": 17856,
           "packages_to_sell": [
@@ -152,6 +393,120 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.3949587345123291,
+            0
+          ],
+          [
+            0.39732909202575684,
+            234
+          ],
+          [
+            0.39801907539367676,
+            468
+          ],
+          [
+            0.39855384826660156,
+            702
+          ],
+          [
+            0.39903879165649414,
+            936
+          ],
+          [
+            0.39981555938720703,
+            1170
+          ],
+          [
+            0.40027856826782227,
+            1404
+          ],
+          [
+            0.4007127285003662,
+            1638
+          ],
+          [
+            0.401125431060791,
+            1872
+          ],
+          [
+            0.4015233516693115,
+            2106
+          ],
+          [
+            0.4019503593444824,
+            2340
+          ],
+          [
+            0.40677618980407715,
+            16331
+          ],
+          [
+            0.4071543216705322,
+            16457
+          ],
+          [
+            0.4090449810028076,
+            17121
+          ],
+          [
+            0.41832518577575684,
+            17132
+          ],
+          [
+            0.4185640811920166,
+            17195
+          ],
+          [
+            0.4188520908355713,
+            17216
+          ],
+          [
+            0.41915249824523926,
+            17273
+          ],
+          [
+            0.41940903663635254,
+            17318
+          ],
+          [
+            0.419619083404541,
+            17326
+          ],
+          [
+            0.4197731018066406,
+            17444
+          ],
+          [
+            0.4203486442565918,
+            17466
+          ],
+          [
+            0.42059898376464844,
+            17652
+          ],
+          [
+            0.4208388328552246,
+            17715
+          ],
+          [
+            0.4239497184753418,
+            17716
+          ],
+          [
+            0.4243202209472656,
+            17773
+          ],
+          [
+            0.4246792793273926,
+            17830
+          ],
+          [
+            0.42656683921813965,
+            17856
+          ]
+        ],
         "instance_hash": "37e76642ed3e5129811e5cffef31ea66a29179f3278f9f2c2075e8f8327cede0",
         "is_optimization": true,
         "oom_killed": false,
@@ -161,9 +516,12 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8320084980223328,
+        "reference_setup_seconds": 0.3547972230007872,
         "runner_status": {
+          "build_seconds": 0.08570241928100586,
           "detail": "",
+          "main_seconds": 1.2065658390056342,
+          "read_seconds": 0.000628189998678863,
           "status": "complete",
           "type": "status"
         },
@@ -173,8 +531,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.003569292020983994,
-        "execution_wall_seconds": 3.706997749977745,
+        "checking_seconds": 0.001990427990676835,
+        "execution_wall_seconds": 1.8518775240227114,
         "first_solution": {
           "max_revenue": 2120,
           "packages_to_sell": [
@@ -184,6 +542,56 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.3831624984741211,
+            0
+          ],
+          [
+            0.38509368896484375,
+            180
+          ],
+          [
+            0.3854336738586426,
+            360
+          ],
+          [
+            0.3857309818267822,
+            540
+          ],
+          [
+            0.3860030174255371,
+            720
+          ],
+          [
+            0.3863041400909424,
+            900
+          ],
+          [
+            0.38655877113342285,
+            1080
+          ],
+          [
+            0.3872647285461426,
+            1140
+          ],
+          [
+            0.3876047134399414,
+            1200
+          ],
+          [
+            0.38779783248901367,
+            1320
+          ],
+          [
+            0.38814640045166016,
+            1440
+          ],
+          [
+            0.39244604110717773,
+            2120
+          ]
+        ],
         "instance_hash": "41f7a05f667cc5a4e2c9270395da8272e32b2814442cd5e0dc489750d66a9a7b",
         "is_optimization": true,
         "oom_killed": false,
@@ -193,9 +601,12 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5559270009980537,
+        "reference_setup_seconds": 0.27246230200398713,
         "runner_status": {
+          "build_seconds": 0.09325766563415527,
           "detail": "",
+          "main_seconds": 1.1008245210105088,
+          "read_seconds": 0.0006350890034809709,
           "status": "complete",
           "type": "status"
         },
@@ -207,21 +618,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "d1c1e3f65e5dc5f39ff4aa8184c4bebb802b085638a42902b963154e72e9465e",
+    "model_hash": "8bbddc64e16fb67a3b9a0a983cb1371946bc00df76c94b0dc89882cb7882818f",
     "problem_id": "revenue_maximization",
     "reason": "accepted",
-    "reference_hash": "6744285a8fd97a300d1075b8a41d22d7394438b3d0f4d7fc50ce4d808efc8ba1",
+    "reference_hash": "de9a521c0a01d23130a68aec4fae722d8b51e4340f0f135bb41128927f5f39b7",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -232,11 +643,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 28.76977017597528,
+    "total_wall_seconds": 11.306375154003035,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

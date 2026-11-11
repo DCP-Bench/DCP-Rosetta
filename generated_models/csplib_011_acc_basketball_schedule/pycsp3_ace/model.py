@@ -1,125 +1,178 @@
+# csplib_011_acc_basketball_schedule: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_011_acc_basketball_schedule.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_011_acc_basketball_schedule.py csplib_011_acc_basketball_schedule.json
+
 from pycsp3 import *
 
-# Double round-robin timetable for the 9 teams of the 1997/98 Atlantic Coast Conference
-# (Clemson, Duke, FSU, Georgia Tech, Maryland, UNC, NC State, Virginia, Wake Forest) over 18 dates.
-# Team indices: 0 Clem, 1 Duke, 2 FSU, 3 GT, 4 UMD, 5 UNC, 6 NCSt, 7 UVA, 8 Wake.
-# Date indices: 0 to 17 (date d+1 in the statement). Even indices are weekday fixtures, odd indices
-# are weekend fixtures. where: 0 home, 1 bye, 2 away.
 
-n_days = data.n_days
-n_teams = data.n_teams
-T = range(n_teams)
-D = range(n_days)
+def create_model(instance):
+    """The 1997/98 Atlantic Coast Conference basketball teams play a double round-robin schedule over
+    18 dates: each team plays each other once at home and once away. The odd dates are weekday
+    fixtures and the even dates weekend fixtures. The schedule also follows the statement's further
+    constraints: mirroring, no two final aways, home/away/bye patterns, the weekend pattern, first
+    weekends, rival matches, constrained matches, opponent sequences and other constraints."""
+    n_teams = instance["n_teams"]   # the number of teams
+    n_days = instance["n_days"]     # the number of dates
 
-CLEM, DUKE, FSU, GT, UMD, UNC, NCST, UVA, WAKE = 0, 1, 2, 3, 4, 5, 6, 7, 8
-rival = {CLEM: GT, DUKE: UNC, GT: CLEM, UMD: UVA, UNC: DUKE, NCST: WAKE, UVA: UMD, WAKE: NCST}
+    # The teams are numbered from 0 in the order of the statement. The dates are numbered from 0 too,
+    # and the comments name them as the statement does, from 1: statement date k is index k - 1.
+    CLEM, DUKE, FSU, GT, UMD, UNC, NCST, UVA, WAKE = range(n_teams)
 
-# config[d][i] is the team that team i plays on date d, or i itself on a bye
-# the mirroring scheme (0-based pairs of dates) makes each team meet the same opponent on both dates of a
-# pair, so the paired dates share their config row; only the first date of each pair is a variable
-MIRROR = [(0, 7), (1, 8), (2, 11), (3, 12), (4, 13), (5, 14), (6, 15), (9, 16), (10, 17)]
-base_dates = [r1 for (r1, r2) in MIRROR]
-config_base = VarArray(size=[len(base_dates), n_teams], dom=range(n_teams))
-config = [None] * n_days
-for k, (r1, r2) in enumerate(MIRROR):
-    config[r1] = config_base[k]
-    config[r2] = config_base[k]
-# where[d][i]: 0 home, 1 bye, 2 away
-where = VarArray(size=[n_days, n_teams], dom={0, 1, 2})
+    # The values of where: the statement codes a home match 0, a bye 1 and an away match 2.
+    HOME, BYE, AWAY = 0, 1, 2
 
-# home, away and bye flags of each team on each date, each derived from where
-home = VarArray(size=[n_days, n_teams], dom={0, 1})
-away = VarArray(size=[n_days, n_teams], dom={0, 1})
-bye = VarArray(size=[n_days, n_teams], dom={0, 1})
+    weekends = range(2 - 1, n_days, 2)   # the weekend fixtures: the statement's even dates 2, 4, ...
+    first_five_weekends = weekends[:5]   # the first five weekends of the statement
+    last = n_days - 1                    # the last date
+    last_but_one = n_days - 2            # the date before the last
+    late_dates = range(11 - 1, n_days)   # the statement's dates 11 to 18
 
-# hosts[d][i][j] = 1 iff team i is at home against team j on date d (zero when i does not play j)
-hosts = VarArray(size=[n_days, n_teams, n_teams], dom={0, 1})
+    # The mirroring scheme of the statement: each pair (r1, r2) of dates.
+    mirroring_scheme = [(1, 8), (2, 9), (3, 12), (4, 13), (5, 14), (6, 15), (7, 16), (10, 17), (11, 18)]
 
-satisfy(
-    # a team plays against one opponent or has a bye on each date, and the pairing is symmetric
-    [(config[d][i] == j) == (config[d][j] == i) for d in D for i in T for j in T if i < j],
+    # The traditional rival of each team; FSU has none.
+    rivals = {CLEM: GT, GT: CLEM, DUKE: UNC, UNC: DUKE, NCST: WAKE, WAKE: NCST, UMD: UVA, UVA: UMD}
 
-    # a bye is recorded as the team itself in config, and as where 1
-    [(where[d][i] == 1) == (config[d][i] == i) for d in D for i in T],
+    # config[d][i] is the team that team i plays on date d; it is i itself when team i has a bye.
+    config = VarArray(size=[n_days, n_teams], dom=range(n_teams))
+    # where[d][i] is HOME, BYE or AWAY: where team i plays on date d.
+    where = VarArray(size=[n_days, n_teams], dom={HOME, BYE, AWAY})
 
-    # each pair of teams meets twice over the 18 dates, and each team has two byes
-    [Count([config_base[k][i] for k in range(len(base_dates))], value=j) == 1 for i in T for j in T],
+    satisfy(
+        # On each date every team meets at most one opponent: no two teams name the same opponent.
+        (AllDifferent(config[d]) for d in range(n_days)),
 
-    # the two teams of a game are one at home and one away
-    [imply(config[d][i] == j, where[d][i] + where[d][j] == 2) for d in D for i in T for j in T if i != j],
+        # A match is symmetric: if team i plays team j, then team j plays team i.
+        (config[d][config[d][i]] == i
+         for d in range(n_days)
+         for i in range(n_teams)),
 
-    # the home, away and bye flags follow where
-    [Table(scope=[where[d][i], home[d][i]], supports=[(0, 1), (1, 0), (2, 0)]) for d in D for i in T],
-    [Table(scope=[where[d][i], away[d][i]], supports=[(0, 0), (1, 0), (2, 1)]) for d in D for i in T],
-    [Table(scope=[where[d][i], bye[d][i]], supports=[(0, 0), (1, 1), (2, 0)]) for d in D for i in T],
+        # A team has a bye exactly when it is its own opponent.
+        ((config[d][i] == i) == (where[d][i] == BYE)
+         for d in range(n_days)
+         for i in range(n_teams)),
 
-    # hosts[d][i][j] is 1 exactly when i is home against j on date d
-    [Table(scope=[config[d][i], where[d][i], hosts[d][i][j]],
-           supports=[(j, 0, 1)] + [(x, w, 0) for x in range(n_teams) for w in range(3) if (x, w) != (j, 0)])
-     for d in D for i in T for j in T if i != j],
-    # a team does not host itself
-    [hosts[d][i][i] == 0 for d in D for i in T],
-    # each pair of teams has exactly one home game for each team
-    [Sum(hosts[d][i][j] for d in D) == 1 for i in T for j in T if i != j],
+        # The two teams of a match: one plays at home, the other away.
+        (where[d][config[d][i]] + where[d][i] == HOME + AWAY
+         for d in range(n_days)
+         for i in range(n_teams)),
 
-    # No Two Final Aways. No team can play away on both last dates
-    [away[n_days - 2][i] + away[n_days - 1][i] <= 1 for i in T],
+        # Each pair of teams meets twice, and each team is at home against the other once.
+        (Count(config[:, i], value=j) == 2
+         for i in range(n_teams)
+         for j in range(n_teams)
+         if i != j),
+        (Sum(And(config[d][i] == j, where[d][i] == HOME) for d in range(n_days)) == 1
+         for i in range(n_teams)
+         for j in range(n_teams)
+         if i != j),
 
-    # Home/Away/Bye Pattern Constraints. No team may have more than two away matches in a row
-    [Sum(away[d + k][i] for k in range(3)) <= 2 for d in range(n_days - 2) for i in T],
-    # No team may have more than two home matches in a row
-    [Sum(home[d + k][i] for k in range(3)) <= 2 for d in range(n_days - 2) for i in T],
-    # No team may have more than three away matches or byes in a row
-    [Sum(away[d + k][i] + bye[d + k][i] for k in range(4)) <= 3 for d in range(n_days - 3) for i in T],
-    # No team may have more than four home matches or byes in a row
-    [Sum(home[d + k][i] + bye[d + k][i] for k in range(5)) <= 4 for d in range(n_days - 4) for i in T],
+        # Mirroring: for each pair (r1, r2) of the scheme, a team has the same opponent on dates r1 and r2,
+        # and a team at home on one of the two dates is away on the other (a bye is then a bye on both dates).
+        (config[r1 - 1][i] == config[r2 - 1][i]
+         for r1, r2 in mirroring_scheme
+         for i in range(n_teams)),
+        (where[r1 - 1][i] + where[r2 - 1][i] == HOME + AWAY
+         for r1, r2 in mirroring_scheme
+         for i in range(n_teams)),
 
-    # Weekend Pattern. Of the weekends, each team plays four at home, four away, and one bye
-    [Sum(home[d][i] for d in range(1, n_days, 2)) == 4 for i in T],
-    [Sum(away[d][i] for d in range(1, n_days, 2)) == 4 for i in T],
-    [Sum(bye[d][i] for d in range(1, n_days, 2)) == 1 for i in T],
+        # No two final aways: no team plays away on both of the last two dates.
+        (Or(where[last_but_one][i] != AWAY, where[last][i] != AWAY)
+         for i in range(n_teams)),
 
-    # First Weekends. Each team must have home matches or byes at least on two of the first five weekends
-    [Sum(home[d][i] + bye[d][i] for d in range(1, 10, 2)) >= 2 for i in T],
+        # No more than two away matches in a row: no three consecutive dates are all away.
+        (Sum(where[d + k][i] == AWAY for k in range(3)) <= 2
+         for i in range(n_teams)
+         for d in range(n_days - 2)),
 
-    # Rival Matches. In the last date, every team except FSU plays against its rival, unless it plays
-    # against FSU or has a bye
-    [Or(config[n_days - 1][i] == rival[i], config[n_days - 1][i] == FSU, config[n_days - 1][i] == i)
-     for i in T if i != FSU],
+        # No more than two home matches in a row: no three consecutive dates are all home.
+        (Sum(where[d + k][i] == HOME for k in range(3)) <= 2
+         for i in range(n_teams)
+         for d in range(n_days - 2)),
 
-    # Constrained Matches. The following pairings must occur at least once in dates 11 to 18
-    [Or(*[config[d][WAKE] == UNC for d in range(10, n_days)])],
-    [Or(*[config[d][WAKE] == DUKE for d in range(10, n_days)])],
-    [Or(*[config[d][GT] == UNC for d in range(10, n_days)])],
-    [Or(*[config[d][GT] == DUKE for d in range(10, n_days)])],
+        # No more than three away matches or byes in a row: no four consecutive dates without a home match.
+        (Sum(where[d + k][i] != HOME for k in range(4)) <= 3
+         for i in range(n_teams)
+         for d in range(n_days - 3)),
 
-    # Opponent Sequence Constraints. No team plays in two consecutive dates away against UNC and Duke
-    [hosts[d][UNC][i] + hosts[d + 1][DUKE][i] <= 1 for d in range(n_days - 1) for i in T if i not in (UNC, DUKE)],
-    [hosts[d][DUKE][i] + hosts[d + 1][UNC][i] <= 1 for d in range(n_days - 1) for i in T if i not in (UNC, DUKE)],
-    # No team plays in three consecutive dates against UNC, Duke and Wake (independent of home/away)
-    [Or(config[d][i] != a, config[d + 1][i] != b, config[d + 2][i] != c)
-     for d in range(n_days - 2) for i in T if i not in (UNC, DUKE, WAKE)
-     for (a, b, c) in [(UNC, DUKE, WAKE), (UNC, WAKE, DUKE), (DUKE, UNC, WAKE),
-                       (DUKE, WAKE, UNC), (WAKE, UNC, DUKE), (WAKE, DUKE, UNC)]],
+        # No more than four home matches or byes in a row: no five consecutive dates without an away match.
+        (Sum(where[d + k][i] != AWAY for k in range(5)) <= 4
+         for i in range(n_teams)
+         for d in range(n_days - 4)),
 
-    # Other Constraints. UNC plays its rival Duke in the last date, and in date 11
-    config[n_days - 1][UNC] == DUKE,
-    config[10][UNC] == DUKE,
-    # UNC plays Clem in the second date
-    config[1][UNC] == CLEM,
-    # Duke has a bye in date 16
-    config[15][DUKE] == DUKE,
-    # Wake does not play home in date 17
-    where[16][WAKE] != 0,
-    # Wake has a bye in the first date
-    config[0][WAKE] == WAKE,
-    # Clem, Duke, UMD and Wake do not play away in the last date
-    [where[n_days - 1][t] != 2 for t in (CLEM, DUKE, UMD, WAKE)],
-    # Clem, FSU, GT and Wake do not play away in the first date
-    [where[0][t] != 2 for t in (CLEM, FSU, GT, WAKE)],
-    # Neither FSU nor NCSt have a bye in the last date
-    config[n_days - 1][FSU] != FSU,
-    config[n_days - 1][NCST] != NCST,
-    # UNC does not have a bye in the first date
-    config[0][UNC] != UNC,
-)
+        # Weekend pattern: over the weekends each team plays four matches at home, four away and has one bye.
+        (Cardinality([where[d][i] for d in weekends], occurrences={HOME: 4, AWAY: 4, BYE: 1})
+         for i in range(n_teams)),
+
+        # First weekends: each team has a home match or a bye on at least two of the first five weekends.
+        (Sum(where[d][i] != AWAY for d in first_five_weekends) >= 2
+         for i in range(n_teams)),
+
+        # Rival matches: on the last date every team except FSU plays its rival, unless it plays FSU or has a bye.
+        (config[last][team] in {rival, FSU, team}
+         for team, rival in rivals.items()),
+
+        # Constrained matches: Wake and UNC, Wake and Duke, GT and UNC, and GT and Duke each meet in dates 11 to 18.
+        (Sum(config[d][a] == b for d in late_dates) >= 1
+         for a, b in [(WAKE, UNC), (WAKE, DUKE), (GT, UNC), (GT, DUKE)]),
+
+        # Opponent sequences: no team plays away against UNC on one date and away against Duke on the next
+        # date, or the other way round.
+        (Or(config[d][i] != UNC, where[d][i] != AWAY, config[d + 1][i] != DUKE, where[d + 1][i] != AWAY)
+         for i in range(n_teams)
+         for d in range(n_days - 1)),
+        (Or(config[d][i] != DUKE, where[d][i] != AWAY, config[d + 1][i] != UNC, where[d + 1][i] != AWAY)
+         for i in range(n_teams)
+         for d in range(n_days - 1)),
+
+        # No team plays three consecutive dates against UNC, Duke and Wake in some order (home or away does
+        # not matter). UNC, Duke and Wake themselves are left out: their own bye would count as one of the three.
+        (Table(scope=[config[d][i], config[d + 1][i], config[d + 2][i]],
+               conflicts=[(UNC, DUKE, WAKE), (UNC, WAKE, DUKE), (DUKE, UNC, WAKE),
+                          (DUKE, WAKE, UNC), (WAKE, UNC, DUKE), (WAKE, DUKE, UNC)])
+         for i in range(n_teams) if i not in (UNC, DUKE, WAKE)
+         for d in range(n_days - 2)),
+
+        # UNC plays its rival Duke on the last date and on date 11.
+        config[last][UNC] == DUKE,
+        config[11 - 1][UNC] == DUKE,
+        # UNC plays Clem on the second date.
+        config[2 - 1][UNC] == CLEM,
+        # Duke has a bye on date 16.
+        config[16 - 1][DUKE] == DUKE,
+        # Wake does not play at home on date 17.
+        where[17 - 1][WAKE] != HOME,
+        # Wake has a bye on the first date.
+        config[1 - 1][WAKE] == WAKE,
+        # UNC does not have a bye on the first date.
+        where[1 - 1][UNC] != BYE,
+
+        # Clem, Duke, UMD and Wake do not play away on the last date.
+        (where[last][t] != AWAY for t in [CLEM, DUKE, UMD, WAKE]),
+
+        # Clem, FSU, GT and Wake do not play away on the first date.
+        (where[1 - 1][t] != AWAY for t in [CLEM, FSU, GT, WAKE]),
+
+        # Neither FSU nor NCSt has a bye on the last date.
+        (where[last][t] != BYE for t in [FSU, NCST]),
+    )
+
+    return {"config": config, "where": where}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        print("config", "=")
+        for row in outputs["config"]:
+            print(values(row))
+    else:
+        print("No solution:", status())

@@ -1,21 +1,46 @@
-# Three coins: starting from the given faces, make all coins face the same way in exactly num_moves moves, where each move flips one coin.
+# three_coins: a PyCSP3 model from DCP Rosetta.
+# Download the `three_coins.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python three_coins.py three_coins.json
+
 from pycsp3 import *
 
-init = data.init
-num_moves = data.num_moves
-num_coins = len(init)
 
-# steps[s][j] = 1 if coin j shows tails (1) after s moves, 0 if heads
-steps = VarArray(size=[num_moves + 1, num_coins], dom={0, 1})
-# flips[s][j] = 1 if coin j is flipped by move s + 1
-flips = VarArray(size=[num_moves, num_coins], dom={0, 1})
+def create_model(instance):
+    """Three coins lie on a table in the order tails, heads, tails. In precisely three
+    moves make them face either all heads or all tails. Each move consists of choosing
+    one coin and flipping it over."""
+    init = instance["init"]  # init[i] is 1 when coin i starts tails up, 0 when heads up
+    n_moves = instance["num_moves"]  # the number of moves to make
+    n_coins = len(init)
 
-satisfy(
-    # the coins start with the given faces
-    [steps[0][j] == init[j] for j in range(num_coins)],
-    # each move flips exactly one coin, and the other coins keep their face
-    [Table(scope=[steps[s][j], steps[s + 1][j], flips[s][j]], supports=[(0, 0, 0), (0, 1, 1), (1, 0, 1), (1, 1, 0)]) for s in range(num_moves) for j in range(num_coins)],
-    [Sum(flips[s]) == 1 for s in range(num_moves)],
-    # at the end all coins face either all heads or all tails
-    [steps[num_moves][j] == steps[num_moves][0] for j in range(1, num_coins)],
-)
+    # steps[k][i] is 1 when coin i shows tails after k moves (steps[0] is the start)
+    steps = VarArray(size=[n_moves + 1, n_coins], dom={0, 1})
+
+    satisfy(
+        # The first configuration is the initial one.
+        [steps[0][i] == init[i] for i in range(n_coins)],
+        # Each move flips exactly one coin, so exactly one position differs from the previous configuration.
+        [Hamming(steps[k - 1], steps[k]) == 1 for k in range(1, n_moves + 1)],
+        # The last configuration has all coins face the same way.
+        AllEqual(steps[n_moves]),
+    )
+
+    return {"steps": steps}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        print("steps", "=")
+        for row in outputs["steps"]:
+            print(values(row))
+    else:
+        print("No solution:", status())

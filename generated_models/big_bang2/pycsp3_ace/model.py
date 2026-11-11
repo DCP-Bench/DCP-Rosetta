@@ -1,20 +1,56 @@
+# big_bang2: a PyCSP3 model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+# Run it (after `pip install pycsp3`, which also needs Java for its ACE solver) with:
+#   python big_bang2.py
+
 from pycsp3 import *
 
-# five nontransitive dice: row 0 Rock, 1 Paper, 2 Scissors, 3 Lizard, 4 Spock; six faces each, values 1 to 12
-dice = VarArray(size=[5, 6], dom=range(1, 13))
 
-# the ten 'beats' relationships as (winner, loser) pairs of dice indices
-beats = [(0, 2), (0, 3), (1, 0), (1, 4), (2, 1), (2, 3), (3, 1), (3, 4), (4, 0), (4, 2)]
+def create_model(instance):
+    """Five nontransitive dice, each with six faces showing a value from 1 to 12,
+    so that the dice beat each other in the pattern of Rock, Paper, Scissors,
+    Lizard and Spock. A die beats another when its faces are larger than the
+    other die's faces in more than half of all pairs of faces."""
+    n_dice = 5                       # one die per choice: Rock, Paper, Scissors, Lizard, Spock
+    n_faces = 6                      # faces on each die
+    lowest_face = 1                  # face values run from 1 to 12 inclusive
+    highest_face = 12
+    ROCK, PAPER, SCISSORS, LIZARD, SPOCK = range(n_dice)
 
-conds = []
-for a in range(5):
-    # the order of the faces on one die does not change any comparison, so the faces are sorted
-    conds.append(Increasing(dice[a]))
+    # beats[d] lists the dice that die d beats, as stated by the problem:
+    # Rock crushes Scissors and Lizard, Paper covers Rock and disproves Spock,
+    # Scissors cuts Paper and decapitates Lizard, Lizard eats Paper and poisons Spock,
+    # Spock vaporizes Rock and smashes Scissors.
+    beats = {
+        ROCK: [SCISSORS, LIZARD],
+        PAPER: [ROCK, SPOCK],
+        SCISSORS: [PAPER, LIZARD],
+        LIZARD: [PAPER, SPOCK],
+        SPOCK: [ROCK, SCISSORS],
+    }
 
-for (a, b) in beats:
-    # the winner has a larger face value than the loser in more than half of all 36 pairs of faces
-    conds.append(Sum(dice[a][i] > dice[b][j] for i in range(6) for j in range(6)) >= 19)
+    # dice[d][f] is the value on face f of die d.
+    dice = VarArray(size=[n_dice, n_faces], dom=range(lowest_face, highest_face + 1))
 
-# the reverse of each beats relationship needs no constraint: the two dice have 36 pairs of faces,
-# so with at least 19 won by one die, the other die wins at most 17 of them.
-satisfy(conds)
+    min_wins = n_faces * n_faces // 2 + 1  # more than half of all pairs of faces
+
+    for winner, losers in beats.items():
+        for loser in losers:
+            # Each die beats the dice listed for it: it has the larger face in more than half of
+            # all pairs of faces.
+            satisfy(
+                Sum(dice[winner][i] > dice[loser][j] for i in range(n_faces) for j in range(n_faces))
+                >= min_wins
+            )
+
+    return {"dice": dice}
+
+
+if __name__ == "__main__":
+    outputs = create_model({})
+    if solve() is SAT:
+        print("dice", "=")
+        for row in outputs["dice"]:
+            print(values(row))
+    else:
+        print("No solution:", status())

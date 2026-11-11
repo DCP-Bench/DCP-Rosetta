@@ -1,41 +1,66 @@
+# mario: a PyCSP3 model from DCP Rosetta.
+# Download the `mario.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/mario.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python mario.py mario.json
+
 from pycsp3 import *
 
-# Mario starts at his house and ends at Luigi's house, visiting houses on the way; the route collects the gold of
-# the houses it visits and the fuel of the roads it uses must stay within the fuel limit
-n = data.nHouses
-mario, luigi = data.marioHouse, data.luigiHouse
 
-# s[i] is the house after house i on the route, s[i] = i when house i is not on the route;
-# the route returns from Luigi's house to Mario's house, which closes the cycle
-s = VarArray(size=n, dom=range(n))
+def create_model(instance):
+    """Mario collects as much gold as possible on a route that starts at Mario's house and
+    ends at Luigi's house, from where it returns to Mario's house. The travel between
+    houses uses fuel, and the route may not use more fuel than Mario has."""
+    n_houses = instance["nHouses"]        # the houses are numbered 0 to n_houses - 1
+    mario = instance["marioHouse"]        # the house where the route starts
+    luigi = instance["luigiHouse"]        # the house the route ends at, before going back to Mario's
+    gold = instance["goldInHouse"]        # gold[h] is the gold in house h
+    arc_fuel = instance["arc_fuel"]       # arc_fuel[a][b] is the fuel used travelling from house a to house b
+    fuel_limit = instance["fuelLimit"]    # the most fuel Mario has
+    houses = range(n_houses)
+    # the largest travel fuel in the instance, which bounds the fuel of any one travel
+    max_arc_fuel = max(max(row) for row in arc_fuel)
 
-# visited[i] is 1 when house i is on the route
-visited = VarArray(size=n, dom={0, 1})
+    # succ[h] is the house after house h on the route; succ[h] == h when h is not on the route
+    succ = VarArray(size=n_houses, dom=houses, id="succ")
+    # on_route[h] is 1 when house h is on the route
+    on_route = VarArray(size=n_houses, dom={0, 1}, id="on_route")
+    # fuel[h] is the fuel used on the travel from house h to its successor
+    fuel = VarArray(size=n_houses, dom=range(max_arc_fuel + 1), id="fuel")
 
-# order[i] is the position of house i on the route, counted from Mario's house
-order = VarArray(size=n, dom=range(n))
+    satisfy(
+        # Mario's house is on the route, and the route goes from it to another house
+        succ[mario] != mario,
+        # Luigi's house is followed by Mario's house
+        succ[luigi] == mario,
+        # each house is the successor of at most one house
+        AllDifferent(succ),
+        # the houses off the route are their own successors, and the others form one circuit
+        Circuit(succ),
+        # a house is on the route exactly when it is not its own successor
+        [on_route[h] == (succ[h] != h) for h in houses],
+        # the fuel of the travel from each house to its successor; a house off the route uses no fuel
+        [Table(scope=(succ[h], fuel[h]), supports=[(a, arc_fuel[h][a]) for a in houses if a != h] + [(h, 0)]) for h in houses],
+        # the fuel used on the route does not exceed the fuel Mario has
+        Sum(fuel) <= fuel_limit,
+    )
 
-# fuel[i] is the fuel used on the road leaving house i, 0 when house i is not on the route
-fuel = VarArray(size=n, dom=range(0, max(max(row) for row in data.arc_fuel) + 1))
+    # Mario collects the gold of every house on the route
+    maximize(Sum(gold[h] * on_route[h] for h in houses))
 
-satisfy(
-    # every house is the sessor of at most one house
-    AllDifferent(s),
-    # a house is on the route exactly when it does not loop to itself
-    [If(visited[i] == 1, Then=s[i] != i, Else=s[i] == i) for i in range(n)],
-    # Mario's house is on the route and Luigi's house leads back to it
-    visited[mario] == 1,
-    s[luigi] == mario,
-    # the route starts at Mario's house
-    order[mario] == 0,
-    # along the route, each house is one step after the house before it, except for the closing road to Mario's house
-    [imply(And(visited[i] == 1, s[i] != mario), order[s[i]] == order[i] + 1) for i in range(n)],
-    # the fuel of the road leaving each house on the route, from the table of road fuel costs
-    [Table(scope=[s[i], fuel[i]], supports=[(j, data.arc_fuel[i][j]) for j in range(n) if j != i] + [(i, 0)])
-     for i in range(n)],
-    # the total fuel used must not exceed the fuel limit
-    Sum(fuel) <= data.fuelLimit,
-)
+    return {"s": succ}
 
-# maximise the gold collected from the houses on the route
-maximize(Sum(data.goldInHouse[i] * visited[i] for i in range(n)))
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

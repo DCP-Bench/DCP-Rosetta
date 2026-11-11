@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791958436.2873821,
+    "agent": "claude-code (claude-sonnet-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ac1377f095808b6eadd66d8ca7f331698d98a48baa9ca6a561b55e6cdbb9ba85"
+    },
+    "created_at": 1794397920.3124325,
     "problem_id": "hidato",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "63066773497046d8aaf50357495334915e0e45a8",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "63066773497046d8aaf50357495334915e0e45a8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "7f72bf8dad0f3b28def8eea9bdeeccfd08d88651849d9febfb25e0a24f42bd4b",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "63066773497046d8aaf50357495334915e0e45a8",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.3821942150243558,
-        "execution_wall_seconds": 4.759940255025867,
+        "checking_seconds": 0.20133699401048943,
+        "execution_wall_seconds": 1.8002097609860357,
         "first_solution": {
           "x": [
             [
@@ -219,9 +249,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.143818202021066,
+        "reference_setup_seconds": 0.8204312339948956,
         "runner_status": {
+          "build_seconds": 0.16861677169799805,
           "detail": "",
+          "main_seconds": 1.0865066229889635,
+          "read_seconds": 0.0006672729796264321,
           "status": "complete",
           "type": "status"
         },
@@ -231,8 +264,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02079912699991837,
-        "execution_wall_seconds": 2.610200116992928,
+        "checking_seconds": 0.009517030004644766,
+        "execution_wall_seconds": 1.2995927529991604,
         "first_solution": {
           "x": [
             [
@@ -261,9 +294,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7894077230012044,
+        "reference_setup_seconds": 0.26022412002203055,
         "runner_status": {
+          "build_seconds": 0.08584356307983398,
           "detail": "",
+          "main_seconds": 0.632533810014138,
+          "read_seconds": 0.0005950769991613925,
           "status": "complete",
           "type": "status"
         },
@@ -273,8 +309,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03286646801279858,
-        "execution_wall_seconds": 2.9044731910107657,
+        "checking_seconds": 0.022012124012690037,
+        "execution_wall_seconds": 1.4510860290029086,
         "first_solution": {
           "x": [
             [
@@ -323,9 +359,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7557696920121089,
+        "reference_setup_seconds": 0.28535792100592516,
         "runner_status": {
+          "build_seconds": 0.09608674049377441,
           "detail": "",
+          "main_seconds": 0.6888739469868597,
+          "read_seconds": 0.0005888619925826788,
           "status": "complete",
           "type": "status"
         },
@@ -335,8 +374,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.12363559502409771,
-        "execution_wall_seconds": 3.3097299530054443,
+        "checking_seconds": 0.052816595998592675,
+        "execution_wall_seconds": 1.5008685950015206,
         "first_solution": {
           "x": [
             [
@@ -413,9 +452,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9104081850382499,
+        "reference_setup_seconds": 0.31184669298818335,
         "runner_status": {
+          "build_seconds": 0.10503196716308594,
           "detail": "",
+          "main_seconds": 0.7926388380001299,
+          "read_seconds": 0.0006155169976409525,
           "status": "complete",
           "type": "status"
         },
@@ -425,8 +467,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.19213329796912149,
-        "execution_wall_seconds": 3.4630143310059793,
+        "checking_seconds": 0.06103491102112457,
+        "execution_wall_seconds": 1.4996943229925819,
         "first_solution": {
           "x": [
             [
@@ -520,9 +562,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0965968850068748,
+        "reference_setup_seconds": 0.3749607509816997,
         "runner_status": {
+          "build_seconds": 0.11706662178039551,
           "detail": "",
+          "main_seconds": 0.8349950780102517,
+          "read_seconds": 0.0006006589974276721,
           "status": "complete",
           "type": "status"
         },
@@ -534,21 +579,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "956df8c90c952b1d25baf34582f8444d64b7fbb7c55d6726fef6eab17492e7dc",
+    "model_hash": "8870f2d49cafc1471c85196ae9fb2b39012c2e335eef9a2c53f9f60da4064f2a",
     "problem_id": "hidato",
     "reason": "accepted",
-    "reference_hash": "5762af4ee350dc71c88ae9c75513c786a4175feab3e901528f52742c8ebc4546",
+    "reference_hash": "b16c5dfde2e99113142f849b35b3105d44103979e1a9ad48cbf44b9520e7a8e1",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -559,11 +604,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 23.879534784005955,
+    "total_wall_seconds": 10.379054076009197,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

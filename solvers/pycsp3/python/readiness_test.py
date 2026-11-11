@@ -6,7 +6,8 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 its output as the readiness evidence.
 
 Candidates are plain PyCSP3 scripts: `data` holds the instance and the declared
-outputs are module-level names. `optimum_unproven_timeout` is an optimisation
+outputs are module-level names, the form of models retained before the standalone
+form; `standalone_block` and `create_model_optimum` check `create_model`. `optimum_unproven_timeout` is an optimisation
 whose proof cannot finish in the budget: the runner must report a timeout with no
 solution, not the incumbent ACE found. `optimum_enumeration` checks that the
 solutions reported for an optimisation all have the proven optimum.
@@ -60,6 +61,23 @@ HEAD = ("from pycsp3 import *\n"
 GOOD = HEAD + "satisfy(x + y == n)\n"
 OPTIMAL = HEAD + "satisfy(x + y >= n)\nminimize(x + y)\n"
 MAXIMAL = HEAD + "satisfy(x + y >= n)\nmaximize(x + y)\n"
+# standalone_block / create_model_optimum: the entrypoint named create_model, with a standalone run block that
+# would fail if the runner executed it (it calls solve(), which the runner refuses, and reads a file).
+ENTRY = ("from pycsp3 import *\n\n\n"
+         "def create_model(instance):\n"
+         "    n = instance['n']\n"
+         "    x = Var(range(n + 1))\n"
+         "    y = Var(range(n + 1))\n"
+         "    satisfy(x + y >= n)\n"
+         "    return {'x': x, 'y': y}\n")
+STANDALONE = ENTRY.replace("satisfy(x + y >= n)\n", "satisfy(x + y == n)\n") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    outputs = create_model(json.load(open(sys.argv[1]))[0])\n"
+    "    if solve() in (SAT, OPTIMUM):\n"
+    "        print(values(outputs['x']))\n")
+ENTRY_OPTIMAL = ENTRY.replace("    return", "    minimize(x + y)\n    return")
 # Does not parse: the runner reports an error and no solution.
 MALFORMED = HEAD + "satisfy(x + y == n\n"
 # objective_values: every reported objective is the problem's own value. A maximisation whose objective has a
@@ -186,7 +204,18 @@ SMALL_PRODUCT = PRODUCT.replace("range(1, 101)", "range(1, 11)").replace("5040",
 
 ISOLATION_PROBE = """import os, socket
 probe = socket.socket(); probe.settimeout(0.5)
-assert os.getuid() != 0, "container runs as root"
+
+
+def host_uid(uid):
+    for line in open("/proc/self/uid_map"):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
+
+
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
+assert os.getuid() != 0 or host_uid(0) != 0, "container runs as root on the host"
 assert sorted(os.listdir("/input")) == ["model.py", "request.json"], "unexpected /input"
 assert not os.path.exists("/dataset"), "dataset is visible to the candidate"
 assert probe.connect_ex(("1.1.1.1", 443)) != 0, "network reachable"
@@ -383,6 +412,8 @@ def main():
             return result
 
         check("satisfaction", GOOD)
+        check("standalone_block", STANDALONE)
+        check("create_model_optimum", ENTRY_OPTIMAL, reference=OPTIMIZING, solution_limit=5)
         check("changed_instances", GOOD, instances=[{"n": 3, "optimize": False}], instance_count=2)
         check("enumeration", GOOD, solution_limit=3)
         check("minimization", OPTIMAL, reference=OPTIMIZING)

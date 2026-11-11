@@ -1,43 +1,67 @@
+# diet: a PyCSP3 model from DCP Rosetta.
+# Download the `diet.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python diet.py diet.json
+
 from pycsp3 import *
 
-# Choose how many servings of each of four foods to buy, so that the diet meets the
-# nutritional limits and costs as little as possible.
 
-n = data.n
-price = data.price
-limits = data.limits
+def create_model(instance):
+    """Given the prices and the nutritional requirements (at least) for each nutrition
+    type, what is the optimal diet? The optimal diet is to minimize the cost of the
+    products. Each food is bought in a whole number of units."""
+    n_foods = instance["n"]          # the number of foods in the table
+    price = instance["price"]        # price[j]: the price of one unit of food j
+    limits = instance["limits"]      # limits[i]: the least amount of nutrition type i the diet must give
 
-# nutrition per serving of each food, as in the problem statement:
-# calories, chocolate (ounces), sugar (ounces), fat (ounces)
-nutrition = [
-    [400, 3, 2, 2],  # chocolate cake (1 slice)
-    [200, 2, 2, 4],  # chocolate ice cream (1 scoop)
-    [150, 0, 4, 1],  # cola (1 bottle)
-    [500, 0, 4, 5],  # pineapple cheesecake (1 piece)
-]
+    # The nutrients in one unit of each food, as the statement's table gives them, in the
+    # order calories, chocolate (ounces), sugar (ounces), fat (ounces).
+    nutrients = [
+        [400, 3, 2, 2],   # Chocolate Cake (1 slice)
+        [200, 2, 2, 4],   # Chocolate ice cream (1 scoop)
+        [150, 0, 4, 1],   # Cola (1 bottle)
+        [500, 0, 4, 5],   # Pineapple cheesecake (1 piece)
+    ]
 
-# food[k] is the number of servings of food k in the diet
-food = VarArray(size=n, dom=range(0, 501))
+    # max_units: the most units of one food the diet can need. Taken as max(limits): a food
+    # with more units than that is cut to max(limits) units without breaking a requirement,
+    # since any nutrient it contains in amount at least 1 then already reaches its limit,
+    # and the cost does not rise, so no optimal diet is lost.
+    max_units = max(limits)
 
-# cost is the total price of the diet
-cost = Var(dom=range(0, 500 * max(price) * n + 1))
+    # units[j] is the number of units of food j that are bought
+    units = VarArray(size=n_foods, dom=range(max_units + 1))
 
-satisfy(
-    # the diet has at least the required calories
-    Sum(nutrition[k][0] * food[k] for k in range(n)) >= limits[0],
+    # cost is the price of the bought foods; at most every food bought in max_units units.
+    max_cost = sum(price) * max_units
+    cost = Var(dom=range(max_cost + 1))
 
-    # the diet has at least the required amount of chocolate
-    Sum(nutrition[k][1] * food[k] for k in range(n)) >= limits[1],
+    # The diet gives at least the required amount of each nutrition type.
+    satisfy(
+        Sum(nutrients[j][i] * units[j] for j in range(n_foods)) >= limits[i]
+        for i in range(len(limits))
+    )
 
-    # the diet has at least the required amount of sugar
-    Sum(nutrition[k][2] * food[k] for k in range(n)) >= limits[2],
+    # The cost is the price of the units bought.
+    satisfy(cost == Sum(price[j] * units[j] for j in range(n_foods)))
 
-    # the diet has at least the required amount of fat
-    Sum(nutrition[k][3] * food[k] for k in range(n)) >= limits[3],
+    # Minimize the cost of the diet.
+    minimize(cost)
 
-    # the cost is the price of each food times its number of servings
-    cost == Sum(price[k] * food[k] for k in range(n)),
-)
+    return {"cost": cost}
 
-# minimise the cost of the diet
-minimize(cost)
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        for name, variable in outputs.items():
+            print(name, "=", value(variable))
+    else:
+        print("No solution:", status())

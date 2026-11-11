@@ -1,29 +1,52 @@
+# archery_puzzle: a PyCSP3 model from DCP Rosetta.
+# Download the `archery_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/archery_puzzle.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python archery_puzzle.py archery_puzzle.json
+
 from pycsp3 import *
 
-# The young archer shoots at several rings; each arrow on ring i scores targets[i].
-# She may shoot as many arrows as she likes. We find how many hits per ring get
-# her total as close as possible to the target score.
 
-targets = data.targets
-target_score = data.target_score
-n = len(targets)
+def create_model(instance):
+    """An archer may shoot any number of arrows at each of the targets, and her score is the
+    sum of the values of her hits. Find the number of hits on each target that brings her
+    score closest to the target score, minimising the absolute difference."""
+    targets = instance["targets"]          # targets[k]: the points for one hit on target k
+    target_score = instance["target_score"]  # the score the archer aims for
+    n_targets = len(targets)
 
-# hits[i] is the number of arrows that land on ring i
-# (a total above twice the target cannot be optimal, because shooting nothing
-# already gives deviation target_score, so each ring is bounded by that total)
-hits = VarArray(size=n, dom=range(0, 2 * target_score // min(targets) + 1))
+    # Any optimal score is below target_score + the largest ring value: if it exceeded the
+    # target by at least one hit's value, removing that hit would get closer to the target.
+    # The sum of the ring values is at least that largest value, so it bounds the score.
+    max_score = target_score + sum(targets)
 
-# deviation is the distance between her total and the target score
-deviation = Var(dom=range(0, target_score + 1))
+    # hits[k] is the number of arrows that land on target k
+    hits = VarArray(size=n_targets, dom=range(max_score + 1))
 
-satisfy(
-    # no ring can be hit more often than a total of twice the target allows
-    [hits[i] <= 2 * target_score // targets[i] for i in range(n)],
-    # the total may overshoot the target score; the deviation bounds the overshoot
-    Sum(targets[i] * hits[i] for i in range(n)) - target_score <= deviation,
-    # the total may undershoot the target score; the deviation bounds the undershoot
-    target_score - Sum(targets[i] * hits[i] for i in range(n)) <= deviation,
-)
+    # The archer's total score, the sum of the values of all her hits
+    score = Var(dom=range(max_score + 1))
 
-# minimise how far the total score is from the target score
-minimize(deviation)
+    satisfy(
+        # The score is the sum of the values of all hits.
+        score == Sum(targets[k] * hits[k] for k in range(n_targets)),
+    )
+
+    # Minimise the absolute difference between the score and the target score.
+    minimize(abs(score - target_score))
+
+    return {"hits": hits}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())
