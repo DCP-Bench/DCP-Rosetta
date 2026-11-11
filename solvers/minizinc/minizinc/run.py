@@ -18,7 +18,14 @@ is indexed from 1, as MiniZinc indexes a JSON array.
    beside numbers, or scalars beside arrays) binds as one array per column,
    `<field>_1`, `<field>_2`, ..., numbered from 1; `<field>` itself is not
    bound. Each column then binds by rule 1 or rule 2, but is not split again.
-4. Any other ragged or mixed field is refused, as is a generated name that is
+4. A list of rows that each start with one scalar followed by any number of
+   arrays (Kakuro's `[16, [1, 1], [1, 2]]`) binds as two fields:
+   `<field>_1`, the first item of every row, and `<field>_2`, the rest of every
+   row, bound by rule 1 or 2 (so a ragged rest is padded, with `<field>_2_len`).
+   It is tried only after rules 1 to 3 fail, so no field they bind changes. A
+   field whose rows all have the same length is bound by rule 3 instead, as
+   `<field>_1`, `<field>_2`, ... one array per column.
+5. Any other ragged or mixed field is refused, as is a generated name that is
    already an instance field or is generated twice.
 
 A refusal is an `error` status with the reason as detail, exactly as any other
@@ -82,6 +89,13 @@ def column_class(column):
     return kinds.pop() if len(kinds) == 1 and "other" not in kinds else None
 
 
+def head_and_arrays(rows):
+    """True when every row is one scalar followed by arrays, and some row has arrays."""
+    return (all(row and kind(row[0]) != "other" and
+                all(isinstance(item, list) for item in row[1:]) for row in rows)
+            and any(len(row) > 1 for row in rows))
+
+
 def field(name, value, split=True):
     """Yield (name, value, required) bindings for one instance field."""
     if not isinstance(value, list) or "other" in {kind(x) for x in leaves(value)}:
@@ -112,10 +126,20 @@ def field(name, value, split=True):
                 for j, column in enumerate(columns, 1):
                     yield from field(f"{name}_{j}", column, split=False)
                 return
+        if split and head_and_arrays(value):
+            try:
+                bindings = (list(field(f"{name}_1", [row[0] for row in value], split=False))
+                            + list(field(f"{name}_2", [row[1:] for row in value], split=False)))
+            except Unbindable:
+                pass  # refused below, naming the instance field rather than a generated one
+            else:
+                yield from bindings
+                return
     raise Unbindable(
         f"Instance field `{name}` is ragged or mixes types in a way this integration "
         "cannot bind: only a ragged list of rows with one item shape and one scalar "
-        "type, or equal-length rows whose columns differ in type, are reshaped")
+        "type, equal-length rows whose columns differ in type, or rows of one scalar followed "
+        "by arrays, are reshaped")
 
 
 def bind(instance):

@@ -44,7 +44,15 @@ are reshaped by `run.py`:
    `<field>` itself is **not** bound. Each column then binds by rule 1 or 2 (not split
    again). `[["Epic",1,30],["Chain 1",1,6]]` gives `movies_1` (strings), `movies_2`,
    `movies_3` (ints).
-4. Anything else ragged or mixed, or a generated name that clashes with an instance field
+4. **Rows that each start with one scalar followed by any number of arrays** (Kakuro's
+   `[16, [1,1], [1,2]]`, a sum and then its cells), when rules 1 to 3 do not already bind
+   them: `<field>_1` holds the first item of every row (an array of that scalar type) and
+   `<field>_2` the rest of every row, bound by rule 1 or 2. A ragged rest is padded and
+   comes with `<field>_2_len`: `[[16,[1,1],[1,2]],[24,[1,5]]]` gives `problem_1 = [16,24]`,
+   `problem_2` as `array[int,int,int]` padded with `[0,0]`, and `problem_2_len = [2,1]`.
+   Rows of equal length are bound by rule 3 instead (one array per column), so a model
+   for a field like this must expect the ragged form only.
+5. Anything else ragged or mixed, or a generated name that clashes with an instance field
    or another generated name, is refused: status `error` naming the field, before the
    model runs.
 
@@ -133,7 +141,7 @@ dcp-eval/minizinc_gecode:v1 -c 'minizinc --solver gecode ...'`.
   objective;` solves once but cannot be rewritten, so a multi-solution run is
   `unsupported`. Keep the solve item bare.
 - **`show` on a 2-D array flattens it**, giving an `invalid_output` shape. Use `showJSON`.
-- **Some ragged or mixed fields are unbindable** (rule 4); no model can work around that,
+- **Some ragged or mixed fields are unbindable** (rule 5); no model can work around that,
   so the problem/integration pair is blocked. `python -m generation.brief` lists them
   under `unbindable_fields`.
 - **Do not declare `<field>` for a rule-3 field**: only `<field>_1..._k` exist, so a
