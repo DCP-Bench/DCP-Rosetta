@@ -126,6 +126,88 @@ Solving examples: [satisfy](../assets/python/satisfy/README.md), [maximise](../a
 | every optimal solution | [all-optimal](../assets/python/all-optimal/README.md) |
 
 
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective, and on a problem constant
+  where it appears (`# fixed by the rules of Sudoku`);
+- the plainest expression that says it: `gp.quicksum(w * xi for w, xi in zip(weights, x)) <= capacity`,
+  and `holds.sum(r, c, "*")` for a sum over one index of a `tupledict` (say in a comment what
+  the `"*"` adds up);
+- one `model.addConstrs(... for ...)` with a generator (and `if j > i` for pairs) where a loop
+  only adds one row per item; a loop stays where each group has its own clue or bound;
+- a domain or bound that the statement does not give (an upper bound taken from the data or
+  chosen to keep a variable finite) with a comment that says so;
+- decisions kept as lists or nested lists so they print as a whole; a `tupledict` from
+  `addVars` is a dict, so list its entries (`[[x[i, j] for j in cols] for i in rows]`).
+
+An output may be a variable, a linear expression over variables or a number, and the same
+`gp.LinExpr(out).getValue()` reads each. So a digit chosen through one-hot binaries can be
+returned as `gp.quicksum(d * holds[r, c, d] for d in digits)`, with no integer variable and
+no linking constraint added only to read it.
+
+Build the model in one function that creates the `Model`, adds the constraints, sets the
+objective when there is one, and returns the model with the variables to print:
+
+```python
+def create_model(instance):
+    """A hiker chooses which items to pack: as much total value as possible,
+    without the items weighing more than the backpack can carry."""
+    values = instance["values"]      # values[i]: the value of item i
+    weights = instance["weights"]    # weights[i]: the weight of item i
+    capacity = instance["capacity"]  # the most weight the backpack can carry
+
+    model = gp.Model("knapsack")
+
+    # x[i] is 1 when the hiker packs item i, and 0 when not
+    x = [model.addVar(vtype=GRB.BINARY, name=f"x_{i}") for i in range(len(values))]
+
+    # The packed items weigh no more than the backpack can carry.
+    model.addConstr(gp.quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
+
+    # Pack the most valuable selection.
+    model.setObjective(gp.quicksum(v * xi for v, xi in zip(values, x)), GRB.MAXIMIZE)
+
+    return model, {"x": x}
+```
+
+Solve with `model.Params.OutputFlag = 0` and `model.Params.MIPGap = 0` (the default gap stops
+within 0.01% of the optimum), call `model.optimize()`, test `model.Status == GRB.OPTIMAL`, and
+print `round(model.ObjVal)` and each output as `round(gp.LinExpr(out).getValue())`;
+`numpy.vectorize` applies it to a nested list in one call. A status of 3 is infeasible, and 4
+means presolve could not tell infeasible from unbounded. The licence that comes with
+`pip install gurobipy` handles up to 2000 variables and 2000 linear constraints.
+
+### Generators and `tupledict` traps
+
+- The loop variables of an `addConstrs` generator become `tupledict` keys, so they must be
+  indices (`int`, `str`, `tuple`). Looping over variables fails with `Variable has not yet been
+  added to the model`, and over lists with `unhashable type: 'list'`: loop over indices and index
+  the data inside the expression. Indicator constraints `(b[i] == 1) >> (...)` work in
+  `addConstrs` over indices.
+- `tupledict.sum` takes one argument per key position: `holds.sum(r, c, "*")` for keys
+  `(r, c, d)`. A tuple passed as one argument (`sum((i, k), "*")`), or keys that contain tuples,
+  silently match nothing and leave the model infeasible with no error: flatten the keys to ints,
+  and look at `model.write("model.lp")` when a model is unexpectedly infeasible.
+- `gp.quicksum` over a `tupledict` adds its keys, not its values: use `td.sum()` or
+  `list(td.values())`.
+- `addVars` takes a list or a dict for `lb` and `ub` (one per index), so per-index bounds need no
+  loop afterwards.
+- Regrouping constraint rows changes their order, and under one thread that alone can make a
+  hard model ten times slower: keep the order when reshaping loops of a model that is hard to
+  solve, and time it with `Threads = 1`.
+- A bound the statement does not give needs a comment saying so and, when it has one, why it
+  cannot cut off the optimum (an implied bound, a triangle inequality), not only that it comes
+  from the data. State in a comment where the statement leaves a boundary open.
+- An integer output that is a linear function of many binaries should be its own bounded
+  integer variable with an equality link: enumeration of further solutions then moves over
+  distinct output values, and stays small, instead of adding indicator constraints per binary.
+
 ## Common issues
 
 | Symptom | Likely cause | Fix |

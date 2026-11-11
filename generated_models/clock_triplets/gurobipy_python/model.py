@@ -1,30 +1,54 @@
-"""Clock triplets: arrange 1..12 around a clock face so that no three adjacent numbers sum to more than 21."""
+# clock_triplets: a Gurobi (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+# Run it (after `pip install gurobipy numpy`; the licence that comes with pip allows models
+# up to 2000 variables and constraints) with:
+#   python clock_triplets.py
+
 import gurobipy as gp
 from gurobipy import GRB
 
+n = 12      # the numbers 1 to 12, one for each place on the clock (from the statement)
+limit = 21  # no three adjacent numbers may sum to more than this (from the statement)
 
-def build(instance):
-    # The puzzle has no instance data: 12 positions and the limit 21 are the puzzle's
-    # own, mirrored from the reference.
-    n = 12
-    limit = 21
+
+def create_model(instance):
+    """Clock triplets: arrange 1..12 around a clock face so that no three adjacent numbers sum to more than 21."""
     places = range(n)
     numbers = range(1, n + 1)
 
     model = gp.Model("clock_triplets")
 
-    # is_[i, v] is 1 when position i of the clock shows number v; every position shows
-    # one number and every number appears once (all different).
+    # is_[i, v] is 1 when place i of the clock shows the number v, and 0 when not
     is_ = model.addVars(places, numbers, vtype=GRB.BINARY, name="is")
-    for i in places:
-        model.addConstr(is_.sum(i, "*") == 1, name=f"one_number[{i}]")
-    for v in numbers:
-        model.addConstr(is_.sum("*", v) == 1, name=f"used_once[{v}]")
+
+    # Each place shows exactly one number.
+    model.addConstrs((is_.sum(i, "*") == 1 for i in places), name="one_number")
+
+    # Each number appears on exactly one place.
+    model.addConstrs((is_.sum("*", v) == 1 for v in numbers), name="used_once")
+
+    # x[i] is the number shown at place i.
     x = [gp.quicksum(v * is_[i, v] for v in numbers) for i in places]
 
-    # The largest sum of three adjacent numbers (wrapping around the clock) is at most 21.
-    triplet_sum = model.addVar(lb=0, ub=limit, vtype=GRB.INTEGER, name="triplet_sum")
-    for i in places:
-        model.addConstr(x[i] + x[i - 1] + x[i - 2] <= triplet_sum, name=f"triplet[{i}]")
+    # Three adjacent places, going round the clock: i, i-1 and i-2. Python's x[-1] is the
+    # last place, so the triplets wrap round the clock for the first two places.
+    # No three adjacent numbers sum to more than the limit.
+    model.addConstrs((x[i] + x[i - 1] + x[i - 2] <= limit for i in places), name="triplet")
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.Params.OutputFlag = 0  # no solver log
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a solution
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

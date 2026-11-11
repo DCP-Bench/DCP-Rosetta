@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791003179.1525,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/gurobi/python/CONTRACT.md": "64ac711159447f95a9300997cf286bacb9d20abdbf2ed49172a8ab84285a66a0"
+    },
+    "created_at": 1793803172.7151666,
     "problem_id": "csplib_008_vessel_loading",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1402c8e3902b3c3b86e46b423febede5526140d30e18581dd6e0faf3de62c6f8",
-    "run_id": "20261001T1218Z-gurobi-a90c",
-    "schema": 2,
-    "skill_bundle_hash": "6a6e6df924a2c1bb358ef1a4722cbb1b4daa36e88d3a708fd8fa2645937e75ef",
-    "skill_source": "solvers\\gurobipy_python\\skills\\gurobipy",
+    "readiness_hash": "d008139638dcc84bf1d6ac4523bb6d9fcb8b5f607d6fd9b854817faf3599b60d",
+    "run_id": "gurobi-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "152d21b9d22d19fb4c7fd6ef7bc95e324e693637",
+      "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
       "modified": false,
-      "path": "solvers/gurobipy_python/skills/gurobipy"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "37208b292bca196eb56cf0f6cee09df988466d9bcdbcf076c9e8a2e4a4e9a540",
+        "source": "solvers/gurobi/skills/dcp-gurobi",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "solvers/gurobi/skills/dcp-gurobi"
+        }
+      }
+    ],
     "solver_id": "gurobipy_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:527fdcaef6c25d5c6452fd59bc01ebc79b913567ccf80bffbff88f9ce67ff9f0",
+      "id": "sha256:51e206b961fb980499155c874c9f1e30688aa3f972a09ea75203eb085a3f9972",
+      "recipe": "sha256:6339c09b15707929271e2c18a8c036813535fc3cbaebe2f69e403825b50f918e",
       "tag": "dcp-eval/gurobipy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.016567400001804344,
-        "execution_wall_seconds": 1.134309300003224,
+        "checking_seconds": 0.005813963012769818,
+        "execution_wall_seconds": 0.5316735719970893,
         "first_solution": {
           "bottom": [
             0,
@@ -72,7 +97,7 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9077397999935783,
+        "reference_setup_seconds": 0.26434684701962397,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -84,56 +109,56 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.09023359999991953,
-        "execution_wall_seconds": 10.874085699993884,
+        "checking_seconds": 0.03457306101336144,
+        "execution_wall_seconds": 3.568720906972885,
         "first_solution": {
           "bottom": [
             4,
+            4,
+            12,
+            12,
+            12,
             8,
             0,
             0,
+            10,
+            4
+          ],
+          "left": [
+            6,
+            0,
+            8,
             0,
             4,
             0,
             8,
+            0,
             12,
             12
           ],
-          "left": [
-            4,
-            10,
-            4,
-            8,
-            12,
-            10,
-            0,
-            0,
-            4,
-            10
-          ],
           "right": [
-            10,
+            12,
+            6,
+            12,
+            4,
+            8,
+            6,
             16,
             8,
-            12,
             16,
-            16,
-            4,
-            4,
-            10,
             16
           ],
           "top": [
             12,
+            8,
+            16,
+            16,
+            16,
             12,
             4,
             4,
-            4,
-            8,
-            8,
             16,
-            16,
-            16
+            10
           ]
         },
         "id": "json:1",
@@ -148,7 +173,7 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.071925200005353,
+        "reference_setup_seconds": 0.9171665289904922,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -160,56 +185,56 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.132943399999931,
-        "execution_wall_seconds": 3.127167200000258,
+        "checking_seconds": 0.027418884012149647,
+        "execution_wall_seconds": 2.738689039979363,
         "first_solution": {
           "bottom": [
             4,
-            4,
-            12,
-            12,
-            12,
             8,
             0,
             0,
-            10,
-            4
+            0,
+            4,
+            0,
+            8,
+            12,
+            12
           ],
           "left": [
-            4,
-            10,
-            4,
+            6,
+            0,
             8,
+            0,
+            4,
+            0,
             12,
-            10,
+            12,
             0,
-            8,
-            0,
-            0
+            6
           ],
           "right": [
-            10,
-            16,
-            8,
             12,
-            16,
-            16,
-            8,
-            16,
+            6,
+            12,
             4,
-            4
+            8,
+            6,
+            16,
+            16,
+            6,
+            12
           ],
           "top": [
             12,
-            8,
-            16,
-            16,
-            16,
             12,
             4,
             4,
+            4,
+            8,
+            8,
             16,
-            10
+            16,
+            16
           ]
         },
         "id": "json:2",
@@ -224,7 +249,7 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5625273999976343,
+        "reference_setup_seconds": 0.343602869019378,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -236,8 +261,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.017714699999487493,
-        "execution_wall_seconds": 1.1058776999998372,
+        "checking_seconds": 0.009572062001097947,
+        "execution_wall_seconds": 0.5313578729983419,
         "first_solution": {
           "bottom": [
             0,
@@ -272,7 +297,7 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4664068999991287,
+        "reference_setup_seconds": 0.25879769600578584,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -284,36 +309,36 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04837099999713246,
-        "execution_wall_seconds": 1.6192200999939814,
+        "checking_seconds": 0.022599516989430413,
+        "execution_wall_seconds": 0.5305148039769847,
         "first_solution": {
           "bottom": [
-            4,
             0,
+            4,
             0,
             6,
             0,
             3
           ],
           "left": [
-            6,
-            6,
-            10,
-            1,
+            2,
+            3,
             0,
-            2
+            9,
+            9,
+            9
           ],
           "right": [
-            10,
-            10,
+            6,
+            7,
+            2,
             12,
-            4,
-            3,
-            4
+            12,
+            11
           ],
           "top": [
-            8,
             4,
+            8,
             6,
             8,
             2,
@@ -332,7 +357,7 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3480818000025465,
+        "reference_setup_seconds": 0.2783916899934411,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -346,21 +371,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b5cff1ac6de76280565164330d16994807d1844ee91b4fbefe56013104f9036e",
+    "model_hash": "814c50249fced9fd4885b30a30af734471682dd2b41481183185655e3918db2f",
     "problem_id": "csplib_008_vessel_loading",
     "reason": "accepted",
     "reference_hash": "57f871089ad0f43642d8d4362fe4aa82c5cc2d647921c4ee8223fe5e70650734",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -371,11 +396,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "gurobipy_python",
-    "total_wall_seconds": 29.133838900001138,
+    "total_wall_seconds": 11.249597631016513,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 
-def build(instance):
+def create_model(instance):
     n = instance["n"]
     model = gp.Model()
     x = model.addVar(lb=0, ub=n, vtype=GRB.INTEGER, name="x")

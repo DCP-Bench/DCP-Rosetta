@@ -1,4 +1,11 @@
-"""Curious set of integers (Gardner): extend {1, 3, 8, 120} so that the product of any two members is one less than a square."""
+# curious_set_of_integers: a Gurobi (Python) model from DCP Rosetta.
+# Download the `curious_set_of_integers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/curious_set_of_integers.html
+# Then run it on the first instance (after `pip install gurobipy numpy`;
+# the licence that comes with pip allows models up to 2000 variables and constraints):
+#   python curious_set_of_integers.py curious_set_of_integers.json
+
+import itertools
 import math
 
 import gurobipy as gp
@@ -8,81 +15,95 @@ from gurobipy import GRB
 GIVEN = [1, 3, 8, 120]
 
 
-def build(instance):
-    n = instance["n"]
-    max_val = instance["max_val"]
+def create_model(instance):
+    """Curious set of integers: find a number that can join 1, 3, 8 and 120 so that the product of any two members of the set is one less than a perfect square."""
+    n = instance["n"]              # the size of the set: the four given numbers and n - 4 new ones
+    max_val = instance["max_val"]  # the largest value a new member or a square root may take; not from the statement, it bounds the search
     if n <= len(GIVEN):
         raise ValueError("the set must have at least one member beyond the given four")
-    new = range(n - len(GIVEN))
+    new = range(n - len(GIVEN))    # the new members (the statement asks for one)
 
-    model = gp.Model("curious_set_of_integers")
-    # Square roots of products reach about 1100 here, so their squares carry
-    # coefficients near 10^6; a tight tolerance keeps near-0 binaries exact.
-    model.Params.IntFeasTol = 1e-9
-
-    def is_square_root_of(k, value_bound):
-        """The roots q with q^2 = k * x + 1 for some integer x in 0..value_bound,
-        with q itself in the reference's root domain 0..max_val. Such q satisfy
-        q^2 = 1 (mod k), which keeps the list short."""
-        top = min(max_val, math.isqrt(k * value_bound + 1))
+    def square_roots(k):
+        """The roots q, up to max_val, for which k * x + 1 = q * q for a whole number x in 0..max_val:
+        x = (q * q - 1) // k is then a candidate for a new member, given the given number k."""
+        top = min(max_val, math.isqrt(k * max_val + 1))
         return [q for q in range(1, top + 1) if (q * q - 1) % k == 0]
 
-    # The given members already have the property among themselves.
-    for a in range(len(GIVEN)):
-        for b in range(a + 1, len(GIVEN)):
-            root = math.isqrt(GIVEN[a] * GIVEN[b] + 1)
-            if root * root != GIVEN[a] * GIVEN[b] + 1 or root > max_val or GIVEN[b] > max_val:
-                model.addConstr(gp.LinExpr() >= 1, name=f"given_pair_fails[{a},{b}]")
+    model = gp.Model("curious_set_of_integers")
+    # Squares of roots reach about 10^6 here, so their coefficients are that large; a tight
+    # tolerance keeps the near-0 binaries exact.
+    model.Params.IntFeasTol = 1e-9
 
-    # For each new member x and each given member k, k * x + 1 is a square q^2,
-    # so x = (q^2 - 1) / k. root[i, k][q] = 1 selects that q; the first given
-    # member's selection also defines x itself.
-    root = {}
-    value = []
+    # The given numbers must have the property among themselves. A pair whose product plus one
+    # is not a square with a root within max_val (or whose larger member exceeds max_val) makes
+    # the model infeasible, through an empty constraint 0 >= 1.
+    for a, b in itertools.combinations(GIVEN, 2):
+        root = math.isqrt(a * b + 1)
+        if root * root != a * b + 1 or root > max_val or b > max_val:
+            model.addConstr(gp.LinExpr() >= 1, name=f"given_pair_fails[{a},{b}]")
+
+    # For each new member x and each given number k, k * x + 1 is a square q * q.
+    # pick[i, k][q] is 1 when the root for member i and number k is q.
+    pick = {}
     for i in new:
         for k in GIVEN:
-            qs = is_square_root_of(k, max_val)
-            pick = model.addVars(qs, vtype=GRB.BINARY, name=f"root[{i},{k}]")
-            model.addConstr(pick.sum() == 1, name=f"one_root[{i},{k}]")
-            root[i, k] = (qs, pick)
-        qs, pick = root[i, GIVEN[0]]
-        value.append(gp.quicksum((q * q - 1) // GIVEN[0] * pick[q] for q in qs))
-        # Every given member's root gives the same x.
-        for k in GIVEN[1:]:
-            qs_k, pick_k = root[i, k]
-            model.addConstr(value[i] == gp.quicksum((q * q - 1) // k * pick_k[q] for q in qs_k),
-                            name=f"square_with[{i},{k}]")
+            pick[i, k] = model.addVars(square_roots(k), vtype=GRB.BINARY, name=f"root[{i},{k}]")
+    model.addConstrs((pick[i, k].sum() == 1 for i in new for k in GIVEN), name="one_root")
 
-    # All members are different: a new member is none of the given ones ...
-    qs0, _ = root[0, GIVEN[0]] if new else ([], None)
-    for i in new:
-        qs, pick = root[i, GIVEN[0]]
-        for q in qs:
-            if (q * q - 1) // GIVEN[0] in GIVEN:
-                model.addConstr(pick[q] == 0, name=f"not_given[{i},{q}]")
-    # ... and the new members differ from each other (x determines its root).
-    if len(new) > 1:
-        for q in qs0:
-            model.addConstr(gp.quicksum(root[i, GIVEN[0]][1][q] for i in new) <= 1, name=f"distinct[{q}]")
+    # Member x is (q * q - 1) / GIVEN[0] for its chosen root q; value[i] is that expression.
+    value = [gp.quicksum((q * q - 1) // GIVEN[0] * pick[i, GIVEN[0]][q] for q in square_roots(GIVEN[0]))
+             for i in new]
+    # The same member comes out whichever given number's root is chosen.
+    model.addConstrs((value[i] == gp.quicksum((q * q - 1) // k * pick[i, k][q] for q in square_roots(k))
+                      for i in new for k in GIVEN[1:]), name="same_member")
 
-    # Two new members x and y also need x * y + 1 to be a square p^2. x * y is
-    # linear by disaggregating y over x's root selection; p is selected from
-    # its admissible roots the same way.
+    # A new member is none of the given numbers, so its root must not give a given number.
+    model.addConstrs((pick[i, GIVEN[0]][q] == 0
+                      for i in new for q in square_roots(GIVEN[0]) if (q * q - 1) // GIVEN[0] in GIVEN),
+                     name="not_given")
+    # Distinct new members have distinct roots, since a member is determined by its root.
+    model.addConstrs((gp.quicksum(pick[i, GIVEN[0]][q] for i in new) <= 1
+                      for q in square_roots(GIVEN[0])), name="distinct")
+
+    # Two new members x and y also need x * y + 1 to be a square p * p. The product is linear
+    # because y is split over x's root selection: part[q] is y when x's root is q, and 0 otherwise.
+    # The root p is chosen among the roots that can occur.
+    p_roots = range(1, min(max_val, math.isqrt(max_val * max_val + 1)) + 1)
     for i in new:
         for j in new:
             if j <= i:
                 continue
-            qs, pick = root[i, GIVEN[0]]
-            part = model.addVars(qs, lb=0, ub=max_val, name=f"part[{i},{j}]")
-            for q in qs:
-                model.addConstr(part[q] <= max_val * pick[q])
-            model.addConstr(part.sum() == value[j])
-            product = gp.quicksum((q * q - 1) // GIVEN[0] * part[q] for q in qs)
-            ps = [p for p in range(1, min(max_val, math.isqrt(max_val * max_val + 1)) + 1)]
-            p_pick = model.addVars(ps, vtype=GRB.BINARY, name=f"pair_root[{i},{j}]")
-            model.addConstr(p_pick.sum() == 1)
-            model.addConstr(product + 1 == gp.quicksum(p * p * p_pick[p] for p in ps),
+            part = model.addVars(square_roots(GIVEN[0]), lb=0, ub=max_val, name=f"part[{i},{j}]")
+            model.addConstrs((part[q] <= max_val * pick[i, GIVEN[0]][q] for q in square_roots(GIVEN[0])),
+                             name=f"part_zero[{i},{j}]")
+            model.addConstr(part.sum() == value[j], name=f"part_sum[{i},{j}]")
+            product = gp.quicksum((q * q - 1) // GIVEN[0] * part[q] for q in square_roots(GIVEN[0]))
+            p_pick = model.addVars(p_roots, vtype=GRB.BINARY, name=f"pair_root[{i},{j}]")
+            model.addConstr(p_pick.sum() == 1, name=f"one_pair_root[{i},{j}]")
+            model.addConstr(product + 1 == gp.quicksum(p * p * p_pick[p] for p in p_roots),
                             name=f"square_pair[{i},{j}]")
 
-    # The number asked for is the last member of the set.
+    # No objective: any choice of new members that meets the constraints is an answer.
+    # The number asked for is the last new member.
     return model, {"number": value[-1]}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.Params.OutputFlag = 0  # no solver log
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a solution
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

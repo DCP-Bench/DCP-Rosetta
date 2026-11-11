@@ -1,51 +1,71 @@
-"""Jobs puzzle: four people hold eight jobs, two each; find who holds which job from five clues."""
+# jobs_puzzle: a Gurobi (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/jobs_puzzle.html
+# Run it (after `pip install gurobipy numpy`; the licence that comes with pip allows models
+# up to 2000 variables and constraints) with:
+#   python jobs_puzzle.py
+
 import gurobipy as gp
 from gurobipy import GRB
 
 # The problem has no instance data: four people, eight jobs, as stated.
 PEOPLE = range(4)
+# The eight jobs of the statement.
 JOBS = ["chef", "guard", "nurse", "clerk", "police_officer", "teacher", "actor", "boxer"]
+# Each person holds exactly two jobs (eight jobs shared among four people).
 JOBS_PER_PERSON = 2
 
 
-def build(instance):
+def create_model(instance):
+    """Jobs puzzle: four people hold eight jobs, two each; find who holds which job from five clues."""
     model = gp.Model("jobs_puzzle")
 
-    # holds[job, p] = 1 when person p holds that job; each job has one holder.
+    # holds[job, p] = 1 when person p holds that job.
     holds = model.addVars(JOBS, PEOPLE, vtype=GRB.BINARY, name="holds")
-    for job in JOBS:
-        model.addConstr(holds.sum(job, "*") == 1, name=f"one_holder[{job}]")
+    # Each job has exactly one holder.
+    model.addConstrs((holds.sum(job, "*") == 1 for job in JOBS), name="one_holder")
 
     # Each person holds exactly two jobs.
-    for p in PEOPLE:
-        model.addConstr(holds.sum("*", p) == JOBS_PER_PERSON, name=f"two_jobs[{p}]")
+    model.addConstrs((holds.sum("*", p) == JOBS_PER_PERSON for p in PEOPLE), name="two_jobs")
 
-    def different_people(job1, job2):
-        for p in PEOPLE:
-            model.addConstr(holds[job1, p] + holds[job2, p] <= 1, name=f"{job1}_not_{job2}[{p}]")
-
-    def not_person(job, p):
-        model.addConstr(holds[job, p] == 0, name=f"{job}_not_person[{p}]")
-
-    # 1. The nurse is not the teacher, the police officer, or the clerk.
+    # 1. The nurse is not the teacher, the police officer, or the clerk: for each
+    #    person, no one holds both the nurse job and the other job.
     for job in ("teacher", "police_officer", "clerk"):
-        different_people("nurse", job)
+        model.addConstrs((holds["nurse", p] + holds[job, p] <= 1 for p in PEOPLE),
+                         name=f"nurse_not_{job}")
 
     # 2. The clerk is not the chef.
-    different_people("clerk", "chef")
+    model.addConstrs((holds["clerk", p] + holds["chef", p] <= 1 for p in PEOPLE), name="clerk_not_chef")
 
     # 3. Person 0 is not the boxer.
-    not_person("boxer", 0)
+    model.addConstr(holds["boxer", 0] == 0, name="boxer_not_0")
 
-    # 4. Person 3 is not the teacher, the police officer, or the nurse.
+    # 4. Person 3 is not the teacher, police officer, or nurse.
     for job in ("teacher", "police_officer", "nurse"):
-        not_person(job, 3)
+        model.addConstr(holds[job, 3] == 0, name=f"{job}_not_3")
 
-    # 5. Person 0, the chef and the police officer went golfing together, so
-    #    they are three different people.
-    not_person("chef", 0)
-    not_person("police_officer", 0)
-    different_people("chef", "police_officer")
+    # 5. Person 0, the chef and the police officer went golfing together. Read as
+    #    three different people (the statement does not spell this out): person 0 is
+    #    neither the chef nor the police officer, and the chef and the police officer differ.
+    model.addConstr(holds["chef", 0] == 0, name="chef_not_0")
+    model.addConstr(holds["police_officer", 0] == 0, name="police_officer_not_0")
+    model.addConstrs((holds["chef", p] + holds["police_officer", p] <= 1 for p in PEOPLE),
+                     name="chef_not_police_officer")
 
     # The person index holding each job.
     return model, {job: gp.quicksum(p * holds[job, p] for p in PEOPLE) for job in JOBS}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.Params.OutputFlag = 0  # no solver log
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a solution
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

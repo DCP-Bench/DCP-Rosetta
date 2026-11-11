@@ -92,3 +92,22 @@ facility location, fixed-charge scheduling) need none of this.
 accepts it, but the size-limited licence caps it at 200 variables, and a nonconvex
 quadratic is much slower than a linear model. Linearise with the product encoding above
 when one factor is binary or has a small range.
+
+## Choosing a compact encoding
+
+- All-different over values `1..m` on a few positions: a permutation matrix of binaries (one
+  value per position, one position per value) is far smaller than pairwise disequalities over the
+  values; keep pairwise disequalities (one switch binary and two indicators per pair) for a few
+  sums or values.
+- An output that is a list of unordered blocks of a design: one one-hot row per block over the
+  candidate blocks, so packing of pairs or elements is one row each, instead of an `and`
+  variable per block, pair and element.
+- "At least k positions differ" over categorical letters: count agreements. An indicator forced
+  to 1 where two letters agree (`same >= a_l + b_l - 1` for each letter `l`), with its sum bounded
+  above; complements and reversals fold into the partner index.
+- A sequence of small categorical values: one bounded integer variable per position tied to the
+  one-hot binaries by an equality; a capacity over sliding windows is one `addConstrs` over
+  (option, start) with a linear expression per position.
+- Line clues (nonograms and similar): one-hot block starts per block with cover and ordering
+  constraints, the cell variables as outputs, and a redundant total-count row per line.
+
