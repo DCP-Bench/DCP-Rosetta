@@ -19,9 +19,9 @@ is a commit inside `bench/`, followed by a commit here that moves the pointer.
 
 ## The container engine
 
-Images run on Docker, podman or Apptainer (`evaluation/engine.py`). On a new machine, run
-`make engine` once to set one up. Call `evaluation.engine`, never `docker` directly, and
-certify on Docker. Details: `evaluation/README.md`.
+Models run in a container (e.g. podman or docker), started through `evaluation.engine`:
+call that, never `docker` directly. On a new machine, run `make engine` once to set one
+up. Either engine may be used to evaluate and to certify. Details: `evaluation/README.md`.
 
 ## Solver licences
 

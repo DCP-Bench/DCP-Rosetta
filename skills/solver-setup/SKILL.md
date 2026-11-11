@@ -1,7 +1,7 @@
 ---
 name: solver-setup
 description: Meta skill to generate solver skills for the DCP-Rosetta project. 1) generates a standalone skill for a combinatorial (optimisation) solver, 2) adds the Rosetta-specific infrastructure (metadata, Docker image, runner, readiness test) to be able to evaluate the standalone solver skill. Use this skill when asked to add a solver skill or indirectly when the model-generator skill needs an intagration that is missing or broken.
-compatibility: Requires a python environment, Docker and a DCP-Rosetta checkout
+compatibility: Requires a python environment, a container engine (e.g. podman or docker) and a DCP-Rosetta checkout
 ---
 
 # Create a new solver skill

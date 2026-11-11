@@ -7,7 +7,7 @@ description: Populate the DCP-Bench Open repository (submodule `/bench`) with co
 
 Add models to the DCP-Bench Open repository (submodule `/bench`) that a real evaluator has accepted: choose a problem and a solver integration, write a model, prove it holds up, keep it, move on.
 
-You need this repository, a Python environment (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a running Docker Linux engine. Run every command from the repository root; all paths here are relative to it. An unavailable engine is a blocker to report, not something to work around: candidate code never runs on the host.
+You need this repository, a Python environment (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Unix), and a container engine (e.g. podman or docker). Run every command from the repository root; all paths here are relative to it. An unavailable engine is a blocker to report, not something to work around: candidate code never runs on the host.
 
 **You are the only agent**, unless the user asks you to coordinate subagents (see [Running a campaign with subagents](#running-a-campaign-with-subagents)). You are the coordinator and the modeller; "invoke a skill" only ever means "read that file and follow it".
 
@@ -231,7 +231,7 @@ you keep the decisions and they do the modelling.
   `runner/runtime.py` or `runner/requirements.txt` to suit a new one. Both are
   shared with every certified image; a new integration gets its own `run.py` and
   its own Dockerfile dependencies.
-- An unavailable Docker engine, a missing licence, or an exhausted budget is a
+- An unavailable container engine, a missing licence, or an exhausted budget is a
   concrete blocker to report — not a reason to claim the work is finished. A
   missing licence holds back only its own integration. Never wait for the user
   to supply one, and never open a licence file.

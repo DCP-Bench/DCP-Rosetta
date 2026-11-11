@@ -34,8 +34,8 @@ and infrastructure failure (`infrastructure_error`).
 
 ## Setup
 
-Python 3.12, `requirements.txt`, and a running Docker Linux engine (or podman or
-Apptainer; see below). Images
+Python 3.12, `requirements.txt`, and a container engine (e.g. podman or docker; see
+below). Images
 target linux/amd64 and pin their solver versions. Build them explicitly —
 `evaluate()` never builds or installs anything:
 
@@ -67,7 +67,7 @@ as an `infrastructure_error`, so run at most pool ÷ `ceil(cpus)` evaluations at
 An admin can make it `quota` by delegating the `cpu` controller to users
 (`Delegate=cpu cpuset io memory pids` in a drop-in for `user@.service`).
 
-**Docker** is the reference: the readiness checks and the CI use it.
+The readiness checks and the CI run on Docker; podman gives the same results apart from the differences below.
 
 **Rootless podman** builds from the same Dockerfiles. It also works for a user
 without an `/etc/subuid` range or `cpu` delegation (tested with podman 3.4 and all
