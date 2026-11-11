@@ -1,36 +1,52 @@
-% Warehouse location: decide which candidate warehouses to open and which open
-% warehouse supplies each store, so that no warehouse serves more stores than
-% its capacity and the maintenance cost of the open warehouses plus the supply
-% costs of all stores is minimal.
-include "globals.mzn";
+% csplib_034_warehouse_location: a MiniZinc model from DCP Rosetta.
+%
+% In the Warehouse Location problem, a company must decide which warehouses to open from a set of candidate locations
+% to supply a set of stores. Each warehouse has a fixed maintenance cost and a capacity limiting the number of stores it
+% can supply. Each store must be supplied by exactly one open warehouse, and there is an associated supply cost that
+% varies depending on the store and warehouse.
+%
+% The objective is to minimize the total cost, which is the sum of the maintenance costs for all opened warehouses and
+% the supply costs for all stores.
+%
+% Save this file as model.mzn. Download `csplib_034_warehouse_location.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_034_warehouse_location.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_034_warehouse_location.json
+%   minizinc model.mzn csplib_034_warehouse_location_1.json
 
-int: n_suppliers;  % candidate warehouses
-int: n_stores;
-int: building_cost;  % maintenance cost of one open warehouse
-array[int] of int: capacity;  % most stores each warehouse can supply
-array[int, int] of int: cost_matrix;  % cost_matrix[store, warehouse] = supply cost
+int: n_stores;                                    % the number of stores to supply
+int: n_suppliers;                                 % the number of candidate warehouses
+int: building_cost;                               % the maintenance cost of an open warehouse
+set of int: Stores = 1..n_stores;                 % the stores
+set of int: Warehouses = 1..n_suppliers;          % the candidate warehouses, numbered from 1
+array[Warehouses] of int: capacity;               % capacity[w]: the most stores warehouse w can supply
+array[Stores, Warehouses] of int: cost_matrix;    % cost_matrix[s,w]: the supply cost of store s from warehouse w
 
-% supplier_assignment[s] = the warehouse that supplies store s, numbered from 0
-% as in the answer; warehouse w is column w + 1 of the cost matrix and of capacity
-array[1..n_stores] of var 0..n_suppliers - 1: supplier_assignment;
-% open_warehouses[w] is true when warehouse w (numbered from 1 here) is open
-array[1..n_suppliers] of var bool: open_warehouses;
+% open_warehouses[w]: warehouse w is open
+array[Warehouses] of var bool: open_warehouses;
+% assigned[s,w]: store s is supplied by warehouse w
+array[Stores, Warehouses] of var bool: assigned;
+% supplier_assignment[s]: the warehouse supplying store s, numbered from 0
+array[Stores] of var 0..n_suppliers - 1: supplier_assignment;
 
-% a warehouse cannot supply more stores than its capacity
-constraint forall(w in 1..n_suppliers) (
-    sum(s in 1..n_stores) (bool2int(supplier_assignment[s] = w - 1)) <= capacity[w]);
-
-% a warehouse is open exactly when it supplies at least one store; this also
-% forbids supplying a store from a closed warehouse
-constraint forall(w in 1..n_suppliers) (
-    open_warehouses[w] <-> exists(s in 1..n_stores) (supplier_assignment[s] = w - 1));
-
-% total cost = supply cost of every store + maintenance of the open warehouses
-var int: total_cost = sum(s in 1..n_stores) (cost_matrix[s, supplier_assignment[s] + 1])
-                      + building_cost * sum(w in 1..n_suppliers) (bool2int(open_warehouses[w]));
+var int: total_cost = building_cost * sum(w in Warehouses)(bool2int(open_warehouses[w]))
+    + sum(s in Stores, w in Warehouses)(cost_matrix[s, w] * bool2int(assigned[s, w]));
 var int: objective = total_cost;
+
+% each store is supplied by exactly one warehouse
+constraint forall(s in Stores)(sum(w in Warehouses)(bool2int(assigned[s, w])) = 1);
+
+% a store is supplied only by an open warehouse
+constraint forall(s in Stores, w in Warehouses)(assigned[s, w] -> open_warehouses[w]);
+
+% each warehouse supplies no more stores than its capacity
+constraint forall(w in Warehouses)(sum(s in Stores)(bool2int(assigned[s, w])) <= capacity[w]);
+
+% the warehouse number of each store, numbered from 0
+constraint forall(s in Stores)(supplier_assignment[s] = sum(w in Warehouses)(w * bool2int(assigned[s, w])) - 1);
+
 solve minimize objective;
 
-output ["{\"total_cost\": ", show(total_cost),
-        ", \"open_warehouses\": [", join(", ", [show(open_warehouses[w]) | w in 1..n_suppliers]),
-        "], \"supplier_assignment\": [", join(", ", [show(supplier_assignment[s]) | s in 1..n_stores]), "]}"];
+output ["{\"total_cost\": ", show(total_cost), ", \"open_warehouses\": ", showJSON(open_warehouses),
+        ", \"supplier_assignment\": ", showJSON(supplier_assignment), "}"];

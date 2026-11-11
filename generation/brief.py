@@ -195,7 +195,9 @@ def brief(problem):
                 "its variable names. Constraints between <SYMMETRY_BREAKING_CONSTRAINT_START> "
                 "and _END> markers are commented out in the reference and are not part of the "
                 "contract. A field listed under unbindable_fields is ragged or mixes types "
-                "within a row, which a rectangular single-type data interface cannot bind.",
+                "within a row, which a rectangular single-type data interface cannot bind; "
+                "an integration that reshapes fields (see its CONTRACT.md Instance section) "
+                "may bind it all the same, and generation.next_work says which pairs it refuses.",
     }
 
 

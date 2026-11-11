@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5, interactive session, coordinator and modeller",
-    "attempt_id": "attempt-001",
-    "created_at": 1789404450.7570248,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/minizinc/minizinc/CONTRACT.md": "b300d37d013b3ca18dbe0fe5e6c07b3dbf287d4fff5f1a3077207c450b862160"
+    },
+    "created_at": 1794434060.958302,
     "problem_id": "csplib_050_diamond_free",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "f653bff9667e6e89e3de6a7bfefc43600cf2791c5e79e861d7c7bfb2a4d1a9fb",
-    "run_id": "models-20260914-vamos",
-    "schema": 2,
-    "skill_bundle_hash": "30ac41ea799744bb837d0ea2b0a635b711e679f11c7e47fac4d5ec7d76c763e7",
-    "skill_source": "solvers\\minizinc_gecode\\skills\\minizinc-gecode",
+    "readiness_hash": "6ad60bae7f1c5b92e276d32dbe9f2652b704e69541c928703823e6363d9db2e0",
+    "run_id": "20261111-minizinc-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d6e9098089d0436d19de5a03645fcff0fe71de1d",
+      "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
       "modified": false,
-      "path": "solvers/minizinc_gecode/skills/minizinc-gecode"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "957267ea94c67694f873fba7908efad1bfbee0d2aff67fff7296aa9dfaa72625",
+        "source": "solvers/minizinc/skills/dcp-minizinc",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "solvers/minizinc/skills/dcp-minizinc"
+        }
+      }
+    ],
     "solver_id": "minizinc_gecode"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:9e7414c03ec8d8826d0f529a4feae4e3054f8626699aa86c9825f5d99e9f9715",
+      "id": "sha256:e7010653e8c901f08696fc4b9822d6342c4f0f2d0148584048f6411ab2462a5c",
+      "recipe": "sha256:c84d37170272580e63e1170438f9d5a8d887ddb101623f785a696df04e9a071f",
       "tag": "dcp-eval/minizinc_gecode:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.052729699993506074,
-        "execution_wall_seconds": 1.9676128000137396,
+        "checking_seconds": 0.012887008982943371,
+        "execution_wall_seconds": 0.7948679669934791,
         "first_solution": {
           "matrix": [
             [
@@ -165,12 +195,13 @@
         "id": "example",
         "instance_hash": "b2b347240ca26d41bd1920bf32faa4a11f0fc91d3e3b7ac4def26224a7617c54",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2664783999789506,
+        "reference_setup_seconds": 0.3241925110050943,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -178,20 +209,20 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7260eb92c180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f8391604900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.09449290001066402,
-        "execution_wall_seconds": 2.1413426999934018,
+        "checking_seconds": 0.01688594598090276,
+        "execution_wall_seconds": 0.7948651560000144,
         "first_solution": {
           "matrix": [
             [
               false,
-              true,
-              true,
               false,
               false,
+              true,
+              true,
               true,
               false,
               false,
@@ -200,24 +231,11 @@
               false
             ],
             [
-              true,
               false,
               false,
               true,
               true,
               false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              false,
-              false,
-              true,
               true,
               false,
               false,
@@ -230,8 +248,21 @@
               true,
               false,
               false,
-              false,
               true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
               true,
               false,
               false,
@@ -239,8 +270,8 @@
               false
             ],
             [
-              false,
               true,
+              false,
               true,
               false,
               false,
@@ -253,9 +284,9 @@
             ],
             [
               true,
+              true,
+              true,
               false,
-              true,
-              true,
               false,
               false,
               true,
@@ -334,12 +365,13 @@
         "id": "json:1",
         "instance_hash": "798ae01e566bb7c52b8932360b742803d4d6d2b82c3a7ab44cb2252e2940e504",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6830994000192732,
+        "reference_setup_seconds": 0.33664058599970303,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -347,12 +379,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7e61b5e28180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f15c13cc900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.11395679996348917,
-        "execution_wall_seconds": 2.308095099986531,
+        "checking_seconds": 0.022577873984118924,
+        "execution_wall_seconds": 0.7955460649973247,
         "first_solution": {
           "matrix": [
             [
@@ -389,20 +421,6 @@
               false,
               false,
               true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              true,
-              false,
-              false,
-              false,
               true,
               false,
               false,
@@ -413,6 +431,20 @@
             ],
             [
               true,
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
               false,
               true,
               false,
@@ -428,18 +460,8 @@
             [
               false,
               false,
-              false,
-              true,
-              false,
-              false,
-              false,
               true,
               true,
-              false,
-              false,
-              false
-            ],
-            [
               false,
               false,
               true,
@@ -447,24 +469,6 @@
               false,
               false,
               false,
-              false,
-              true,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
               false
             ],
             [
@@ -474,12 +478,26 @@
               false,
               false,
               true,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
               true,
               false,
               false,
               false,
               false,
-              true
+              true,
+              true,
+              false
             ],
             [
               false,
@@ -502,10 +520,24 @@
               false,
               false,
               false,
-              false,
+              true,
               true,
               false,
+              false,
+              false,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
               true,
+              true,
+              false,
               false,
               true
             ],
@@ -528,12 +560,13 @@
         "id": "json:2",
         "instance_hash": "71f3504d4a6ddfa12fd232807fd512028c25ccb11a5cbbcdd17fdb13799af830",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.197431200009305,
+        "reference_setup_seconds": 0.3388340050005354,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -541,12 +574,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x776d85a7c180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f92b36c4900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.14536190003855154,
-        "execution_wall_seconds": 4.054613700020127,
+        "checking_seconds": 0.028416072978870943,
+        "execution_wall_seconds": 0.9968972470087465,
         "first_solution": {
           "matrix": [
             [
@@ -554,8 +587,8 @@
               false,
               false,
               false,
-              true,
               false,
+              true,
               true,
               true,
               false,
@@ -569,23 +602,8 @@
               false,
               false,
               false,
-              true,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
               false,
               true,
-              false,
               true,
               true,
               false,
@@ -599,8 +617,38 @@
               false,
               false,
               false,
+              false,
+              true,
+              true,
               true,
               false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
               true,
               true,
               false,
@@ -614,26 +662,11 @@
               true,
               true,
               true,
-              false,
-              true,
-              false,
-              false,
               true,
               false,
               false,
               false,
-              false
-            ],
-            [
-              false,
               true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
               false,
               false,
               false,
@@ -644,11 +677,11 @@
               true,
               true,
               true,
-              false,
-              false,
-              false,
-              false,
               true,
+              false,
+              false,
+              false,
+              false,
               true,
               false,
               false,
@@ -656,15 +689,15 @@
             ],
             [
               true,
-              false,
+              true,
+              true,
               true,
               true,
               false,
-              true,
               false,
               false,
               false,
-              true,
+              false,
               true,
               false,
               false
@@ -674,13 +707,13 @@
               false,
               false,
               false,
-              true,
               false,
               true,
               false,
               false,
               false,
               false,
+              true,
               true,
               false
             ],
@@ -692,22 +725,7 @@
               false,
               false,
               true,
-              true,
               false,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
               false,
               false,
               false,
@@ -722,10 +740,25 @@
               false,
               false,
               false,
-              false,
+              true,
               true,
               false,
+              false,
+              false,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
               true,
+              true,
+              false,
               false,
               true
             ],
@@ -749,12 +782,13 @@
         "id": "json:3",
         "instance_hash": "63e841db17695566544b26ea2008386a0b745d20076e3e9570872c26d7869fb7",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1653337000170723,
+        "reference_setup_seconds": 0.34886350500164554,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -762,37 +796,21 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7629f4568180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7ff778178900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.18329400004586205,
-        "execution_wall_seconds": 2.5446774000301957,
+        "checking_seconds": 0.037275137001415715,
+        "execution_wall_seconds": 0.8969963470008224,
         "first_solution": {
           "matrix": [
             [
               false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
               false,
               false,
               true,
               true,
-              false,
+              true,
               false,
               false,
               false,
@@ -805,11 +823,11 @@
             [
               false,
               false,
+              true,
+              true,
               false,
+              true,
               false,
-              true,
-              true,
-              true,
               false,
               false,
               false,
@@ -835,13 +853,13 @@
               false
             ],
             [
-              false,
               true,
               true,
               false,
               false,
-              true,
               false,
+              false,
+              true,
               false,
               false,
               false,
@@ -853,8 +871,24 @@
             [
               true,
               false,
+              false,
+              false,
+              false,
               true,
               true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
               true,
               false,
               false,
@@ -867,11 +901,11 @@
               false
             ],
             [
-              true,
+              false,
               false,
               true,
               true,
-              false,
+              true,
               false,
               false,
               true,
@@ -925,8 +959,8 @@
               false,
               false,
               false,
-              false,
               true,
+              false,
               true,
               false
             ],
@@ -940,22 +974,6 @@
               false,
               true,
               false,
-              false,
-              false,
-              false,
-              true,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
               true,
               false,
               false,
@@ -971,10 +989,26 @@
               false,
               false,
               false,
-              false,
-              true,
               true,
               false,
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
               false,
               true
             ],
@@ -999,12 +1033,13 @@
         "id": "json:4",
         "instance_hash": "8b291a9b7b124c25484faf63b6e1eaf46cc30937ce6a06c5da260c6c759e3b8b",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.441535899997689,
+        "reference_setup_seconds": 0.3666848190187011,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -1012,21 +1047,21 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7d5cd4ad0180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f99271fc900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.2150532000232488,
-        "execution_wall_seconds": 2.2098084000172094,
+        "checking_seconds": 0.048738331999629736,
+        "execution_wall_seconds": 0.8963546990125906,
         "first_solution": {
           "matrix": [
             [
               false,
               true,
               false,
-              true,
-              true,
               false,
+              true,
+              true,
               false,
               false,
               false,
@@ -1041,61 +1076,10 @@
               true,
               false,
               true,
-              false,
-              false,
               true,
               false,
               false,
               false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
               false,
               false,
               false,
@@ -1124,6 +1108,57 @@
             ],
             [
               false,
+              true,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              false,
+              false,
+              true,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
               false,
               true,
               true,
@@ -1149,23 +1184,6 @@
               true,
               false,
               true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
               true,
               false,
               false,
@@ -1180,13 +1198,13 @@
               false,
               false,
               false,
+              true,
+              true,
               false,
               false,
               true,
               false,
               false,
-              true,
-              true,
               false,
               false
             ],
@@ -1202,9 +1220,9 @@
               false,
               false,
               false,
+              true,
+              true,
               false,
-              true,
-              true,
               false
             ],
             [
@@ -1216,13 +1234,13 @@
               false,
               false,
               false,
-              false,
               true,
               false,
               false,
+              true,
               false,
               true,
-              true
+              false
             ],
             [
               false,
@@ -1251,10 +1269,27 @@
               false,
               false,
               false,
-              false,
-              true,
               true,
               false,
+              false,
+              false,
+              true,
+              true
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
               false,
               true
             ],
@@ -1280,12 +1315,13 @@
         "id": "json:5",
         "instance_hash": "e4f38c52744c1c72e9c11d169690c63ebea789583c5320baf867ea89fb8d2a56",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9194362999987788,
+        "reference_setup_seconds": 0.3916419640008826,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -1293,7 +1329,7 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7312691c4180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7fe81653c900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       }
     ],
     "instances_available": 6,
@@ -1305,15 +1341,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "5f51a2fd7389941ba437653e8fe97fae3f2814c57366361f88b3de42b45f7996",
+    "model_hash": "58eaf7974924726d61520b0b49ad7fd077fd7707439c6db56490d7f62a022dd9",
     "problem_id": "csplib_050_diamond_free",
     "reason": "accepted",
-    "reference_hash": "84b36705c371bb087200e37c61147ff4fd329973e2c37011057816613633ca23",
+    "reference_hash": "0845802c842c5f16aa0a51c7fc0385dc3590da8cb0a0b88b140380e1ba5b47fd",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -1324,11 +1360,11 @@
     "skipped_instances": [],
     "solutions_checked": 12,
     "solver_id": "minizinc_gecode",
-    "total_wall_seconds": 29.534945599967614,
+    "total_wall_seconds": 7.825573089998215,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5, interactive session, coordinator and modeller"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.mzn",

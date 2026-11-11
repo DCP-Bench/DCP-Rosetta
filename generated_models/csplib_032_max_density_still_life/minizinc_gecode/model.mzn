@@ -1,38 +1,54 @@
-% Maximum density still life: on an n x m active area of Conway's Game of Life,
-% find the pattern with the most live cells that is stable (unchanged in the
-% next generation). Cells outside the area are dead but still obey the rules.
-include "globals.mzn";
+% csplib_032_max_density_still_life: a MiniZinc model from DCP Rosetta.
+%
+% This problem, arising from Conway's Game of Life, seeks to find the most densely populated stable pattern (a "still
+% life") on an n x m active grid. A still life is a pattern of live and dead cells that does not change from one
+% generation to the next. Life is played on an infinite board. Cells outside the n x m active grid are dead, but they
+% are still part of the board.
+%
+% The rules for a pattern to be a still life are:
+% 1. A live cell must have exactly 2 or 3 live neighbors to remain alive.
+% 2. A dead cell, including any dead cell just outside the active grid, must not have exactly 3 live neighbors
+%    (otherwise it would become alive).
+%
+% The goal is to maximize the number of live cells in the active grid.
+%
+% Save this file as model.mzn. Download `csplib_032_max_density_still_life.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_032_max_density_still_life.json
+%   minizinc model.mzn csplib_032_max_density_still_life_1.json
 
-int: n;  % rows of the active area
-int: m;  % columns of the active area
+int: n;                                              % the number of rows of the active grid
+int: m;                                              % the number of columns of the active grid
+set of int: Rows = 1..n;                             % the rows of the active grid
+set of int: Cols = 1..m;                             % the columns of the active grid
+set of int: PadRows = 0..n + 1;                      % the active grid with its ring of dead cells around it
+set of int: PadCols = 0..m + 1;
+set of int: Frame = -1..n + 2;                       % the rows and columns the neighbour counts look at
 
-% grid[i, j] is true when the cell is alive
-array[1..n, 1..m] of var bool: grid;
+% live[i,j]: the cell in row i and column j is alive; the cells around the active grid are dead
+array[Frame, Frame] of var bool: live;
+% neighbours[i,j]: the live neighbours of the cell in row i and column j
+array[PadRows, PadCols] of var 0..8: neighbours =
+    array2d(PadRows, PadCols, [sum(di in -1..1, dj in -1..1 where di != 0 \/ dj != 0)(bool2int(live[i + di, j + dj]))
+                               | i in PadRows, j in PadCols]);
 
-% cells inside the area stay as they are
-constraint forall(i in 1..n, j in 1..m) (
-    let { var int: count = sum(a in max(1, i - 1)..min(n, i + 1), b in max(1, j - 1)..min(m, j + 1)
-                               where not (a = i /\ b = j)) (bool2int(grid[a, b])) } in
-    % a live cell survives only with 2 or 3 live neighbours
-    (grid[i, j] -> (count >= 2 /\ count <= 3)) /\
-    % a dead cell must not have exactly 3 live neighbours, or it would be born
-    (not grid[i, j] -> count != 3));
+% the cells outside the active grid are dead
+constraint forall(i in Frame, j in Frame where i < 1 \/ i > n \/ j < 1 \/ j > m)(not live[i, j]);
 
-% dead cells just outside the area must not be born either. The cells that touch
-% the area along its top and bottom edges see three cells of the first / last row,
-% those along the left and right edges three cells of the first / last column; the
-% four outer corners see one cell and never reach 3.
-constraint forall(j in 1..m) (
-    sum(a in max(1, j - 1)..min(m, j + 1)) (bool2int(grid[1, a])) != 3 /\
-    sum(a in max(1, j - 1)..min(m, j + 1)) (bool2int(grid[n, a])) != 3);
-constraint forall(i in 1..n) (
-    sum(a in max(1, i - 1)..min(n, i + 1)) (bool2int(grid[a, 1])) != 3 /\
-    sum(a in max(1, i - 1)..min(n, i + 1)) (bool2int(grid[a, m])) != 3);
+% a live cell has exactly 2 or 3 live neighbours
+constraint forall(i in PadRows, j in PadCols)(live[i, j] -> neighbours[i, j] in 2..3);
 
-% maximise the number of live cells
-var int: objective = sum(i in 1..n, j in 1..m) (bool2int(grid[i, j]));
+% a dead cell does not have exactly 3 live neighbours
+constraint forall(i in PadRows, j in PadCols)(not live[i, j] -> neighbours[i, j] != 3);
+
+% the number of live cells in the active grid
+var int: objective = sum(i in Rows, j in Cols)(bool2int(live[i, j]));
+
 solve maximize objective;
 
-output ["{\"grid\": [",
-        join(", ", ["[" ++ join(", ", [show(grid[i, j]) | j in 1..m]) ++ "]" | i in 1..n]),
-        "]}"];
+% grid[i,j]: the cell in row i and column j of the active grid is alive
+array[Rows, Cols] of var bool: grid = array2d(Rows, Cols, [live[i, j] | i in Rows, j in Cols]);
+
+output ["{\"grid\": ", showJSON(grid), "}"];

@@ -15,6 +15,10 @@ MiniZinc's data interface cannot take as they are: padded ragged rows with
 followed by arrays (a Kakuro clue list), and a clear refusal for a shape no
 rule covers.
 
+`standalone_run` is what a reader does: run dcp_convert_mzn.py on a list of instances (the
+dataset file's form), then `minizinc model.mzn <data file>` in the image, once per file, and read a JSON
+object from each run.
+
 The isolation check differs from the Python integrations by necessity. MiniZinc
 is declarative and cannot inspect its own container, so that check drives the
 image directly under the evaluator's own container flags instead of through a
@@ -219,6 +223,38 @@ print("isolated")
 """
 
 
+def standalone_run(temp):
+    """The reader's path: convert a list of instances with dcp_convert_mzn.py, then run plain
+    `minizinc model.mzn data.json` on each file in the image."""
+    staging = temp / "standalone"
+    staging.mkdir()
+    (staging / "model.mzn").write_text(HEAD, encoding="utf-8")
+    (staging / "instances.json").write_text(json.dumps(HEAD_INSTANCES), encoding="utf-8")
+    code, out, err = run_process([sys.executable, str(Path(__file__).with_name("dcp_convert_mzn.py")),
+                                  str(staging / "instances.json")], 60)
+    files = sorted(staging.glob("instances_*.json"))
+    if code or len(files) != len(HEAD_INSTANCES):
+        print(err[-400:], file=sys.stderr)
+        return False
+    staging.chmod(0o755)
+    for path in staging.iterdir():
+        path.chmod(0o644)
+    for path in files:
+        code, out, err = run_process([
+            "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+            "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+            "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+            "--mount", f"type=bind,source={staging},target=/w,readonly",
+            "--workdir=/tmp", "--env=HOME=/tmp", "--entrypoint", "minizinc",
+            integration(SOLVER)["image"], "/w/model.mzn", f"/w/{path.name}"], 120)
+        try:
+            json.loads(out.strip().splitlines()[0])
+        except (IndexError, ValueError):
+            print(path.name, err[-400:], file=sys.stderr)
+            return False
+    return True
+
+
 def isolation(temp):
     """Drive the image under the evaluator's container flags, without a submission."""
     staging = temp / "isolation"
@@ -290,6 +326,7 @@ def main():
             print(name, json.dumps({key: result.get(key) for key in
                                     ("accepted", "reason", "detail", "instances_checked")}),
                   file=sys.stderr)
+        results["standalone_run"] = standalone_run(temp)
         results["isolation"] = isolation(temp)
 
     try:

@@ -1,42 +1,42 @@
-% Sports tournament scheduling (CSPLib 26): schedule a tournament of n teams
-% over n-1 weeks, each week divided into n/2 periods, and each period into two
-% slots (the first team plays at home, the second away). Every team plays once
-% a week, every team plays at most twice in the same period over the
-% tournament, and every team plays every other team.
+% csplib_026_sports_tournament_scheduling: a MiniZinc model from DCP Rosetta.
+%
+% The problem is to schedule a tournament of n teams over n-1 weeks, with each week divided into n/2 periods, and
+% each period divided into two slots. The first team in each slot plays at home, whilst the second plays the first
+% team away. A tournament must satisfy the following three constraints: every team plays once a week; every team
+% plays at most twice in the same period over the tournament; every team plays every other team.
+%
+% Save this file as model.mzn. Download `csplib_026_sports_tournament_scheduling.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_026_sports_tournament_scheduling.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_026_sports_tournament_scheduling.json
+%   minizinc model.mzn csplib_026_sports_tournament_scheduling_1.json
+
 include "globals.mzn";
 
-int: n_teams;  % number of teams, numbered 1..n_teams
+int: n_teams;                                     % the number of teams
+set of int: Teams = 1..n_teams;                   % the teams are numbered from 1
+set of int: Weeks = 1..n_teams - 1;               % the tournament lasts n - 1 weeks
+set of int: Periods = 1..n_teams div 2;           % each week is divided into n / 2 periods
 
-int: n_weeks = n_teams - 1;
-int: n_periods = n_teams div 2;
-set of int: Teams = 1..n_teams;
-set of int: Weeks = 1..n_weeks;
-set of int: Periods = 1..n_periods;
-
-% home[w, p], away[w, p] = the team playing at home / away in period p of week w
+% home[w,p]: the team playing at home in week w and period p
 array[Weeks, Periods] of var Teams: home;
+% away[w,p]: the team playing away in week w and period p
 array[Weeks, Periods] of var Teams: away;
 
-% a team cannot play itself
-constraint forall(w in Weeks, p in Periods) (home[w, p] != away[w, p]);
-
-% every team plays once a week: all teams in a week's matches are different
-constraint forall(w in Weeks)
-    (all_different([home[w, p] | p in Periods] ++ [away[w, p] | p in Periods]));
-
-% every team plays every other team, at home or away. There are exactly as many
-% matches as pairs of teams, so each pair meets exactly once; that equality is
-% implied by the reference's "at least once" and is stated because Gecode
-% prunes more with it.
-constraint forall(t1, t2 in Teams where t1 < t2)
-    (sum(w in Weeks, p in Periods)
-        (bool2int(home[w, p] = t1 /\ away[w, p] = t2) + bool2int(home[w, p] = t2 /\ away[w, p] = t1)) = 1);
+% every team plays once a week
+constraint forall(w in Weeks)(
+    all_different([home[w, p] | p in Periods] ++ [away[w, p] | p in Periods]));
 
 % every team plays at most twice in the same period over the tournament
-constraint forall(t in Teams, p in Periods)
-    (sum(w in Weeks) (bool2int(home[w, p] = t \/ away[w, p] = t)) <= 2);
+constraint forall(p in Periods, t in Teams)(
+    sum(w in Weeks)(bool2int(home[w, p] = t) + bool2int(away[w, p] = t)) <= 2);
+
+% every team plays every other team once
+constraint forall(s in Teams, t in Teams where s < t)(
+    sum(w in Weeks, p in Periods)(
+        bool2int((home[w, p] = s /\ away[w, p] = t) \/ (home[w, p] = t /\ away[w, p] = s))) = 1);
 
 solve satisfy;
 
-output ["{\"home\": [", join(", ", ["[" ++ join(", ", [show(home[w, p]) | p in Periods]) ++ "]" | w in Weeks]),
-        "], \"away\": [", join(", ", ["[" ++ join(", ", [show(away[w, p]) | p in Periods]) ++ "]" | w in Weeks]), "]}"];
+output ["{\"home\": ", showJSON(home), ", \"away\": ", showJSON(away), "}"];

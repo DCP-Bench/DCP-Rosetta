@@ -1,20 +1,38 @@
+% csplib_049_number_partitioning: a MiniZinc model from DCP Rosetta.
+%
+% This problem consists of finding a partition of the numbers 1..N into two sets A and B such that A and B
+% have the same cardinality, the sum of the numbers in A equals the sum of the numbers in B, and the sum of
+% the squares of the numbers in A equals the sum of the squares of the numbers in B. There is no solution
+% for N < 8.
+%
+% Save this file as model.mzn. Download `csplib_049_number_partitioning.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_049_number_partitioning.json
+%   minizinc model.mzn csplib_049_number_partitioning_1.json
+
 include "globals.mzn";
 
-int: n;
-int: half = n div 2;
+int: n;                                         % N: the numbers 1..N are partitioned
 
-array[1..half] of var 1..n: x;
-array[1..half] of var 1..n: y;
+set of int: Numbers = 1..n;                      % the numbers to partition
+set of int: Half = 1..n div 2;                   % the positions of set A and of set B
 
-constraint all_different(x ++ y);
-constraint sum(x) = sum(y);
-constraint sum(i in 1..half) (x[i] * x[i]) = sum(i in 1..half) (y[i] * y[i]);
+array[Half] of var Numbers: A;                   % A[k]: the k-th number of set A
+array[Half] of var Numbers: B;                   % B[k]: the k-th number of set B
 
-% Implied: x and y partition 1..n, so each half carries half of the totals.
-constraint 4 * sum(x) = n * (n + 1);
-constraint 12 * sum(i in 1..half) (x[i] * x[i]) = n * (n + 1) * (2 * n + 1);
+% A and B have the same cardinality and together hold all N numbers, so N is even
+constraint n mod 2 = 0;
+
+% every number is in exactly one of A and B
+constraint all_different(A ++ B);
+
+% the sum of the numbers in A equals the sum of the numbers in B
+constraint sum(A) = sum(B);
+
+% the sum of the squares of the numbers in A equals the sum of the squares of the numbers in B
+constraint sum(k in Half)(A[k] * A[k]) = sum(k in Half)(B[k] * B[k]);
 
 solve satisfy;
-
-output ["{\"A\": [", join(", ", [show(x[i]) | i in 1..half]),
-        "], \"B\": [", join(", ", [show(y[i]) | i in 1..half]), "]}"];
+output ["{\"A\": ", showJSON(A), ", \"B\": ", showJSON(B), "}"];

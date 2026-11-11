@@ -1,17 +1,30 @@
+% bin_packing: a MiniZinc model from DCP Rosetta.
+%
+% Given several items of specific weights and a number of bins of a fixed capacity, assign each
+% item to a bin so that the total weight of the items in each bin does not exceed the capacity.
+%
+% Save this file as model.mzn. Download `bin_packing.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bin_packing.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py bin_packing.json
+%   minizinc model.mzn bin_packing_1.json
+
 include "globals.mzn";
 
-array[int] of int: weights;
-int: capacity;
-int: num_bins;
+int: capacity;                          % the total weight each bin can hold
+int: num_bins;                          % the number of bins available
+array[int] of int: weights;             % weights[i]: the weight of item i
 
-set of int: Items = index_set(weights);
-array[Items] of var 0..num_bins-1: bins;
+set of int: Items = index_set(weights); % one index per item
+set of int: Bins = 0..num_bins-1;       % bins are numbered from 0
 
-% The reference writes this for i in range(len(weights)) with 0-based bin
-% indices; beyond num_bins no item can be in that bin and it is vacuous.
-constraint forall(i in 0..length(weights)-1) (
-    sum(j in Items) (weights[j] * bool2int(bins[j] = i)) <= capacity);
+% bins[i]: the bin item i is assigned to
+array[Items] of var Bins: bins;
+
+% the total weight of the items in each bin does not exceed the capacity
+constraint bin_packing(capacity, bins, weights);
 
 solve satisfy;
 
-output ["{\"bins\": [", join(", ", [show(bins[j]) | j in Items]), "]}"];
+output ["{\"bins\": ", showJSON(bins), "}"];

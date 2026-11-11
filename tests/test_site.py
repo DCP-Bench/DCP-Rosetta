@@ -338,6 +338,29 @@ class SourcesListTests(unittest.TestCase):
         self.assertEqual(generate_site.sources_html({"sources": []}), "")
 
 
+class ConverterLinkTests(unittest.TestCase):
+    """A model whose integration ships a `dcp_convert_*.py` links it in its Metadata card, so a reader
+    who downloads the instances finds the script that prepares them on the same page."""
+
+    def entry(self, solver):
+        return {"directory": solver, "model_file": "model.mzn", "code": "",
+                "metrics": {"problem": "queens", "solver": solver, "verdict": {}}}
+
+    def test_the_converter_is_found_by_its_file_name(self):
+        found = generate_site.converter_file("minizinc_gecode")
+        self.assertEqual(found.name, "dcp_convert_mzn.py")
+        self.assertIsNone(generate_site.converter_file("cpmpy_python"))
+
+    def test_a_model_with_instances_links_the_converter(self):
+        rendered = generate_site.generated_model_html(self.entry("minizinc_gecode"))
+        self.assertIn("<dt>Data converter</dt>", rendered)
+        self.assertIn('href="dcp_convert_mzn.py"', rendered)
+
+    def test_a_problem_without_instances_or_an_integration_without_a_converter_shows_none(self):
+        self.assertNotIn("Data converter", generate_site.generated_model_html(self.entry("minizinc_gecode"), False))
+        self.assertNotIn("Data converter", generate_site.generated_model_html(self.entry("cpmpy_python")))
+
+
 class RealRepositoryTests(unittest.TestCase):
     """The vocabulary and the integration metadata, as the site build reads them."""
 

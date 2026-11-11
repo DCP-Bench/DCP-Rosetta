@@ -1,26 +1,32 @@
-% Devil's word: put a plus or minus sign in front of every number of a list so
-% that the signed numbers add up to the given total.
-include "globals.mzn";
+% devils_word: a MiniZinc model from DCP Rosetta.
+%
+% Given an array of integers, insert a '+' or a '-' operator before each integer so that summing them up
+% gives a given total.
+%
+% Save this file as model.mzn. Download `devils_word.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py devils_word.json
+%   minizinc model.mzn devils_word_1.json
 
-array[int] of int: arr;  % the numbers, in order
-int: total;              % the sum the signed numbers must reach
+array[int] of int: arr;                          % the integers
+int: total;                                      % the sum the signed integers must give
 
-set of int: Positions = index_set(arr);
+set of int: Pos = index_set(arr);                % one index per integer
+int: abs_sum = sum(i in Pos)(abs(arr[i]));       % the largest possible absolute value of the sum
 
-% plus[i] is true when arr[i] is added and false when it is subtracted
-array[Positions] of var bool: plus;
-% result[i] = arr[i] with its chosen sign
-array[Positions] of var -max(arr)..max(arr): result;
-constraint forall(i in Positions) (result[i] = if plus[i] then arr[i] else -arr[i] endif);
+% sign[i]: the operator before integer i, + (1) or - (-1)
+array[Pos] of var {-1, 1}: sign;
 
-% the signed numbers add up to the total
-constraint sum(result) = total;
+% result[i]: integer i with its sign in front
+array[Pos] of var -abs_sum..abs_sum: result;
 
-% Implied by the line above, and stated so Gecode can prune: the numbers that
-% are added weigh (total + sum(arr)) / 2 together, which also shows at once
-% that the total must have the parity of sum(arr).
-constraint 2 * sum(i in Positions) (arr[i] * bool2int(plus[i])) = total + sum(arr);
+% each integer carries the sign chosen before it
+constraint forall(i in Pos)(result[i] = sign[i] * arr[i]);
+
+% the signed integers sum to the total
+constraint sum(i in Pos)(result[i]) = total;
 
 solve satisfy;
-
-output ["{\"result\": [", join(", ", [show(result[i]) | i in Positions]), "]}"];
+output ["{\"result\": ", showJSON(result), "}"];

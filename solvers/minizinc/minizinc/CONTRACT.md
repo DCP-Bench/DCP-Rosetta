@@ -1,8 +1,9 @@
 # minizinc_gecode: how this integration realises the submission contract
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how MiniZinc on
-Gecode expresses it. Runner: [run.py](run.py), which reshapes the instance and then calls
-`minizinc_solver` in [runner/runtime.py](../../../runner/runtime.py) through `main("minizinc")`.
+Gecode expresses it. Runner: [run.py](run.py), which reshapes the instance with
+[dcp_convert_mzn.py](dcp_convert_mzn.py) and then calls `minizinc_solver` in
+[runner/runtime.py](../../../runner/runtime.py) through `main("minizinc")`.
 
 ## Submission file
 
@@ -142,13 +143,57 @@ dcp-eval/minizinc_gecode:v1 -c 'minizinc --solver gecode ...'`.
   `unsupported`. Keep the solve item bare.
 - **`show` on a 2-D array flattens it**, giving an `invalid_output` shape. Use `showJSON`.
 - **Some ragged or mixed fields are unbindable** (rule 5); no model can work around that,
-  so the problem/integration pair is blocked. `python -m generation.brief` lists them
-  under `unbindable_fields`.
+  so the problem/integration pair is blocked. `python -m generation.next_work` lists such
+  pairs under `unbindable_pairs`, by this integration's own rules. The brief's generic
+  `unbindable_fields` is not per integration: it also lists fields this runner reshapes.
 - **Do not declare `<field>` for a rule-3 field**: only `<field>_1..._k` exist, so a
   declared `<field>` is an undefined parameter.
 - Enumeration solves all solutions of the whole model and drops repeats of an output
   object already reported, so free auxiliary variables make enumeration slower, not
   wrong.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header
+comment: the problem statement, where the data comes from and the commands that run it.
+The reshaping of [Instance](#instance) is [dcp_convert_mzn.py](dcp_convert_mzn.py), the same
+file the runner imports, which the model's page offers beside the instances. It writes one
+data file per instance, so a reader runs:
+
+```minizinc
+% <problem>: a MiniZinc model from DCP Rosetta.
+%
+% <the problem statement, as below>
+%
+% Save this file as model.mzn. Download `<problem>.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py <problem>.json
+%   minizinc model.mzn <problem>_1.json
+```
+
+`<problem>_2.json`, ... are the other instances. The file is called `model.mzn`, never after the
+problem: a model file named like one of MiniZinc's library constraint files (`among`, `bin_packing`,
+`knapsack`) makes MiniZinc warn that it overrides the library's. No solver is named: any MiniZinc solver runs the model. **A problem with no instance data** (the instance is `{}`) has a shorter header with
+no download or convert line, and is run with `minizinc <problem>.mzn`:
+
+```minizinc
+% <problem>: a MiniZinc model from DCP Rosetta.
+%
+% <the problem statement>
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them
+(never a narrowing: "any two landings", not "consecutive landings"), no longer than needed: no
+instruction about printing and no remark about the instance. A parameter that the conversion
+creates (`<field>_len`, `<field>_1`, ...) has a comment at its declaration saying what it holds,
+since the reader's JSON has no such field. The `output` item stays, in `showJSON` form, for the
+evaluator and the reader alike.
 
 ## Example
 

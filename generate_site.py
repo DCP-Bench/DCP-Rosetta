@@ -699,6 +699,8 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
     chips = paradigm_chips(metrics.get("solver"), "../")
     if chips:
         rows.append(f"<dt>Paradigm</dt><dd>{chips}</dd>")
+    if has_instances and converter_link(metrics.get("solver", "")):
+        rows.append(f"<dt>Data converter</dt><dd>{converter_link(metrics['solver'])}</dd>")
 
     if entry["model_file"]:
         lang, label = model_language(metrics, entry["model_file"])
@@ -766,6 +768,21 @@ def load_paradigm_vocabulary() -> list:
         return json.loads((SOLVERS_DIR / "paradigms.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
+
+
+def converter_file(solver_id: str):
+    """The data converter an integration ships for readers, `dcp_convert_*.py` in its folder, or None.
+    Found by name, not metadata: adding a converter changes no readiness record."""
+    from evaluation.execution import integration_folders
+    folder = integration_folders(SOLVERS_DIR.resolve().parent).get(solver_id)
+    found = sorted(folder.glob("dcp_convert_*.py")) if folder else []
+    return found[0] if found else None
+
+
+def converter_link(solver_id: str) -> str:
+    """A link to the integration's converter, served beside the problem pages; empty when it ships none."""
+    found = converter_file(solver_id)
+    return f'<a href="{esc(found.name)}" download>{esc(found.name)}</a>' if found else ""
 
 
 def load_integrations() -> dict:
@@ -1528,8 +1545,12 @@ def build_problem_page(p: dict, meta: dict, idx: int, neighbours: tuple, generat
         rendered_page,
         encoding="utf-8",
     )
-    # The instance file a standalone model reads, served beside its page.
+    # The instance file a standalone model reads, and the converters that prepare it, served beside its page.
     if p["instances"]:
+        for fw in INTEGRATIONS:
+            found = converter_file(fw)
+            if found:
+                shutil.copyfile(found, OUTPUT_DIR / "problems" / found.name)
         shutil.copyfile(Path("bench") / "dataset" / pid / f"{pid}.json", OUTPUT_DIR / "problems" / f"{pid}.json")
 
 

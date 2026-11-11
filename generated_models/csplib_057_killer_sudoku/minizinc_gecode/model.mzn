@@ -1,40 +1,53 @@
-% Killer sudoku (CSPLib prob057): fill an n x n grid with 1..n so that every row,
-% column and 3x3 nonet holds each number once, and the cells of every cage sum
-% to the cage's number without repeating a value.
+% csplib_057_killer_sudoku: a MiniZinc model from DCP Rosetta.
+%
+% Killer sudoku (also killer su doku, sumdoku, sum doku, addoku, or samunamupure) is a puzzle that combines
+% elements of sudoku and kakuro. Fill the grid with numbers from 1 to 9 so that each row, column and nonet
+% contains each number exactly once, the sum of all numbers in a cage matches the small number given in its
+% corner, and no number appears more than once in a cage.
+%
+% Save this file as model.mzn. Download `csplib_057_killer_sudoku.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_057_killer_sudoku.json
+%   minizinc model.mzn csplib_057_killer_sudoku_1.json
+
 include "globals.mzn";
 
-int: n;                                   % size of the grid
-% problem rows are [sum, [cells]], each cell a 1-based [row, column]. The runner
-% binds the two columns separately: problem_1 holds the sums, problem_2 the
-% cells padded with [0, 0] to the largest cage, and problem_2_len the number of
-% real cells in each cage.
+int: n;                                          % the side of the grid, 9 in a standard killer sudoku
+int: b = 3;                                      % the side of a nonet, a 3 x 3 block
+
+set of int: N = 1..n;                            % the rows, the columns and the numbers
+set of int: Nonets = 1..n div b;                 % the nonets along one side of the grid
+set of int: Cages = index_set(problem_1);        % the cages
+
+% problem_1[k]: the sum of the numbers in cage k (converted from the rows of the data)
 array[int] of int: problem_1;
-array[int,int,int] of int: problem_2;
+% problem_2[k,m,1..2]: the row and column of the m-th cell of cage k, padded with [0, 0]
+array[int, int, int] of int: problem_2;
+% problem_2_len[k]: the number of cells in cage k
 array[int] of int: problem_2_len;
 
-set of int: N = 1..n;
-set of int: Cages = index_set(problem_1);
-% the nonets are 3x3, as the reference fixes them
-int: b = 3;
-
-% x[r, c] = number in row r, column c
+% x[r,c]: the number in row r, column c
 array[N, N] of var N: x;
 
-% all rows and columns must be unique
-constraint forall(r in N) (all_different([x[r, c] | c in N]));
-constraint forall(c in N) (all_different([x[r, c] | r in N]));
+% each row contains each number exactly once
+constraint forall(r in N)(all_different([x[r, c] | c in N]));
 
-% each nonet must be unique
-constraint forall(i, j in 0..n div b - 1) (
-    all_different([x[r, c] | r in i*b+1..i*b+b, c in j*b+1..j*b+b]));
+% each column contains each number exactly once
+constraint forall(c in N)(all_different([x[r, c] | r in N]));
 
-% each cage's cells, read only up to the cage's length, sum to its number and
-% hold different values
-constraint forall(k in Cages) (
-    let { array[int] of var int: cage =
-              [x[problem_2[k, m, 1], problem_2[k, m, 2]] | m in 1..problem_2_len[k]] }
-    in sum(cage) = problem_1[k] /\ all_different(cage));
+% each nonet contains each number exactly once
+constraint forall(i, j in Nonets)(
+    all_different([x[r, c] | r in (i - 1) * b + 1..i * b, c in (j - 1) * b + 1..j * b]));
+
+% the numbers in each cage sum to the number printed in its corner
+constraint forall(k in Cages)(
+    sum(m in 1..problem_2_len[k])(x[problem_2[k, m, 1], problem_2[k, m, 2]]) = problem_1[k]);
+
+% no number appears more than once in a cage
+constraint forall(k in Cages)(
+    all_different([x[problem_2[k, m, 1], problem_2[k, m, 2]] | m in 1..problem_2_len[k]]));
 
 solve satisfy;
-
-output ["{\"x\": [", join(", ", ["[" ++ join(", ", [show(x[r, c]) | c in N]) ++ "]" | r in N]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];

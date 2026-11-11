@@ -1,27 +1,36 @@
-% Graceful graph: label the nodes of a graph with m edges with distinct numbers
-% from 0..m so that the differences across the edges are all distinct.
+% csplib_053_graceful_graphs: a MiniZinc model from DCP Rosetta.
+%
+% A labelling f of the nodes of a graph with q edges is graceful if f assigns each node a unique label
+% from {0, 1, ..., q} and, when each edge xy is labelled with |f(x) - f(y)|, the edge labels are all
+% different. Find a graceful labelling of the given graph.
+%
+% Save this file as model.mzn. Download `csplib_053_graceful_graphs.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_053_graceful_graphs.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_053_graceful_graphs.json
+%   minizinc model.mzn csplib_053_graceful_graphs_1.json
+
 include "globals.mzn";
 
-int: m;  % number of edges
-int: n;  % number of nodes
-array[int, int] of int: graph;  % the edges, as pairs of node numbers counted from 0
+int: m;                                          % the number of edges
+int: n;                                          % the number of nodes
+array[int, int] of int: graph;                   % graph[e,1], graph[e,2]: the two nodes of edge e, numbered from 0
 
-% nodes[v] = label of node v (node numbers start at 0 in the data, so node v is
-% position v + 1 here), taken from 0..m
-array[1..n] of var 0..m: nodes;
-% edges[e] = label of edge e, the absolute difference of its end labels; the
-% differences of m distinct edges lie in 1..m
-array[1..m] of var 1..m: edges;
+set of int: Nodes = 1..n;                        % the nodes, node v of the data is position v+1 here
+set of int: Edges = 1..m;                        % the edges
 
-% each edge is labelled with the absolute difference of the labels of its ends
-constraint forall(e in 1..m) (edges[e] = abs(nodes[graph[e, 1] + 1] - nodes[graph[e, 2] + 1]));
+array[Nodes] of var 0..m: nodes;                 % nodes[v]: the label of node v
+array[Edges] of var 1..m: edges;                 % edges[e]: the label of edge e
+
+% each node has a unique label
+constraint all_different(nodes);
+
+% each edge is labelled with the difference of the labels of its two nodes
+constraint forall(e in Edges)(edges[e] = abs(nodes[graph[e, 1] + 1] - nodes[graph[e, 2] + 1]));
 
 % all edge labels are different
 constraint all_different(edges);
-% all node labels are different
-constraint all_different(nodes);
 
 solve satisfy;
-
-output ["{\"nodes\": [", join(", ", [show(nodes[v]) | v in 1..n]),
-        "], \"edges\": [", join(", ", [show(edges[e]) | e in 1..m]), "]}"];
+output ["{\"nodes\": ", showJSON(nodes), ", \"edges\": ", showJSON(edges), "}"];

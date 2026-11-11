@@ -1,32 +1,39 @@
-% De Bruijn sequence B(base, n): a cyclic sequence over an alphabet of `base`
-% symbols, of length base^n, in which every string of n symbols occurs exactly
-% once. Modelled as a cycle through all base^n windows of n consecutive symbols.
+% de_bruijn_sequence: a MiniZinc model from DCP Rosetta.
+%
+% A de Bruijn sequence of order n on an alphabet of base symbols is a cyclic sequence in which every
+% possible length-n string on the alphabet occurs exactly once as a substring. Such a sequence has length
+% base^n.
+%
+% Save this file as model.mzn. Download `de_bruijn_sequence.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py de_bruijn_sequence.json
+%   minizinc model.mzn de_bruijn_sequence_1.json
+
 include "globals.mzn";
 
-int: base;  % size of the alphabet
-int: n;     % order: length of the strings that must all appear
-int: m = pow(base, n);  % length of the sequence = number of distinct strings
+int: base;                                       % the size of the alphabet
+int: n;                                          % the order: the length of the substrings
 
-% x[i] = the number (in the given base) read from the window starting at position i
-array[1..m] of var 0..m - 1: x;
-% binary[i, j] = j-th symbol (most significant first) of the window starting at position i
-array[1..m, 1..n] of var 0..base - 1: binary;
+set of int: Symbols = 0..base-1;                 % the symbols of the alphabet
+int: seq_len = pow(base, n);                     % the length of the sequence
+set of int: Pos = 1..seq_len;                    % the positions of the sequence (cyclic)
+set of int: Digits = 0..n-1;                     % the offsets within a substring
 
-% every possible string occurs exactly once, i.e. all window numbers differ
-constraint all_different(x);
+% de_bruijn[p]: the symbol at position p
+array[Pos] of var Symbols: de_bruijn;
 
-% link each window number to its symbols
-constraint forall(i in 1..m) (x[i] = sum(j in 1..n) (binary[i, j] * pow(base, n - j)));
+% code[p]: the substring of length n starting at position p, read as a base-base number
+array[Pos] of var 0..seq_len-1: code;
 
-% consecutive windows overlap: window i shifted by one symbol is window i-1 ...
-constraint forall(i in 2..m, j in 2..n) (binary[i - 1, j] = binary[i, j - 1]);
-% ... and the last window continues into the first one, closing the cycle
-constraint forall(j in 2..n) (binary[m, j] = binary[1, j - 1]);
+% code[p] is the substring of length n starting at position p, wrapping around the cyclic sequence
+constraint forall(p in Pos)(
+    code[p] = sum(j in Digits)(pow(base, j) * de_bruijn[(p + j - 1) mod seq_len + 1])
+);
 
-% the sequence is the first symbol of every window
-array[1..m] of var 0..base - 1: de_bruijn;
-constraint forall(i in 1..m) (de_bruijn[i] = binary[i, 1]);
+% every length-n string occurs exactly once as a substring
+constraint all_different(code);
 
 solve satisfy;
-
-output ["{\"de_bruijn\": [", join(", ", [show(de_bruijn[i]) | i in 1..m]), "]}"];
+output ["{\"de_bruijn\": ", showJSON(de_bruijn), "}"];

@@ -1,36 +1,45 @@
-% Perfect square placement: pack squares of the given integer sizes into a large
-% square, with no overlaps and sides parallel to the large square's sides. The
-% areas of the small squares add up to the area of the large one, so nothing is left over.
+% csplib_009_perfect_square_placement: a MiniZinc model from DCP Rosetta.
+%
+% The perfect square placement problem (also called the squared square problem) is to pack a set
+% of squares with given integer sizes into a bigger square, such that no squares overlap each other
+% and all square borders are parallel to the border of the big square. The sum of the square
+% surfaces is equal to the surface of the packing square, so there is no spare capacity.
+%
+% Save this file as model.mzn. Download `csplib_009_perfect_square_placement.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_009_perfect_square_placement.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_009_perfect_square_placement.json
+%   minizinc model.mzn csplib_009_perfect_square_placement_1.json
+
 include "globals.mzn";
 
-int: base;                    % side length of the large square
-array[int] of int: sides;     % side lengths of the small squares
+int: base;                                     % the side length of the big square
+array[int] of int: sides;                      % sides[i]: the side length of square i
+set of int: Squares = index_set(sides);        % one index per square
+set of int: Units = 0..base - 1;               % the unit cells along one side, counted from 0
 
-set of int: Squares = index_set(sides);
+% (x_coords[i], y_coords[i]): the lower-left corner of square i
+array[Squares] of var 0..base: x_coords;
+array[Squares] of var 0..base: y_coords;
 
-% (x_coords[i], y_coords[i]) = lower-left corner of square i, counted from 0.
-% The domain upper bound base - sides[i] makes every square lie inside the large square.
-array[Squares] of var int: x_coords;
-array[Squares] of var int: y_coords;
-constraint forall(i in Squares) (x_coords[i] >= 0 /\ x_coords[i] <= base - sides[i]);
-constraint forall(i in Squares) (y_coords[i] >= 0 /\ y_coords[i] <= base - sides[i]);
+% every square lies inside the big square
+constraint forall(i in Squares)(x_coords[i] + sides[i] <= base);
+constraint forall(i in Squares)(y_coords[i] + sides[i] <= base);
 
-% no two squares overlap: for every pair one lies to the left of, right of,
-% below or above the other (diffn states exactly this for rectangles)
+% no two squares overlap
 constraint diffn(x_coords, y_coords, sides, sides);
 
-% Implied: no square overlaps another and the areas add up to the area of the
-% large square, so every unit-wide vertical strip of the large square is
-% covered completely: the squares that cross the strip have sides adding up to
-% base. The same holds for every horizontal strip. This follows from the
-% constraints above and removes no solution; it gives Gecode much stronger
-% propagation than the pairwise non-overlap alone.
-constraint forall(c in 0..base - 1)
-    (sum(i in Squares) (sides[i] * bool2int(x_coords[i] <= c /\ c < x_coords[i] + sides[i])) = base);
-constraint forall(c in 0..base - 1)
-    (sum(i in Squares) (sides[i] * bool2int(y_coords[i] <= c /\ c < y_coords[i] + sides[i])) = base);
+% the squares cover the big square exactly: their surfaces add up to its surface
+constraint sum(i in Squares)(sides[i] * sides[i]) = base * base;
+
+% redundant: the squares crossing each column of the big square fill its height
+constraint forall(c in Units)(
+    sum(i in Squares)(sides[i] * bool2int(x_coords[i] <= c /\ c < x_coords[i] + sides[i])) = base);
+
+% redundant: the squares crossing each row of the big square fill its width
+constraint forall(r in Units)(
+    sum(i in Squares)(sides[i] * bool2int(y_coords[i] <= r /\ r < y_coords[i] + sides[i])) = base);
 
 solve satisfy;
-
-output ["{\"x_coords\": [", join(", ", [show(x_coords[i]) | i in Squares]),
-        "], \"y_coords\": [", join(", ", [show(y_coords[i]) | i in Squares]), "]}"];
+output ["{\"x_coords\": ", showJSON(x_coords), ", \"y_coords\": ", showJSON(y_coords), "}"];

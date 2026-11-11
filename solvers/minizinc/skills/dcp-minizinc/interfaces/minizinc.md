@@ -109,6 +109,41 @@ functions of the outputs, or keep only distinct values of the output variables i
 
 Full code: [assets/minizinc/all-optimal/model.py](../assets/minizinc/all-optimal/model.py).
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words.
+`minizinc model.mzn data.json` runs a model on one instance given as a JSON object: every parameter
+without a value is read from the data file by name.
+
+```minizinc
+% Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+int: capacity;
+array[int] of int: values;
+array[int] of int: weights;
+set of int: Items = index_set(values);               % one index per item
+
+array[Items] of var bool: x;                         % x[i]: item i is taken
+var int: objective = sum(i in Items)(values[i] * bool2int(x[i]));
+
+% the taken items fit into the knapsack
+constraint sum(i in Items)(weights[i] * bool2int(x[i])) <= capacity;
+
+solve maximize objective;
+output ["{\"x\": ", showJSON(x), "}"];
+```
+
+- Start with a comment that states the problem, and name every set and bound once (`set of int: Items =
+  index_set(values)`), not `1..n` repeated.
+- Post each requirement of the problem as its own `constraint`, with a comment saying it in the problem's
+  words, rather than folding several into one.
+- Prefer a global (`all_different`, `global_cardinality`, `cumulative`, `circuit`, `table`, ...) to an
+  encoding of it with sums and comparisons, and give each variable the tightest domain the problem states.
+- A data file that MiniZinc cannot read as it is must be reshaped first; the parameters the reshaping adds
+  (`<field>_len`, `<field>_1`, ...) get a comment saying what they hold, since the original data has no such
+  field.
+- Keep the `output` item in `showJSON` form and the solve item bare (no search annotation), as the contract
+  asks, so the same file runs here and in the evaluator.
+
 ## Common issues
 
 | Problem | Likely cause | Fix |

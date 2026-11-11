@@ -1,35 +1,39 @@
-% Bus driver scheduling (CSPLib prob022): choose a subset of the possible shifts
-% so that every piece of work is covered by exactly one chosen shift, using as
-% few shifts as possible.
-include "globals.mzn";
+% csplib_022_bus_driver_scheduling: a MiniZinc model from DCP Rosetta.
+%
+% This problem requires finding an optimal schedule for bus drivers. Given a set of tasks (pieces of work) to cover and a
+% large set of possible shifts, where each shift covers a subset of the tasks, we must select a subset of shifts that
+% covers each piece of work exactly once.
+%
+% The goal is to cover all tasks while minimizing the total number of shifts used. The cost of each shift is considered
+% equal.
+%
+% Save this file as model.mzn. Download `csplib_022_bus_driver_scheduling.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_022_bus_driver_scheduling.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_022_bus_driver_scheduling.json
+%   minizinc model.mzn csplib_022_bus_driver_scheduling_1.json
 
-int: num_work;                            % pieces of work, numbered 0..num_work-1
-int: num_shifts;                          % possible shifts
-% shifts[i] lists the pieces of work shift i covers. Rows differ in length, so
-% the runner pads them with 0, which is also a real piece of work: only the
-% first shifts_len[i] entries of row i belong to shift i.
-array[int,int] of int: shifts;
+int: num_work;                                    % the number of pieces of work to cover
+int: num_shifts;                                  % the number of possible shifts
+set of int: Work = 0..num_work-1;                 % the pieces of work, numbered from 0 in the data
+set of int: Shifts = 1..num_shifts;               % the possible shifts
+
+% shifts[s,j]: the j-th piece of work that shift s covers, for j up to shifts_len[s];
+% entries past shifts_len[s] are padding and must not be read
+array[int, int] of int: shifts;
+% shifts_len[s]: the number of pieces of work that shift s covers (created by the conversion)
 array[int] of int: shifts_len;
 
-set of int: Shifts = 1..num_shifts;
-set of int: Work = 0..num_work-1;
-
-% the set of pieces of work each shift covers, read up to the row's length
-array[Shifts] of set of int: covers = [{shifts[i, k] | k in 1..shifts_len[i]} | i in Shifts];
-
-% x[i] = true if shift i is selected
+% x[s]: shift s is selected
 array[Shifts] of var bool: x;
 
-% each piece of work is covered by exactly one selected shift (set partitioning)
-constraint forall(t in Work) (
-    sum(i in Shifts where t in covers[i]) (bool2int(x[i])) = 1);
+var int: objective = sum(s in Shifts)(bool2int(x[s]));   % the number of shifts used
 
-% implied by the partitioning: the chosen shifts together cover every piece of
-% work once, so their sizes add up to num_work (counting only pieces in 0..num_work-1)
-constraint sum(i in Shifts) (card(covers[i] intersect Work) * bool2int(x[i])) = num_work;
+% each piece of work is covered by exactly one selected shift
+constraint forall(w in Work)(
+    sum(s in Shifts)(bool2int(x[s] /\ exists(j in 1..shifts_len[s])(shifts[s, j] = w))) = 1);
 
-% minimise the number of shifts used
-var int: objective = sum(i in Shifts) (bool2int(x[i]));
 solve minimize objective;
 
-output ["{\"x\": [", join(", ", [show(x[i]) | i in Shifts]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];

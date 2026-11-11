@@ -1,39 +1,49 @@
-% Hidato: a grid is partly filled with numbers. Fill the empty cells with the
-% remaining numbers 1..(rows*columns), each used once, so that consecutive
-% numbers sit in cells that touch horizontally, vertically or diagonally.
+% hidato: a MiniZinc model from DCP Rosetta.
+%
+% Hidato puzzles start semi-filled with numbered tiles. Connect the numbers together to win: consecutive
+% numbers must touch horizontally, vertically, or diagonally, and the numbers must be in increasing order.
+% Fill in the empty cells, marked 0 in the given puzzle, with the numbers that complete the puzzle, so that
+% the grid holds each number from 1 to the number of cells exactly once.
+%
+% Save this file as model.mzn. Download `hidato.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py hidato.json
+%   minizinc model.mzn hidato_1.json
+
 include "globals.mzn";
 
-array[int, int] of int: puzzle;  % given numbers, 0 = empty cell to be filled
+array[int, int] of int: puzzle;                  % the given grid, 0 marks an empty cell
 
-set of int: Rows = index_set_1of2(puzzle);
-set of int: Cols = index_set_2of2(puzzle);
-int: r = card(Rows);
-int: c = card(Cols);
-int: cells = r * c;
+set of int: Rows = index_set_1of2(puzzle);       % the grid's rows
+set of int: Cols = index_set_2of2(puzzle);       % the grid's columns
+int: nr = card(Rows);                            % number of rows
+int: nc = card(Cols);                            % number of columns
+int: cells = nr * nc;                            % number of cells, and the largest number
 
-% x[i, j] = the number written in the cell in row i, column j
+% x[i,j]: the number in the cell in row i, column j
 array[Rows, Cols] of var 1..cells: x;
 
-% every number appears exactly once
-constraint all_different(x);
-
-% the given numbers are kept
-constraint forall(i in Rows, j in Cols where puzzle[i, j] > 0) (x[i, j] = puzzle[i, j]);
-
-% Where each number sits: place[k] is the cell (counted row by row from 1)
-% holding the number k, and place_row[k], place_col[k] are its row and column
-% (counted from 0). They are the inverse of x, so they add no freedom to it.
+% place[k]: the position (counted row by row from 1) of the cell holding the number k
 array[1..cells] of var 1..cells: place;
-array[1..cells] of var 0..r - 1: place_row;
-array[1..cells] of var 0..c - 1: place_col;
-constraint inverse([x[i, j] | i in Rows, j in Cols], place);
-constraint forall(k in 1..cells) (place[k] = place_row[k] * c + place_col[k] + 1);
 
-% consecutive numbers k and k+1 are in cells that touch (one step or less in
-% each direction); they are different cells because the numbers are all different
-constraint forall(k in 1..cells - 1)
-    (abs(place_row[k] - place_row[k + 1]) <= 1 /\ abs(place_col[k] - place_col[k + 1]) <= 1);
+% every number from 1 to the number of cells is used exactly once
+constraint all_different([x[i, j] | i in Rows, j in Cols]);
+
+% the given numbers stay in their cells
+constraint forall(i in Rows, j in Cols where puzzle[i, j] > 0)(x[i, j] = puzzle[i, j]);
+
+% place is the inverse of x, reading the grid row by row
+constraint inverse([x[i, j] | i in Rows, j in Cols], place);
+
+% the row and column of the cell holding number k
+array[1..cells] of var Rows: row_of = [min(Rows) + (place[k] - 1) div nc | k in 1..cells];
+array[1..cells] of var Cols: col_of = [min(Cols) + (place[k] - 1) mod nc | k in 1..cells];
+
+% consecutive numbers k and k+1 lie in touching cells, horizontally, vertically or diagonally
+constraint forall(k in 1..cells - 1)(abs(row_of[k] - row_of[k + 1]) <= 1 /\ abs(col_of[k] - col_of[k + 1]) <= 1);
 
 solve satisfy;
 
-output ["{\"x\": [", join(", ", ["[" ++ join(", ", [show(x[i, j]) | j in Cols]) ++ "]" | i in Rows]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];

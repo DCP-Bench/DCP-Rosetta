@@ -1,36 +1,83 @@
-% Crossword: pick 8 different words from a list of 15 to fill the 8 numbered
-% slots of a small crossword grid so that every place where two slots cross
-% holds the same letter in both words.
+% crossword: a MiniZinc model from DCP Rosetta.
+%
+% We are to complete a crossword puzzle on a grid of 6 rows and 5 columns, with 8 blocked squares and
+% the numbers 1 to 8 marking where the words start: 1 across and down from the top left, and so on.
+% Given the list of 15 words AFT, ALE, EEL, HEEL, HIKE, HOSES, KEEL, KNOT, LASER, LEE, LINE, SAILS,
+% SHEET, STEER and TIE, select 8 words from the list such that the crossword puzzle can be completed:
+% each word fills the slot that starts at its number, and crossing words agree on their shared letter.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% The puzzle itself is fixed by the problem, so its data is mirrored here.
-int: n_words = 15;
-int: word_len = 5;
-int: n_slots = 8;
+set of int: Words = 0..14;                  % the 15 words, sorted by length (longest first), then alphabetically
 
-% The words as letter numbers (a=1 .. z=26), padded with 0 to length 5, sorted
-% longest first and then alphabetically: HOSES LASER SAILS SHEET STEER HEEL HIKE
-% KEEL KNOT LINE AFT ALE EEL LEE TIE.
-array[1..n_words, 1..word_len] of int: letters = array2d(1..n_words, 1..word_len, [
-    8, 15, 19, 5, 19,   12, 1, 19, 5, 18,   19, 1, 9, 12, 19,   19, 8, 5, 5, 20,   19, 20, 5, 5, 18,
-    8, 5, 5, 12, 0,     8, 9, 11, 5, 0,     11, 5, 5, 12, 0,    11, 14, 15, 20, 0,  12, 9, 14, 5, 0,
-    1, 6, 20, 0, 0,     1, 12, 5, 0, 0,     5, 5, 12, 0, 0,     12, 5, 5, 0, 0,     20, 9, 5, 0, 0]);
+% word_letters[w, k]: the k-th letter of word w (A = 1, ..., Z = 26), 0 past the last letter
+array[Words, 1..5] of 0..26: word_letters = array2d(Words, 1..5, [
+    8, 15, 19,  5, 19,    % HOSES
+   12,  1, 19,  5, 18,    % LASER
+   19,  1,  9, 12, 19,    % SAILS
+   19,  8,  5,  5, 20,    % SHEET
+   19, 20,  5,  5, 18,    % STEER
+    8,  5,  5, 12,  0,    % HEEL
+    8,  9, 11,  5,  0,    % HIKE
+   11,  5,  5, 12,  0,    % KEEL
+   11, 14, 15, 20,  0,    % KNOT
+   12,  9, 14,  5,  0,    % LINE
+    1,  6, 20,  0,  0,    % AFT
+    1, 12,  5,  0,  0,    % ALE
+    5,  5, 12,  0,  0,    % EEL
+   12,  5,  5,  0,  0,    % LEE
+   20,  9,  5,  0,  0]);  % TIE
+% word_len[w]: the number of letters in word w
+array[Words] of int: word_len = array1d(Words, [5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3]);
 
-% each crossing is [slot a, letter position in a, slot b, letter position in b], slots
-% and positions counted from 1
-array[1..12, 1..4] of int: crossings = array2d(1..12, 1..4, [
-    1, 3, 2, 1,   1, 5, 3, 1,   4, 2, 2, 3,   4, 3, 5, 1,   4, 4, 3, 3,   7, 1, 2, 4,
-    7, 2, 5, 2,   7, 3, 3, 4,   8, 1, 6, 2,   8, 3, 2, 5,   8, 4, 5, 3,   8, 5, 3, 5]);
+% open_cell[r, c]: the square in row r and column c is not blocked
+array[1..6, 1..5] of bool: open_cell = array2d(1..6, 1..5, [
+    true,  true,  true,  true,  true,
+    false, false, true,  false, true,
+    false, true,  true,  true,  true,
+    true,  false, true,  true,  true,
+    true,  true,  true,  true,  true,
+    true,  false, false, true,  false]);
 
-% E[s] = the word placed in slot s, numbered from 0 as in the answer (word w is
-% row w + 1 of the letter table); all slots get different words
-array[1..n_slots] of var 0..n_words - 1: E;
+% E[i]: the word that starts at number i
+array[1..8] of var Words: E;
+
+% L[r, c]: the letter in the square in row r and column c (A = 1, ..., Z = 26), 0 for a blocked square
+array[1..6, 1..5] of var 0..26: L;
+
+% a blocked square holds no letter, an open square holds one
+constraint forall(r in 1..6, c in 1..5)(L[r, c] = 0 <-> not open_cell[r, c]);
+
+% the 8 words are different
 constraint all_different(E);
 
-% where two slots cross, the two words show the same letter
-constraint forall(k in 1..12) (
-    letters[E[crossings[k, 1]] + 1, crossings[k, 2]] = letters[E[crossings[k, 3]] + 1, crossings[k, 4]]);
+% the word w fills the squares of cells, one letter each: its length is the number of cells and its
+% letters are those of the cells
+predicate spells(var Words: w, array[int] of var 0..26: cells) =
+    word_len[w] = card(index_set(cells)) /\
+    forall(k in index_set(cells))(word_letters[w, k] = cells[k]);
+
+% the word starting at number 1 runs across the top row
+constraint spells(E[1], [L[1, c] | c in 1..5]);
+% the word starting at number 2 runs down column 3
+constraint spells(E[2], [L[r, 3] | r in 1..5]);
+% the word starting at number 3 runs down column 5
+constraint spells(E[3], [L[r, 5] | r in 1..5]);
+% the word starting at number 4 runs across row 3
+constraint spells(E[4], [L[3, c] | c in 2..5]);
+% the word starting at number 5 runs down column 4
+constraint spells(E[5], [L[r, 4] | r in 3..6]);
+% the word starting at number 6 runs down column 1
+constraint spells(E[6], [L[r, 1] | r in 4..6]);
+% the word starting at number 7 runs across row 4
+constraint spells(E[7], [L[4, c] | c in 3..5]);
+% the word starting at number 8 runs across row 5
+constraint spells(E[8], [L[5, c] | c in 1..5]);
 
 solve satisfy;
 
-output ["{\"E\": [", join(", ", [show(E[s]) | s in 1..n_slots]), "]}"];
+output ["{\"E\": ", showJSON(E), "}"];

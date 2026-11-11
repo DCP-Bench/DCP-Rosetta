@@ -1,45 +1,65 @@
-% KenKen: fill an n x n grid with 1..n so that every row and column holds each
-% digit once and every cage reaches its target with +, -, x or /.
+% kenken: a MiniZinc model from DCP Rosetta.
+%
+% KenKen is a style of arithmetic and logical puzzle sharing several characteristics with sudoku. The
+% objective is to fill the grid with the digits 1 through n such that each row and each column contains
+% exactly one of each digit, and each bold-outlined group of cells (a cage) contains digits that achieve
+% the cage's result by its mathematical operation: addition, subtraction, multiplication or division.
+% Unlike in Killer sudoku, digits may repeat within a cage. Here the operations are not given: a cage of
+% one cell holds its result, a cage of two cells may use any of the four operations (a division must be
+% exact), and a larger cage uses either addition or multiplication.
+%
+% Save this file as model.mzn. Download `kenken.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/kenken.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py kenken.json
+%   minizinc model.mzn kenken_1.json
+
 include "globals.mzn";
 
-int: n;                                   % size of the grid
-int: num_p;                               % number of cages
-% each cage is [target, [cells]]; the runner binds the mixed row as one array
-% per column: problem_1 the targets, problem_2 the cells padded to the
-% largest cage, problem_2_len the real number of cells in each cage
+int: n;                                          % the grid is n by n, with digits 1..n
+
+% problem_1[c]: the result of cage c
 array[int] of int: problem_1;
-array[int,int,int] of int: problem_2;     % cage, cell, 1 = row / 2 = column (1-based)
+% problem_2[c,k,1..2]: row and column of the k-th cell of cage c (padded with 0 after its last cell)
+array[int, int, int] of int: problem_2;
+% problem_2_len[c]: the number of cells of cage c
 array[int] of int: problem_2_len;
 
-set of int: Cage = index_set(problem_1);
-array[1..n, 1..n] of var 1..n: x;
+set of int: Rows = 1..n;                         % grid rows
+set of int: Cols = 1..n;                         % grid columns
+set of int: Digits = 1..n;                       % the digits to place
+set of int: Cages = index_set(problem_1);        % the cages
 
-% all rows and columns must be unique
-constraint forall(i in 1..n)(all_different([x[i, j] | j in 1..n]));
-constraint forall(j in 1..n)(all_different([x[i, j] | i in 1..n]));
+% x[r,c]: the digit in row r, column c
+array[Rows, Cols] of var Digits: x;
 
-% a two-cell cage reaches its target by sum, product, quotient (either way)
-% or difference (either way)
-constraint forall(c in Cage where problem_2_len[c] = 2)(
-  let {
-    var int: a = x[problem_2[c, 1, 1], problem_2[c, 1, 2]];
-    var int: b = x[problem_2[c, 2, 1], problem_2[c, 2, 2]];
-    int: res = problem_1[c];
-  } in
-    a + b = res \/ a * b = res \/ a * res = b \/ b * res = a
-    \/ a - b = res \/ b - a = res
-);
+% each row contains each digit exactly once
+constraint forall(r in Rows)(all_different([x[r, c] | c in Cols]));
+% each column contains each digit exactly once
+constraint forall(c in Cols)(all_different([x[r, c] | r in Rows]));
 
-% any other cage reaches its target either as the sum or as the product of
-% its cells; only the first problem_2_len[c] cells are real, the rest is padding
-constraint forall(c in Cage where problem_2_len[c] != 2)(
-  let {
-    array[int] of var int: cells =
-      [x[problem_2[c, k, 1], problem_2[c, k, 2]] | k in 1..problem_2_len[c]];
-  } in
-    sum(cells) = problem_1[c] \/ product(cells) = problem_1[c]
-);
+% a cage of one cell holds its result
+constraint forall(c in Cages where problem_2_len[c] = 1)(
+    x[problem_2[c, 1, 1], problem_2[c, 1, 2]] = problem_1[c]);
+
+% a cage of two cells reaches its result by addition, multiplication, subtraction or exact division
+constraint forall(c in Cages where problem_2_len[c] = 2)(
+    let {
+        var Digits: a = x[problem_2[c, 1, 1], problem_2[c, 1, 2]];
+        var Digits: b = x[problem_2[c, 2, 1], problem_2[c, 2, 2]];
+        int: t = problem_1[c];
+    } in
+    a + b = t \/ a * b = t \/ a - b = t \/ b - a = t \/ a = t * b \/ b = t * a);
+
+% a larger cage reaches its result by addition or multiplication of its cells
+constraint forall(c in Cages where problem_2_len[c] > 2)(
+    let {
+        array[1..problem_2_len[c]] of var Digits: cells =
+            [x[problem_2[c, k, 1], problem_2[c, k, 2]] | k in 1..problem_2_len[c]];
+    } in
+    sum(cells) = problem_1[c] \/ product(cells) = problem_1[c]);
 
 solve satisfy;
 
-output ["{\"x\": [", join(", ", ["[" ++ join(", ", [show(x[i, j]) | j in 1..n]) ++ "]" | i in 1..n]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];
