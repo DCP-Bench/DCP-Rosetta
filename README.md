@@ -24,8 +24,8 @@ git clone --recurse-submodules https://github.com/DCP-Bench/DCP-Rosetta.git
 ```
 
 You need Python 3.12 and the libraries in `requirements.txt`, which also cover
-the dataset tooling in `bench/`. Evaluating a model needs a running Docker Linux
-engine.
+the dataset tooling in `bench/`. Evaluating a model needs a container engine (e.g. podman or
+docker).
 
 On Windows, keep the checkout in a short folder such as `C:\code\DCP-Rosetta`:
 the longest tracked path is 184 characters, and Windows limits a full path to
