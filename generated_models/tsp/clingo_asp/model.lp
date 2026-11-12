@@ -1,49 +1,45 @@
-% Travelling salesman: find the shortest route that visits every city exactly once and returns to
-% the start; report its length. The distance between two cities is the Euclidean distance
-% between their points rounded to the nearest integer.
-% Instance facts: locations(I,0,X) and locations(I,1,Y): coordinates of city I. At least two cities.
-city(I) :- locations(I,0,_).
+% tsp: a clingo model from DCP Rosetta.
+%
+% The travelling salesman problem asks: given a list of cities and the distances between each pair of cities (or the
+% locations of the cities), what is the shortest possible route that visits each city exactly once and returns to the
+% origin city? The distance is the Euclidean distance between the points, rounded to an integer.
+%
+% Save this file as model.lp. Download `tsp.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/tsp.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py tsp.json
+%   python -m clingo model.lp tsp_1.lp
+%
+% Input: locations(I, 0, X) and locations(I, 1, Y): the x and y coordinates of city I (0-based).
 
-% dist(I,J,D): the rounded Euclidean distance from city I to city J is D. The square root is
-% not available in clingo, so D is found by squares: D rounds the root of Q exactly when
-% D*(D-1) < Q <= D*(D+1) (for D >= 1); D is 0 only for identical points. The root lies
-% between half of (|dx|+|dy|) and |dx|+|dy|, which bounds the values tried for D.
-offset(I,J,|X1-X2|+|Y1-Y2|,(X1-X2)**2+(Y1-Y2)**2) :-
-    locations(I,0,X1), locations(I,1,Y1), locations(J,0,X2), locations(J,1,Y2), I != J.
-dist(I,J,0) :- offset(I,J,_,0).
-dist(I,J,D) :- offset(I,J,S,Q), Q > 0, D = S/2..S, D >= 1, D*(D-1) < Q, Q <= D*(D+1).
+city(I) :- locations(I, 0, _).
 
-% successor(I,J): city J is visited immediately after city I. Every city has exactly one
-% successor and exactly one predecessor.
-1 { successor(I,J) : city(J), J != I } 1 :- city(I).
-1 { successor(I,J) : city(I), I != J } 1 :- city(J).
+% For two different cities, S is the sum of the absolute differences of their coordinates and Q the sum of the
+% squares of those differences (the squared Euclidean distance).
+pair(I, J, S, Q) :-
+    locations(I, 0, X1), locations(I, 1, Y1), locations(J, 0, X2), locations(J, 1, Y2), I != J,
+    S = |X1 - X2| + |Y1 - Y2|, Q = (X1 - X2) * (X1 - X2) + (Y1 - Y2) * (Y1 - Y2).
 
-% The successors form one single circuit through all cities, not several separate loops: starting
-% from city 0 and following successors must reach every city.
+% The rounded distance D of a pair: the root of Q lies between S/2 and S, and it rounds to D exactly when
+% D*(D-1) < Q <= D*(D+1). Clingo has no square root, so D is found this way. Identical points are at distance 0.
+dist(I, J, 0) :- pair(I, J, _, 0).
+dist(I, J, D) :- pair(I, J, S, Q), Q > 0, D = S / 2..S, D * (D - 1) < Q, Q <= D * (D + 1).
+
+% each city is left by exactly one leg and entered by exactly one leg
+1 { successor(I, J) : city(J), I != J } 1 :- city(I).
+1 { successor(I, J) : city(I), I != J } 1 :- city(J).
+
+% the legs form one single round trip through all the cities: starting from city 0 and following the legs
+% reaches every city, so there are no separate loops
 reached(0).
-reached(J) :- reached(I), successor(I,J).
+reached(J) :- reached(I), successor(I, J).
 :- city(J), not reached(J).
 
-% The route length is to be minimised: the sum of the distances of the legs travelled.
-% leg_ge(I,D) holds when the leg leaving city I is at least D long. Counting these threshold atoms,
-% one per unit of length of every leg, adds up the same total as the distances themselves, but it lets
-% the solver see which cities have only long legs left and so raise its lower bound earlier.
-leg_ge(I,D) :- successor(I,J), dist(I,J,E), D = 1..E.
-#minimize { 1,I,D : leg_ge(I,D) }.
+% the length of the route is as short as possible: the sum of the distances of the legs travelled
+#minimize { D, I, J : successor(I, J), dist(I, J, D) }.
 
-% leg(I,D): the leg leaving city I is D long.
-leg(I,D) :- successor(I,J), dist(I,J,D).
-
-% travel_distance reports the route length, the sum of all legs. It is added up city by city:
-% total(I,C) says that the legs leaving cities 0..I-1 add up to C. A single "#sum" assignment would
-% make the grounder build one large sum constraint for every possible length, and following the route
-% instead of the city numbers would let the grounder follow loops without end.
-total(0,0).
-total(I+1,C+D) :- total(I,C), leg(I,D).
-travel_distance(C) :- total(N,C), N = #count { I : city(I) }.
-
-% Only the length is an output, but many routes can have the same length: project the enumeration
-% onto it so that the answers are told apart by length alone.
-#project travel_distance/1.
+% travel_distance is the length of the optimal route
+travel_distance(C) :- C = #sum { D, I, J : successor(I, J), dist(I, J, D) }.
 
 #show travel_distance/1.

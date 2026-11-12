@@ -1,30 +1,37 @@
-% Kidney exchange: n people wait for a kidney. Person i can donate to the people listed for i.
-% Choose who donates to whom so that everyone who gives a kidney also receives one, nobody gives
-% or receives more than one, and as many transplants as possible happen.
-% Instance facts: num_people(N); compatible(I,K,J): J is the K-th person (numbered from 1) to
-% whom person I (numbered from 0) can donate. A person with an empty list has no facts.
+% session3_kidney_exchange: a clingo model from DCP Rosetta.
+%
+% At the hospital n people are on a waiting list for a kidney's transplant. We have the information about the compatibility between these people as a directed graph: compatible[i] is the set of people to which i can donate. Given this information, we want to maximize the number of people that receive a new kidney: anyone who gives a kidney must receive one, and no person receives more than one kidney.
+%
+% Save this file as model.lp. Download `session3_kidney_exchange.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py session3_kidney_exchange.json
+%   python -m clingo model.lp session3_kidney_exchange_1.lp
+%
+% Input: num_people(N) holds the number N of people; compatible(I, K, P) holds that the K-th entry of the list
+% of person I is person P, to whom I can donate (I and K are 0-based; P is numbered from 1, as in the data).
+
 person(0..N-1) :- num_people(N).
 
-% can_donate(I,J): person I can donate to person J (both numbered from 0; the list uses numbering from 1).
-can_donate(I,J-1) :- compatible(I,_,J).
+% a person can donate to the people listed for him, shifted to 0-based numbers
+can_donate(I, P - 1) :- compatible(I, _, P).
 
-% donates(I,J): person I donates to person J, which is only possible for a compatible pair.
-% idle(I): person I takes no part, neither giving nor receiving.
-% Why every person is either idle or both gives and receives exactly once: anyone who gives must
-% receive, and a person who received but gave nothing would need a giver that itself receives from
-% another giver, and so on backwards, which can only close into a cycle that never reaches that
-% person. So the exchanges are disjoint cycles, and "exactly one of give, idle" and "exactly
-% one of receive, idle" describe them. This form lets the solver reason about each person's single
-% gift and single kidney directly, instead of only counting "at most one".
-1 { donates(I,J) : can_donate(I,J); idle(I) } 1 :- person(I).
-1 { donates(I,J) : can_donate(I,J); idle(J) } 1 :- person(J).
+% each person gives at most one kidney, to one person he can donate to
+{ donates(I, J) : can_donate(I, J) } 1 :- person(I).
 
-% Maximise the number of transplants. Every person who takes part gives exactly one kidney, so the
-% number of transplants is the number of people who are not idle.
-#maximize { 1,I : person(I), not idle(I) }.
+% no person receives more than one kidney
+receives(J) :- donates(_, J).
+:- person(J), #count { I : donates(I, J) } > 1.
 
-% transplants(I,J,true/false): whether person I donates to person J.
-transplants(I,J,true)  :- donates(I,J).
-transplants(I,J,false) :- person(I), person(J), not donates(I,J).
+% anyone who gives a kidney must receive one
+:- donates(I, _), not receives(I).
+
+% maximize the number of people that receive a kidney
+#maximize { 1, J : receives(J) }.
+
+% the output: true when person I donates to person J, false otherwise
+transplants(I, J, true)  :- donates(I, J).
+transplants(I, J, false) :- person(I), person(J), not donates(I, J).
 
 #show transplants/3.

@@ -1,20 +1,30 @@
-% Assignment with costs: give each task to one person so that the total cost is smallest. Every
-% task must be assigned, but not every person has to get a task and nobody gets two.
-% Instance facts: cost(I, J, C): doing task I by person J costs C (rows are tasks, columns people).
-task(I) :- cost(I,_,_).
-person(J) :- cost(_,J,_).
+% assignment_costs: a clingo model from DCP Rosetta.
+%
+% Assign people to tasks with different costs, so that the total cost is minimized. Each task must be assigned to exactly one person, but it is not necessary to assign all people to a task.
+%
+% Save this file as model.lp. Download `assignment_costs.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/assignment_costs.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py assignment_costs.json
+%   python -m clingo model.lp assignment_costs_1.lp
 
-% assign(I, J): task I is done by person J. Each task is assigned to exactly one person.
-1 { assign(I,J) : person(J) } 1 :- task(I).
+% Input: cost(I, J, C) holds the cost C of assigning task I to person J (indices are 0-based).
 
-% A person does at most one task.
-:- person(J), #count { I : assign(I,J) } > 1.
+task(I) :- cost(I, _, _).
+person(J) :- cost(_, J, _).
 
-% The total cost of the assignments, which is to be minimised.
-#minimize { C,I,J : assign(I,J), cost(I,J,C) }.
+% each task is assigned to exactly one person
+1 { assigned(I, J) : person(J) } 1 :- task(I).
 
-% x(I, J, true/false): whether task I is assigned to person J.
-x(I,J,true) :- assign(I,J).
-x(I,J,false) :- task(I), person(J), not assign(I,J).
+% each person is given at most one task
+:- person(J), #count { I : assigned(I, J) } > 1.
+
+% the output x(I, J, V) is true for the assigned pairs and false for the others
+x(I, J, true) :- assigned(I, J).
+x(I, J, false) :- task(I), person(J), not assigned(I, J).
+
+% the total cost of the assignment is as small as possible
+#minimize { C, I, J : assigned(I, J), cost(I, J, C) }.
 
 #show x/3.

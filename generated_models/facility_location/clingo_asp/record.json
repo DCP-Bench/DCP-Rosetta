@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-opus-5-5)",
-    "attempt_id": "attempt-002",
-    "created_at": 1791195519.6229663,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-003",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794468540.7746994,
     "problem_id": "facility_location",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,62 +18,240 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20261005T0957Z-retry-clingo-93bf",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "2b37be78e1bbe5bf71c6e31c5e40f937dedc0816",
+      "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
-        "accepted": true,
-        "checking_seconds": 0.008678000000145403,
-        "execution_wall_seconds": 1.279591900000014,
-        "first_solution": {
-          "open_warehouse": [
-            true,
-            true,
-            true,
-            false
-          ],
-          "ships": [
-            [
-              80,
-              0,
-              0
-            ],
-            [
-              0,
-              70,
-              0
-            ],
-            [
-              0,
-              0,
-              40
-            ],
-            [
-              0,
-              0,
-              0
-            ]
-          ],
-          "total_cost": 4570
-        },
+        "accepted": false,
+        "checking_seconds": 9.310315363109112e-07,
+        "detail": "",
+        "execution_wall_seconds": 180.79111929197097,
         "id": "example",
+        "incumbents": [
+          [
+            5.772813212999608,
+            7739
+          ],
+          [
+            5.819712737982627,
+            7259
+          ],
+          [
+            5.857333350984845,
+            7211
+          ],
+          [
+            5.890996786998585,
+            7163
+          ],
+          [
+            5.938779034011532,
+            6971
+          ],
+          [
+            5.971972136001568,
+            6923
+          ],
+          [
+            6.0002854550257325,
+            6875
+          ],
+          [
+            6.026848535984755,
+            6857
+          ],
+          [
+            6.052339773974381,
+            6839
+          ],
+          [
+            39.24548271601088,
+            6172
+          ],
+          [
+            39.57154003897449,
+            6148
+          ],
+          [
+            46.270352553983685,
+            6142
+          ],
+          [
+            46.535438721999526,
+            6124
+          ],
+          [
+            46.75181161798537,
+            6118
+          ],
+          [
+            46.9602451309911,
+            6094
+          ],
+          [
+            47.52350070502143,
+            6070
+          ],
+          [
+            51.82237748301122,
+            6039
+          ],
+          [
+            53.8407629809808,
+            6024
+          ],
+          [
+            74.26634760800516,
+            6020
+          ],
+          [
+            74.32944793498609,
+            6015
+          ],
+          [
+            86.60229566297494,
+            5917
+          ],
+          [
+            86.92142396298004,
+            5847
+          ],
+          [
+            87.3046536190086,
+            5821
+          ],
+          [
+            87.48014765098924,
+            5677
+          ],
+          [
+            87.8789995170082,
+            5607
+          ],
+          [
+            88.27879805502016,
+            5559
+          ],
+          [
+            88.65161329798866,
+            5535
+          ],
+          [
+            89.01160181802697,
+            5383
+          ],
+          [
+            89.29796137899393,
+            5367
+          ],
+          [
+            89.6925146059948,
+            5366
+          ],
+          [
+            89.69443606300047,
+            5349
+          ],
+          [
+            89.91052671801299,
+            5335
+          ],
+          [
+            90.15690918802284,
+            5332
+          ],
+          [
+            90.41667008202057,
+            5297
+          ],
+          [
+            90.72891598800197,
+            5263
+          ],
+          [
+            91.03480168199167,
+            5247
+          ],
+          [
+            91.24723941500997,
+            5246
+          ],
+          [
+            91.28526231297292,
+            5229
+          ],
+          [
+            151.47354249702767,
+            5223
+          ],
+          [
+            152.39278727100464,
+            5217
+          ],
+          [
+            152.40249235002557,
+            5214
+          ],
+          [
+            152.52603215898853,
+            5208
+          ],
+          [
+            152.75902221701108,
+            5202
+          ],
+          [
+            152.95375208102632,
+            5199
+          ],
+          [
+            153.33877049997682,
+            5184
+          ]
+        ],
         "instance_hash": "0274126b4a26d37a0741d8ab62eb9b08649ecb8db29a717c680946006d600172",
         "is_optimization": true,
         "oom_killed": false,
@@ -79,53 +261,361 @@
           "open_warehouse",
           "ships"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 0.9952226000000337,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2793710389523767,
         "runner_status": {
+          "build_seconds": 8.278473471000325,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 180.10941936902236,
+          "read_seconds": 0.00012939603766426444,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "<block>:62:45-46: info: global variable in tuple of aggregate element:\n  M\n\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "<block>:104:65-66: info: global variable in tuple of aggregate element:\n  C\n\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.008218899999974383,
-        "execution_wall_seconds": 1.351913699999841,
-        "first_solution": {
-          "open_warehouse": [
-            true,
-            true,
-            true,
-            false
-          ],
-          "ships": [
-            [
-              82,
-              0,
-              0
-            ],
-            [
-              0,
-              0,
-              0
-            ],
-            [
-              0,
-              53,
-              24
-            ],
-            [
-              0,
-              0,
-              0
-            ]
-          ],
-          "total_cost": 2675
-        },
+        "accepted": false,
+        "checking_seconds": 1.1860392987728119e-06,
+        "detail": "",
+        "execution_wall_seconds": 180.77931583300233,
         "id": "json:1",
+        "incumbents": [
+          [
+            2.014039847999811,
+            7644
+          ],
+          [
+            2.0158105009468272,
+            7616
+          ],
+          [
+            2.104107570950873,
+            7608
+          ],
+          [
+            2.104492880986072,
+            7580
+          ],
+          [
+            2.3802212629816495,
+            6908
+          ],
+          [
+            2.3898829449899495,
+            6903
+          ],
+          [
+            2.3996718819835223,
+            6898
+          ],
+          [
+            2.4089247789816,
+            6893
+          ],
+          [
+            2.417744343983941,
+            6888
+          ],
+          [
+            2.4265466279466636,
+            6883
+          ],
+          [
+            2.4352480319794267,
+            6878
+          ],
+          [
+            2.4437925209640525,
+            6873
+          ],
+          [
+            2.4523317219573073,
+            6788
+          ],
+          [
+            2.461180226993747,
+            6628
+          ],
+          [
+            2.4716978399665095,
+            6613
+          ],
+          [
+            2.473798437975347,
+            6608
+          ],
+          [
+            2.475502069981303,
+            6603
+          ],
+          [
+            2.477097202965524,
+            6598
+          ],
+          [
+            2.478537962946575,
+            6593
+          ],
+          [
+            2.4798631009762175,
+            6588
+          ],
+          [
+            2.4811228849575855,
+            6583
+          ],
+          [
+            2.482290629995987,
+            6578
+          ],
+          [
+            2.4833487529540434,
+            6573
+          ],
+          [
+            2.4843275119783357,
+            6568
+          ],
+          [
+            2.4852168929646723,
+            6563
+          ],
+          [
+            2.486039265000727,
+            6553
+          ],
+          [
+            2.846063586999662,
+            6253
+          ],
+          [
+            2.9247999679646455,
+            6197
+          ],
+          [
+            2.956180296954699,
+            6161
+          ],
+          [
+            3.033136708952952,
+            6154
+          ],
+          [
+            3.046555441978853,
+            6126
+          ],
+          [
+            3.078665673965588,
+            6114
+          ],
+          [
+            3.0925962039618753,
+            6108
+          ],
+          [
+            3.1444582199910656,
+            6084
+          ],
+          [
+            3.173537860973738,
+            6056
+          ],
+          [
+            3.202018044947181,
+            5986
+          ],
+          [
+            3.2386035099625587,
+            5944
+          ],
+          [
+            3.2736589659471065,
+            5930
+          ],
+          [
+            3.295641737000551,
+            5916
+          ],
+          [
+            3.317340219975449,
+            5909
+          ],
+          [
+            3.317619710986037,
+            5874
+          ],
+          [
+            3.3525912889745086,
+            5860
+          ],
+          [
+            3.372967474977486,
+            5827
+          ],
+          [
+            3.4072110529523343,
+            5813
+          ],
+          [
+            3.4344468979979865,
+            5808
+          ],
+          [
+            3.4685977789922617,
+            5794
+          ],
+          [
+            4.562220386986155,
+            5672
+          ],
+          [
+            4.91556460497668,
+            5546
+          ],
+          [
+            5.318138429953251,
+            5250
+          ],
+          [
+            6.047058411990292,
+            5240
+          ],
+          [
+            6.138936005998403,
+            5229
+          ],
+          [
+            6.212155974993948,
+            5215
+          ],
+          [
+            6.275819014001172,
+            5187
+          ],
+          [
+            6.371357424999587,
+            5173
+          ],
+          [
+            7.014917493972462,
+            5159
+          ],
+          [
+            7.503515641961712,
+            5152
+          ],
+          [
+            7.69009583996376,
+            5134
+          ],
+          [
+            7.765399092982989,
+            5124
+          ],
+          [
+            7.84264283295488,
+            5120
+          ],
+          [
+            7.885103169945069,
+            5106
+          ],
+          [
+            11.642027365975082,
+            5066
+          ],
+          [
+            11.945952954993118,
+            5040
+          ],
+          [
+            11.978936854982749,
+            4899
+          ],
+          [
+            12.898877712956164,
+            4579
+          ],
+          [
+            13.387501597986557,
+            4512
+          ],
+          [
+            13.424660064978525,
+            4490
+          ],
+          [
+            62.32131323998328,
+            4013
+          ],
+          [
+            62.477802540990524,
+            3987
+          ],
+          [
+            62.621438932954334,
+            3945
+          ],
+          [
+            62.7641762989806,
+            3903
+          ],
+          [
+            63.08277033799095,
+            3749
+          ],
+          [
+            63.28707806399325,
+            3732
+          ],
+          [
+            63.48984851298155,
+            3715
+          ],
+          [
+            63.648347248963546,
+            3712
+          ],
+          [
+            63.82278620096622,
+            3709
+          ],
+          [
+            63.860413255984895,
+            3625
+          ],
+          [
+            64.07395530899521,
+            3622
+          ],
+          [
+            64.19843894796213,
+            3605
+          ],
+          [
+            64.4037628849619,
+            3588
+          ],
+          [
+            64.55451951595023,
+            3571
+          ],
+          [
+            151.48234615696128,
+            3557
+          ],
+          [
+            151.58804972894723,
+            3532
+          ],
+          [
+            154.50650131795555,
+            3528
+          ]
+        ],
         "instance_hash": "94532ad1539e958966430cbe7c2f24ea7a5642f5235ad9621a0f403868cf6125",
         "is_optimization": true,
         "oom_killed": false,
@@ -135,57 +625,93 @@
           "open_warehouse",
           "ships"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.1606103000003714,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2832812899723649,
         "runner_status": {
+          "build_seconds": 4.839825133036356,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 180.0459485760075,
+          "read_seconds": 0.00010300800204277039,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "<block>:64:45-46: info: global variable in tuple of aggregate element:\n  M\n\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "<block>:459:65-66: info: global variable in tuple of aggregate element:\n  C\n\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.009003199999824574,
-        "execution_wall_seconds": 1.4076546999999664,
-        "first_solution": {
-          "open_warehouse": [
-            true,
-            true,
-            true,
-            false
-          ],
-          "ships": [
-            [
-              68,
-              0,
-              0,
-              0
-            ],
-            [
-              0,
-              19,
-              0,
-              81
-            ],
-            [
-              0,
-              2,
-              67,
-              0
-            ],
-            [
-              0,
-              0,
-              0,
-              0
-            ]
-          ],
-          "total_cost": 3626
-        },
+        "accepted": false,
+        "checking_seconds": 9.090290404856205e-07,
+        "detail": "",
+        "execution_wall_seconds": 180.85724182304693,
         "id": "json:2",
+        "incumbents": [
+          [
+            4.207110768009443,
+            6256
+          ],
+          [
+            5.87358358403435,
+            5817
+          ],
+          [
+            5.8976371610187925,
+            5795
+          ],
+          [
+            5.919968824018724,
+            5773
+          ],
+          [
+            5.941963609016966,
+            5751
+          ],
+          [
+            5.963658221997321,
+            5729
+          ],
+          [
+            5.984651671024039,
+            5707
+          ],
+          [
+            6.005631206033286,
+            5685
+          ],
+          [
+            6.026005448016804,
+            5663
+          ],
+          [
+            68.93992440000875,
+            5654
+          ],
+          [
+            68.96301488898462,
+            5640
+          ],
+          [
+            69.479363304039,
+            5635
+          ],
+          [
+            69.62382043001708,
+            5615
+          ],
+          [
+            69.86213206400862,
+            5612
+          ],
+          [
+            70.00912811001763,
+            5571
+          ],
+          [
+            70.47937138698762,
+            5559
+          ]
+        ],
         "instance_hash": "510091e2285955d213c6a7e214e55383c488de8ca5af51d0913243bb902d4a9e",
         "is_optimization": true,
         "oom_killed": false,
@@ -195,21 +721,25 @@
           "open_warehouse",
           "ships"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.1829716000002009,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2844407000229694,
         "runner_status": {
+          "build_seconds": 9.908276792964898,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 180.08497068303404,
+          "read_seconds": 0.0001038979971781373,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "<block>:69:45-46: info: global variable in tuple of aggregate element:\n  M\n\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "<block>:464:65-66: info: global variable in tuple of aggregate element:\n  C\n\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0066620999996303,
-        "execution_wall_seconds": 1.2372539999996661,
+        "checking_seconds": 0.006897792045492679,
+        "execution_wall_seconds": 9.775420935009606,
         "first_solution": {
           "open_warehouse": [
             false,
@@ -238,6 +768,148 @@
           "total_cost": 1424
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.13234093697974458,
+            2364
+          ],
+          [
+            0.23290749901207164,
+            2343
+          ],
+          [
+            0.2896103900275193,
+            2341
+          ],
+          [
+            0.2901420710259117,
+            2300
+          ],
+          [
+            0.3657331229769625,
+            2291
+          ],
+          [
+            0.5155222350149415,
+            2273
+          ],
+          [
+            0.5672129159793258,
+            2257
+          ],
+          [
+            0.6141936230123974,
+            2240
+          ],
+          [
+            0.7461413589771837,
+            2052
+          ],
+          [
+            0.7474489320302382,
+            1947
+          ],
+          [
+            0.7479488109820522,
+            1926
+          ],
+          [
+            0.7481886480236426,
+            1905
+          ],
+          [
+            0.748386577994097,
+            1884
+          ],
+          [
+            0.7700300979777239,
+            1880
+          ],
+          [
+            0.7976069389842451,
+            1874
+          ],
+          [
+            0.8276499540079385,
+            1871
+          ],
+          [
+            0.829835192009341,
+            1868
+          ],
+          [
+            0.8317160119768232,
+            1865
+          ],
+          [
+            1.224222037999425,
+            1809
+          ],
+          [
+            1.401834598975256,
+            1786
+          ],
+          [
+            1.4455345409805886,
+            1779
+          ],
+          [
+            1.4611545170191675,
+            1772
+          ],
+          [
+            1.4702348100254312,
+            1765
+          ],
+          [
+            2.0943742700037546,
+            1760
+          ],
+          [
+            2.103319491026923,
+            1746
+          ],
+          [
+            2.283904011012055,
+            1732
+          ],
+          [
+            2.291123447008431,
+            1718
+          ],
+          [
+            2.85950566601241,
+            1684
+          ],
+          [
+            3.6725486870273016,
+            1679
+          ],
+          [
+            3.8709769870038144,
+            1664
+          ],
+          [
+            3.8934646630077623,
+            1619
+          ],
+          [
+            3.9022584540070966,
+            1574
+          ],
+          [
+            4.714293411001563,
+            1563
+          ],
+          [
+            5.013474994979333,
+            1541
+          ],
+          [
+            7.0500924559892155,
+            1424
+          ]
+        ],
         "instance_hash": "a812cfb4185294b65d6c86cf1dfd025c447ad512feeaf351c86aa2391c926e4f",
         "is_optimization": true,
         "oom_killed": false,
@@ -248,60 +920,239 @@
           "ships"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1515673999997489,
+        "reference_setup_seconds": 0.28152695595053956,
         "runner_status": {
+          "build_seconds": 0.6576745790080167,
           "detail": "",
+          "main_seconds": 8.973191173980013,
+          "read_seconds": 9.82870114967227e-05,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "<block>:59:45-46: info: global variable in tuple of aggregate element:\n  M\n\n"
+        "stderr": "<block>:452:65-66: info: global variable in tuple of aggregate element:\n  C\n\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.01390639999999621,
-        "execution_wall_seconds": 1.421390799999699,
-        "first_solution": {
-          "open_warehouse": [
-            false,
-            true,
-            true,
-            true
-          ],
-          "ships": [
-            [
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            [
-              0,
-              0,
-              21,
-              0,
-              18
-            ],
-            [
-              28,
-              12,
-              0,
-              80,
-              0
-            ],
-            [
-              0,
-              85,
-              0,
-              0,
-              35
-            ]
-          ],
-          "total_cost": 5182
-        },
+        "accepted": false,
+        "checking_seconds": 1.077947672456503e-06,
+        "detail": "",
+        "execution_wall_seconds": 180.93539604597026,
         "id": "json:4",
+        "incumbents": [
+          [
+            6.537546121980995,
+            11707
+          ],
+          [
+            6.560057000955567,
+            11479
+          ],
+          [
+            6.6502701669815,
+            11387
+          ],
+          [
+            20.951627935981378,
+            8832
+          ],
+          [
+            154.1656877679634,
+            7881
+          ],
+          [
+            154.17870460095583,
+            7803
+          ],
+          [
+            154.67836267896928,
+            7773
+          ],
+          [
+            154.71667961095227,
+            7734
+          ],
+          [
+            155.19682637695223,
+            7725
+          ],
+          [
+            155.67554836900672,
+            7689
+          ],
+          [
+            156.49226698395796,
+            7611
+          ],
+          [
+            158.79676152096363,
+            7597
+          ],
+          [
+            158.95854289195267,
+            7517
+          ],
+          [
+            159.04549931595102,
+            7477
+          ],
+          [
+            159.13093717599986,
+            7437
+          ],
+          [
+            159.21390326699475,
+            7419
+          ],
+          [
+            159.29521546099568,
+            7400
+          ],
+          [
+            159.3771444479935,
+            7390
+          ],
+          [
+            159.4564519849955,
+            7371
+          ],
+          [
+            159.535654169973,
+            7352
+          ],
+          [
+            159.61362563696457,
+            7219
+          ],
+          [
+            160.51999153295765,
+            7204
+          ],
+          [
+            160.57839791098377,
+            7185
+          ],
+          [
+            160.74405397399096,
+            7164
+          ],
+          [
+            160.80984122597147,
+            7145
+          ],
+          [
+            160.97395972599043,
+            7143
+          ],
+          [
+            161.00825114897452,
+            7124
+          ],
+          [
+            161.07282869896153,
+            7105
+          ],
+          [
+            161.233741842967,
+            7084
+          ],
+          [
+            161.29597779200412,
+            7065
+          ],
+          [
+            161.70120281900745,
+            7064
+          ],
+          [
+            161.70169949298725,
+            7045
+          ],
+          [
+            161.8046064809896,
+            7035
+          ],
+          [
+            161.9655772279948,
+            7019
+          ],
+          [
+            162.1321236549993,
+            7014
+          ],
+          [
+            162.13264379196335,
+            6995
+          ],
+          [
+            162.28790556296008,
+            6993
+          ],
+          [
+            162.3334275749512,
+            6974
+          ],
+          [
+            162.43749636097346,
+            6955
+          ],
+          [
+            162.58771943795728,
+            6935
+          ],
+          [
+            162.68989982298808,
+            6916
+          ],
+          [
+            162.8369251950062,
+            6910
+          ],
+          [
+            163.87359154695878,
+            6905
+          ],
+          [
+            163.96203332598088,
+            6890
+          ],
+          [
+            164.0438365879818,
+            6889
+          ],
+          [
+            164.04462936299387,
+            6875
+          ],
+          [
+            165.11123859800864,
+            6864
+          ],
+          [
+            165.17446198000107,
+            6862
+          ],
+          [
+            165.17489611596102,
+            6843
+          ],
+          [
+            165.38605318800546,
+            6824
+          ],
+          [
+            165.42914241395192,
+            6805
+          ],
+          [
+            165.63884040695848,
+            6784
+          ],
+          [
+            165.67795776895946,
+            6765
+          ]
+        ],
         "instance_hash": "e6056f57ea2a9ae43d74b02fc1affc793f9048991c8bdc7f1f9d63a180245bf5",
         "is_optimization": true,
         "oom_killed": false,
@@ -311,36 +1162,40 @@
           "open_warehouse",
           "ships"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.1413314999999784,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.260823922988493,
         "runner_status": {
+          "build_seconds": 14.249494747025892,
           "detail": "",
-          "status": "limit",
+          "main_seconds": 180.09871531499084,
+          "read_seconds": 0.00010739901335909963,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
-        "stderr": "<block>:74:45-46: info: global variable in tuple of aggregate element:\n  M\n\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "<block>:431:65-66: info: global variable in tuple of aggregate element:\n  C\n\n"
       }
     ],
     "instances_available": 5,
-    "instances_checked": 5,
+    "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "d0db5cf75ca2db9b87a5414e543c171fb17ea3ded4cce4d35bbbe2344f84fa2f",
+    "model_hash": "d713fc61f16092453a8a11c79a6ed65ee8e4448c90899b794b7f88494eb5164a",
     "problem_id": "facility_location",
     "reason": "accepted",
-    "reference_hash": "e1384dc837e5dd6981f9bddf839db5eb3ae94793e39fcd0a0b1c2bf648738d69",
+    "reference_hash": "eebb955cf1b977e1835e490c26f107ab80eb861f0f2e964b9c0d18c601d54770",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -348,14 +1203,19 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 6,
+    "skipped_instances": [
+      "example",
+      "json:1",
+      "json:2",
+      "json:4"
+    ],
+    "solutions_checked": 1,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 14.004745400000047,
+    "total_wall_seconds": 735.1377117829979,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-opus-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.lp",

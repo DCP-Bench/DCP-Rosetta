@@ -1,42 +1,37 @@
-% Multi-commodity transportation: several products are shipped from origins to destinations.
-% Each origin has a supply of each product, each destination a demand for each product, and the
-% total amount shipped on a route from one origin to one destination is limited. Ship so that the
-% supplies are not exceeded, the demands are met, the limits hold and the shipping cost is smallest.
-% Instance facts: supply(I, P, S): supply of product P at origin I, demand(J, P, D): demand of
-% product P at destination J, limit(I, J, L): most that can be shipped from I to J in total,
-% cost(I, J, P, C): cost of shipping one unit of product P from I to J.
-origin(I) :- supply(I,_,_).
-destination(J) :- demand(J,_,_).
-product(P) :- supply(_,P,_).
+% multi: a clingo model from DCP Rosetta.
+%
+% This is a multi-commodity transportation problem. Given a set of origins `Origins`, a set of destinations `Destinations`, and a set of products `Products`. Each origin `i` has a certain supply of each product `p` `Supply_{i,p}` and each destination `j` has a certain demand for each product `p` `Demand_{j,p}`. The cost of shipping one unit of product `p` from origin `i` to destination `j` is `ShippingCost_{i, j, p}`. The problem aims to minimize the total cost of shipping all products from the origins to the destinations.
+%
+% Save this file as model.lp. Download `multi.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/multi.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py multi.json
+%   python -m clingo model.lp multi_1.lp
+%
+% Input: supply(I, P, S) the supply S of product P at origin I; demand(J, P, D) the demand D of product P at
+% destination J; limit(I, J, L) the most units L that can be shipped from origin I to destination J in total;
+% cost(I, J, P, C) the cost C of shipping one unit of product P from origin I to destination J (0-based indices).
 
-% The amount shipped is written in unary: ship(I, J, P, V) says at least V units of product P are
-% shipped from origin I to destination J. Sums over these atoms are propagated much more
-% strongly than a sum over one atom per amount. An amount cannot exceed the supply of its
-% origin or the limit of its route (the constraints below imply this; it only shortens the chains).
+% the most units of product P that can be shipped from origin I to destination J
 bound(I,J,P,B) :- supply(I,P,S), limit(I,J,L), B = #min { S ; L }.
-{ ship(I,J,P,V) } :- bound(I,J,P,B), V = 1..B.
-:- ship(I,J,P,V), V > 1, not ship(I,J,P,V - 1).
 
-% Supply: the amount of product P leaving origin I does not exceed its supply.
-:- supply(I,P,S), #count { J,V : ship(I,J,P,V) } > S.
+% amount(I,J,P,A): A units of product P are shipped from origin I to destination J
+1 { amount(I,J,P,A) : A = 0..B } 1 :- bound(I,J,P,B).
 
-% Demand: the amount of product P arriving at destination J meets its demand.
-:- demand(J,P,D), #count { I,V : ship(I,J,P,V) } < D.
+% the units of product P shipped out of origin I do not exceed its supply
+:- supply(I,P,S), #sum { A,J : amount(I,J,P,A) } > S.
 
-% Limit: the total of all products shipped from origin I to destination J stays within the limit.
-:- limit(I,J,L), #count { P,V : ship(I,J,P,V) } > L.
+% the units of product P shipped to destination J meet its demand
+:- demand(J,P,D), #sum { A,I : amount(I,J,P,A) } < D.
 
-% total_cost: the shipping cost of everything shipped, which is to be minimised. The cost is
-% bounded by the total supply times the highest unit cost, as in the problem statement. It is chosen
-% and tied to the shipments by one sum, because defining it with a sum assignment would ground
-% one atom for every possible total.
-total_supply(S) :- S = #sum { Q,I,P : supply(I,P,Q) }.
-highest_cost(C) :- C = #max { U : cost(_,_,_,U) }.
-max_cost(S * C) :- total_supply(S), highest_cost(C).
-1 { total_cost(T) : max_cost(M), T = 0..M } 1.
-:- #sum { C,I,J,P,V : ship(I,J,P,V), cost(I,J,P,C) ; -T,total,T : total_cost(T) } != 0.
-#minimize { C,I,J,P,V : ship(I,J,P,V), cost(I,J,P,C) }.
+% the units of all products shipped from origin I to destination J stay within the limit (the instance's limit data; the description does not mention it)
+:- limit(I,J,L), #sum { A,P : amount(I,J,P,A) } > L.
 
-% The shipments are not part of the answer, so solutions are projected onto total_cost.
-#project total_cost/1.
+% total_cost: the shipping cost of all the units shipped
+total_cost(T) :- T = #sum { A*C,I,J,P : amount(I,J,P,A), cost(I,J,P,C) }.
+
+% the total shipping cost is as small as possible
+#minimize { A*C,I,J,P : amount(I,J,P,A), cost(I,J,P,C) }.
+
 #show total_cost/1.

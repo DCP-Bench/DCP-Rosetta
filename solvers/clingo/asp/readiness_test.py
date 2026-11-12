@@ -5,6 +5,10 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver clingo_asp` runs this and keeps
 its output as the readiness evidence.
 
+`standalone_run` is what a reader does: run dcp_convert_asp.py on a list of instances (the dataset
+file's form), then `python -m clingo model.lp <facts file>` in the image, once per file, and read
+an answer set from each run.
+
 One check differs from the Python integrations by necessity. ASP is declarative
 and this image's clingo has no Python scripting (`#script(python)` raises
 "python support not available"), so a submission cannot inspect its own
@@ -126,9 +130,16 @@ last(W,L) :- words_char(W,P,C), not words_char(W,P+1,_), alphabet_char(L,C).
 #show last/2.
 """
 
-ISOLATION_PROBE ="""import os, socket
+ISOLATION_PROBE = """import os, socket
 probe = socket.socket(); probe.settimeout(0.5)
-assert os.getuid() != 0, "container runs as root"
+def host_uid(uid):
+    for line in open("/proc/self/uid_map"):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
+assert os.getuid() != 0 or host_uid(0) != 0, "container has host root privilege"
 assert sorted(os.listdir("/input")) == ["model.lp", "request.json"], "unexpected /input"
 assert not os.path.exists("/dataset"), "dataset is visible to the candidate"
 assert probe.connect_ex(("1.1.1.1", 443)) != 0, "network reachable"
@@ -160,6 +171,39 @@ def isolation(temp):
     if code:
         print(err[-400:], file=sys.stderr)
     return code == 0 and "isolated" in out
+
+
+STANDALONE_INSTANCES = [{"n": 2, "optimize": False, "name": "two"}, {"n": 3, "optimize": False, "name": "three"}]
+
+
+def standalone_run(temp):
+    """The reader's path: convert a list of instances with dcp_convert_asp.py, then run
+    `python -m clingo model.lp data.lp` on each file in the image."""
+    staging = temp / "standalone"
+    staging.mkdir()
+    (staging / "model.lp").write_text(GOOD, encoding="utf-8")
+    (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+    code, out, err = run_process([sys.executable, str(Path(__file__).with_name("dcp_convert_asp.py")),
+                                  str(staging / "instances.json")], 60)
+    files = sorted(staging.glob("instances_*.lp"))
+    if code or len(files) != len(STANDALONE_INSTANCES):
+        print(err[-400:], file=sys.stderr)
+        return False
+    staging.chmod(0o755)
+    for path in staging.iterdir():
+        path.chmod(0o644)
+    for path in files:
+        code, out, err = run_process([
+            "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+            "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+            "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+            "--mount", f"type=bind,source={staging},target=/w,readonly",
+            "--workdir=/tmp", "--env=HOME=/tmp", "--entrypoint", "python",
+            integration(SOLVER)["image"], "-m", "clingo", "/w/model.lp", f"/w/{path.name}"], 120)
+        if "SATISFIABLE" not in out or "UNSATISFIABLE" in out:
+            print(path.name, (err or out)[-400:], file=sys.stderr)
+            return False
+    return True
 
 
 def main():
@@ -202,6 +246,7 @@ def main():
               instances=[{"_N": 3}], instance_count=2)
         check("string_characters", STRINGS, reference=STRINGS_REFERENCE,
               instances=[{"alphabet": "ZYX", "words": ["XY", "Z", "YYZX"]}], instance_count=2)
+        results["standalone_run"] = standalone_run(temp)
         results["isolation"] = isolation(temp)
 
     try:

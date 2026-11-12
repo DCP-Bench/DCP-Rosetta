@@ -1,44 +1,54 @@
-% Handshaking: Hilary and Jocelyn are married and invite some couples to dinner. Everyone shakes
-% hands with some of the others, but nobody with themselves or their spouse. Jocelyn asks how many
-% hands each person has shaken and all the answers are different. How many hands has Hilary shaken?
-% Instance facts: num_couples(C), the couples invited, not counting Hilary and Jocelyn.
-% People are numbered 0..N-1 with N = 2 + 2C; the two spouses of a couple are 2K and 2K+1,
-% Hilary is person 0 and Jocelyn person 1.
+% handshaking: a clingo model from DCP Rosetta.
+%
+% Hilary and Jocelyn are married. They invite a number of couples who are friends for dinner. When they
+% arrive, they shake hands with each other. Nobody shakes hands with him or herself or with his or her
+% spouse. After there has been some handshaking, Jocelyn jumps up on a chair and says 'Stop shaking hands!',
+% and then asks how many hands each person has shaken. All the answers are different. Find the number of
+% hands Hilary has shaken.
+%
+% Save this file as model.lp. Download `handshaking.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py handshaking.json
+%   python -m clingo model.lp handshaking_1.lp
+%
+% Input: num_couples(C) holds the number C of couples invited, not counting Hilary and Jocelyn.
+% The people are numbered 0 to 2C+1: Hilary is 0, Jocelyn is 1, and the spouses of the invited couples
+% are 2K and 2K+1 for K = 1 to C.
+
 person(0..2 * C + 1) :- num_couples(C).
 
-% spouses(I, J): I and J are married to each other.
-spouses(I,I + 1) :- person(I), I \ 2 == 0.
-spouses(J,I) :- spouses(I,J).
+% spouse(I, J): person I and person J are married to each other
+spouse(I, I + 1) :- person(I), I \ 2 = 0.
+spouse(J, I) :- spouse(I, J).
 
-% shake(I, J): persons I and J shake hands, for I < J and not spouses. Shaking is mutual,
-% so the pair is listed once and hand(I, J) holds for both directions.
-{ shake(I,J) } :- person(I), person(J), I < J, not spouses(I,J).
-hand(I,J) :- shake(I,J).
-hand(J,I) :- shake(I,J).
+% shake(I, J): persons I and J shake hands; a handshake is listed once, with I < J, and it is between two
+% people who are not married to each other
+{ shake(I, J) : person(I), person(J), I < J, not spouse(I, J) }.
 
-% x(I, D): person I has shaken D hands. Nobody shakes hands with themselves or their
-% spouse, so D is at most N - 2 (that is 2C).
-x(I,D) :- person(I), D = #count { J : hand(I,J) }.
+% hand(I, J): person I and person J have shaken hands, in either direction
+hand(I, J) :- shake(I, J).
+hand(J, I) :- shake(I, J).
 
-% Everybody except Hilary has shaken a different number of hands.
-:- x(I,D), x(J,D), 1 <= I, I < J.
+% hands(I, D): person I has shaken D hands
+hands(I, D) :- person(I), D = #count { J : hand(I, J) }.
 
-% The N - 1 people other than Hilary have different numbers of hands, chosen among the N - 1
-% values 0..N-2, so every value is taken by exactly one of them. This follows from the
-% constraint above; it is stated because the solver cannot see this counting argument.
-1 { x(I,D) : person(I), I >= 1 } 1 :- num_couples(C), D = 0..2 * C.
+% Jocelyn asks everyone except herself, so the answers are those of Hilary and the guests
+answer(I, D) :- hands(I, D), person(I), I != 1.
 
-% The couples can be renamed without changing any answer, so only one naming is searched: in
-% each couple other than Hilary and Jocelyn the person with the even number has shaken more
-% hands than their spouse, and the couples are listed by decreasing number of hands of that
-% person. This leaves Hilary's number of hands unchanged.
-:- x(I,D), x(I + 1,E), I >= 2, I \ 2 == 0, D < E.
-:- x(I,D), x(I + 2,E), I >= 2, I \ 2 == 0, D < E.
+% all the answers are different
+:- answer(I, D), answer(J, D), I < J.
 
-% hil: the number of hands Hilary has shaken.
-hil(D) :- x(0,D).
+% symmetry breaking: the guests can be renamed without changing any answer, so each guest couple has its
+% even-numbered person with at least as many hands as the odd-numbered one, and the couples are listed by
+% decreasing number of hands of their even-numbered person
+:- hands(I, D), hands(I + 1, E), I >= 2, I \ 2 = 0, D < E.
+:- hands(I, D), hands(I + 2, E), I >= 2, I \ 2 = 0, D < E.
 
-% The handshakes themselves are not part of the answer; project the solutions onto hil so
-% that equivalent handshake patterns are not enumerated one by one.
+% hil(D): Hilary has shaken D hands
+hil(D) :- hands(0, D).
+
+% the handshakes themselves are not part of the answer, so the solutions are projected onto hil
 #project hil/1.
 #show hil/1.

@@ -1,52 +1,54 @@
-% Water bucket (CSPLib 18): buckets of given capacities hold water. A move pours one bucket into
-% another until the source is empty or the target is full. Reach the goal state with as few
-% moves as possible.
-% Instance: capacities(B, C), initial_state(B, A) and goal_state(B, A) give, for bucket B, its
-% capacity, its starting amount and its goal amount. The output is a sequence of exactly
-% MAX_STEPS states, which the predicate mAX_STEPS(M) carries (the runner lowers only the first
-% letter of the field name), followed by padding states once the goal is reached: pADDING_VALUE(P)
-% is the padding value.
+% csplib_018_water_bucket: a clingo model from DCP Rosetta.
+%
+% You are given an 8 pint bucket of water, and two empty buckets which can contain 5 and 3 pints respectively. You are required to divide the water into two by pouring water between buckets (that is, to end up with 4 pints in the 8 pint bucket, and 4 pints in the 5 pint bucket). A transfer pours water from one bucket into another until the first is empty or the second is full. This task is to find the minimum number of transfers of water between buckets to reach the goal.
+%
+% Save this file as model.lp. Download `csplib_018_water_bucket.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_018_water_bucket.json
+%   python -m clingo model.lp csplib_018_water_bucket_1.lp
 
-bucket(B) :- capacities(B,_).
+% Input: capacities(B, C): the capacity C of bucket B; initial_state(B, A) and goal_state(B, A): the
+% starting and goal amounts A of bucket B; mAX_STEPS(M): the length M of the sequence of states;
+% pADDING_VALUE(P): the value P that pads the sequence after the goal (indices are 0-based).
+
+bucket(B) :- capacities(B, _).
 step(0..M-1) :- mAX_STEPS(M).
 
-% amount(B, A): bucket B can hold A pints, from 0 up to its capacity. The next-state rules below
-% only create states inside this range. Without it the grounder, which pairs atoms without
-% knowing which belong to the same state, derives ever larger and negative amounts at every step
-% and the grounding grows out of memory.
-amount(B,0..C) :- capacities(B,C).
+% the amount a bucket can hold runs from 0 up to its capacity
+amount(B, 0..C) :- capacities(B, C).
 
-% state(T, B, A): the T-th state of the sequence has A pints in bucket B. The sequence starts
-% with the initial state and a state exists only until the goal has been reached.
-state(0,B,A) :- initial_state(B,A).
-active(T) :- state(T,_,_).
+% state(T,B,A): after T transfers, bucket B holds A pints; the sequence starts from the initial state
+state(0, B, A) :- initial_state(B, A).
+active(T) :- state(T, _, _).
 
-% The goal has been reached in state T when every bucket holds its goal amount.
-off_goal(T) :- active(T), goal_state(B,A), not state(T,B,A).
+% the goal is reached in state T when every bucket holds its goal amount
+off_goal(T) :- active(T), goal_state(B, A), not state(T, B, A).
 at_goal(T) :- active(T), not off_goal(T).
 
-% pour_option(T, I, J, Q): in state T bucket I can be poured into bucket J, moving Q pints: the
-% source must hold water, the target must have room, and the amount moved is the smaller of the
-% water in the source and the room in the target.
-pour_option(T,I,J,Q) :- active(T), not at_goal(T), step(T+1), state(T,I,X), state(T,J,Y),
-                        capacities(J,C), I != J, X > 0, Y < C, Q = #min { X; C - Y }.
+% pour_option(T,I,J,Q): in state T, bucket I can be poured into bucket J, moving Q pints: bucket I holds
+% water, bucket J has room, and the amount moved is the smaller of the water in I and the room in J
+pour_option(T, I, J, Q) :- active(T), not at_goal(T), step(T+1), state(T, I, X), state(T, J, Y),
+                           capacities(J, C), I != J, X > 0, Y < C, Q = #min { X ; C - Y }.
 
-% Every state that is not the goal is followed by exactly one pour. When the last state of the
-% sequence is not the goal, no pour is possible there, so the goal must be reached in time.
-1 { pour(T,I,J,Q) : pour_option(T,I,J,Q) } 1 :- active(T), not at_goal(T).
+% each state that is not the goal is followed by exactly one transfer
+1 { pour(T, I, J, Q) : pour_option(T, I, J, Q) } 1 :- active(T), not at_goal(T).
 
-% The next state: the source loses Q pints, the target gains Q pints, the others are unchanged.
-state(T+1,I,X-Q) :- pour(T,I,J,Q), state(T,I,X), amount(I,X-Q).
-state(T+1,J,Y+Q) :- pour(T,I,J,Q), state(T,J,Y), amount(J,Y+Q).
-state(T+1,B,A)   :- pour(T,I,J,Q), state(T,B,A), B != I, B != J.
+% after a transfer the source loses Q pints, the target gains Q pints, and the other buckets keep their amounts
+state(T+1, I, X-Q) :- pour(T, I, J, Q), state(T, I, X), amount(I, X-Q).
+state(T+1, J, Y+Q) :- pour(T, I, J, Q), state(T, J, Y), amount(J, Y+Q).
+state(T+1, B, A)   :- pour(T, I, J, Q), state(T, B, A), B != I, B != J.
 
-% The sequence lists the states and, after the goal, the padding state in every remaining step.
-sequence(T,B,A) :- state(T,B,A).
-sequence(T,B,P) :- step(T), not active(T), bucket(B), pADDING_VALUE(P).
+% the sequence lists the states; after the goal, each remaining step is the padding state
+sequence(T, B, A) :- state(T, B, A).
+sequence(T, B, P) :- step(T), not active(T), bucket(B), pADDING_VALUE(P).
 
-% The cost is the number of pours, one less than the number of states before the padding.
+% the cost is the number of transfers
 cost(C) :- C = #count { T : active(T), T > 0 }.
-#minimize { 1,T : active(T), T > 0 }.
+
+% the minimum number of transfers is sought
+#minimize { 1, T, I, J, Q : pour(T, I, J, Q) }.
 
 #show cost/1.
 #show sequence/3.

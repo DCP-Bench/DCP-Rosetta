@@ -1,22 +1,33 @@
-% Three coins: flip exactly one coin per move and finish with every coin
-% showing the same face.
-coin(J) :- init(J,_).
-coins(N) :- N = #count { J : coin(J) }.
-move(0..K) :- num_moves(K).
+% three_coins: a clingo model from DCP Rosetta.
+%
+% Three coins lie on a table in the order tails, heads, tails. In precisely three moves make them face either all heads
+% or all tails. Each move consists of choosing one coin and flipping it over. A face is 1 for tails and 0 for heads.
+%
+% Save this file as model.lp. Download `three_coins.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py three_coins.json
+%   python -m clingo model.lp three_coins_1.lp
+%
+% Input: num_moves(K) holds the number K of moves; init(J, V) holds the starting face V of coin J (0-based, as in
+% the data; 1 for tails, 0 for heads).
 
-{ steps(M,J,1) } :- move(M), coin(J).
-steps(M,J,0) :- move(M), coin(J), not steps(M,J,1).
+face(0..1).
+coin(J) :- init(J, _).
+move(1..K) :- num_moves(K).
 
-% The first row is the starting configuration.
-:- init(J,V), steps(0,J,W), V != W.
+% the first configuration is the starting one
+steps(0, J, V) :- init(J, V).
 
-% Exactly one coin differs between consecutive rows.
-differs(M,J) :- move(M), M > 0, coin(J), steps(M,J,A), steps(M-1,J,B), A != B.
-changed(M,K) :- move(M), M > 0, K = #count { J : differs(M,J) }.
-:- changed(M,K), K != 1.
+% after each move every coin shows one face
+1 { steps(M, J, F) : face(F) } 1 :- move(M), coin(J).
 
-% The final row is all heads or all tails.
-final(S) :- num_moves(K), S = #count { J : steps(K,J,1) }.
-:- final(S), coins(N), S != 0, S != N.
+% each move flips exactly one coin
+flipped(M, J) :- move(M), coin(J), steps(M, J, F), steps(M - 1, J, G), F != G.
+:- move(M), #count { J : flipped(M, J) } != 1.
+
+% the final configuration has all coins showing heads or all coins showing tails
+:- num_moves(K), #count { J : steps(K, J, 1) } > 0, #count { J : steps(K, J, 0) } > 0.
 
 #show steps/3.

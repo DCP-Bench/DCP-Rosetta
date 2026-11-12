@@ -1,26 +1,34 @@
-% De Bruijn sequence B(base, n): a cyclic sequence over an alphabet of `base`
-% symbols, of length base**n, in which every string of n symbols occurs exactly
-% once. Modelled as a cycle through all base**n windows of n consecutive symbols.
-window(0..B**N-1) :- base(B), n(N).
+% de_bruijn_sequence: a clingo model from DCP Rosetta.
+%
+% In combinatorial mathematics, a de Bruijn sequence of order n on an alphabet of base symbols is a cyclic
+% sequence of base^n symbols in which every possible length-n string on the alphabet occurs exactly once as a
+% substring. Find such a sequence.
+%
+% Save this file as model.lp. Download `de_bruijn_sequence.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py de_bruijn_sequence.json
+%   python -m clingo model.lp de_bruijn_sequence_1.lp
+
+% Input: base(B): the size B of the alphabet, with symbols 0..B-1; n(N): the order N.
+
+size(B**N) :- base(B), n(N).
+pos(0..B**N-1) :- base(B), n(N).
 place(0..N-1) :- n(N).
 symbol(0..B-1) :- base(B).
 
-% symbol_at(I, J, V): the J-th symbol (most significant first) of the window
-% starting at position I is V.
-1 { symbol_at(I,J,V) : symbol(V) } 1 :- window(I), place(J).
+% each position of the cycle holds exactly one symbol
+1 { symbol_at(P,V) : symbol(V) } 1 :- pos(P).
 
-% number(I, X): the number (in the given base) read from window I.
-number(I,X) :- window(I), base(B), n(N), X = #sum { V * B ** (N - 1 - J),J : symbol_at(I,J,V) }.
+% window(P, X): the length-n string starting at position P, read cyclically, as the number X in base B
+window(P,X) :- pos(P), base(B), n(N), size(L),
+               X = #sum { V*B**(N-1-J),J : place(J), symbol_at((P+J) \ L,V) }.
 
-% Every possible string occurs exactly once, i.e. all window numbers differ.
-:- number(I1,X), number(I2,X), I1 < I2.
+% every length-n string occurs exactly once: the windows read different numbers
+:- window(P1,X), window(P2,X), P1 < P2.
 
-% Consecutive windows overlap: window I shifted by one symbol is window I-1 ...
-:- window(I), I >= 1, place(J), J >= 1, symbol_at(I-1,J,V), not symbol_at(I,J-1,V).
-% ... and the last window continues into the first one, closing the cycle.
-:- base(B), n(N), place(J), J >= 1, symbol_at(B**N-1,J,V), not symbol_at(0,J-1,V).
-
-% The sequence is the first symbol of every window.
-de_bruijn(I,V) :- symbol_at(I,0,V).
+% the sequence is the list of symbols around the cycle
+de_bruijn(P,V) :- symbol_at(P,V).
 
 #show de_bruijn/2.

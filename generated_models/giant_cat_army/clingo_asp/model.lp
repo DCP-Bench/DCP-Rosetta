@@ -1,33 +1,40 @@
-% Giant cat army riddle: start from [0] and extend the list by adding 5, adding
-% 7 or taking a square root, so that all numbers are different integers of at
-% most 60, the list contains 2, then 10, then 14 (in that order), and it ends
-% with 14 after exactly 24 numbers.
-% The riddle fixes these numbers, so they are mirrored here.
-max_value(60).   % largest number allowed in the list
-length_of_list(24).  % number of entries in the list
-goal(14).        % the last entry
+% giant_cat_army: a clingo model from DCP Rosetta.
+%
+% Basically you start with [0], then you build this list by using one of three operations: adding 5, adding 7,
+% or taking sqrt. You successfully complete the game when you have managed to build a list such that 2, 10 and
+% 14 appear on the list, in that order, and there can be other numbers between them. The rules also require
+% that all the elements are distinct, they are all at most 60 and are all integers. The list starts with 0,
+% ends with 14, and has a length of 24.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/giant_cat_army.html
+% Save this file as model.lp and run it (clingo 5.8, e.g. `pip install clingo`) with:
+%   python -m clingo model.lp
 
-index(0..L-1) :- length_of_list(L).
-value(0..M) :- max_value(M).
+% the list has 24 numbers, at positions 0 to 23, and the numbers are 0 to 60
+length(24).
+index(0..L-1) :- length(L).
+value(0..60).
 
-% x(I, V): the I-th number of the list is V; all numbers are different.
-1 { x(I,V) : value(V) } 1 :- index(I).
-:- x(I,V), x(J,V), I < J.
+% x(I, V): the I-th number of the list is V
+1 { x(I, V) : value(V) } 1 :- index(I).
 
-% The list starts with 0 and ends with 14.
-:- not x(0,0).
-:- length_of_list(L), goal(G), not x(L-1,G).
+% all the numbers are different
+:- x(I, V), x(J, V), I < J.
 
-% Each number follows the previous one by adding 5, adding 7, or taking the square
-% root (the previous number is the square of the next one).
-move(V,V+5) :- value(V), value(V+5).
-move(V,V+7) :- value(V), value(V+7).
-move(V*V,V) :- value(V), value(V*V).
-:- x(I,V), x(I+1,W), not move(V,W).
+% the list starts with 0 and ends with 14
+:- not x(0, 0).
+:- length(L), not x(L - 1, 14).
 
-% The list contains 2 and later 10.
-:- x(J,10), not 1 <= #count { I : x(I,2), I < J }.
-has_10 :- x(_,10).
-:- not has_10.
+% from each number the next one is reached by adding 5, by adding 7, or by taking the square root
+% (step(V, W): W follows V)
+step(V, V + 5) :- value(V), value(V + 5).
+step(V, V + 7) :- value(V), value(V + 7).
+step(V * V, V) :- value(V), value(V * V).
+:- x(I, V), x(I + 1, W), not step(V, W).
+
+% the list contains 10 and 2, and 2 comes before 10 (14 is last, so 10 comes before 14)
+:- not 1 { x(I, 10) : index(I) }.
+:- not 1 { x(I, 2) : index(I) }.
+:- x(J, 10), #count { I : x(I, 2), I < J } < 1.
 
 #show x/2.

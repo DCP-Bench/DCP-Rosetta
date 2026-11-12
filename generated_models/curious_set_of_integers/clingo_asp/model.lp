@@ -1,27 +1,37 @@
-% Curious set of integers (Martin Gardner): 1, 3, 8 and 120 form a set in which the product of any
-% two members is one less than a perfect square. Find one more number, at least 0, that can be
-% added to the set without destroying this property.
-% Instance: n is the size of the set including the new number, max_val the largest allowed value.
+% curious_set_of_integers: a clingo model from DCP Rosetta.
+%
+% The integers 1, 3, 8 and 120 form a set with a remarkable property: the product of any two of them is one
+% less than a perfect square. Find a fifth number, larger than or equal to 0, that can be added to the set
+% without destroying this property.
+%
+% Save this file as model.lp. Download `curious_set_of_integers.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/curious_set_of_integers.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py curious_set_of_integers.json
+%   python -m clingo model.lp curious_set_of_integers_1.lp
 
-% The first four members of the set are given by the problem statement.
-given(0,1). given(1,3). given(2,8). given(3,120).
+% Input: n(N) holds the size N of the set once the new number is added; max_val(M) holds the largest
+% value M to consider for the new number.
 
-% x(I,V): member I of the set is V. Members 0..3 are the given ones, the others are chosen
-% between 0 and max_val; the new number is the last member.
-slot(0..N-1) :- n(N).
+% the four given members of the set
+given(1;3;8;120).
+
+% the candidates for the new number are 0..M; a product with the new number plus one is at most 120*M+1,
+% which is below (M+120)^2, so the squares R*R for R = 0..M+120 cover every product to test
 value(0..M) :- max_val(M).
-has_given(I) :- given(I,_).
-x(I,V) :- given(I,V), slot(I).
-1 { x(I,V) : value(V) } 1 :- slot(I), not has_given(I).
+square(R*R) :- max_val(M), R = 0..M+120.
 
-% All members are different.
-:- x(I,V), x(J,V), I < J.
+% the new number is one value from the candidates
+1 { number(V) : value(V) } 1.
 
-% The product of any two members plus one is a perfect square p*p, with p at most max_val
-% (the bound on the square root that the problem puts on every product).
-square(P*P) :- value(P).
-:- x(I,V), x(J,W), I < J, not square(V*W + 1).
+% the set has N members: the four given ones and the new number
+:- n(N), #count { G : given(G) } != N - 1.
 
-number(V) :- n(N), x(N-1,V).
+% the new number is not already a member of the set
+:- number(V), given(V).
+
+% the product of the new number and each given member is one less than a perfect square
+:- number(V), given(G), not square(V*G+1).
 
 #show number/1.

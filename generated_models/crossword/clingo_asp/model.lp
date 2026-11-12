@@ -1,38 +1,75 @@
-% Crossword: pick 8 different words from a list of 15 to fill the 8 numbered
-% slots of a small crossword grid so that every place where two slots cross
-% holds the same letter in both words.
-% The puzzle itself is fixed by the problem, so its data is mirrored here.
-% letter(W, P, L): word W (numbered from 0) has the letter number L (A = 1 .. Z = 26) at
-% position P (from 0), or 0 past its end. The words, sorted longest first and then
-% alphabetically: HOSES LASER SAILS SHEET STEER HEEL HIKE KEEL KNOT LINE AFT ALE EEL LEE TIE.
-word(0..14).
-slot(0..7).
-letter(0,0,8). letter(0,1,15). letter(0,2,19). letter(0,3,5). letter(0,4,19).
-letter(1,0,12). letter(1,1,1). letter(1,2,19). letter(1,3,5). letter(1,4,18).
-letter(2,0,19). letter(2,1,1). letter(2,2,9). letter(2,3,12). letter(2,4,19).
-letter(3,0,19). letter(3,1,8). letter(3,2,5). letter(3,3,5). letter(3,4,20).
-letter(4,0,19). letter(4,1,20). letter(4,2,5). letter(4,3,5). letter(4,4,18).
-letter(5,0,8). letter(5,1,5). letter(5,2,5). letter(5,3,12). letter(5,4,0).
-letter(6,0,8). letter(6,1,9). letter(6,2,11). letter(6,3,5). letter(6,4,0).
-letter(7,0,11). letter(7,1,5). letter(7,2,5). letter(7,3,12). letter(7,4,0).
-letter(8,0,11). letter(8,1,14). letter(8,2,15). letter(8,3,20). letter(8,4,0).
-letter(9,0,12). letter(9,1,9). letter(9,2,14). letter(9,3,5). letter(9,4,0).
-letter(10,0,1). letter(10,1,6). letter(10,2,20). letter(10,3,0). letter(10,4,0).
-letter(11,0,1). letter(11,1,12). letter(11,2,5). letter(11,3,0). letter(11,4,0).
-letter(12,0,5). letter(12,1,5). letter(12,2,12). letter(12,3,0). letter(12,4,0).
-letter(13,0,12). letter(13,1,5). letter(13,2,5). letter(13,3,0). letter(13,4,0).
-letter(14,0,20). letter(14,1,9). letter(14,2,5). letter(14,3,0). letter(14,4,0).
+% crossword: a clingo model from DCP Rosetta.
+%
+% We are to complete the crossword puzzle below. Given the list of words AFT, ALE, EEL, HEEL, HIKE, HOSES, KEEL,
+% KNOT, LASER, LEE, LINE, SAILS, SHEET, STEER and TIE, select 8 words from the list, such that the puzzle can be completed.
+%
+%      1   2   3   4   5
+%    +---+---+---+---+---+
+%  1 | 1 |   | 2 |   | 3 |
+%    +---+---+---+---+---+
+%  2 | # | # |   | # |   |
+%    +---+---+---+---+---+
+%  3 | # | 4 |   | 5 |   |
+%    +---+---+---+---+---+
+%  4 | 6 | # | 7 |   |   |
+%    +---+---+---+---+---+
+%  5 | 8 |   |   |   |   |
+%    +---+---+---+---+---+
+%  6 |   | # | # |   | # |
+%    +---+---+---+---+---+
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+% Save this file as model.lp and run it (clingo 5.8, e.g. `pip install clingo`) with:
+%   python -m clingo model.lp
 
-% crossing(SlotA, PositionInA, SlotB, PositionInB)
-crossing(0,2,1,0). crossing(0,4,2,0). crossing(3,1,1,2). crossing(3,2,4,0). crossing(3,3,2,2).
-crossing(6,0,1,3). crossing(6,1,4,1). crossing(6,2,2,3). crossing(7,0,5,1). crossing(7,2,1,4).
-crossing(7,3,4,2). crossing(7,4,2,4).
+% The numbers 1 to 8 in the puzzle mark the words that start at those cells. Each word of the list is used at most once.
 
-% e(S, W): slot S holds word W; every slot holds one word and all words are different.
-1 { e(S,W) : word(W) } 1 :- slot(S).
-:- e(S1,W), e(S2,W), S1 < S2.
+% The words, numbered in the order they are sorted by length, longest first, and then alphabetically:
+% 0 HOSES, 1 LASER, 2 SAILS, 3 SHEET, 4 STEER, 5 HEEL, 6 HIKE, 7 KEEL, 8 KNOT, 9 LINE, 10 AFT, 11 ALE, 12 EEL,
+% 13 LEE, 14 TIE. letter(W, K, C): the letter at position K (from 0) of word W is C.
+letter(0,0,h). letter(0,1,o). letter(0,2,s). letter(0,3,e). letter(0,4,s).
+letter(1,0,l). letter(1,1,a). letter(1,2,s). letter(1,3,e). letter(1,4,r).
+letter(2,0,s). letter(2,1,a). letter(2,2,i). letter(2,3,l). letter(2,4,s).
+letter(3,0,s). letter(3,1,h). letter(3,2,e). letter(3,3,e). letter(3,4,t).
+letter(4,0,s). letter(4,1,t). letter(4,2,e). letter(4,3,e). letter(4,4,r).
+letter(5,0,h). letter(5,1,e). letter(5,2,e). letter(5,3,l).
+letter(6,0,h). letter(6,1,i). letter(6,2,k). letter(6,3,e).
+letter(7,0,k). letter(7,1,e). letter(7,2,e). letter(7,3,l).
+letter(8,0,k). letter(8,1,n). letter(8,2,o). letter(8,3,t).
+letter(9,0,l). letter(9,1,i). letter(9,2,n). letter(9,3,e).
+letter(10,0,a). letter(10,1,f). letter(10,2,t).
+letter(11,0,a). letter(11,1,l). letter(11,2,e).
+letter(12,0,e). letter(12,1,e). letter(12,2,l).
+letter(13,0,l). letter(13,1,e). letter(13,2,e).
+letter(14,0,t). letter(14,1,i). letter(14,2,e).
 
-% Where two slots cross, the two words show the same letter.
-:- crossing(A,PA,B,PB), e(A,WA), e(B,WB), letter(WA,PA,LA), letter(WB,PB,LB), LA != LB.
+word(W) :- letter(W,_,_).
+len(W,L) :- word(W), L = #count { K : letter(W,K,_) }.
+
+% slot(N, L): the word that starts at the number N of the puzzle has L letters
+slot(1,5). slot(2,5). slot(3,5). slot(4,4). slot(5,4). slot(6,3). slot(7,3). slot(8,5).
+
+% cell(N, K, R, C): the letter K of the word at number N lies in row R and column C of the puzzle (from 0)
+cell(1,K,0,K) :- K = 0..4.
+cell(2,K,K,2) :- K = 0..4.
+cell(3,K,K,4) :- K = 0..4.
+cell(4,K,2,K+1) :- K = 0..3.
+cell(5,K,K+2,3) :- K = 0..3.
+cell(6,K,K+3,0) :- K = 0..2.
+cell(7,K,3,K+2) :- K = 0..2.
+cell(8,K,4,K) :- K = 0..4.
+
+% pick(N, W): the word W is the word that starts at the number N
+1 { pick(N,W) : len(W,L) } 1 :- slot(N,L).
+
+% each word of the list is used at most once
+:- pick(N,W), pick(M,W), N < M.
+
+% the letters of two words that cross in a cell are the same letter
+:- cell(N,K1,R,C), cell(M,K2,R,C), N < M, pick(N,W1), pick(M,W2),
+   letter(W1,K1,X), not letter(W2,K2,X).
+
+% e(I, W): the word W starts at the number I+1 of the puzzle, with the numbers counted from 0
+e(N-1,W) :- pick(N,W).
 
 #show e/2.

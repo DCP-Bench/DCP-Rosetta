@@ -2,7 +2,7 @@
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how clingo
 (Answer Set Programming) expresses it. Runner: [run.py](run.py), which turns the instance
-into facts, grounds them with the submission, solves through the clingo Python API and
+into facts with [dcp_convert_asp.py](dcp_convert_asp.py), grounds them with the submission, solves through the clingo Python API and
 reads the declared outputs back from the shown atoms.
 
 ## Submission file
@@ -122,6 +122,46 @@ read-only root file system, user 65534, `HOME=/tmp`, a 512 MiB writable `/tmp` a
   strings with JSON rules (`\t`, `\uXXXX`), which clingo does not accept.
 - Shown atoms of predicates that are not declared outputs are ignored: an extra `#show`
   neither adds an output nor fails the run.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header
+comment: the problem statement, where the data comes from and the commands that run it.
+The conversion of [Instance](#instance) is [dcp_convert_asp.py](dcp_convert_asp.py), the same
+file the runner imports, which the model's page offers beside the instances. It writes one
+facts file per instance, so a reader runs:
+
+```prolog
+% <problem>: a clingo model from DCP Rosetta.
+%
+% <the problem statement, as below>
+%
+% Save this file as model.lp. Download `<problem>.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py <problem>.json
+%   python -m clingo model.lp <problem>_1.lp
+```
+
+`<problem>_2.lp`, ... are the other instances. **A problem with no instance data** (the instance is
+`{}`) has a shorter header with no download or convert line, and is run with `python -m clingo model.lp`:
+
+```prolog
+% <problem>: a clingo model from DCP Rosetta.
+%
+% <the problem statement>
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Save this file as model.lp and run it (clingo 5.8, e.g. `pip install clingo`) with:
+%   python -m clingo model.lp
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them
+(never a narrowing: "any two landings", not "consecutive landings"), no longer than needed: no
+instruction about printing and no remark about the instance. Facts are not declared, so a comment
+after the header says what each input predicate holds (`values(I, V)`: the value V of item I; the
+indices are 0-based, as in the data). The `#show` statements stay, for the evaluator and the reader alike.
 
 ## Example
 

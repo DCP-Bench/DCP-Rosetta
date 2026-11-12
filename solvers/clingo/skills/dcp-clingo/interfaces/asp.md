@@ -134,6 +134,39 @@ with ctl.solve(yield_=True) as handle:
 
 All **optimal** solutions: combine `opt_mode = "optN"`, `models = 0` and `project = "show"`, and keep only the models with `optimality_proven`. See [assets/all-optimal](../assets/asp/all-optimal/README.md). Details: [enumeration and optimisation](https://potassco.org/guide/basics/).
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader
+runs it on one instance as `python -m clingo model.lp data.lp`, where `data.lp` holds the instance as facts.
+
+```prolog
+% Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+%
+% Input: capacity(C); values(I, V) and weights(I, W): the value V and weight W of item I (0-based).
+
+item(I) :- values(I, _).
+
+% each item is either taken or not
+{ x(I, 1) } :- item(I).
+x(I, 0) :- item(I), not x(I, 1).
+
+% the items taken weigh no more than the capacity of the backpack
+:- capacity(C), #sum { W, I : x(I, 1), weights(I, W) } > C.
+
+% the total value of the items taken is as large as possible
+#maximize { V, I : x(I, 1), values(I, V) }.
+
+#show x/2.
+```
+
+- Start with a comment that states the problem, then one that says what each input predicate holds.
+- Give each requirement of the problem its own constraint or rule, with a comment saying it in the problem's
+  words, rather than folding several into one.
+- Prefer aggregates (`#sum`, `#count`, `#min`) and choice rules to hand-built encodings, and name a derived
+  set once (`item(I) :- values(I, _).`) instead of repeating its definition.
+- Keep the `#show` statements and any optimisation statement bare of tuning, as the contract asks, so the
+  same file runs here and in the evaluator.
+
 ## Common issues
 
 | Problem | Likely cause | Fix |

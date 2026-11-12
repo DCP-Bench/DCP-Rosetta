@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5 / model-generator campaign (50 models, five integrations incl. one new, solution_limit 10)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1789550845.369621,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794437880.9189863,
     "problem_id": "bin_packing",
     "profile": {
       "compilation_timeout": 120,
@@ -11,33 +15,59 @@
       "instance_count": 99,
       "memory_mb": 2048,
       "reference_timeout": 180,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "93648b35c765ad6f562fc0f84958e372b2d649be32801eadce20bec3ffc2a5e3",
-    "run_id": "20260916T091550-4d71",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "40c2468d703a9b25c3e8a733978b161be03824ca",
+      "commit": "e2dedf6e9ab6290adb73bb225e3836fa99612f6f",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "e2dedf6e9ab6290adb73bb225e3836fa99612f6f",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "e2dedf6e9ab6290adb73bb225e3836fa99612f6f",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.07410009996965528,
-        "execution_wall_seconds": 2.080631299992092,
+        "checking_seconds": 0.009053755988134071,
+        "execution_wall_seconds": 0.8953630919859279,
         "first_solution": {
           "bins": [
             3,
@@ -52,24 +82,221 @@
         "id": "example",
         "instance_hash": "88d83a2187fdda2a7dffa68935b7e911afc0fd2f8cef58237659ae21c486a4a6",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2453097000252455,
+        "reference_setup_seconds": 0.31457043800037354,
         "runner_status": {
+          "build_seconds": 0.0011077619856223464,
           "detail": "",
+          "main_seconds": 0.0023092580086085945,
+          "read_seconds": 9.558899910189211e-05,
           "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 10,
-        "solutions_received": 10,
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.0081507760041859,
+        "execution_wall_seconds": 0.747516014991561,
+        "first_solution": {
+          "bins": [
+            1,
+            0,
+            0
+          ]
+        },
+        "id": "json:1",
+        "instance_hash": "4fabdfa0199e2d1a57d46eb2f1fce7fec92c1e1a6eadb8434e1bae024bb8d70f",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "bins"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.2669280109985266,
+        "runner_status": {
+          "build_seconds": 0.0015441809955518693,
+          "detail": "",
+          "main_seconds": 0.002667888009455055,
+          "read_seconds": 9.872901136986911e-05,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.015755026979604736,
+        "execution_wall_seconds": 0.6977570269955322,
+        "first_solution": {
+          "bins": [
+            3,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            1,
+            2,
+            5,
+            4,
+            6,
+            3,
+            3,
+            0,
+            6,
+            4,
+            5,
+            2
+          ]
+        },
+        "id": "json:2",
+        "instance_hash": "f0233174d0b67802edc52f9529a0586fd6bb98e9531750261c158885c9b340f4",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "bins"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.29116960300598294,
+        "runner_status": {
+          "build_seconds": 0.001987900002859533,
+          "detail": "",
+          "main_seconds": 0.004038467013742775,
+          "read_seconds": 9.49160021264106e-05,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.01543034499627538,
+        "execution_wall_seconds": 0.7977127180201933,
+        "first_solution": {
+          "bins": [
+            1,
+            1,
+            3,
+            0,
+            2,
+            0,
+            3,
+            3,
+            2,
+            1
+          ]
+        },
+        "id": "json:3",
+        "instance_hash": "1ff5fa33f31d1c839f9b234c84fb4c5608f79817c90677e69432f7ea664cdbb1",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "bins"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.2533336250053253,
+        "runner_status": {
+          "build_seconds": 0.0018678059859666973,
+          "detail": "",
+          "main_seconds": 0.00338018499314785,
+          "read_seconds": 9.593099821358919e-05,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": ""
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.04386964000877924,
+        "execution_wall_seconds": 0.6972484439902473,
+        "first_solution": {
+          "bins": [
+            0,
+            8,
+            9,
+            8,
+            1,
+            10,
+            9,
+            6,
+            1,
+            0,
+            4,
+            3,
+            7,
+            6,
+            7,
+            3,
+            2,
+            4,
+            2,
+            5,
+            5,
+            4,
+            10,
+            2,
+            5,
+            10,
+            3,
+            5,
+            6,
+            9,
+            2,
+            7,
+            10,
+            7,
+            8,
+            0,
+            1,
+            4,
+            7,
+            5
+          ]
+        },
+        "id": "json:4",
+        "instance_hash": "a081f4be8b6a693ea5da0b0a24e51fe9985a691d38f0f6b0cdfd3bfa8eea3970",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "bins"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.3350447700067889,
+        "runner_status": {
+          "build_seconds": 0.0026404259842820466,
+          "detail": "",
+          "main_seconds": 0.005956017004791647,
+          "read_seconds": 9.548600064590573e-05,
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
         "stderr": ""
       }
     ],
-    "instances_available": 1,
-    "instances_checked": 1,
+    "instances_available": 5,
+    "instances_checked": 5,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -77,30 +304,30 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "4dbd987bea76e49aaa1d285925bbbeef5ca9d821c8b6ae0dd1a1e7c2054cf5a8",
+    "model_hash": "ec6f1d4102863b28d9770bc364c327a204cb19d5aed6bf4e84ffd42f655428fa",
     "problem_id": "bin_packing",
     "reason": "accepted",
-    "reference_hash": "fef50a03eedc3dca02313ea15006b18b7f52a1b9fe60a991858cb03790b3dfce",
+    "reference_hash": "dd1c60eac4b60c786a431293d8ff3dd1d5163aea4d732a842b21fd99ce36fe83",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
       "instance_ids": null,
-      "solution_limit": 10,
+      "solution_limit": 2,
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 3.9447169000050053,
+    "total_wall_seconds": 5.942744706000667,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5 / model-generator campaign (50 models, five integrations incl. one new, solution_limit 10)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.lp",

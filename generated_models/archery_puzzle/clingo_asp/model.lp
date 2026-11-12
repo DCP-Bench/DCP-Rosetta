@@ -1,34 +1,35 @@
-% Archery puzzle: an archer shoots any number of arrows at targets with given point values and
-% wants her total score to come as close as possible to a target score (above or below it).
-% Instance facts: targets(I, V): hitting target I scores V points; target_score(T): the score
-% she aims for. hits(I, H) says target I is hit H times.
-target(I) :- targets(I,_).
-last_target(N - 1) :- N = #count { I : target(I) }.
+% archery_puzzle: a clingo model from DCP Rosetta.
+%
+% How close can the young archer come to scoring a total of a target score using as many arrows as she pleases? The targets are given as a list of integers, and each may be hit any number of times. Her score is the sum of the values of all her hits, and the aim is to minimize the absolute difference between that score and the target score.
+%
+% Save this file as model.lp. Download `archery_puzzle.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/archery_puzzle.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py archery_puzzle.json
+%   python -m clingo model.lp archery_puzzle_1.lp
 
-% Each target is hit between 0 and target_score times (the bound used by the problem), and no
-% target is hit so often that its points alone pass twice the target score (the bound the problem
-% puts on the total score, and all points are positive).
-1 { hits(I,H) : H = 0..T, H * V <= 2 * T } 1 :- targets(I,V), target_score(T).
+% Input: targets(I, V): hitting target I scores V points; target_score(T): the target score T
+% (indices are 0-based, as in the data).
 
-% subtotal(I, S): the targets 0..I together score S points. A running total, built one target at
-% a time, lets the solver see the sum as a chain of small steps; a single sum over all targets
-% does not propagate well when hits range over 0..target_score. Totals past twice the target score
-% are left out: the problem does not allow them.
-subtotal(0,H * V) :- hits(0,H), targets(0,V).
-subtotal(I,S + H * V) :- subtotal(I - 1,S), hits(I,H), targets(I,V), target_score(T),
-                         S + H * V <= 2 * T.
+target(I) :- targets(I, _).
+max_value(M) :- M = #max { V : targets(_, V) }.
 
-% The score is the total over all targets.
-score(S) :- last_target(I), subtotal(I,S).
+% A score more than the largest value above the target can be improved by removing one arrow,
+% so (the values being positive) no best score exceeds the target plus the largest value. The hits are kept within that
+% limit, and every hit count H satisfies H * V <= limit.
+limit(T+M) :- target_score(T), max_value(M).
 
-% Every combination of hits must end in a score: a combination whose running total passes twice
-% the target score at some point has no score and is not a valid answer.
-:- not score(_).
+% hits(I, H): the archer hits target I H times, and each target gets exactly one count
+1 { hits(I, H) : H = 0..L } 1 :- target(I), limit(L).
 
-% The deviation is the distance between the score and the target score.
-deviation(|T - S|) :- score(S), target_score(T).
+% the total score of all the hits stays within the limit
+:- limit(L), #sum { H * V, I : hits(I, H), targets(I, V) } > L.
 
-% The archer wants the score as close as possible to the target score.
-#minimize { D : deviation(D) }.
+% score(S): the total score of the hits
+score(S) :- S = #sum { H * V, I : hits(I, H), targets(I, V) }.
+
+% minimize the absolute difference between the score and the target score
+#minimize { |T - S| : score(S), target_score(T) }.
 
 #show hits/2.

@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790922561.3864992,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794438091.781842,
     "problem_id": "session2_movie_scheduling",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20261001T1218Z-clingo-8f73",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "1a17e1b7609528b6e4980af7b8ef38209a306659",
+      "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.017259599873796105,
-        "execution_wall_seconds": 1.102409399813041,
+        "checking_seconds": 0.021715626004152,
+        "execution_wall_seconds": 0.7964252350211609,
         "first_solution": {
           "selected_movies": [
             false,
@@ -52,6 +82,28 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0008660669845994562,
+            0
+          ],
+          [
+            0.000986148981610313,
+            1
+          ],
+          [
+            0.0010255529778078198,
+            2
+          ],
+          [
+            0.0010544989781919867,
+            3
+          ],
+          [
+            0.0010810300009325147,
+            4
+          ]
+        ],
         "instance_hash": "c63f2604ca46c4ef39e0bce4b08278b51fffa7aab5afe5d606c067b304a4f65a",
         "is_optimization": true,
         "oom_killed": false,
@@ -60,9 +112,12 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5220710998401046,
+        "reference_setup_seconds": 0.4428362920007203,
         "runner_status": {
+          "build_seconds": 0.0035775300057139248,
           "detail": "",
+          "main_seconds": 0.0071303200093097985,
+          "read_seconds": 0.0001833680144045502,
           "status": "limit",
           "type": "status"
         },
@@ -72,8 +127,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007230299990624189,
-        "execution_wall_seconds": 1.1709832998458296,
+        "checking_seconds": 0.002603617002023384,
+        "execution_wall_seconds": 0.9100530809955671,
         "first_solution": {
           "selected_movies": [
             true,
@@ -86,6 +141,28 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0003116790030617267,
+            0
+          ],
+          [
+            0.0003983060014434159,
+            1
+          ],
+          [
+            0.00043789600022137165,
+            2
+          ],
+          [
+            0.0004732540110126138,
+            3
+          ],
+          [
+            0.0005114170198794454,
+            4
+          ]
+        ],
         "instance_hash": "04f1898508f4a50c2bfba57b91a7081ff3a825d00601067d19a9a0a4829ac98c",
         "is_optimization": true,
         "oom_killed": false,
@@ -94,9 +171,12 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4966083001345396,
+        "reference_setup_seconds": 0.46870172600029036,
         "runner_status": {
+          "build_seconds": 0.0024057629925664514,
           "detail": "",
+          "main_seconds": 0.004255890991771594,
+          "read_seconds": 0.00015284799155779183,
           "status": "complete",
           "type": "status"
         },
@@ -106,8 +186,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.005728699965402484,
-        "execution_wall_seconds": 1.0197431000415236,
+        "checking_seconds": 0.003273614012869075,
+        "execution_wall_seconds": 1.1924072580004577,
         "first_solution": {
           "selected_movies": [
             false,
@@ -120,6 +200,36 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0004269290075171739,
+            0
+          ],
+          [
+            0.0005351750005502254,
+            1
+          ],
+          [
+            0.0006063600012566894,
+            2
+          ],
+          [
+            0.0006465540209319443,
+            3
+          ],
+          [
+            0.000683119025779888,
+            4
+          ],
+          [
+            0.0007202140113804489,
+            5
+          ],
+          [
+            0.0007564640254713595,
+            6
+          ]
+        ],
         "instance_hash": "3f57efec9da8d38622fca9fb1650ea74b3d65af6a1f8b66fffac489d8cec2a52",
         "is_optimization": true,
         "oom_killed": false,
@@ -128,9 +238,12 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5978755000978708,
+        "reference_setup_seconds": 0.43638823699438944,
         "runner_status": {
+          "build_seconds": 0.003504784981487319,
           "detail": "",
+          "main_seconds": 0.006077605008613318,
+          "read_seconds": 0.00019860902102664113,
           "status": "complete",
           "type": "status"
         },
@@ -140,8 +253,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015720200026407838,
-        "execution_wall_seconds": 1.0238675998989493,
+        "checking_seconds": 0.0208127039950341,
+        "execution_wall_seconds": 0.9876826189865824,
         "first_solution": {
           "selected_movies": [
             true,
@@ -159,6 +272,28 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0004785519849974662,
+            0
+          ],
+          [
+            0.0006099809834267944,
+            1
+          ],
+          [
+            0.0006872839876450598,
+            2
+          ],
+          [
+            0.0007404149801004678,
+            3
+          ],
+          [
+            0.0007887419778853655,
+            4
+          ]
+        ],
         "instance_hash": "c1e542bd06340d90a89e43c534ab976e60725b8b821afef32e862749d2849b42",
         "is_optimization": true,
         "oom_killed": false,
@@ -167,9 +302,12 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2288936998229474,
+        "reference_setup_seconds": 0.4730031139915809,
         "runner_status": {
+          "build_seconds": 0.004443694022484124,
           "detail": "",
+          "main_seconds": 0.007891463988926262,
+          "read_seconds": 0.0002310739946551621,
           "status": "limit",
           "type": "status"
         },
@@ -179,8 +317,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016973600024357438,
-        "execution_wall_seconds": 1.067538300063461,
+        "checking_seconds": 0.04191374100628309,
+        "execution_wall_seconds": 0.8487606639973819,
         "first_solution": {
           "selected_movies": [
             false,
@@ -202,6 +340,28 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.00047149500460363925,
+            0
+          ],
+          [
+            0.000624598003923893,
+            1
+          ],
+          [
+            0.0007164960261434317,
+            2
+          ],
+          [
+            0.000792488019214943,
+            3
+          ],
+          [
+            0.0008652399992570281,
+            4
+          ]
+        ],
         "instance_hash": "570c4f9d69f17b80f741a52364dba8592aecac4cd8f38d4591fe99baa74382ee",
         "is_optimization": true,
         "oom_killed": false,
@@ -210,9 +370,12 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4408531999215484,
+        "reference_setup_seconds": 0.4797564680047799,
         "runner_status": {
+          "build_seconds": 0.004466143000172451,
           "detail": "",
+          "main_seconds": 0.00947580099455081,
+          "read_seconds": 0.0002229739911854267,
           "status": "limit",
           "type": "status"
         },
@@ -224,21 +387,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "35c823dc1d3543b8bafcb3a3ce12f0624ba1cdbc94e20f77eb2e2d0ea5cec973",
+    "model_hash": "05e9e05b202c35b786cbc840f7d469eeca360bba32d34c87f2f5355f33241a4e",
     "problem_id": "session2_movie_scheduling",
     "reason": "accepted",
-    "reference_hash": "eb02bc105582c59cb4f25137b0b809721e386cbaab2b7b27be60dbe019e7022f",
+    "reference_hash": "199fe76f148351eb105482a9412a4ccbe6f85fa6a6773c61e22ac20fb5a181a9",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -249,11 +412,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 14.96799090015702,
+    "total_wall_seconds": 7.600876504991902,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.lp",

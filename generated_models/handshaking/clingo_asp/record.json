@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-002",
-    "created_at": 1790919604.31999,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794438081.080701,
     "problem_id": "handshaking",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20261001T1218Z-clingo-8f73",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "c5305894482e34d2515260ed2adf66d50d68cd98",
+      "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.12065199995413423,
-        "execution_wall_seconds": 3.8185155999381095,
+        "checking_seconds": 0.0406259739829693,
+        "execution_wall_seconds": 1.4000145680038258,
         "first_solution": {
           "hil": 8
         },
@@ -50,9 +80,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2307677001226693,
+        "reference_setup_seconds": 0.37547182000707835,
         "runner_status": {
+          "build_seconds": 0.005497309990460053,
           "detail": "",
+          "main_seconds": 0.7326426889922004,
+          "read_seconds": 0.00014309299876913428,
           "status": "complete",
           "type": "status"
         },
@@ -62,8 +95,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04314010008238256,
-        "execution_wall_seconds": 1.7709699000697583,
+        "checking_seconds": 0.024327822990017012,
+        "execution_wall_seconds": 0.6996880110236816,
         "first_solution": {
           "hil": 4
         },
@@ -76,9 +109,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2252438000869006,
+        "reference_setup_seconds": 0.3482484010164626,
         "runner_status": {
+          "build_seconds": 0.002690686989808455,
           "detail": "",
+          "main_seconds": 0.008645649999380112,
+          "read_seconds": 0.0001254709786735475,
           "status": "complete",
           "type": "status"
         },
@@ -88,8 +124,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007423699833452702,
-        "execution_wall_seconds": 1.6015751999802887,
+        "checking_seconds": 0.002252587000839412,
+        "execution_wall_seconds": 0.6951568649965338,
         "first_solution": {
           "hil": 1
         },
@@ -102,9 +138,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.100595499854535,
+        "reference_setup_seconds": 0.3744888869987335,
         "runner_status": {
+          "build_seconds": 0.0015549590170849115,
           "detail": "",
+          "main_seconds": 0.003145455993944779,
+          "read_seconds": 0.00012989499373361468,
           "status": "complete",
           "type": "status"
         },
@@ -114,8 +153,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.024389400146901608,
-        "execution_wall_seconds": 1.723016900010407,
+        "checking_seconds": 0.007236088975332677,
+        "execution_wall_seconds": 0.6959131830080878,
         "first_solution": {
           "hil": 3
         },
@@ -128,9 +167,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.334161499980837,
+        "reference_setup_seconds": 0.3544468079926446,
         "runner_status": {
+          "build_seconds": 0.002819410990923643,
           "detail": "",
+          "main_seconds": 0.01057156699243933,
+          "read_seconds": 0.00019136298215016723,
           "status": "complete",
           "type": "status"
         },
@@ -140,8 +182,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.08908029994927347,
-        "execution_wall_seconds": 1.8069933999795467,
+        "checking_seconds": 0.02336043698596768,
+        "execution_wall_seconds": 0.6951809719903395,
         "first_solution": {
           "hil": 6
         },
@@ -154,9 +196,12 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1969177999999374,
+        "reference_setup_seconds": 0.41416775999823585,
         "runner_status": {
+          "build_seconds": 0.0036284179950598627,
           "detail": "",
+          "main_seconds": 0.05945275499834679,
+          "read_seconds": 0.0001502090017311275,
           "status": "complete",
           "type": "status"
         },
@@ -168,21 +213,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "c2e6d928f4525bd9b8f06cddb547329b13bd56eb01d2916b4ac436b2869d343d",
+    "model_hash": "d27807321023f4bda2af72849f0048630e1a25f2a9d0a8c30b4be66440ab52ae",
     "problem_id": "handshaking",
     "reason": "accepted",
-    "reference_hash": "6e0d6650271f5d480fa03235ece6f71602ce37a799ac2fc69cb1a6f4529091f1",
+    "reference_hash": "2c1b49b316c3cfa2f3642ab923cec5a706325610f6485ecf853ccc597d201a45",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -193,11 +238,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 24.5745802000165,
+    "total_wall_seconds": 6.554777179990197,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.lp",
