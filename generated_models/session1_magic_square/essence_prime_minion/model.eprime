@@ -1,18 +1,35 @@
 language ESSENCE' 1.0
-$ Magic square of size n: fill an n x n grid with the integers 1 to n*n, each used once, so that every row, column and both diagonals sum to n(n^2+1)/2.
+$ session1_magic_square: an Essence' model from DCP Rosetta.
+$
+$ A magic square is an n x n grid (n is not 2) in which each cell holds a different integer from 1 to n^2 and
+$ the sum of the integers in each row, column and diagonal is the same, namely n(n^2+1)/2. Find a magic square for the
+$ given size n.
+$
+$ Save this file as model.eprime. Download `session1_magic_square.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_magic_square.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session1_magic_square_1.param.solution`:
+$   python dcp_convert_essence.py session1_magic_square.json
+$   savilerow model.eprime session1_magic_square_1.param -run-solver
+
+$ n: the side length of the square
 given n : int(1..)
+
+$ the common sum of each row, column and diagonal
+letting magic_sum = n*(n*n+1)/2
+
+$ square[i,j]: the number in row i and column j (indices from 1)
 find square : matrix indexed by [int(1..n), int(1..n)] of int(1..n*n)
 
-branching on [square]
-heuristic sdf
 such that
-$ each cell contains a different integer
-allDiff([square[i,j] | i : int(1..n), j : int(1..n)]),
-$ each row sums to the magic constant n(n^2+1)/2
-forAll i : int(1..n) . ((sum j : int(1..n) . square[i,j]) = (n*(n*n+1))/2),
-$ each column sums to the magic constant n(n^2+1)/2
-forAll j : int(1..n) . ((sum i : int(1..n) . square[i,j]) = (n*(n*n+1))/2),
-$ the main diagonal sums to the magic constant n(n^2+1)/2
-((sum i : int(1..n) . square[i,i]) = (n*(n*n+1))/2),
-$ the anti-diagonal sums to the magic constant n(n^2+1)/2
-((sum i : int(1..n) . square[i,n+1-i]) = (n*(n*n+1))/2)
+$ each cell holds a different integer, so together they are 1 to n^2
+allDiff(flatten(square)),
+$ every row sums to n(n^2+1)/2
+forAll i : int(1..n) . (sum j : int(1..n) . square[i,j]) = magic_sum,
+$ every column sums to n(n^2+1)/2
+forAll j : int(1..n) . (sum i : int(1..n) . square[i,j]) = magic_sum,
+$ the main diagonal sums to n(n^2+1)/2
+(sum i : int(1..n) . square[i,i]) = magic_sum,
+$ the other diagonal sums to n(n^2+1)/2
+(sum i : int(1..n) . square[i,n+1-i]) = magic_sum

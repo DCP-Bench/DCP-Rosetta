@@ -2,7 +2,7 @@
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how Essence'
 through Savile Row 1.11.1 and Minion expresses it. Runner: [run.py](run.py), which builds an
-Essence' parameter file from the instance, runs Savile Row with Minion, and plugs its own
+Essence' parameter file from the instance with [dcp_convert_essence.py](dcp_convert_essence.py), runs Savile Row with Minion, and plugs its own
 `essence_solver` into `main("essence")` of [runner/runtime.py](../../../runner/runtime.py)
 (request parsing, the overall timer and error handling stay runtime's).
 [metadata.json](metadata.json) declares `instance_binding: reshaped`: the runner's own
@@ -41,7 +41,7 @@ size of) is refused: ``Declared given `absent` has no value: the instance has no
 field, and no field it is a size of``. A given's domain must hold every instance value
 (`0` is not in `int(1..)`).
 
-Essence' has no strings or floats and a matrix literal must be rectangular, so a declared
+Essence' has no strings or floats (strings are bound as ids, rule 5) and a matrix literal must be rectangular, so a declared
 field is bound by these rules:
 
 1. **An int, a Boolean, or a rectangular list of them** (one scalar type) binds unchanged.
@@ -59,12 +59,25 @@ field is bound by these rules:
    or 2, but is not split again. Rows `[target, cells]` with `cells` ragged give `F_1`
    (the int column) and `F_2` (padded, 3-D, with `F_2_dim1` to `F_2_dim3` and `F_2_len`);
    index a padded cell by `k <= F_2_len[c]`.
+   **Rows that each start with a scalar (one type) followed by a varying number of items**, such as the cells
+   of a clue `[target, [r, c], ...]`, bind the same way: `<field>_1` (the leading scalars) and `<field>_2` (the
+   rest of each row, padded as in rule 2, with `<field>_2_len`).
 4. **Derived sizes**: `<field>_dimK` (K from 1) is the length along axis K of every list
    bound by rules 1 to 3, after padding (lists nested three deep get `_dim1` to `_dim3`).
    `<field>_len` and `<field>_dimK` are bound **only when a given declares them**, and an
    instance field of the same name wins over a derived one.
-5. **Refused**, as status `error` naming the field (reason `execution_error`), only when
-   the model declares it: a float, a string (`` Instance field `name` holds a string
+5. **Strings are bound as ids**, before rules 1 to 3 (`string_ids` in the converter), by four rules that
+   cover what the dataset's string data is used for:
+   a list of distinct strings is a *vocabulary*, whose items become the ids `1, 2, ...` in order (a list of
+   device names binds as `1..n`); a string equal to an item of a vocabulary (the endpoints in rows such as
+   `["A", "H", 1]`) becomes that item's id; a list of words over an *alphabet* (a string of distinct letters)
+   becomes a ragged list of letter ids, the position of the letter in the alphabet counted from 1, padded with
+   `0` and with `<field>_len` (rule 2), and the alphabet itself becomes the ids `1..k`; an ISO date such as
+   `2024-05-01` becomes its day number, the days since 1970-01-01. Only a vocabulary that is used (an
+   alphabet, or items some other field refers to) is rewritten; a string field no rule covers (`name`) stays
+   a string and is ignored unless declared.
+6. **Refused**, as status `error` naming the field (reason `execution_error`), only when
+   the model declares it: a float, a string no rule above covers (`` Instance field `name` holds a string
    value; Essence' parameters are integers, Booleans and matrices of them ``), an empty
    list or one nested anywhere inside the field (`` ... contains an empty list, which an
    Essence' matrix literal cannot express ``; its `_dimK` sizes still bind when only they
@@ -97,7 +110,7 @@ maximising branching on heuristic toInt flatten table alldiff allDiff`.
 **Which problems are withheld.** `generation.brief` lists `unbindable_fields` by a generic
 rule (any ragged or mixed field), which is looser than this binding. For this integration
 `generation.next_work` withholds a problem only when run.py's `refusal(name, value)`
-rejects a field (other than `name` and `note`) in some instance, that is, a rule-5 shape
+rejects a field (other than `name` and `note`) in some instance, that is, a rule-6 shape
 no model could bind. `refusal` checks only the shape: a string, float or empty-list field
 does not withhold a problem, since a model that does not declare it runs, and a model that
 declares it is refused for that run.
@@ -269,6 +282,52 @@ entrypoint is the runner (`python /opt/runner/run.py`); for an ad hoc run overri
   `min` or `max` cannot be declared at all.
 - **Rule-3 fields have no `<field>`**: declaring `given F` for a mixed-row field is a
   missing given; declare `F_1`, `F_2`, ....
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so after the mandatory first line
+`language ESSENCE' 1.0` it has a header comment: the problem statement, where the data comes from and the
+commands that run it. The conversion of [Instance](#instance) is
+[dcp_convert_essence.py](dcp_convert_essence.py), the same file the runner imports, which the model's page
+offers beside the instances. It writes one parameter file per instance, so a reader runs:
+
+```
+language ESSENCE' 1.0
+$ <problem>: an Essence' model from DCP Rosetta.
+$
+$ <the problem statement, as below>
+$
+$ Save this file as model.eprime. Download `<problem>.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `<problem>_1.param.solution`:
+$   python dcp_convert_essence.py <problem>.json
+$   savilerow model.eprime <problem>_1.param -run-solver
+```
+
+`<problem>_2.param`, ... are the other instances. With `model.eprime` in the same folder the converter writes
+only the givens the model declares; without it, every field a parameter can hold. **A problem with no instance
+data** (the instance is `{}`) has a shorter header with no download or convert line:
+
+```
+language ESSENCE' 1.0
+$ <problem>: an Essence' model from DCP Rosetta.
+$
+$ <the problem statement>
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them (never a
+narrowing: "any two landings", not "consecutive landings"), no longer than needed: no instruction about printing
+and no remark about the instance. Each `given` has a short comment saying what it holds, indices 1-based as in
+the parameter file (the data's index 0 is `F[1]`); a given the conversion creates (`<field>_dim1`, `<field>_len`,
+`<field>_1`, ...) says so, since the reader's JSON has no such field. The solution file lists the `find`
+variables, so an auxiliary variable the problem does not ask for is named as such in a comment.
 
 ## Example
 

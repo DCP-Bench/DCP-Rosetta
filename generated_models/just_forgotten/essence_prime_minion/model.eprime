@@ -1,17 +1,33 @@
 language ESSENCE' 1.0
-$ Just forgotten: find the account number x, a permutation of the digits 0 to n-1, that agrees with each given set in exactly the stated number of positions.
-$ number of sets, from the instance
+$ just_forgotten: an Essence' model from DCP Rosetta.
+$
+$ Joe forgot his account number. It has all the digits from 0 to n-1 in some order. He tried several sets of digits, and in each set exactly the same stated number of digits are in their correct position, that is, in the same position as in the account number. From these sets, find the account number.
+$
+$ Save this file as model.eprime. Download `just_forgotten.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/just_forgotten.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `just_forgotten_1.param.solution`:
+$   python dcp_convert_essence.py just_forgotten.json
+$   savilerow model.eprime just_forgotten_1.param -run-solver
+
+$ number of sets tried, derived from the data (the reader's JSON has no such field)
 given sets_dim1 : int
-$ number of digits n, from the instance
+$ number of digits n, derived from the data: the length of each set (the reader's JSON has no such field)
 given sets_dim2 : int
-$ the sets of digits that Joe tried, one per row
+$ sets[k,p]: the digit at position p of the k-th set tried, positions and sets indexed from 1 (the data's index 0 is 1)
 given sets : matrix indexed by [int(1..sets_dim1), int(1..sets_dim2)] of int
-$ how many digits of each set are in their correct position
+$ the number of digits of each set that are in their correct position
 given num_correct_digits : int
-$ the account number: x[p] is the digit at position p, positions counted from 1 in the model and 0 in the output
-find x : matrix indexed by [int(1..sets_dim2)] of int(0..sets_dim2-1)
+
+$ n: the number of digits in the account number
+letting n = sets_dim2
+
+$ x[p]: the digit at position p of the account number (positions indexed from 1 here; the output lists them from position 0)
+find x : matrix indexed by [int(1..n)] of int(0..n-1)
+
 such that
-$ the account number uses each digit from 0 to n-1 exactly once
+$ the account number has each of the digits from 0 to n-1 exactly once
 allDiff(x),
-$ each tried set has exactly num_correct_digits digits in the same position as the account number
-forAll k : int(1..sets_dim1) . ((sum p : int(1..sets_dim2) . toInt(x[p] = sets[k,p])) = num_correct_digits)
+$ each set tried has exactly num_correct_digits digits in the same position as the account number
+forAll k : int(1..sets_dim1) . ((sum p : int(1..n) . toInt(x[p] = sets[k,p])) = num_correct_digits)

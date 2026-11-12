@@ -1,15 +1,33 @@
 language ESSENCE' 1.0
-$ Schedule a round-robin tournament of n teams over n-1 weeks, each week split into n/2 periods of two slots (home and away), with every team playing every other team exactly once.
+$ csplib_026_sports_tournament_scheduling: an Essence' model from DCP Rosetta.
+$
+$ Schedule a round-robin tournament of n teams over n-1 weeks. Each week is divided into n/2 periods, and each period has two slots: the first team in a slot plays at home and the second plays away. Every team plays exactly once each week, every team plays at most twice in the same period over the tournament, and every team plays every other team.
+$
+$ Save this file as model.eprime. Download `csplib_026_sports_tournament_scheduling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_026_sports_tournament_scheduling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_026_sports_tournament_scheduling_1.param.solution`:
+$   python dcp_convert_essence.py csplib_026_sports_tournament_scheduling.json
+$   savilerow model.eprime csplib_026_sports_tournament_scheduling_1.param -run-solver
+
+$ number of teams n (the data's n_teams)
 given n_teams : int
-find home : matrix indexed by [int(1..n_teams-1), int(1..n_teams/2)] of int(1..n_teams)
-find away : matrix indexed by [int(1..n_teams-1), int(1..n_teams/2)] of int(1..n_teams)
+$ weeks = n-1 and periods = n/2 per week
+letting weeks = n_teams - 1
+letting periods = n_teams / 2
+
+$ home[w,p]: team playing at home in week w, period p (indices 1-based: the data's index 0 is 1)
+find home : matrix indexed by [int(1..weeks), int(1..periods)] of int(1..n_teams)
+$ away[w,p]: team playing away in week w, period p (indices 1-based)
+find away : matrix indexed by [int(1..weeks), int(1..periods)] of int(1..n_teams)
 
 such that
-$ every team plays exactly once each week: the teams in the slots of a week are all different
-forAll w : int(1..n_teams-1) . (allDiff(cat(home[w,..], away[w,..]))),
+$ every team plays exactly once each week
+forAll w : int(1..weeks) . forAll i : int(1..n_teams) . ((sum p : int(1..periods) . toInt(home[w,p] = i) + toInt(away[w,p] = i)) = 1),
 $ every team plays every other team exactly once over the tournament
-forAll i : int(1..n_teams) . forAll j : int(i+1..n_teams) . ((sum w : int(1..n_teams-1) . (sum p : int(1..n_teams/2) . toInt((home[w,p] = i /\ away[w,p] = j) \/ (home[w,p] = j /\ away[w,p] = i)))) = 1),
+forAll i : int(1..n_teams) . forAll j : int(i+1..n_teams) . ((sum w : int(1..weeks) . sum p : int(1..periods) . toInt((home[w,p] = i /\ away[w,p] = j) \/ (home[w,p] = j /\ away[w,p] = i))) = 1),
 $ every team plays at most twice in the same period over the tournament
-forAll i : int(1..n_teams) . forAll p : int(1..n_teams/2) . ((sum w : int(1..n_teams-1) . toInt((home[w,p] = i) \/ (away[w,p] = i))) <= 2),
-$ a team does not play itself
-forAll w : int(1..n_teams-1) . forAll p : int(1..n_teams/2) . (home[w,p] != away[w,p])
+forAll i : int(1..n_teams) . forAll p : int(1..periods) . ((sum w : int(1..weeks) . toInt(home[w,p] = i) + toInt(away[w,p] = i)) <= 2),
+$ redundant (already implied by the first rule, which counts a team playing itself twice): a team does not play itself
+forAll w : int(1..weeks) . forAll p : int(1..periods) . (home[w,p] != away[w,p])

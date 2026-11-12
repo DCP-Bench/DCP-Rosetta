@@ -1,8 +1,19 @@
 language ESSENCE' 1.0
-$ Choose the length of each of the 18 holes, each length being 3, 4 or 5, so that the total length of the course is 72.
-$ holes[h] is the length of hole h
-find holes : matrix indexed by [int(1..18)] of int(3..5)
+$ eighteen_hole_golf: an Essence' model from DCP Rosetta.
+$
+$ Generate an 18-hole golf course where each hole has a length of 3, 4, or 5, and the total length of the course is 72.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the number of holes and the total length of the course
+letting n_holes = 18
+letting course_length = 72
+$ holes[h]: the length of hole h, of 3, 4 or 5, indices 1-based (hole 1 is the first hole)
+find holes : matrix indexed by [int(1..n_holes)] of int(3..5)
 
 such that
 $ the total length of the course is 72
-(sum h : int(1..18) . holes[h]) = 72
+(sum h : int(1..n_holes) . holes[h]) = course_length

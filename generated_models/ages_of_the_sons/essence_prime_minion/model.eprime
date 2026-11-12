@@ -1,25 +1,35 @@
 language ESSENCE' 1.0
-$ Guess the ages of three sons from the product, the sum, and the oldest son's eye colour.
+$ ages_of_the_sons: an Essence' model from DCP Rosetta.
+$
+$ An old man asked a mathematician to guess the ages of his three sons. The old man said: "The product of their ages is 36." The mathematician said: "I need more information." The old man said: "Over there you can see a building. The sum of their ages equals the number of the windows in that building." After a short while the mathematician said: "I need more information." The old man said: "The oldest son has blue eyes." The mathematician said: "I got it." What are the ages of the three sons of the old man?
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ A1, A2, A3: the ages of the three sons, from the oldest (A1) to the youngest (A3)
 find A1, A2, A3 : int(1..36)
 
 branching on [A1, A2, A3]
 
 such that
-$ the product of their ages is 36
+$ the product of the three ages is 36
 A1 * A2 * A3 = 36,
-$ A1 is the oldest and A2, A3 are their ages from oldest to youngest
+$ the ages are listed from the oldest to the youngest
 A1 >= A2,
 A2 >= A3,
+$ every age is at least 1
 A3 >= 1,
-$ the oldest son has blue eyes, so the oldest son is uniquely identified
+$ the oldest son has blue eyes, so the oldest son is unique: the two other sons are younger than him
 A1 > A2,
-$ the sum of their ages is the number of windows, and the mathematician still needs more information,
-$ so another triple of ages with product 36 has the same sum
+$ the sum of the ages is the number of windows, and the mathematician still needs more information:
+$ some other triple of ages with product 36 has the same sum
 (exists b1, b2, b3 : int(1..36) .
     (b1 >= b2 /\ b2 >= b3 /\ b1 * b2 * b3 = 36 /\ b1 + b2 + b3 = A1 + A2 + A3 /\
      (b1 != A1 \/ b2 != A2 \/ b3 != A3))),
-$ the mathematician now knows the ages, so among the triples with product 36 and the same sum
-$ whose oldest son is uniquely identified, there is only one: the answer
+$ after the blue eyes clue the mathematician knows the ages: among the triples with product 36, the same sum
+$ and a unique oldest son, the only one is the answer
 forAll b1, b2, b3 : int(1..36) .
     ((b1 >= b2 /\ b2 >= b3 /\ b1 * b2 * b3 = 36 /\ b1 + b2 + b3 = A1 + A2 + A3 /\ b1 > b2 /\ b1 > b3)
      -> (b1 = A1 /\ b2 = A2 /\ b3 = A3))

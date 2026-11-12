@@ -1,19 +1,41 @@
 language ESSENCE' 1.0
-$ Choose which cell tower sites to build, within the budget, to cover as much population as possible.
-given delta_dim1, delta_dim2 : int
-given delta : matrix indexed by [int(1..delta_dim1), int(1..delta_dim2)] of int(0..1)
-given cost : matrix indexed by [int(1..delta_dim1)] of int(0..1000000)
-given population : matrix indexed by [int(1..delta_dim2)] of int(0..1000000)
-given budget : int(0..1000000000)
-find build_tower : matrix indexed by [int(1..delta_dim1)] of bool
-find covered : matrix indexed by [int(1..delta_dim2)] of bool
-find total_population_covered : int(0..sum(population))
+$ cell_tower: an Essence' model from DCP Rosetta.
+$
+$ A telecom company needs to build a set of cell towers to provide signal coverage for the inhabitants of a city. A number of potential locations where the towers could be built have been identified, and the towers have a fixed range. Due to budget constraints only a limited number of them can be built. The city is split into regions, each with a known population. Choose which of the potential locations to build cell towers on so as to provide coverage to as many people as possible.
+$
+$ Save this file as model.eprime. Download `cell_tower.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/cell_tower.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `cell_tower_1.param.solution`:
+$   python dcp_convert_essence.py cell_tower.json
+$   savilerow model.eprime cell_tower_1.param -run-solver
+
+$ number of potential tower sites, derived from the data: the length of cost (not a field of the reader's JSON)
+given cost_dim1 : int(1..)
+$ number of regions, derived from the data: the length of population (not a field of the reader's JSON)
+given population_dim1 : int(1..)
+$ budget: the total cost of the towers that can be built
+given budget : int
+$ cost[i]: cost of building a tower at site i, indices 1-based
+given cost : matrix indexed by [int(1..cost_dim1)] of int
+$ population[j]: population of region j, indices 1-based
+given population : matrix indexed by [int(1..population_dim1)] of int
+$ delta[i,j]: 1 if a tower at site i covers region j, 0 otherwise, indices 1-based (sites by regions)
+given delta : matrix indexed by [int(1..cost_dim1), int(1..population_dim1)] of int(0..1)
+
+$ build_tower[i]: a tower is built at site i
+find build_tower : matrix indexed by [int(1..cost_dim1)] of bool
+$ covered[j]: region j is covered by at least one tower built (auxiliary: only the implication is needed, since the population covered is maximised)
+find covered : matrix indexed by [int(1..population_dim1)] of bool
+$ total_population_covered: the total population of the covered regions
+find total_population_covered : int(0..(sum j : int(1..population_dim1) . population[j]))
 
 maximising total_population_covered
 such that
-$ a region is covered when at least one built tower reaches it
-forAll r : int(1..delta_dim2) . (covered[r] <-> (exists s : int(1..delta_dim1) . (build_tower[s] /\ (delta[s,r] = 1)))),
-$ the total cost of the built towers must not exceed the budget
-(sum s : int(1..delta_dim1) . build_tower[s] * cost[s]) <= budget,
-$ the total population covered is the summed population of the covered regions
-total_population_covered = (sum r : int(1..delta_dim2) . covered[r] * population[r])
+$ the total cost of the towers built does not exceed the budget
+(sum i : int(1..cost_dim1) . toInt(build_tower[i]) * cost[i]) <= budget,
+$ a region is covered only if some tower built at a site that covers it
+forAll j : int(1..population_dim1) . covered[j] -> exists i : int(1..cost_dim1) . (build_tower[i] /\ delta[i,j] = 1),
+$ the total population covered is the sum of the populations of the covered regions
+total_population_covered = (sum j : int(1..population_dim1) . toInt(covered[j]) * population[j])

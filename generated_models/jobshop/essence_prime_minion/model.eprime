@@ -1,21 +1,40 @@
 language ESSENCE' 1.0
-$ Schedule the tasks of several jobs on machines, each job's tasks in their given order, so as to minimise the makespan.
-$ jobs_data[j,k] = [machine, duration] of task k of job j (0-based machines); jobs_data_len[j] is the number of tasks of job j; padded entries are ignored.
-given jobs_data_dim1, jobs_data_dim2 : int(1..)
+$ jobshop: an Essence' model from DCP Rosetta.
+$
+$ Several jobs are processed on several machines. Each job is a sequence of tasks that must be performed in its given order, and each task must be processed on a specific machine. The tasks are to be scheduled so as to minimise the length of the schedule, the time at which all the jobs are completed (the makespan). A machine works on only one task at a time, and a task, once started, runs to completion.
+$
+$ Save this file as model.eprime. Download `jobshop.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `jobshop_1.param.solution`:
+$   python dcp_convert_essence.py jobshop.json
+$   savilerow model.eprime jobshop_1.param -run-solver
+
+$ number of jobs, derived from the data: the number of rows of jobs_data (the reader's JSON has no such field)
+given jobs_data_dim1 : int
+$ largest number of tasks of any job, derived from the data (the padded row length; the reader's JSON has no such field)
+given jobs_data_dim2 : int
+$ number of tasks of each job, derived from the data (the reader's JSON has no such field)
+given jobs_data_len : matrix indexed by [int(1..jobs_data_dim1)] of int
+$ jobs_data[j,k,1]: machine of task k of job j (machines 0-based, as in the data); jobs_data[j,k,2]: duration of that task; indices 1-based. Entries beyond jobs_data_len[j] are padding and hold 0.
 given jobs_data : matrix indexed by [int(1..jobs_data_dim1), int(1..jobs_data_dim2), int(1..2)] of int(0..)
-given jobs_data_len : matrix indexed by [int(1..jobs_data_dim1)] of int(0..)
-find start : matrix indexed by [int(1..jobs_data_dim1), int(1..jobs_data_dim2)] of int(0..100000)
-find makespan : int(0..100000)
+
+$ an upper bound on the makespan: the total duration of all the tasks (padding adds nothing)
+letting horizon = sum j : int(1..jobs_data_dim1) . sum k : int(1..jobs_data_dim2) . jobs_data[j,k,2]
+
+$ start[j,k] (auxiliary; only the makespan is asked for): the time at which task k of job j starts
+find start : matrix indexed by [int(1..jobs_data_dim1), int(1..jobs_data_dim2)] of int(0..horizon)
+$ makespan: the time at which all the jobs are completed
+find makespan : int(0..horizon)
 
 branching on [start]
 
 minimising makespan
 such that
-$ a padded task that does not exist is not started anywhere in particular
-forAll j : int(1..jobs_data_dim1) . forAll k : int(1..jobs_data_dim2) . ((k > jobs_data_len[j]) -> (start[j,k] = 0)),
-$ the makespan is at least the end of every task
+$ each task of a job starts only after the previous task of that job is completed
+forAll j : int(1..jobs_data_dim1) . forAll k : int(1..jobs_data_dim2 - 1) . ((k + 1 <= jobs_data_len[j]) -> (start[j,k] + jobs_data[j,k,2] <= start[j,k+1])),
+$ the makespan is at least the completion time of every task
 forAll j : int(1..jobs_data_dim1) . forAll k : int(1..jobs_data_dim2) . ((k <= jobs_data_len[j]) -> (start[j,k] + jobs_data[j,k,2] <= makespan)),
-$ no task of a job can start until the previous task of that job is completed
-forAll j : int(1..jobs_data_dim1) . forAll k : int(1..jobs_data_dim2-1) . ((k + 1 <= jobs_data_len[j]) -> (start[j,k] + jobs_data[j,k,2] <= start[j,k+1])),
-$ a machine can only work on one task at a time, and a task once started runs to completion without overlap
-forAll j1 : int(1..jobs_data_dim1) . forAll k1 : int(1..jobs_data_dim2) . forAll j2 : int(1..jobs_data_dim1) . forAll k2 : int(1..jobs_data_dim2) . (((j1 < j2) \/ ((j1 = j2) /\ (k1 < k2))) -> ((jobs_data[j1,k1,1] != jobs_data[j2,k2,1]) \/ (k1 > jobs_data_len[j1]) \/ (k2 > jobs_data_len[j2]) \/ (start[j1,k1] + jobs_data[j1,k1,2] <= start[j2,k2]) \/ (start[j2,k2] + jobs_data[j2,k2,2] <= start[j1,k1])))
+$ a machine works on only one task at a time: two distinct tasks on the same machine do not overlap in time
+forAll j1 : int(1..jobs_data_dim1) . forAll k1 : int(1..jobs_data_dim2) . forAll j2 : int(1..jobs_data_dim1) . forAll k2 : int(1..jobs_data_dim2) . (((j1 < j2) \/ ((j1 = j2) /\ (k1 < k2))) /\ (k1 <= jobs_data_len[j1]) /\ (k2 <= jobs_data_len[j2]) /\ (jobs_data[j1,k1,1] = jobs_data[j2,k2,1])) -> ((start[j1,k1] + jobs_data[j1,k1,2] <= start[j2,k2]) \/ (start[j2,k2] + jobs_data[j2,k2,2] <= start[j1,k1]))

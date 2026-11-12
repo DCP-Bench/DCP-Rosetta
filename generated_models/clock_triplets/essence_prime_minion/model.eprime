@@ -1,11 +1,18 @@
 language ESSENCE' 1.0
-$ Rearrange the numbers 1 to 12 on the face of a clock so that no triplet of adjacent numbers has a sum higher than 21.
+$ clock_triplets: an Essence' model from DCP Rosetta.
+$
+$ Rearrange the numbers 1 to 12 on the face of a clock so that no triplet of adjacent numbers has a sum higher than 21. The positions go round the clock, so position 12 is adjacent to positions 11 and 1.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ x[p]: the number at clock position p, p = 1 to 12 going round the clock (position 1 is the first, as the data is 1-based)
 find x : matrix indexed by [int(1..12)] of int(1..12)
 
-branching on [x]
-
 such that
-$ the twelve positions of the clock hold the twelve different numbers 1 to 12
+$ every number from 1 to 12 appears exactly once on the clock
 allDiff(x),
-$ every triplet of adjacent numbers on the clock has a sum of at most 21; the clock wraps around from position 12 back to position 1
-forAll i : int(1..12) . (x[i] + x[i % 12 + 1] + x[(i + 1) % 12 + 1]) <= 21
+$ no triplet of adjacent positions has a sum higher than 21, for every position p with the two positions after it going round the clock
+forAll p : int(1..12) . x[p] + x[(p % 12) + 1] + x[((p + 1) % 12) + 1] <= 21

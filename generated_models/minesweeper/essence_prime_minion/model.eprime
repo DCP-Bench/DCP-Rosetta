@@ -1,14 +1,38 @@
 language ESSENCE' 1.0
-$ Minesweeper board: each opened cell (a clue other than X) is not a mine and its number is the count of mines among its eight neighbours; the mines are the answer.
-given X : int
-given game_data_dim1, game_data_dim2 : int(1..)
-given game_data : matrix indexed by [int(1..game_data_dim1), int(1..game_data_dim2)] of int
-find mines : matrix indexed by [int(1..game_data_dim1), int(1..game_data_dim2)] of bool
+$ minesweeper: an Essence' model from DCP Rosetta.
+$
+$ Minesweeper: the board is divided into cells, and mines are hidden in some of them. An opened cell shows the number of mines among the cells adjacent to it, including the diagonal ones. From these numbers, determine which of the unopened cells, marked X, contain mines. An opened cell is safe and so contains no mine.
+$
+$ Save this file as model.eprime. Download `minesweeper.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/minesweeper.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `minesweeper_1.param.solution`:
+$   python dcp_convert_essence.py minesweeper.json
+$   savilerow model.eprime minesweeper_1.param -run-solver
 
-branching on [mines]
+$ number of rows of the board, derived from the data: the number of rows of game_data (the reader's JSON has no such field)
+given game_data_dim1 : int
+$ number of columns of the board, derived from the data: the number of columns of game_data (the reader's JSON has no such field)
+given game_data_dim2 : int
+$ game_data[r,c]: the number shown on the cell in row r and column c (rows and columns indexed from 1: the data's index 0 is 1), or the value of X for an unopened cell
+given game_data : matrix indexed by [int(1..game_data_dim1), int(1..game_data_dim2)] of int
+$ the value that game_data holds for an unopened cell
+given X : int
+
+letting rows = game_data_dim1
+letting cols = game_data_dim2
+
+$ mines[r,c]: the cell in row r and column c contains a mine
+find mines : matrix indexed by [int(1..rows), int(1..cols)] of bool
+$ padded[r,c]: the same as mines, with a border of cells around the board that never hold mines, so that every neighbour of a cell is in range
+find padded : matrix indexed by [int(0..rows+1), int(0..cols+1)] of bool
 
 such that
-$ an opened cell is not a mine
-forAll i : int(1..game_data_dim1) . forAll j : int(1..game_data_dim2) . ((game_data[i,j] != X) -> !mines[i,j]),
-$ an opened cell's number is the number of mines in the neighbouring cells
-forAll i : int(1..game_data_dim1) . forAll j : int(1..game_data_dim2) . ((game_data[i,j] != X) -> ((sum a : int(1..game_data_dim1) . sum b : int(1..game_data_dim2) . toInt(mines[a,b] /\ (|a - i| <= 1) /\ (|b - j| <= 1) /\ !((a = i) /\ (b = j)))) = game_data[i,j]))
+$ the board's cells are the mines, and the border around the board holds no mines
+forAll r : int(1..rows) . forAll c : int(1..cols) . (padded[r,c] = mines[r,c]),
+forAll r : int(0..rows+1) . forAll c : int(0..cols+1) . (((r = 0) \/ (r = rows+1) \/ (c = 0) \/ (c = cols+1)) -> (padded[r,c] = false)),
+$ an opened cell is safe, so it contains no mine
+forAll r : int(1..rows) . forAll c : int(1..cols) . ((game_data[r,c] != X) -> (mines[r,c] = false)),
+$ an opened cell shows exactly the number of mines among the cells adjacent to it
+forAll r : int(1..rows) . forAll c : int(1..cols) . ((game_data[r,c] != X) -> ((sum a : int(-1..1) . sum b : int(-1..1) . toInt(padded[r+a, c+b])) = game_data[r,c]))

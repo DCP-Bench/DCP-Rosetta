@@ -1,25 +1,46 @@
 language ESSENCE' 1.0
-$ Jobs go through the machines in the same order (machine 1 to machine M); a job starts on a machine when the machine is free and the job has finished on the previous machine. Find the job sequence that minimises the makespan, the time when all jobs have been processed.
-given process_time_dim1, process_time_dim2 : int(1..)
-$ process_time[j,m] is the time needed to process job j on machine m
-given process_time : matrix indexed by [int(1..process_time_dim1), int(1..process_time_dim2)] of int(0..)
-$ seq[k] is the job processed in position k of the sequence
-find seq : matrix indexed by [int(1..process_time_dim1)] of int(1..process_time_dim1)
-$ C[k,m] is the time at which the job in position k finishes on machine m
-find C : matrix indexed by [int(1..process_time_dim1), int(1..process_time_dim2)] of int(0..sum(flatten(process_time)))
-find makespan : int(0..sum(flatten(process_time)))
+$ flowshop_scheduling: an Essence' model from DCP Rosetta.
+$
+$ A set of jobs needs to be processed on a set of machines in series. All jobs have the same processing order through all the machines, from machine 1 to the last machine. Each machine processes one job at a time: the first job of the sequence goes to the first machine, and the second job starts on the first machine when it is free, and a job moves on to the next machine when that machine has finished it. The time required to process job j on machine m is given. Find a sequence of jobs that minimises the makespan, the time when all jobs have been processed. The optimal makespan is makespan.
+$
+$ Save this file as model.eprime. Download `flowshop_scheduling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/flowshop_scheduling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `flowshop_scheduling_1.param.solution`:
+$   python dcp_convert_essence.py flowshop_scheduling.json
+$   savilerow model.eprime flowshop_scheduling_1.param -run-solver
+
+$ process_time_dim1, process_time_dim2: the number of jobs and the number of machines (derived from the data)
+given process_time_dim1, process_time_dim2 : int
+letting n = process_time_dim1
+letting m = process_time_dim2
+$ process_time[j,k]: the time job j needs on machine k, indices 1-based (the data's job and machine numbers are used as given)
+given process_time : matrix indexed by [int(1..n), int(1..m)] of int
+
+$ horizon: the sum of all processing times, an upper bound on every finishing time
+letting horizon = sum j : int(1..n) . sum k : int(1..m) . process_time[j,k]
+$ seq[p]: the job in position p of the sequence, indices 1-based
+find seq : matrix indexed by [int(1..n)] of int(1..n)
+$ C[p,k]: the time at which the job in position p finishes on machine k (auxiliary)
+find C : matrix indexed by [int(1..n), int(1..m)] of int(0..horizon)
+$ makespan: the time when all jobs have been processed
+find makespan : int(0..horizon)
+
+branching on [seq]
 
 minimising makespan
+
 such that
-$ the sequence is a permutation of the jobs
+$ every job appears in exactly one position of the sequence
 allDiff(seq),
-$ the first job of the sequence finishes on the first machine after its processing time
-C[1,1] = process_time[seq[1],1],
-$ the first job of the sequence goes through the machines one after the other
-forAll m : int(2..process_time_dim2) . C[1,m] = C[1,m-1] + process_time[seq[1],m],
-$ on the first machine the jobs follow each other in sequence order
-forAll k : int(2..process_time_dim1) . C[k,1] = C[k-1,1] + process_time[seq[k],1],
-$ a job starts on a machine only after the previous job has left that machine and it has finished on the previous machine
-forAll k : int(2..process_time_dim1) . forAll m : int(2..process_time_dim2) . C[k,m] = max(C[k-1,m], C[k,m-1]) + process_time[seq[k],m],
-$ the makespan is the finish time of the last job on the last machine
-makespan = C[process_time_dim1, process_time_dim2]
+$ the first job finishes on the first machine after its processing time
+C[1,1] >= process_time[seq[1],1],
+$ on the first machine, each job starts once the job before it has finished there
+forAll p : int(2..n) . C[p,1] >= C[p - 1,1] + process_time[seq[p],1],
+$ in the first position, each job starts on a machine once the previous machine has finished it
+forAll k : int(2..m) . C[1,k] >= C[1,k - 1] + process_time[seq[1],k],
+$ each job starts on a machine once it has finished on the previous machine and the job before it has finished on this machine
+forAll p : int(2..n) . forAll k : int(2..m) . (C[p,k] >= C[p - 1,k] + process_time[seq[p],k] /\ C[p,k] >= C[p,k - 1] + process_time[seq[p],k]),
+$ the makespan is the time the last job finishes on the last machine
+makespan = C[n,m]

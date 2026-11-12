@@ -1,0 +1,37 @@
+language ESSENCE' 1.0
+$ coins_grid: an Essence' model from DCP Rosetta.
+$
+$ In a quadratic grid (or a larger chessboard) n by n, one should place coins in such a way that the following
+$ conditions are fulfilled: in each row exactly c coins must be placed; in each column exactly c coins must be
+$ placed; the sum of the quadratic horizontal distance from the main diagonal of all cells containing a coin must
+$ be as small as possible, where a coin in row i and column j has distance (i - j)^2; in each cell at most one
+$ coin can be placed.
+$
+$ Save this file as model.eprime. Download `coins_grid.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/coins_grid.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `coins_grid_1.param.solution`:
+$   python dcp_convert_essence.py coins_grid.json
+$   savilerow model.eprime coins_grid_1.param -run-solver
+
+$ c: the number of coins in every row and in every column
+given c : int
+$ n: the side of the square grid, rows and columns numbered 1 to n
+given n : int
+
+$ x[i, j]: 1 if a coin is placed in row i, column j; 0 otherwise (indices 1-based)
+find x : matrix indexed by [int(1..n), int(1..n)] of int(0..1)
+$ z: the sum over all cells holding a coin of (i - j)^2
+find z : int(0..n * n * n * n)
+
+minimising z
+such that
+  $ each cell holds at most one coin
+  forAll i : int(1..n) . forAll j : int(1..n) . x[i, j] <= 1,
+  $ each row i contains exactly c coins
+  forAll i : int(1..n) . (sum j : int(1..n) . x[i, j]) = c,
+  $ each column j contains exactly c coins
+  forAll j : int(1..n) . (sum i : int(1..n) . x[i, j]) = c,
+  $ z is the sum of the quadratic horizontal distances (i - j)^2 of the coins from the main diagonal
+  z = sum i : int(1..n) . sum j : int(1..n) . x[i, j] * (i - j) * (i - j)

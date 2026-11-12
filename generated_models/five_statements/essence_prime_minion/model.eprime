@@ -1,9 +1,23 @@
 language ESSENCE' 1.0
-$ Five statements: statement k says that exactly k of the five statements are false. Find which statements are true.
-find statements : matrix indexed by [int(1..5)] of bool
+$ five_statements: an Essence' model from DCP Rosetta.
+$
+$ Determine which of the following statements is true.
+$ - Exactly one of these statements is false.
+$ - Exactly two of these statements are false.
+$ - Exactly three of these statements are false.
+$ - Exactly four of these statements are false.
+$ - Exactly five of these statements are false.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/five_statements.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [statements]
+$ the number of statements
+letting n = 5
+$ statements[k]: statement k (k = 1..5, in the order listed) is true
+find statements : matrix indexed by [int(1..n)] of bool
 
 such that
 $ statement k is true exactly when exactly k of the five statements are false
-forAll k : int(1..5) . (statements[k] <-> ((sum i : int(1..5) . toInt(!statements[i])) = k))
+forAll k : int(1..n) . (statements[k] <-> ((sum i : int(1..n) . toInt(statements[i] = false)) = k))

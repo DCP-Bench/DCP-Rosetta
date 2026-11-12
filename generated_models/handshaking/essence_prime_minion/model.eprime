@@ -1,26 +1,41 @@
 language ESSENCE' 1.0
-$ Handshaking at a dinner: Hilary and Jocelyn plus num_couples invited couples; nobody shakes hands with themselves or their spouse, and Jocelyn asks everyone but herself how many hands they shook, getting all different answers.
-given num_couples : int(1..)
-$ people 1 and 2 are Hilary and Jocelyn; couple k is people 2k-1 and 2k
-find shakes : matrix indexed by [int(1..2*num_couples+2), int(1..2*num_couples+2)] of bool
-$ hands[i] is the number of hands person i has shaken
-find hands : matrix indexed by [int(1..2*num_couples+2)] of int(0..2*num_couples)
-find hil : int(0..2*num_couples)
+$ handshaking: an Essence' model from DCP Rosetta.
+$
+$ Hilary and Jocelyn are married. They invite a number of couples who are friends for dinner. When
+$ they arrive, they shake hands with each other. Nobody shakes hands with him or herself or with
+$ his or her spouse. After there has been some handshaking, Jocelyn jumps up on a chair and says
+$ 'Stop shaking hands!', and then asks how many hands each person has shaken. All the answers are
+$ different.
+$
+$ Save this file as model.eprime. Download `handshaking.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `handshaking_1.param.solution`:
+$   python dcp_convert_essence.py handshaking.json
+$   savilerow model.eprime handshaking_1.param -run-solver
 
-branching on [shakes]
+$ num_couples: the number of invited couples, not counting Hilary and Jocelyn (who are a couple too)
+given num_couples : int
+$ m: the number of people: the invited couples plus Hilary and Jocelyn, two per couple; person 1 is Hilary, person 2 is Jocelyn, and people 2k-1 and 2k are a couple
+letting m = 2 * (num_couples + 1)
+$ hs[i,j]: person i and person j shake hands
+find hs : matrix indexed by [int(1..m), int(1..m)] of bool
+$ hands[i]: the number of hands person i has shaken (Jocelyn, person 2, is not asked)
+find hands : matrix indexed by [int(1..m)] of int(0..m)
+$ hil: the number of hands Hilary has shaken
+find hil : int(0..m)
+
 such that
 $ nobody shakes hands with him or herself
-forAll i : int(1..2*num_couples+2) . (shakes[i,i] = false),
-$ nobody shakes hands with his or her spouse (Hilary and Jocelyn are a married couple too)
-forAll k : int(1..num_couples+1) . (shakes[2*k-1,2*k] = false),
-$ a handshake is between two people, so it is the same whichever way it is read
-forAll i : int(1..2*num_couples+2) . forAll j : int(1..2*num_couples+2) . (shakes[i,j] = shakes[j,i]),
-$ the number of hands each person has shaken is the number of handshakes that person takes part in
-forAll i : int(1..2*num_couples+2) . (hands[i] = (sum j : int(1..2*num_couples+2) . toInt(shakes[i,j]))),
-$ couples other than Hilary and Jocelyn are interchangeable: within a couple the first person has fewer hands, and couples are ordered by that first person's count
-forAll k : int(2..num_couples+1) . (hands[2*k-1] < hands[2*k]),
-forAll k : int(2..num_couples) . (hands[2*k-1] < hands[2*k+1]),
-$ Jocelyn asks everyone except herself, and all the answers are different
-allDiff([hands[i] | i : int(1..2*num_couples+2), i != 2]),
-$ Hilary's answer is the number of hands she has shaken
+forAll i : int(1..m) . hs[i,i] = false,
+$ nobody shakes hands with his or her spouse
+forAll k : int(1..num_couples + 1) . hs[2*k-1, 2*k] = false,
+$ a handshake involves two people, so it is the same from both sides
+forAll i : int(1..m) . forAll j : int(1..m) . (hs[i,j] = hs[j,i]),
+$ the number of hands each person has shaken
+forAll i : int(1..m) . hands[i] = (sum j : int(1..m) . toInt(hs[i,j])),
+$ Jocelyn asks everyone except herself (person 2); all the answers are different
+allDiff([hands[i] | i : int(1..m), i != 2]),
+$ Hilary's answer
 hil = hands[1]

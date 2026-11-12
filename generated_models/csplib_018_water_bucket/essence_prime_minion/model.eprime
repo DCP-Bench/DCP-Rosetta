@@ -1,16 +1,37 @@
 language ESSENCE' 1.0
-$ Pour water between three buckets, from the initial state to the goal state, using the fewest transfers.
+$ csplib_018_water_bucket: an Essence' model from DCP Rosetta.
+$
+$ You are given an 8 pint bucket of water, and two empty buckets which can contain 5 and 3 pints respectively. Divide the water into two by pouring water between buckets, so that the 8 pint bucket and the 5 pint bucket each end up with 4 pints. A transfer pours water from one bucket into another until the first is empty or the second is full. Find the minimum number of transfers of water between buckets to reach the goal. The sequence of states, starting from the initial state, must be a list of exactly MAX_STEPS states; after the goal state is reached, the remainder is padded with the padding states, e.g. [-1, -1, -1].
+$
+$ Save this file as model.eprime. Download `csplib_018_water_bucket.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_018_water_bucket_1.param.solution`:
+$   python dcp_convert_essence.py csplib_018_water_bucket.json
+$   savilerow model.eprime csplib_018_water_bucket_1.param -run-solver
+
+$ MAX_STEPS: length of the sequence of states, including the initial state and the padding
 given MAX_STEPS : int(1..)
+$ PADDING_VALUE: value of every bucket in a padding state (-1)
 given PADDING_VALUE : int
+$ capacities[j]: capacity of bucket j in pints, indices 1-based (bucket 1 holds 8, bucket 2 holds 5, bucket 3 holds 3)
 given capacities : matrix indexed by [int(1..3)] of int(1..)
+$ goal_state[j]: water in bucket j in the goal state (4, 4, 0)
 given goal_state : matrix indexed by [int(1..3)] of int(0..)
+$ initial_state[j]: water in bucket j at the start (8, 0, 0)
 given initial_state : matrix indexed by [int(1..3)] of int(0..)
+
 letting MAXCAP = max(capacities)
 letting LOWEST = min(PADDING_VALUE, 0)
+
+$ sequence[k,j]: water in bucket j in the k-th state (k = 1 is the initial state); a padding state holds PADDING_VALUE in every bucket
 find sequence : matrix indexed by [int(1..MAX_STEPS), int(1..3)] of int(LOWEST..MAXCAP)
+$ cost: number of transfers (the number of states after the initial one that are not padding)
 find cost : int(0..MAX_STEPS)
 
 minimising cost
+
 such that
 $ the sequence starts at the initial state
 forAll j : int(1..3) . sequence[1,j] = initial_state[j],
@@ -20,11 +41,11 @@ $ padding states come only after the real states
 forAll k : int(1..MAX_STEPS-1) . ((sequence[k,1] = PADDING_VALUE) -> (sequence[k+1,1] = PADDING_VALUE)),
 $ the water in each bucket never exceeds its capacity
 forAll k : int(1..MAX_STEPS) . forAll j : int(1..3) . (sequence[k,j] <= capacities[j]),
-$ the sequence stops once the goal state has been reached
+$ once the goal state is reached, the next state is padding
 forAll k : int(1..MAX_STEPS-1) . ((sequence[k,1] = goal_state[1] /\ sequence[k,2] = goal_state[2] /\ sequence[k,3] = goal_state[3]) -> (sequence[k+1,1] = PADDING_VALUE)),
-$ the goal state is reached in the sequence
+$ the goal state is reached somewhere in the sequence
 exists k : int(1..MAX_STEPS) . (sequence[k,1] = goal_state[1] /\ sequence[k,2] = goal_state[2] /\ sequence[k,3] = goal_state[3]),
 $ the number of transfers is the number of real states after the initial state
 cost = (sum k : int(2..MAX_STEPS) . toInt(sequence[k,1] != PADDING_VALUE)),
-$ each step pours water from one bucket into another until the source is empty or the destination is full, leaving the third bucket unchanged
-forAll k : int(1..MAX_STEPS-1) . ((sequence[k+1,1] = PADDING_VALUE) \/ ((sequence[k+1,1] = sequence[k,1] - min(sequence[k,1], capacities[2] - sequence[k,2]) /\ sequence[k+1,2] = sequence[k,2] + min(sequence[k,1], capacities[2] - sequence[k,2]) /\ sequence[k+1,3] = sequence[k,3]) \/ (sequence[k+1,1] = sequence[k,1] - min(sequence[k,1], capacities[3] - sequence[k,3]) /\ sequence[k+1,3] = sequence[k,3] + min(sequence[k,1], capacities[3] - sequence[k,3]) /\ sequence[k+1,2] = sequence[k,2]) \/ (sequence[k+1,2] = sequence[k,2] - min(sequence[k,2], capacities[1] - sequence[k,1]) /\ sequence[k+1,1] = sequence[k,1] + min(sequence[k,2], capacities[1] - sequence[k,1]) /\ sequence[k+1,3] = sequence[k,3]) \/ (sequence[k+1,2] = sequence[k,2] - min(sequence[k,2], capacities[3] - sequence[k,3]) /\ sequence[k+1,3] = sequence[k,3] + min(sequence[k,2], capacities[3] - sequence[k,3]) /\ sequence[k+1,1] = sequence[k,1]) \/ (sequence[k+1,3] = sequence[k,3] - min(sequence[k,3], capacities[1] - sequence[k,1]) /\ sequence[k+1,1] = sequence[k,1] + min(sequence[k,3], capacities[1] - sequence[k,1]) /\ sequence[k+1,2] = sequence[k,2]) \/ (sequence[k+1,3] = sequence[k,3] - min(sequence[k,3], capacities[2] - sequence[k,2]) /\ sequence[k+1,2] = sequence[k,2] + min(sequence[k,3], capacities[2] - sequence[k,2]) /\ sequence[k+1,1] = sequence[k,1])))
+$ each step is one pour from a source bucket a into a destination bucket b (a != b): the source gives water until it is empty or the destination is full, and the third bucket is unchanged
+forAll k : int(1..MAX_STEPS-1) . ((sequence[k+1,1] = PADDING_VALUE) \/ (exists a : int(1..3) . exists b : int(1..3) . (a != b /\ sequence[k+1,a] = sequence[k,a] - min(sequence[k,a], capacities[b] - sequence[k,b]) /\ sequence[k+1,b] = sequence[k,b] + min(sequence[k,a], capacities[b] - sequence[k,b]) /\ (forAll c : int(1..3) . ((c != a /\ c != b) -> sequence[k+1,c] = sequence[k,c])))))

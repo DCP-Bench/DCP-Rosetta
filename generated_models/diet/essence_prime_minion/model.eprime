@@ -1,16 +1,36 @@
 language ESSENCE' 1.0
-$ Choose how many units of each of four foods to buy so that every nutrition requirement is met at minimum cost.
-given n : int
-given price : matrix indexed by [int(1..n)] of int(0..1000000)
-given limits : matrix indexed by [int(1..n)] of int(0..1000000)
-$ the problem's table of nutrient content per unit (rows: calories, chocolate ounces, sugar ounces, fat ounces; columns: chocolate cake, ice cream, cola, cheesecake)
-letting nutrient = [[400, 200, 150, 500], [3, 2, 0, 0], [2, 2, 4, 4], [2, 4, 1, 5]]
-find units : matrix indexed by [int(1..n)] of int(0..max(limits))
-find cost : int(0..10000000)
+$ diet: an Essence' model from DCP Rosetta.
+$
+$ Given the prices and the nutritional requirements (at least) for each nutrition type, what is the optimal diet? The optimal diet minimises the cost of the foods. There are four foods: chocolate cake (1 slice) with 400 calories, 3 oz chocolate, 2 oz sugar and 2 oz fat; chocolate ice cream (1 scoop) with 200 calories, 2 oz chocolate, 2 oz sugar and 4 oz fat; cola (1 bottle) with 150 calories, 0 oz chocolate, 4 oz sugar and 1 oz fat; pineapple cheesecake (1 piece) with 500 calories, 0 oz chocolate, 4 oz sugar and 5 oz fat. Each food is bought in a whole number of units. Each nutrition type (calories, chocolate, sugar, fat) must be at least its minimum.
+$
+$ Save this file as model.eprime. Download `diet.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `diet_1.param.solution`:
+$   python dcp_convert_essence.py diet.json
+$   savilerow model.eprime diet_1.param -run-solver
+
+$ number of foods and of nutrition types (the table below has four of each)
+letting foods be 4
+letting nutrients be 4
+$ nutrition[i, j]: amount of nutrition type j in one unit of food i, in the order of the table
+$ (calories, chocolate ounces, sugar ounces, fat ounces)
+letting nutrition be [[400, 3, 2, 2], [200, 2, 2, 4], [150, 0, 4, 1], [500, 0, 4, 5]]
+$ price[i]: price of one unit of food i, indices 1-based (the data's index 0 is price[1])
+given price : matrix indexed by [int(1..foods)] of int
+$ limits[j]: minimum required of nutrition type j (calories, chocolate, sugar, fat), indices 1-based
+given limits : matrix indexed by [int(1..nutrients)] of int
+
+$ amount[i]: number of units of food i bought, a whole number (indices 1-based)
+$ (no more than max(limits) units of a food are ever needed: each unit of a food supplies at least 1 of any nutrient it has)
+find amount : matrix indexed by [int(1..foods)] of int(0..max(limits))
+$ cost: total price of the diet (the output)
+find cost : int(0..(sum i : int(1..foods) . price[i]) * max(limits))
 
 minimising cost
 such that
-$ the cost is the sum of the price of each food times the units bought
-cost = (sum i : int(1..n) . price[i] * units[i]),
-$ each nutrition type must reach at least its required limit
-forAll j : int(1..n) . ((sum i : int(1..n) . nutrient[j,i] * units[i]) >= limits[j])
+$ the total cost is the price of the units bought of each food
+cost = (sum i : int(1..foods) . price[i] * amount[i]),
+$ for each nutrition type, the diet supplies at least its minimum
+forAll j : int(1..nutrients) . (sum i : int(1..foods) . nutrition[i, j] * amount[i]) >= limits[j]

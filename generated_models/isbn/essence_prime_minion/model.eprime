@@ -1,14 +1,36 @@
 language ESSENCE' 1.0
-$ Complete an ISBN-13 by filling in the unknown digits (-1 in the input) so that it starts with 978 or 979 and has a valid check digit.
-given isbn_init : matrix indexed by [int(1..13)] of int(-1..9)
-find isbn : matrix indexed by [int(1..13)] of int(0..9)
+$ isbn: an Essence' model from DCP Rosetta.
+$
+$ ISBN-13 validation and check digit calculation. An ISBN-13 is a 13-digit number where the last
+$ digit is a check digit calculated from the first 12 digits. Multiply the first 12 digits
+$ alternately by 1 and 3 (starting with 1), sum the products, and the check digit is (10 - (sum %
+$ 10)) % 10. Given a list of 13 digits representing an ISBN-13, where -1 represents an unknown
+$ digit, find the values of the unknown digits such that the resulting number is a valid ISBN-13.
+$ An ISBN-13 must start with 978 or 979.
+$
+$ Save this file as model.eprime. Download `isbn.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/isbn.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `isbn_1.param.solution`:
+$   python dcp_convert_essence.py isbn.json
+$   savilerow model.eprime isbn_1.param -run-solver
 
-branching on [isbn]
+$ isbn_init[i]: the i-th digit of the ISBN, or -1 if that digit is unknown (indices 1-based)
+given isbn_init : matrix indexed by [int(1..13)] of int(-1..9)
+$ isbn[i]: the i-th digit of the completed ISBN-13
+find isbn : matrix indexed by [int(1..13)] of int(0..9)
+$ wsum: the first 12 digits weighted alternately by 1 and 3, starting with 1, summed
+find wsum : int(0..300)
+$ q: the weighted sum including the check digit, divided by 10
+find q : int(0..40)
 
 such that
-$ the known digits of the input are kept
-forAll i : int(1..13) . ((isbn_init[i] != -1) -> (isbn[i] = isbn_init[i])),
-$ an ISBN-13 starts with 978 or 979
-(isbn[1] = 9) /\ (isbn[2] = 7) /\ ((isbn[3] = 8) \/ (isbn[3] = 9)),
-$ the check digit: the first 12 digits weighted alternately by 1 and 3, plus the 13th digit, sum to a multiple of 10
-((sum i : int(1..6) . (isbn[2*i-1] + 3 * isbn[2*i])) + isbn[13]) % 10 = 0
+$ the known digits are kept
+forAll i : int(1..13) . (isbn_init[i] != -1 -> isbn[i] = isbn_init[i]),
+$ the weighted sum of the first 12 digits (weights 1 and 3 alternately, starting with 1)
+wsum = (sum i : int(1..6) . (isbn[2*i-1] + 3 * isbn[2*i])),
+$ the check digit makes the weighted sum, including the check digit, a multiple of 10
+wsum + isbn[13] = 10 * q,
+$ the ISBN starts with 978 or 979
+(isbn[1] = 9 /\ isbn[2] = 7 /\ isbn[3] = 8) \/ (isbn[1] = 9 /\ isbn[2] = 7 /\ isbn[3] = 9)

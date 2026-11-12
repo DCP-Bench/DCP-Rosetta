@@ -1,13 +1,27 @@
 language ESSENCE' 1.0
-$ Huey, Dewey and Louie cannot tell a lie, so each of their statements is true. Find who is guilty.
-$ huey, dewey, louie are true when that person is guilty
+$ huey_dewey_louie: an Essence' model from DCP Rosetta.
+$
+$ Huey, Dewey and Louie are being questioned by their uncle. These are the statements they make.
+$ Huey: Dewey and Louie have an equal share in it; if one is guilty, so is the other. Dewey: If
+$ Huey is guilty, then so am I. Louie: Dewey and I are not both guilty. Their uncle, knowing that
+$ they are cub scouts, realises that they cannot tell a lie. Find who (if any) of Huey, Dewey and
+$ Louie is guilty.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/huey_dewey_louie.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ huey: Huey is guilty
 find huey : bool
+$ dewey: Dewey is guilty
 find dewey : bool
+$ louie: Louie is guilty
 find louie : bool
 
 such that
-$ Huey: Dewey and Louie have equal share in the guilt (both guilty or both innocent), so Huey's statement is true
-dewey <-> louie,
+$ Huey: Dewey and Louie are both guilty or both innocent
+(dewey -> louie) /\ (louie -> dewey),
 $ Dewey: if Huey is guilty, then Dewey is guilty too
 huey -> dewey,
 $ Louie: Dewey and Louie are not both guilty

@@ -1,15 +1,37 @@
 language ESSENCE' 1.0
-$ From the set A of ten integers, find two disjoint non-empty subsets S and T whose elements have equal sums.
-given A : matrix indexed by [int(1..10)] of int
-find in_S : matrix indexed by [int(1..10)] of bool
-find in_T : matrix indexed by [int(1..10)] of bool
+$ session2_subsets_100: an Essence' model from DCP Rosetta.
+$
+$ Out of a set A of different integers, find two disjoint non-empty subsets S and T of A whose elements have equal sums. S union T need not be all of A.
+$
+$ Save this file as model.eprime. Download `session2_subsets_100.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_subsets_100.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session2_subsets_100_1.param.solution`:
+$   python dcp_convert_essence.py session2_subsets_100.json
+$   savilerow model.eprime session2_subsets_100_1.param -run-solver
 
+$ A_dim1: the number of elements of A (derived by the converter from the data; not a field of the reader's JSON)
+given A_dim1 : int
+$ the elements of A are numbered 1 to n
+letting n = A_dim1
+$ A[i]: the i-th element of the set A (indices 1-based)
+given A : matrix indexed by [int(1..n)] of int
+
+$ in_S[i]: element i of A is in the subset S
+find in_S : matrix indexed by [int(1..n)] of bool
+$ in_T[i]: element i of A is in the subset T
+find in_T : matrix indexed by [int(1..n)] of bool
+
+$ search hint: branch on the two subsets (speeds up the search)
 branching on [in_S, in_T]
 
 such that
-$ S is non-empty and T is non-empty
-((exists i : int(1..10) . in_S[i]) /\ (exists i : int(1..10) . in_T[i])),
+$ S is non-empty
+exists i : int(1..n) . in_S[i],
+$ T is non-empty
+exists i : int(1..n) . in_T[i],
 $ S and T are disjoint: no element of A is in both
-forAll i : int(1..10) . !(in_S[i] /\ in_T[i]),
+forAll i : int(1..n) . !(in_S[i] /\ in_T[i]),
 $ the elements of S and T have the same sum
-(sum i : int(1..10) . toInt(in_S[i]) * A[i]) = (sum i : int(1..10) . toInt(in_T[i]) * A[i])
+(sum i : int(1..n) . toInt(in_S[i]) * A[i]) = (sum i : int(1..n) . toInt(in_T[i]) * A[i])

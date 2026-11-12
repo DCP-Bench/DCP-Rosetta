@@ -1,84 +1,60 @@
 language ESSENCE' 1.0
-$ Complete the 6x5 crossword by choosing 8 distinct words from the list of 15, so that each numbered slot is filled by one chosen word that crosses correctly.
-letting WORDS be [[8, 15, 19, 5, 19],
-  [12, 1, 19, 5, 18],
-  [19, 1, 9, 12, 19],
-  [19, 8, 5, 5, 20],
-  [19, 20, 5, 5, 18],
-  [8, 5, 5, 12, 0],
-  [8, 9, 11, 5, 0],
-  [11, 5, 5, 12, 0],
-  [11, 14, 15, 20, 0],
-  [12, 9, 14, 5, 0],
-  [1, 6, 20, 0, 0],
-  [1, 12, 5, 0, 0],
-  [5, 5, 12, 0, 0],
-  [12, 5, 5, 0, 0],
-  [20, 9, 5, 0, 0]]
-find E : matrix indexed by [int(1..8)] of int(0..14)
-find grid : matrix indexed by [int(1..6), int(1..5)] of int(0..26)
+$ crossword: an Essence' model from DCP Rosetta.
+$
+$ Complete the crossword puzzle below (# is a blocked square; the numbers 1 to 8 mark the squares where words start):
+$
+$        1   2   3   4   5
+$      +---+---+---+---+---+
+$    1 | 1 |   | 2 |   | 3 |
+$    2 | # | # |   | # |   |
+$    3 | # | 4 |   | 5 |   |
+$    4 | 6 | # | 7 |   |   |
+$    5 | 8 |   |   |   |   |
+$    6 |   | # | # |   | # |
+$      +---+---+---+---+---+
+$
+$ Words: AFT, ALE, EEL, HEEL, HIKE, HOSES, KEEL, KNOT, LASER, LEE, LINE, SAILS, SHEET, STEER, TIE.
+$ Select 8 of these 15 words, each used once, so that the puzzle can be completed with them.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [E]
+$ Words[w,k]: the k-th letter (A=1 ... Z=26) of word w+1, padded with 0; word w is numbered from 0 in the order longest first, then alphabetically (HOSES is 0, TIE is 14)
+letting Words be [[8,15,19,5,19],[12,1,19,5,18],[19,1,9,12,19],[19,8,5,5,20],[19,20,5,5,18],[8,5,5,12,0],[8,9,11,5,0],[11,5,5,12,0],[11,14,15,20,0],[12,9,14,5,0],[1,6,20,0,0],[1,12,5,0,0],[5,5,12,0,0],[12,5,5,0,0],[20,9,5,0,0]]
+$ Len[w+1]: the number of letters of word w (same numbering as Words)
+letting Len be [5,5,5,5,5,4,4,4,4,4,3,3,3,3,3]
+$ RunLen[n]: the number of squares of the run that starts at numbered square n
+letting RunLen be [5,5,5,4,4,3,3,5]
+$ Open[r,c]: the square in row r, column c is open (not blocked)
+letting Open be [[true,true,true,true,true],[false,false,true,false,true],[false,true,true,true,true],[true,false,true,true,true],[true,true,true,true,true],[true,false,false,true,false]]
+
+$ E[n]: the word (numbered from 0 as above) that starts at numbered square n
+find E : matrix indexed by [int(1..8)] of int(0..14)
+$ auxiliary: the letter in each square of the grid (0 for a blocked square)
+find L : matrix indexed by [int(1..6), int(1..5)] of int(0..26)
 
 such that
-$ the eight chosen words are distinct
+$ the eight chosen words are all different
 allDiff(E),
-$ black squares of the grid carry no letter
-grid[2,1] = 0,
-grid[2,2] = 0,
-grid[2,4] = 0,
-grid[3,1] = 0,
-grid[4,2] = 0,
-grid[6,2] = 0,
-grid[6,3] = 0,
-grid[6,5] = 0,
-$ 1 across: the top row of five letters is a five-letter word
-(E[1] >= 0) /\ (E[1] <= 4),
-grid[1,1] = WORDS[E[1] + 1, 1],
-grid[1,2] = WORDS[E[1] + 1, 2],
-grid[1,3] = WORDS[E[1] + 1, 3],
-grid[1,4] = WORDS[E[1] + 1, 4],
-grid[1,5] = WORDS[E[1] + 1, 5],
-$ 2 down: the column three letters from the top is a five-letter word
-(E[2] >= 0) /\ (E[2] <= 4),
-grid[1,3] = WORDS[E[2] + 1, 1],
-grid[2,3] = WORDS[E[2] + 1, 2],
-grid[3,3] = WORDS[E[2] + 1, 3],
-grid[4,3] = WORDS[E[2] + 1, 4],
-grid[5,3] = WORDS[E[2] + 1, 5],
-$ 3 down: the column five letters from the top is a five-letter word
-(E[3] >= 0) /\ (E[3] <= 4),
-grid[1,5] = WORDS[E[3] + 1, 1],
-grid[2,5] = WORDS[E[3] + 1, 2],
-grid[3,5] = WORDS[E[3] + 1, 3],
-grid[4,5] = WORDS[E[3] + 1, 4],
-grid[5,5] = WORDS[E[3] + 1, 5],
-$ 4 across: the row 3 run of four letters is a four-letter word
-(E[4] >= 5) /\ (E[4] <= 9),
-grid[3,2] = WORDS[E[4] + 1, 1],
-grid[3,3] = WORDS[E[4] + 1, 2],
-grid[3,4] = WORDS[E[4] + 1, 3],
-grid[3,5] = WORDS[E[4] + 1, 4],
-$ 5 down: the column four run from row 3 is a four-letter word
-(E[5] >= 5) /\ (E[5] <= 9),
-grid[3,4] = WORDS[E[5] + 1, 1],
-grid[4,4] = WORDS[E[5] + 1, 2],
-grid[5,4] = WORDS[E[5] + 1, 3],
-grid[6,4] = WORDS[E[5] + 1, 4],
-$ 6 down: the column three run from row 4 is a three-letter word
-(E[6] >= 10) /\ (E[6] <= 14),
-grid[4,1] = WORDS[E[6] + 1, 1],
-grid[5,1] = WORDS[E[6] + 1, 2],
-grid[6,1] = WORDS[E[6] + 1, 3],
-$ 7 across: the row 4 run of three letters is a three-letter word
-(E[7] >= 10) /\ (E[7] <= 14),
-grid[4,3] = WORDS[E[7] + 1, 1],
-grid[4,4] = WORDS[E[7] + 1, 2],
-grid[4,5] = WORDS[E[7] + 1, 3],
-$ 8 across: the bottom row of five letters is a five-letter word
-(E[8] >= 0) /\ (E[8] <= 4),
-grid[5,1] = WORDS[E[8] + 1, 1],
-grid[5,2] = WORDS[E[8] + 1, 2],
-grid[5,3] = WORDS[E[8] + 1, 3],
-grid[5,4] = WORDS[E[8] + 1, 4],
-grid[5,5] = WORDS[E[8] + 1, 5]
+$ each numbered run has the length of its chosen word, for each of the eight runs
+forAll n : int(1..8) . Len[E[n]+1] = RunLen[n],
+$ the squares of the grid are open exactly where they should be: open squares hold a letter, blocked squares hold 0
+forAll r : int(1..6) . forAll c : int(1..5) . (Open[r,c] -> L[r,c] > 0) /\ (!Open[r,c] -> L[r,c] = 0),
+$ across square 1 (row 1) spells its word
+forAll k : int(1..5) . L[1,k] = Words[E[1]+1,k],
+$ down square 2 (column 3, rows 1 to 5) spells its word
+forAll k : int(1..5) . L[k,3] = Words[E[2]+1,k],
+$ down square 3 (column 5, rows 1 to 5) spells its word
+forAll k : int(1..5) . L[k,5] = Words[E[3]+1,k],
+$ across square 4 (row 3, columns 2 to 5) spells its word
+forAll k : int(1..4) . L[3,k+1] = Words[E[4]+1,k],
+$ down square 5 (column 4, rows 3 to 6) spells its word
+forAll k : int(1..4) . L[k+2,4] = Words[E[5]+1,k],
+$ down square 6 (column 1, rows 4 to 6) spells its word
+forAll k : int(1..3) . L[k+3,1] = Words[E[6]+1,k],
+$ across square 7 (row 4, columns 3 to 5) spells its word
+forAll k : int(1..3) . L[4,k+2] = Words[E[7]+1,k],
+$ across square 8 (row 5, columns 1 to 5) spells its word
+forAll k : int(1..5) . L[5,k] = Words[E[8]+1,k]

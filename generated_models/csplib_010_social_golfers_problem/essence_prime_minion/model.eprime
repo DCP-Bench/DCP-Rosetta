@@ -1,16 +1,30 @@
 language ESSENCE' 1.0
-$ Social golfers: golfers play once a week in groups of a fixed size, and no two golfers share a group on more than one occasion.
-given group_size : int
-given n_groups : int
-given n_weeks : int
-letting n_golfers = n_groups * group_size
-find assign : matrix indexed by [int(1..n_golfers), int(1..n_weeks)] of int(0..n_groups-1)
+$ csplib_010_social_golfers_problem: an Essence' model from DCP Rosetta.
+$
+$ The coordinator of a local golf club has n_groups * group_size golfers, each of whom plays golf once a week, always in n_groups groups of group_size golfers. Make a schedule of play for these golfers over n_weeks weeks, such that no golfer plays in the same group as any other golfer on more than one occasion.
+$
+$ Save this file as model.eprime. Download `csplib_010_social_golfers_problem.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_010_social_golfers_problem.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_010_social_golfers_problem_1.param.solution`:
+$   python dcp_convert_essence.py csplib_010_social_golfers_problem.json
+$   savilerow model.eprime csplib_010_social_golfers_problem_1.param -run-solver
 
-branching on [assign]
+$ n_groups: the number of groups each week
+given n_groups : int(1..)
+$ group_size: the number of golfers in each group
+given group_size : int(1..)
+$ n_weeks: the number of weeks
+given n_weeks : int(1..)
+$ the number of golfers, n_groups * group_size
+letting golfers be n_groups * group_size
+
+$ assign[g,w]: the group (0-based, from 0 to n_groups-1) of golfer g (indices 1-based) in week w (indices 1-based)
+find assign : matrix indexed by [int(1..golfers), int(1..n_weeks)] of int(0..n_groups-1)
+
 such that
-$ each group in each week has exactly group_size golfers
-forAll w : int(1..n_weeks) . forAll grp : int(0..n_groups-1) . (sum g : int(1..n_golfers) . (assign[g, w] = grp)) = group_size,
-$ no two golfers play in the same group in more than one week
-forAll g, h : int(1..n_golfers) . (g < h) -> ((sum w : int(1..n_weeks) . (assign[g, w] = assign[h, w])) <= 1),
-$ symmetry breaking: the groups are interchangeable, so in the first week golfer g is put in group number (g - 1) div group_size
-forAll g : int(1..n_golfers) . assign[g, 1] = (g - 1) / group_size
+$ each week, every group has exactly group_size golfers
+forAll w : int(1..n_weeks) . forAll k : int(0..n_groups-1) . (sum g : int(1..golfers) . toInt(assign[g,w] = k)) = group_size,
+$ no two golfers play in the same group more than once: for each pair of golfers, the number of weeks they share a group is at most 1
+forAll g1 : int(1..golfers) . forAll g2 : int(1..golfers) . (g1 < g2) -> (sum w : int(1..n_weeks) . toInt(assign[g1,w] = assign[g2,w])) <= 1

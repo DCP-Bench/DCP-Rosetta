@@ -1,13 +1,31 @@
 language ESSENCE' 1.0
-$ Bin packing: assign each item to one bin so that the total weight of the items in each bin does not exceed the bin capacity.
+$ bin_packing: an Essence' model from DCP Rosetta.
+$
+$ Given several items of specific weights and a number of bins of a fixed capacity, assign each item to a bin so that the total weight of the items in each bin does not exceed the capacity.
+$
+$ Save this file as model.eprime. Download `bin_packing.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/bin_packing.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `bin_packing_1.param.solution`:
+$   python dcp_convert_essence.py bin_packing.json
+$   savilerow model.eprime bin_packing_1.param -run-solver
+
+$ number of items, derived from the data: the length of weights (not a field of the reader's JSON)
 given weights_dim1 : int
 letting n = weights_dim1
+$ weights[i]: weight of item i (indices 1-based, so the data's index 0 is weights[1])
 given weights : matrix indexed by [int(1..n)] of int
+$ capacity of each bin
 given capacity : int
+$ number of bins available, numbered 0 to num_bins-1
 given num_bins : int
-find bins : matrix indexed by [int(1..n)] of int(0..num_bins-1)
+letting last = num_bins - 1
+$ bins[i]: bin that item i is assigned to, 0-indexed as in the problem (the output, indices 1-based)
+$ a single value per item, so each item lies in exactly one bin
+find bins : matrix indexed by [int(1..n)] of int(0..last)
 
 branching on [bins]
 such that
-$ the total weight of the items assigned to each bin must not exceed the bin capacity
-forAll b : int(0..num_bins-1) . (sum i : int(1..n) . (bins[i] = b) * weights[i]) <= capacity
+$ the total weight of the items assigned to each bin does not exceed the capacity of the bin
+forAll b : int(0..last) . (sum i : int(1..n) . toInt(bins[i] = b) * weights[i]) <= capacity

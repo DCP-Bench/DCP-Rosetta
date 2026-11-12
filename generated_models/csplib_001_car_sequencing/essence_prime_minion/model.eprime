@@ -1,0 +1,39 @@
+language ESSENCE' 1.0
+$ csplib_001_car_sequencing: an Essence' model from DCP Rosetta.
+$
+$ Cars of several types are to be produced on an assembly line, one after another. Each option (such as air-conditioning or a sunroof) is fitted at its own station, which can handle at most a given number of cars in any run of consecutive cars, so cars requiring an option must not be bunched together. Arrange the cars in a sequence that respects every station's capacity, with each car type produced exactly as many times as it is demanded.
+$
+$ Save this file as model.eprime. Download `csplib_001_car_sequencing.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_001_car_sequencing.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_001_car_sequencing_1.param.solution`:
+$   python dcp_convert_essence.py csplib_001_car_sequencing.json
+$   savilerow model.eprime csplib_001_car_sequencing_1.param -run-solver
+
+$ number of car types, derived from the data: the length of demand (not a field of the reader's JSON)
+given demand_dim1 : int
+$ demand[t]: the number of cars of car type t to be produced, indices 1-based (the data's index 0 is demand[1])
+given demand : matrix indexed by [int(1..demand_dim1)] of int
+$ number of options, derived from the data: the length of at_most (not a field of the reader's JSON)
+given at_most_dim1 : int
+$ at_most[o]: a station for option o handles at most this many cars requiring o in any per_slots[o] consecutive cars
+given at_most : matrix indexed by [int(1..at_most_dim1)] of int
+$ per_slots[o]: the length of the run of consecutive cars that at_most[o] refers to
+given per_slots : matrix indexed by [int(1..at_most_dim1)] of int
+$ requires[t, o]: 1 if a car of type t requires option o, 0 otherwise (indices 1-based)
+given requires : matrix indexed by [int(1..demand_dim1), int(1..at_most_dim1)] of int(0..1)
+
+$ the number of cars: the total of the demand
+letting n_cars = sum t : int(1..demand_dim1) . demand[t]
+
+$ sequence[s]: the car type at position s of the assembly line, counted from 0 as the problem asks (position s is indexed from 1)
+find sequence : matrix indexed by [int(1..n_cars)] of int(0..demand_dim1 - 1)
+
+branching on [sequence]
+
+such that
+$ each car type t occurs in the sequence as many times as it is demanded
+forAll t : int(0..demand_dim1 - 1) . (sum s : int(1..n_cars) . toInt(sequence[s] = t)) = demand[t + 1],
+$ each station o: in every run of per_slots[o] consecutive cars, at most at_most[o] cars require option o
+forAll o : int(1..at_most_dim1) . forAll p : int(1..n_cars) . (p + per_slots[o] - 1 <= n_cars) -> ((sum s : int(1..n_cars) . toInt(s >= p /\ s < p + per_slots[o] /\ requires[sequence[s] + 1, o] = 1)) <= at_most[o])

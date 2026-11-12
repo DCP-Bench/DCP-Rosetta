@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791953324.2717907,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794651998.7953684,
     "problem_id": "session1_money_change",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.004118910990655422,
-        "execution_wall_seconds": 2.613735814986285,
+        "checking_seconds": 0.007635944988578558,
+        "execution_wall_seconds": 10.82583974499721,
         "first_solution": {
           "coin_counts": [
             0,
@@ -49,6 +79,12 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.05600094795227051,
+            9
+          ]
+        ],
         "instance_hash": "932091917ca1ca846ab5870bfd163b2e1692efd2cf43afa929c2c0d41744d48b",
         "is_optimization": true,
         "oom_killed": false,
@@ -57,9 +93,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7514054710045457,
+        "reference_setup_seconds": 1.6541780959814787,
         "runner_status": {
+          "build_seconds": 1.3295841217041016,
           "detail": "",
+          "main_seconds": 7.0346389500191435,
+          "read_seconds": 0.010266782017424703,
           "status": "complete",
           "type": "status"
         },
@@ -69,8 +108,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0033958410494960845,
-        "execution_wall_seconds": 2.3579031719709747,
+        "checking_seconds": 0.011651056003756821,
+        "execution_wall_seconds": 10.303531312034465,
         "first_solution": {
           "coin_counts": [
             2,
@@ -79,6 +118,12 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.15200281143188477,
+            8
+          ]
+        ],
         "instance_hash": "219cdd2936bc845e1057acc4906340cccb6c125f85162a557663da8c29a75694",
         "is_optimization": true,
         "oom_killed": false,
@@ -87,9 +132,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7277288350160234,
+        "reference_setup_seconds": 2.2684414330287836,
         "runner_status": {
+          "build_seconds": 1.6617703437805176,
           "detail": "",
+          "main_seconds": 6.941754321043845,
+          "read_seconds": 0.014134778000880033,
           "status": "complete",
           "type": "status"
         },
@@ -99,8 +147,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0037373449886217713,
-        "execution_wall_seconds": 2.7139068100368604,
+        "checking_seconds": 0.0032055770279839635,
+        "execution_wall_seconds": 10.841441764030606,
         "first_solution": {
           "coin_counts": [
             1,
@@ -114,6 +162,12 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.12000203132629395,
+            7
+          ]
+        ],
         "instance_hash": "4038d5efcf5b6569111c1d011e0fdff25e7b7830c2ca3c245a83669e63811ff0",
         "is_optimization": true,
         "oom_killed": false,
@@ -122,9 +176,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6501987150404602,
+        "reference_setup_seconds": 2.4417217790032737,
         "runner_status": {
+          "build_seconds": 1.7099308967590332,
           "detail": "",
+          "main_seconds": 7.398484495992307,
+          "read_seconds": 0.010198582021985203,
           "status": "complete",
           "type": "status"
         },
@@ -134,8 +191,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.003342779993545264,
-        "execution_wall_seconds": 2.3057590129901655,
+        "checking_seconds": 0.002902662963606417,
+        "execution_wall_seconds": 10.02643954398809,
         "first_solution": {
           "coin_counts": [
             1,
@@ -145,6 +202,12 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.044000864028930664,
+            6
+          ]
+        ],
         "instance_hash": "c5fa34f4edf7de67ff64af59489da3f260a161bf6557fc7aa7a8dc2d55f0f983",
         "is_optimization": true,
         "oom_killed": false,
@@ -153,9 +216,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6036236319923773,
+        "reference_setup_seconds": 2.269410580978729,
         "runner_status": {
+          "build_seconds": 2.0827949047088623,
           "detail": "",
+          "main_seconds": 6.9481911470065825,
+          "read_seconds": 0.0008041730034165084,
           "status": "complete",
           "type": "status"
         },
@@ -165,8 +231,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0037421039887703955,
-        "execution_wall_seconds": 2.406987386988476,
+        "checking_seconds": 0.003151368990074843,
+        "execution_wall_seconds": 9.4021072970354,
         "first_solution": {
           "coin_counts": [
             2,
@@ -178,6 +244,12 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.08800172805786133,
+            7
+          ]
+        ],
         "instance_hash": "40322d3ffe670543b8e28a6da8fb6049763148bfd04710851b590e1b0f675313",
         "is_optimization": true,
         "oom_killed": false,
@@ -186,9 +258,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5845213700085878,
+        "reference_setup_seconds": 0.7759263009647839,
         "runner_status": {
+          "build_seconds": 1.7744224071502686,
           "detail": "",
+          "main_seconds": 6.654596070002299,
+          "read_seconds": 0.0022265680017881095,
           "status": "complete",
           "type": "status"
         },
@@ -200,21 +275,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "bcd470b2563bbe2ee150c3871de686395cc6750075ad8a94aa1b9fbc0ef74ff0",
+    "model_hash": "fa657b54603b882af59d5d0a5edb37d6978de678af1f632d222f990cf9ae040a",
     "problem_id": "session1_money_change",
     "reason": "accepted",
-    "reference_hash": "f71435a4a8de69c21fcc34df9e9b0d8147f0c8ec1b928c592b426643d7958805",
+    "reference_hash": "c597696712b18169c90b572f71b840e93661fd08969c755fc134709d134fd95f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -225,11 +300,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 16.009625170961954,
+    "total_wall_seconds": 62.780383173027076,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.eprime",

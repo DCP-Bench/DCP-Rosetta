@@ -1,14 +1,30 @@
 language ESSENCE' 1.0
-$ Three coins: make all three coins face the same way (all heads or all tails) in exactly num_moves moves, each move flipping one coin.
+$ three_coins: an Essence' model from DCP Rosetta.
+$
+$ Three coins lie on a table in the order tails, heads, tails. In precisely three moves make them face either all heads or all tails. Each move consists of choosing one coin and flipping it over.
+$
+$ Save this file as model.eprime. Download `three_coins.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `three_coins_1.param.solution`:
+$   python dcp_convert_essence.py three_coins.json
+$   savilerow model.eprime three_coins_1.param -run-solver
+
+$ number of moves to make
+given num_moves : int(1..)
+$ number of configurations to report: the start and one after each move
+letting num_configs = num_moves + 1
+$ init[i]: the starting face of coin i, 1-based (the data's index 0 is init[1]); 1 is tails, 0 is heads
 given init : matrix indexed by [int(1..3)] of int(0..1)
-given num_moves : int(1..3)
-find steps : matrix indexed by [int(1..4), int(1..3)] of bool
+
+$ steps[t, i]: coin i after t moves (t = 1 is the start, the data's index 0), true when it shows tails, false for heads
+find steps : matrix indexed by [int(1..num_configs), int(1..3)] of bool
+
 such that
-$ the first row of steps is the starting state: 1 means tails, 0 means heads
-forAll j : int(1..3) . steps[1, j] <-> (init[j] = 1),
-$ each of the first num_moves moves flips exactly one coin
-forAll i : int(1..3) . i <= num_moves -> (sum j : int(1..3) . toInt(steps[i, j] != steps[i + 1, j])) = 1,
-$ after the moves are done, the coins stay as they are
-forAll i : int(1..3) . i > num_moves -> forAll j : int(1..3) . steps[i + 1, j] = steps[i, j],
-$ at the end all three coins face the same way
-forAll j : int(1..3) . steps[num_moves + 1, j] <-> steps[num_moves + 1, 1]
+$ the start configuration is the initial one: each coin shows the face it starts with
+forAll i : int(1..3) . steps[1, i] <-> (init[i] = 1),
+$ each move flips exactly one coin
+forAll t : int(1..num_moves) . (sum i : int(1..3) . toInt(steps[t, i] != steps[t + 1, i])) = 1,
+$ after the last move all three coins face the same way, all heads or all tails
+steps[num_configs, 1] = steps[num_configs, 2] /\ steps[num_configs, 2] = steps[num_configs, 3]

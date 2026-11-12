@@ -1,9 +1,24 @@
 language ESSENCE' 1.0
-$ Five brigands share exactly 200 doubloons; if the shares were scaled by 12, 3, 1, 1/2 and 1/3 the total would still be 200. Each brigand has at least one doubloon. Print the shares A, B, C, D, E.
-find A, B, C, D, E : int(1..200)
+$ five_brigands: an Essence' model from DCP Rosetta.
+$
+$ The five Spanish brigands, Alfonso, Benito, Carlos, Diego and Esteban, were counting their spoils after a raid, when it was found that they had captured altogether exactly 200 doubloons. One of the band pointed out that if Alfonso had twelve times as much, Benito three times as much, Carlos the same amount, Diego half as much, and Esteban one-third as much, they would still have altogether just 200 doubloons. How many doubloons had each? Also, no brigand had less than one doubloon. Give the number of doubloons that each brigand may have (A, B, C, D, E).
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/five_brigands.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the total number of doubloons
+letting total = 200
+$ A, B, C, D, E: the doubloons held by Alfonso, Benito, Carlos, Diego and Esteban; each is at least one and at most the total of 200
+find A : int(1..total)
+find B : int(1..total)
+find C : int(1..total)
+find D : int(1..total)
+find E : int(1..total)
 
 such that
-$ together the five brigands have exactly 200 doubloons
-A + B + C + D + E = 200,
-$ with Alfonso 12 times, Benito 3 times, Carlos the same, Diego half and Esteban one-third as much, the total is still 200; multiplied by 6 to keep the arithmetic in integers
-72 * A + 18 * B + 6 * C + 3 * D + 2 * E = 1200
+$ together the brigands hold exactly 200 doubloons
+A + B + C + D + E = total,
+$ with Alfonso at twelve times, Benito at three times, Carlos the same, Diego at half and Esteban at one-third as much, the total is still 200 (both sides multiplied by 6 to keep the coefficients whole)
+72 * A + 18 * B + 6 * C + 3 * D + 2 * E = 6 * total

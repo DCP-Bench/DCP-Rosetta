@@ -1,24 +1,38 @@
 language ESSENCE' 1.0
-$ Kidney exchange: people on a waiting list donate to each other along compatibility; anyone who gives a kidney must receive one, and each person receives at most one, maximising the number of kidneys transplanted.
+$ session3_kidney_exchange: an Essence' model from DCP Rosetta.
+$
+$ At a hospital, n people are on a waiting list for a kidney transplant. Compatibility is a directed graph: compatible[i] is the set of people to whom person i can donate. Anyone who gives a kidney must receive one, and no person receives more than one kidney. Maximise the number of people who receive a new kidney.
+$
+$ Save this file as model.eprime. Download `session3_kidney_exchange.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session3_kidney_exchange_1.param.solution`:
+$   python dcp_convert_essence.py session3_kidney_exchange.json
+$   savilerow model.eprime session3_kidney_exchange_1.param -run-solver
+
+$ num_people: the number of people on the waiting list, numbered 1 to num_people
 given num_people : int(1..)
+$ compatible_dim2: the longest list of people any one person can donate to (derived by the converter from the data)
 given compatible_dim2 : int(1..)
-$ compatible[i,k] is the k-th person that person i can donate to (padded with 0)
+$ compatible[i,k]: the k-th person that person i can donate to (1-based; rows shorter than compatible_dim2 are padded with 0, which no person has)
 given compatible : matrix indexed by [int(1..num_people), int(1..compatible_dim2)] of int(0..num_people)
 
-$ transplants[i,j] is 1 when person i donates a kidney to person j
+$ transplants[i,j]: person i donates a kidney to person j
 find transplants : matrix indexed by [int(1..num_people), int(1..num_people)] of bool
 
+$ search hint: branch on the transplants first and use conflict-driven search (speeds up the search)
 branching on [transplants]
 heuristic conflict
+
 maximising (sum i : int(1..num_people) . sum j : int(1..num_people) . toInt(transplants[i,j]))
+
 such that
-$ a transplant from i to j is allowed only if j is in the compatibility list of i
-forAll i : int(1..num_people) . forAll j : int(1..num_people) . (transplants[i,j] -> (exists k : int(1..compatible_dim2) . (compatible[i,k] = j))),
-$ nobody donates a kidney to themselves
-forAll i : int(1..num_people) . (transplants[i,i] = false),
+$ a donation from i to j is allowed only if j is in the compatibility list of i
+forAll i, j : int(1..num_people) . (transplants[i,j] -> (exists k : int(1..compatible_dim2) . compatible[i,k] = j)),
 $ no person gives more than one kidney
-forAll i : int(1..num_people) . ((sum j : int(1..num_people) . toInt(transplants[i,j])) <= 1),
+forAll i : int(1..num_people) . (sum j : int(1..num_people) . toInt(transplants[i,j])) <= 1,
 $ no person receives more than one kidney
-forAll j : int(1..num_people) . ((sum i : int(1..num_people) . toInt(transplants[i,j])) <= 1),
-$ anyone who gives a kidney must receive one, and anyone who receives one must give one
-forAll i : int(1..num_people) . ((sum j : int(1..num_people) . toInt(transplants[i,j])) = (sum j : int(1..num_people) . toInt(transplants[j,i])))
+forAll j : int(1..num_people) . (sum i : int(1..num_people) . toInt(transplants[i,j])) <= 1,
+$ anyone who gives a kidney must receive one
+forAll i : int(1..num_people) . (sum j : int(1..num_people) . toInt(transplants[i,j])) <= (sum j : int(1..num_people) . toInt(transplants[j,i]))

@@ -1,12 +1,26 @@
 language ESSENCE' 1.0
-$ A kid buys items whose prices in cents add up to the total price. The cashier multiplied the prices instead, and the product, read in dollars, came to the same total. Find the item prices in cents.
+$ session5_grocery: an Essence' model from DCP Rosetta.
+$
+$ A kid goes into a grocery store and buys a number of items. The cashier charges a total price, the kid pays and is about to leave when the cashier calls the kid back, and says "Hold on, I multiplied the items instead of adding them; I'll try again; Hah, with adding them the price still comes to the same total price". What were the prices of the items? Each price is a positive whole number of cents, and total_price is given in cents. Both the sum and the product of the prices in dollars equal the total price in dollars.
+$
+$ Save this file as model.eprime. Download `session5_grocery.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_grocery.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session5_grocery_1.param.solution`:
+$   python dcp_convert_essence.py session5_grocery.json
+$   savilerow model.eprime session5_grocery_1.param -run-solver
+
+$ number of items the kid buys
 given num_items : int(1..)
+$ total price in cents
 given total_price : int(1..)
-$ prices[i] is the price of item i in cents
+
+$ prices[i]: price of item i in cents, indices 1-based
 find prices : matrix indexed by [int(1..num_items)] of int(1..total_price)
 
 such that
-$ the sum of the prices is the total price
+$ the prices added together give the total price
 (sum i : int(1..num_items) . prices[i]) = total_price,
-$ the product of the prices in cents, divided by 100 for each item after the first, is the total price (the product is taken in dollars)
+$ the product of the prices in dollars equals the total price in dollars: the product of the prices in cents equals the total price times 100 for each item after the first
 product(prices) = total_price * 100 ** (num_items - 1)

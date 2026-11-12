@@ -1,16 +1,35 @@
 language ESSENCE' 1.0
-$ Minimum number of coins of each denomination so that every amount below the maximum can be paid exactly.
-given denominations_dim1 : int(1..)
-given denominations : matrix indexed by [int(1..denominations_dim1)] of int(1..)
-given max_amount_to_pay : int(2..)
-find x : matrix indexed by [int(1..denominations_dim1)] of int(0..max_amount_to_pay)
-$ auxiliary: y[a,i] is how many coins of denomination i are used to pay amount a
-find y : matrix indexed by [int(1..max_amount_to_pay), int(1..denominations_dim1)] of int(0..max_amount_to_pay)
+$ coin3_application: an Essence' model from DCP Rosetta.
+$
+$ Find the minimum number of coins that allows one to pay exactly any amount smaller than a given maximum amount, using a given set of denominations.
+$
+$ Save this file as model.eprime. Download `coin3_application.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `coin3_application_1.param.solution`:
+$   python dcp_convert_essence.py coin3_application.json
+$   savilerow model.eprime coin3_application_1.param -run-solver
 
-branching on [x]
-minimising (sum i : int(1..denominations_dim1) . x[i])
+$ number of denominations, derived from the data: the length of denominations (not a field of the reader's JSON)
+given denominations_dim1 : int(1..)
+$ denominations[j]: value of the coin of type j, indices 1-based
+given denominations : matrix indexed by [int(1..denominations_dim1)] of int(1..)
+$ max_amount_to_pay: every amount from 1 up to this amount, excluded, must be payable
+given max_amount_to_pay : int(2..)
+
+$ x[j]: the number of coins of type j used
+find x : matrix indexed by [int(1..denominations_dim1)] of int(0..max_amount_to_pay)
+$ pay[a,j]: the number of coins of type j used to pay the amount a (auxiliary witness for each amount a)
+find pay : matrix indexed by [int(1..max_amount_to_pay - 1), int(1..denominations_dim1)] of int(0..max_amount_to_pay)
+$ total: auxiliary, the total number of coins used, which is minimised
+find total : int(0..max_amount_to_pay * denominations_dim1)
+
+minimising total
 such that
-$ every amount from 1 up to the maximum (not including it) can be paid exactly with the coins
-forAll a : int(1..max_amount_to_pay-1) . ((sum i : int(1..denominations_dim1) . y[a,i] * denominations[i]) = a),
-$ the coins used for any amount come from the coins available (no more than x[i] of denomination i)
-forAll a : int(1..max_amount_to_pay-1) . forAll i : int(1..denominations_dim1) . (y[a,i] <= x[i])
+$ the total is the number of coins of all types used
+total = (sum j : int(1..denominations_dim1) . x[j]),
+$ every amount a below the maximum can be paid exactly with the coins used
+forAll a : int(1..max_amount_to_pay - 1) . (sum j : int(1..denominations_dim1) . pay[a,j] * denominations[j]) = a,
+$ the coins used to pay an amount are among the coins available
+forAll a : int(1..max_amount_to_pay - 1) . forAll j : int(1..denominations_dim1) . pay[a,j] <= x[j]

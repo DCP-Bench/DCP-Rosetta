@@ -1,15 +1,37 @@
 language ESSENCE' 1.0
-$ Find num_words words of length n over {A,C,G,T} (coded 1..4) with the word design conditions: each word has 4 symbols from {C,G}, distinct words differ in at least 4 positions, and reverse(x) and complement(y) differ in at least 4 positions for all x, y in the set.
+$ csplib_033_word_design: an Essence' model from DCP Rosetta.
+$
+$ Find a set of num_words words of length n over the alphabet {A, C, G, T} such that each word has 4 symbols from {C, G}, each pair of distinct words differs in at least 4 positions, and for each pair of words x and y in the set (where x and y may be identical), the reverse of x and the Watson-Crick complement of y differ in at least 4 positions. The Watson-Crick complement replaces each A by T and each C by G, and vice versa.
+$
+$ Save this file as model.eprime. Download `csplib_033_word_design.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_033_word_design_1.param.solution`:
+$   python dcp_convert_essence.py csplib_033_word_design.json
+$   savilerow model.eprime csplib_033_word_design_1.param -run-solver
+
+$ n: length of each word
 given n : int(1..)
+$ num_words: number of words in the set
 given num_words : int(1..)
+
+$ the letters, coded 1 to 4
+letting A = 1
+letting C = 2
+letting G = 3
+letting T = 4
+$ the minimum number of positions in which two words must differ
+letting MIN_DIFF = 4
+
+$ words[i,j]: letter j of word i (indices 1-based, letters coded A=1, C=2, G=3, T=4)
 find words : matrix indexed by [int(1..num_words), int(1..n)] of int(1..4)
 
 branching on [words]
-
 such that
-$ each word has exactly 4 symbols from {C,G} (C=2, G=3)
-forAll i : int(1..num_words) . (sum j : int(1..n) . toInt((words[i,j] = 2) \/ (words[i,j] = 3))) = 4,
-$ distinct words differ in at least 4 positions
-forAll i : int(1..num_words) . forAll j : int(i+1..num_words) . (sum k : int(1..n) . toInt(words[i,k] != words[j,k])) >= 4,
-$ the reverse of x and the Watson-Crick complement of y (A=1<->T=4, C=2<->G=3, i.e. 5-v) differ in at least 4 positions, for all x and y, including x = y
-forAll i : int(1..num_words) . forAll j : int(1..num_words) . (sum k : int(1..n) . toInt(words[i,n+1-k] != 5 - words[j,k])) >= 4
+$ each word has 4 symbols from {C, G}
+forAll i : int(1..num_words) . ((sum j : int(1..n) . toInt(words[i,j] = C \/ words[i,j] = G)) = 4),
+$ each pair of distinct words differs in at least 4 positions
+forAll i : int(1..num_words) . forAll i2 : int(i+1..num_words) . ((sum j : int(1..n) . toInt(words[i,j] != words[i2,j])) >= MIN_DIFF),
+$ the reverse of each word and the Watson-Crick complement of each word (including a word with itself) differ in at least 4 positions; the complement of letter v is 5-v (A<->T, C<->G)
+forAll i : int(1..num_words) . forAll i2 : int(1..num_words) . ((sum j : int(1..n) . toInt(words[i,n+1-j] != 5 - words[i2,j])) >= MIN_DIFF)

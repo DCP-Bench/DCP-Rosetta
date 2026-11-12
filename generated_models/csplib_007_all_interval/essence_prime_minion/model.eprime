@@ -1,15 +1,28 @@
 language ESSENCE' 1.0
-$ Find a series of the pitch classes 0 to n-1, each used once, whose neighbouring intervals are exactly the values 1 to n-1, each once.
-given n : int
+$ csplib_007_all_interval: an Essence' model from DCP Rosetta.
+$
+$ Given the n pitch-classes 0, 1, ..., n-1, find a series x = (x_1, ..., x_n) in which each pitch-class occurs exactly once, and in which the intervals between neighbouring notes, |x_(i+1) - x_i|, are exactly the values 1, 2, ..., n-1, each occurring once. That is, the series is a permutation of 0 to n-1 and its interval vector is a permutation of 1 to n-1.
+$
+$ Save this file as model.eprime. Download `csplib_007_all_interval.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_007_all_interval.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_007_all_interval_1.param.solution`:
+$   python dcp_convert_essence.py csplib_007_all_interval.json
+$   savilerow model.eprime csplib_007_all_interval_1.param -run-solver
+
+$ n: the number of pitch-classes
+given n : int(2..)
+
+$ x[i]: the pitch-class at position i of the series (indices 1-based, values 0 to n-1)
 find x : matrix indexed by [int(1..n)] of int(0..n-1)
+$ diffs[i]: the interval between the neighbouring notes at positions i and i+1, the absolute difference, values 1 to n-1
 find diffs : matrix indexed by [int(1..n-1)] of int(1..n-1)
 
-branching on [diffs, x]
-
 such that
-$ the series is a permutation of the pitch classes 0 to n-1
+$ each pitch-class 0 to n-1 occurs exactly once in the series
 allDiff(x),
-$ each interval is the absolute difference of two neighbouring pitch classes
+$ each interval is the absolute difference of two neighbouring pitch-classes
 forAll i : int(1..n-1) . diffs[i] = |x[i+1] - x[i]|,
-$ the intervals between neighbouring notes are all different, so they cover the full set 1 to n-1
+$ each interval from 1 to n-1 occurs exactly once among the intervals
 allDiff(diffs)

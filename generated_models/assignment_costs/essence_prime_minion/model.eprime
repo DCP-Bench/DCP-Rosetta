@@ -1,17 +1,31 @@
 language ESSENCE' 1.0
-$ Assign people to tasks with different costs, so that the total cost is minimised.
-given cost_dim1, cost_dim2 : int
+$ assignment_costs: an Essence' model from DCP Rosetta.
+$
+$ Assign people to 4 tasks with different costs, so that the total cost is minimised. Each task must be assigned to exactly one person, and each person takes at most one task; it is not necessary to assign all people to a task.
+$
+$ Save this file as model.eprime. Download `assignment_costs.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/assignment_costs.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `assignment_costs_1.param.solution`:
+$   python dcp_convert_essence.py assignment_costs.json
+$   savilerow model.eprime assignment_costs_1.param -run-solver
+
+$ number of tasks (rows of cost), derived from the data
+given cost_dim1 : int
+$ number of people (columns of cost), derived from the data
+given cost_dim2 : int
+$ cost[i,j]: cost of task i done by person j, indices 1-based
 given cost : matrix indexed by [int(1..cost_dim1), int(1..cost_dim2)] of int
+
+$ x[i,j]: task i is assigned to person j
 find x : matrix indexed by [int(1..cost_dim1), int(1..cost_dim2)] of bool
-find total : int(0..1000000)
 
 branching on [x]
 
-minimising total
+minimising (sum i : int(1..cost_dim1) . sum j : int(1..cost_dim2) . toInt(x[i,j]) * cost[i,j])
 such that
-$ each task must be assigned to exactly one person
-forAll i : int(1..cost_dim1) . (sum j : int(1..cost_dim2) . x[i,j]) = 1,
-$ it is not necessary to assign all people, but each person takes at most one task
-forAll j : int(1..cost_dim2) . (sum i : int(1..cost_dim1) . x[i,j]) <= 1,
-$ the total cost is the summed cost of the chosen assignments
-total = (sum i : int(1..cost_dim1) . (sum j : int(1..cost_dim2) . cost[i,j] * x[i,j]))
+$ each task is assigned to exactly one person
+forAll i : int(1..cost_dim1) . (sum j : int(1..cost_dim2) . toInt(x[i,j])) = 1,
+$ each person takes at most one task
+forAll j : int(1..cost_dim2) . (sum i : int(1..cost_dim1) . toInt(x[i,j])) <= 1

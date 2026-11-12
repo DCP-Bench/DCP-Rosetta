@@ -1,9 +1,34 @@
 language ESSENCE' 1.0
-$ Fill the n x n grid with digits 1 to n so that every row, column and 3 x 3 nonet holds each digit once, and every cage sums to its target without repeating a digit.
+$ csplib_057_killer_sudoku: an Essence' model from DCP Rosetta.
+$
+$ Killer sudoku: fill the 9 x 9 grid with the digits 1 to 9 so that each row, each column and each 3 x 3 nonet contains each digit exactly once, the cells of each cage sum to the small number printed in the cage's corner, and no digit appears more than once in a cage.
+$
+$ Save this file as model.eprime. Download `csplib_057_killer_sudoku.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_057_killer_sudoku_1.param.solution`:
+$   python dcp_convert_essence.py csplib_057_killer_sudoku.json
+$   savilerow model.eprime csplib_057_killer_sudoku_1.param -run-solver
+
+$ n: the side of the grid (9 for a standard sudoku grid)
 given n : int(1..)
-given problem_1 : matrix indexed by [int(1..problem_1_dim1)] of int(0..)
-given problem_2 : matrix indexed by [int(1..problem_2_dim1), int(1..problem_2_dim2), int(1..problem_2_dim3)] of int(0..)
-given problem_2_len : matrix indexed by [int(1..problem_2_dim1)] of int(1..)
+$ number of cages, derived from the data (the length of the cage targets)
+given problem_1_dim1 : int(1..)
+letting cages = problem_1_dim1
+$ problem_1[c]: the sum that the cells of cage c must add up to (cages indexed 1-based)
+$ problem_1[c]: the target sum of cage c (cages 1-based; the data's `problem` rows are [target, cells], bound by the conversion as problem_1 and problem_2)
+given problem_1 : matrix indexed by [int(1..cages)] of int(0..)
+$ the largest number of cells in any cage, derived from the data (the padded length of the cell lists)
+given problem_2_dim2 : int(1..)
+$ problem_2[c,k,1..2]: row and column of the k-th cell of cage c (indices 1-based, so the data's index 0 is 1); cells beyond problem_2_len[c] are padding
+$ problem_2[c,k,1], problem_2[c,k,2]: row and column (1-based as in the data) of the k-th cell of cage c, padded with 0 beyond problem_2_len[c]
+given problem_2 : matrix indexed by [int(1..cages), int(1..problem_2_dim2), int(1..2)] of int(0..)
+$ problem_2_len[c]: the number of cells in cage c (derived from the data)
+$ problem_2_len[c]: the number of cells of cage c (created by the conversion)
+given problem_2_len : matrix indexed by [int(1..cages)] of int(1..)
+
+$ x[r,c]: the digit in row r, column c (1-based), a digit from 1 to 9
 find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n)
 
 branching on [x]
@@ -16,7 +41,7 @@ $ each column contains each digit exactly once
 forAll c : int(1..n) . allDiff([x[r, c] | r : int(1..n)]),
 $ each 3 x 3 nonet contains each digit exactly once
 forAll b : int(0..2) . forAll bb : int(0..2) . allDiff([x[3 * b + r, 3 * bb + s] | r : int(1..3), s : int(1..3)]),
-$ the cells of each cage sum to the cage target
-forAll c : int(1..problem_2_dim1) . (sum([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])]) = problem_1[c]),
+$ the cells of each cage sum to the cage's target
+forAll c : int(1..cages) . (sum([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])]) = problem_1[c]),
 $ no digit is repeated within a cage
-forAll c : int(1..problem_2_dim1) . allDiff([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])])
+forAll c : int(1..cages) . allDiff([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])])

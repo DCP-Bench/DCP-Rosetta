@@ -1,14 +1,35 @@
 language ESSENCE' 1.0
-$ Archery: choose how many arrows to shoot at each ring so that the total score is as close as possible to the target score.
+$ archery_puzzle: an Essence' model from DCP Rosetta.
+$
+$ How close can the young archer come to scoring a total of a target score using as many arrows as she pleases? The targets are given as a list of integers, and each may be hit any number of times. Her score is the sum of the values of all her hits, and the aim is to minimize the absolute difference between that score and the target score.
+$
+$ Save this file as model.eprime. Download `archery_puzzle.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/archery_puzzle.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `archery_puzzle_1.param.solution`:
+$   python dcp_convert_essence.py archery_puzzle.json
+$   savilerow model.eprime archery_puzzle_1.param -run-solver
+
+$ the target score the archer aims for
 given target_score : int
-$ number of rings, taken from the instance (the targets list)
+$ targets_dim1: the number of targets, derived from the data (the length of targets; not a field of the reader's JSON)
 given targets_dim1 : int
-given targets : matrix indexed by [int(1..targets_dim1)] of int
-$ the arrow count on a ring never needs to exceed the target plus the sum of all ring scores, since an optimal total is at most target plus the largest ring score
-find hits : matrix indexed by [int(1..targets_dim1)] of int(0..target_score + sum(targets))
-$ total score of the arrows; it is at most target plus the sum of ring scores times the arrow bound
-find total : int(0..target_score + sum(targets) * 100)
+letting num_targets = targets_dim1
+$ targets[i]: the score of one hit on target i, indices 1-based
+given targets : matrix indexed by [int(1..num_targets)] of int
+$ the largest number of hits on a single target that an optimal answer can need: the target score plus the sum of the target values
+letting max_hits = target_score + sum(targets)
+$ the largest total score: the sum of the target values times the largest number of hits on a target
+letting max_total = sum(targets) * max_hits
+
+$ hits[i]: the number of hits on target i, indices 1-based
+find hits : matrix indexed by [int(1..num_targets)] of int(0..max_hits)
+$ total: the score of all the hits together (auxiliary)
+find total : int(0..max_total)
+
 minimising |total - target_score|
+
 such that
-$ the total score is the sum over the rings of the ring score times the number of arrows on that ring
-total = (sum i : int(1..targets_dim1) . targets[i] * hits[i])
+$ the total score is the sum over the targets of the value of a hit on the target times the number of hits on it
+total = (sum i : int(1..num_targets) . targets[i] * hits[i])

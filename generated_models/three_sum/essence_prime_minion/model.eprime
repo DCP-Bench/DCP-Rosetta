@@ -1,13 +1,29 @@
 language ESSENCE' 1.0
-$ Three sum: select exactly m of the given integers so that the selected integers sum to zero.
-$ number of integers, from the instance nums list
+$ three_sum: an Essence' model from DCP Rosetta.
+$
+$ Given a collection of integers, find exactly m elements that sum to zero.
+$
+$ Save this file as model.eprime. Download `three_sum.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/three_sum.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `three_sum_1.param.solution`:
+$   python dcp_convert_essence.py three_sum.json
+$   savilerow model.eprime three_sum_1.param -run-solver
+
+$ number of integers in the collection, derived from the data: the length of nums (not a field of the reader's JSON)
 given nums_dim1 : int
-given nums : matrix indexed by [int(1..nums_dim1)] of int
+letting n = nums_dim1
+$ nums[i]: the i-th integer of the collection, indices 1-based (the data's index 0 is nums[1])
+given nums : matrix indexed by [int(1..n)] of int
+$ how many elements must be selected
 given m : int
-$ indices[i] is true when the integer nums[i] is selected
-find indices : matrix indexed by [int(1..nums_dim1)] of bool
+
+$ indices[i]: element i of the collection is selected
+find indices : matrix indexed by [int(1..n)] of bool
+
 such that
 $ exactly m elements are selected
-(sum i : int(1..nums_dim1) . toInt(indices[i])) = m,
+(sum i : int(1..n) . toInt(indices[i])) = m,
 $ the selected elements sum to zero
-(sum i : int(1..nums_dim1) . toInt(indices[i]) * nums[i]) = 0
+(sum i : int(1..n) . toInt(indices[i]) * nums[i]) = 0

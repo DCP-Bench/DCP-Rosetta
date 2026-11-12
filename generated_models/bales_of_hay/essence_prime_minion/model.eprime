@@ -1,17 +1,36 @@
 language ESSENCE' 1.0
-$ Recover the weights of n bales of hay from the multiset of the weights of all pairs of bales (the pairwise sums, given in sorted order, not matched to pairs).
-given n : int(1..)
-given weights_dim1 : int(1..)
-given weights : matrix indexed by [int(1..weights_dim1)] of int(0..)
-$ the pair (PI[k], PJ[k]) with PI[k] < PJ[k] is the k-th pair of bale indices, in the order of the pair list
+$ bales_of_hay: an Essence' model from DCP Rosetta.
+$
+$ There are a number of bales of hay. Instead of being weighed individually, they were weighed in all possible combinations of two. The weights of these combinations were written down and arranged in numerical order, without keeping track of which weight matched which pair of bales. Find the weight of each bale from the list of pair weights.
+$
+$ Save this file as model.eprime. Download `bales_of_hay.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/bales_of_hay.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `bales_of_hay_1.param.solution`:
+$   python dcp_convert_essence.py bales_of_hay.json
+$   savilerow model.eprime bales_of_hay_1.param -run-solver
+
+$ n: the number of bales
+given n : int
+$ weights_dim1: the number of pair weights, n(n-1)/2 (derived from the data)
+given weights_dim1 : int
+$ weights[k]: the k-th pair weight in the list, indices 1-based
+given weights : matrix indexed by [int(1..weights_dim1)] of int
+
+$ the total of all pair weights, an upper bound on any bale weight
+letting top = sum(weights)
+$ PI[k], PJ[k]: the bales of the k-th pair of bales (PI[k] < PJ[k]), pairs in lexicographic order; perm below matches each pair to its weight in the list
 letting PI = [ i | i : int(1..n), j : int(1..n), i < j ]
 letting PJ = [ j | i : int(1..n), j : int(1..n), i < j ]
-find bales : matrix indexed by [int(1..n)] of int(0..sum(weights))
-$ perm[k] is the position in the given weights list that holds the weight of the k-th pair of bales
+
+$ bales[i]: the weight of bale i, indices 1-based
+find bales : matrix indexed by [int(1..n)] of int(0..top)
+$ perm[k]: the position in the list of pair weights that holds the weight of the k-th pair of bales
 find perm : matrix indexed by [int(1..weights_dim1)] of int(1..weights_dim1)
 
 such that
-$ every pair of bales is matched to exactly one of the given pair weights (the pair weights are a permutation of the list)
+$ every pair weight in the list is the weight of exactly one pair of bales
 allDiff(perm),
 $ the weight of each pair of bales is the sum of the weights of its two bales
 forAll k : int(1..weights_dim1) . weights[perm[k]] = bales[PI[k]] + bales[PJ[k]]

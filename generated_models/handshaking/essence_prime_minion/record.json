@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
-    "attempt_id": "attempt-002",
-    "created_at": 1791953054.576816,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794650335.726975,
     "problem_id": "handshaking",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,33 +18,57 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
-        "accepted": true,
-        "checking_seconds": 0.08768158400198445,
-        "execution_wall_seconds": 1.6422942269709893,
-        "first_solution": {
-          "hil": 8
-        },
+        "accepted": false,
+        "checking_seconds": 3.8102734833955765e-07,
+        "detail": "",
+        "execution_wall_seconds": 183.2440756339929,
         "id": "example",
         "instance_hash": "31ae3ffc518aa0a5eb4bc075616ab3894593c98e95eb3bfe78741b5be5d5700c",
         "is_optimization": false,
@@ -49,21 +77,25 @@
         "outputs": [
           "hil"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 0.8355912090046331,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 2.7799373370362446,
         "runner_status": {
+          "build_seconds": 2.656757116317749,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 180.02228841098258,
+          "read_seconds": 0.005361520976293832,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.019864120986312628,
-        "execution_wall_seconds": 1.666257090982981,
+        "checking_seconds": 0.11978734500007704,
+        "execution_wall_seconds": 39.641860871983226,
         "first_solution": {
           "hil": 4
         },
@@ -76,20 +108,23 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0710725099779665,
+        "reference_setup_seconds": 1.8422630039858632,
         "runner_status": {
+          "build_seconds": 1.8348455429077148,
           "detail": "",
+          "main_seconds": 36.542617961997166,
+          "read_seconds": 0.0022540700156241655,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.00306869501946494,
-        "execution_wall_seconds": 1.306952948041726,
+        "checking_seconds": 0.0036315220058895648,
+        "execution_wall_seconds": 6.884884667000733,
         "first_solution": {
           "hil": 1
         },
@@ -102,20 +137,23 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7883475789567456,
+        "reference_setup_seconds": 2.482070072030183,
         "runner_status": {
+          "build_seconds": 1.3007800579071045,
           "detail": "",
+          "main_seconds": 3.5148969879955985,
+          "read_seconds": 0.0007371259853243828,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 2..1 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016368283017072827,
-        "execution_wall_seconds": 1.4346354570006952,
+        "checking_seconds": 0.06165593402693048,
+        "execution_wall_seconds": 8.35497548605781,
         "first_solution": {
           "hil": 3
         },
@@ -128,23 +166,24 @@
           "hil"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7900494369678199,
+        "reference_setup_seconds": 2.467543253034819,
         "runner_status": {
+          "build_seconds": 2.246018648147583,
           "detail": "",
+          "main_seconds": 4.744993936968967,
+          "read_seconds": 0.0007607619627378881,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated information file out.info\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.05289654899388552,
-        "execution_wall_seconds": 1.5575659209862351,
-        "first_solution": {
-          "hil": 6
-        },
+        "accepted": false,
+        "checking_seconds": 4.870234988629818e-07,
+        "detail": "",
+        "execution_wall_seconds": 183.05289923999226,
         "id": "json:4",
         "instance_hash": "9e700834b4f69d8236bf3d295eaaeed2b51c265eb5466fbb1ec5d2491cafbc0e",
         "is_optimization": false,
@@ -153,36 +192,40 @@
         "outputs": [
           "hil"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.1290618450148031,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 2.4298649069969542,
         "runner_status": {
+          "build_seconds": 2.392505407333374,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 180.03453577699838,
+          "read_seconds": 0.00942504103295505,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\n"
       }
     ],
     "instances_available": 5,
-    "instances_checked": 5,
+    "instances_checked": 3,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "8f1aeb04fe54bf6f4cb09dbf7dcac72b24376bb0827bd511f815e4102b6521b9",
+    "model_hash": "9d614231b19565be696a5853a5b67064c7546789c533f193e95c86c2f0341414",
     "problem_id": "handshaking",
     "reason": "accepted",
-    "reference_hash": "6e0d6650271f5d480fa03235ece6f71602ce37a799ac2fc69cb1a6f4529091f1",
+    "reference_hash": "2c1b49b316c3cfa2f3642ab923cec5a706325610f6485ecf853ccc597d201a45",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -190,14 +233,17 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 5,
+    "skipped_instances": [
+      "example",
+      "json:4"
+    ],
+    "solutions_checked": 3,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 12.843748082988895,
+    "total_wall_seconds": 435.3771252890001,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.eprime",

@@ -1,30 +1,34 @@
 language ESSENCE' 1.0
-$ Four islands on a 2x2 map (A=0 north-west, B=1 north-east, C=2 south-west, D=3 south-east) each have a name, an export and a tourist attraction; find the assignment that satisfies the six clues.
+$ four_islands: an Essence' model from DCP Rosetta.
+$
+$ A tiny nation in the South Pacific contains four islands, Pwana, Quero, Rayou and Skern, connected by bridges. The islands are placed on a map as A, B, C and D: A and B are on the top row, C and D on the bottom row, A is north of C, B is north of D, A is west of B and C is west of D; the bridges join A to B, A to C, B to D and C to D. Each island has a different primary export (alabaster, bananas, coconuts, durian fruit) and a different tourist attraction (resort hotel, ice skating rink, jai alai stadium, koala preserve). Clues: 1. the island noted for its koala preserve is due south of Pwana; 2. the island with the largest alabaster quarry is due west of Quero; 3. the island with the resort hotel is due east of the one that exports durian fruit; 4. Skern and the island with the jai alai stadium are connected by a north-south bridge; 5. Rayou and the island that exports bananas are connected by an east-west bridge; 6. the islands with the ice skating rink and the jai alai stadium are not connected by a bridge. Find the export and tourist attraction of each island, and the island name for each.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ island[i]: map position of island i, in the order Pwana, Quero, Rayou, Skern; positions are A=0, B=1, C=2, D=3
 find island : matrix indexed by [int(1..4)] of int(0..3)
+$ export[e]: map position of the island that exports export e, in the order alabaster, bananas, coconuts, durian fruit; A=0, B=1, C=2, D=3
 find export : matrix indexed by [int(1..4)] of int(0..3)
+$ attraction[t]: map position of the island with attraction t, in the order resort hotel, ice skating rink, jai alai stadium, koala preserve; A=0, B=1, C=2, D=3
 find attraction : matrix indexed by [int(1..4)] of int(0..3)
 
-branching on [island, export, attraction]
-
 such that
-$ each island has a different map position
+$ the four islands are different islands, and each export and each attraction belongs to one island
 allDiff(island),
-$ each export is on a different island
 allDiff(export),
-$ each tourist attraction is on a different island
 allDiff(attraction),
-$ clue 1: the island with the koala preserve is due south of Pwana (same column, next row: position plus 2)
-attraction[4] = island[1] + 2,
-$ clue 2: the island with the largest alabaster quarry is due west of Quero (Quero is in the east column, so position minus 1)
-(island[2] = 1 \/ island[2] = 3),
-export[1] = island[2] - 1,
-$ clue 3: the island with the resort hotel is due east of the island that exports durian fruit (durian is in the west column, so position plus 1)
-(export[4] = 0 \/ export[4] = 2),
-attraction[1] = export[4] + 1,
-$ clue 4: Skern and the island with the jai alai stadium are connected by a north-south bridge (positions two apart)
-(island[4] - attraction[3] = 2 \/ attraction[3] - island[4] = 2),
-$ clue 5: Rayou and the island that exports bananas are connected by an east-west bridge (positions one apart in the same row)
-(island[3] - export[2] = 1 \/ export[2] - island[3] = 1),
-(island[3] / 2 = export[2] / 2),
-$ clue 6: the ice skating rink and the jai alai stadium are not connected by a bridge (diagonal, distance 3)
-|attraction[2] - attraction[3]| = 3
+$ clue 1: the koala preserve island is due south of Pwana
+((island[1] = 0 /\ attraction[4] = 2) \/ (island[1] = 1 /\ attraction[4] = 3)),
+$ clue 2: the alabaster island is due west of Quero
+((export[1] = 0 /\ island[2] = 1) \/ (export[1] = 2 /\ island[2] = 3)),
+$ clue 3: the resort hotel island is due east of the durian fruit island
+((export[4] = 0 /\ attraction[1] = 1) \/ (export[4] = 2 /\ attraction[1] = 3)),
+$ clue 4: Skern and the jai alai stadium island are connected by a north-south bridge
+((island[4] = 0 /\ attraction[3] = 2) \/ (island[4] = 2 /\ attraction[3] = 0) \/ (island[4] = 1 /\ attraction[3] = 3) \/ (island[4] = 3 /\ attraction[3] = 1)),
+$ clue 5: Rayou and the banana island are connected by an east-west bridge
+((island[3] = 0 /\ export[2] = 1) \/ (island[3] = 1 /\ export[2] = 0) \/ (island[3] = 2 /\ export[2] = 3) \/ (island[3] = 3 /\ export[2] = 2)),
+$ clue 6: the ice skating rink island and the jai alai stadium island are not connected by a bridge
+!((attraction[2] = 0 /\ (attraction[3] = 1 \/ attraction[3] = 2)) \/ (attraction[2] = 1 /\ (attraction[3] = 0 \/ attraction[3] = 3)) \/ (attraction[2] = 2 /\ (attraction[3] = 0 \/ attraction[3] = 3)) \/ (attraction[2] = 3 /\ (attraction[3] = 1 \/ attraction[3] = 2)))

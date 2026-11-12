@@ -1,0 +1,36 @@
+language ESSENCE' 1.0
+$ cabling: an Essence' model from DCP Rosetta.
+$
+$ Take a rack cabinet. Let's say, there are a number of 1U devices, maybe servers, routers and whatnot. Devices must be connected by cables: probably twisted pair or whatever network engineers are using today. Some devices must be connected by several cables.
+$
+$ Each device takes one position in the rack, and neighbouring positions are one unit apart. A cable between two devices is as long as the distance between their positions, so connecting them by `k` cables costs `k` times that distance.
+$
+$ The problem: how we can place these devices in such an order, so that sum of all cable lengths would be as short as possible?
+$
+$ Save this file as model.eprime. Download `cabling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `cabling_1.param.solution`:
+$   python dcp_convert_essence.py cabling.json
+$   savilerow model.eprime cabling_1.param -run-solver
+
+$ number of devices, which take the rack positions 1 to n
+given n : int
+$ number of cable rows, derived from the data (the length of cable_struct)
+given cable_struct_dim1 : int
+$ cable_struct[r, 1] and cable_struct[r, 2]: the two devices joined by row r (device numbers 1 to n, the data's
+$ device names in order); cable_struct[r, 3]: the number of cables between them
+given cable_struct : matrix indexed by [int(1..cable_struct_dim1), int(1..3)] of int
+
+$ pos[d]: the rack position of device d, a permutation of the positions 1 to n (auxiliary, not reported)
+find pos : matrix indexed by [int(1..n)] of int(1..n)
+$ final_sum: the total length of all cables, each cable as long as the distance between its two devices
+find final_sum : int(0..(sum r : int(1..cable_struct_dim1) . cable_struct[r, 3]) * (n - 1))
+
+minimising final_sum
+such that
+$ each device takes its own position in the rack
+allDiff(pos),
+$ the total cable length is the sum over the cable rows of the cables times the distance between their devices
+final_sum = sum r : int(1..cable_struct_dim1) . cable_struct[r, 3] * |pos[cable_struct[r, 1]] - pos[cable_struct[r, 2]]|

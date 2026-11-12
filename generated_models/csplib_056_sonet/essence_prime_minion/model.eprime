@@ -1,20 +1,35 @@
 language ESSENCE' 1.0
-$ SONET: place nodes on rings so that every pair of nodes with demand shares a ring, each ring holds at most its node capacity, minimising the total number of add-drop multiplexers (node-ring placements).
+$ csplib_056_sonet: an Essence' model from DCP Rosetta.
+$
+$ SONET: a set of nodes with traffic demands between pairs of nodes is to be installed on a set of rings. A node is installed on a ring through an add-drop multiplexer (ADM). Two nodes can communicate only if they are on at least one common ring, and each ring can host at most its capacity of nodes. Satisfy all communication demands while minimising the total number of ADMs used.
+$
+$ Save this file as model.eprime. Download `csplib_056_sonet.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_056_sonet.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_056_sonet_1.param.solution`:
+$   python dcp_convert_essence.py csplib_056_sonet.json
+$   savilerow model.eprime csplib_056_sonet_1.param -run-solver
+
+$ n: number of nodes
 given n : int
+$ r: number of rings
 given r : int
-$ capacity of each ring: the maximum number of nodes it can host, one entry per ring
+$ capacity_nodes[k]: the maximum number of nodes ring k can host (rings indexed 1-based)
 given capacity_nodes : matrix indexed by [int(1..r)] of int
-$ traffic demand between nodes, demand[i,j] > 0 when nodes i and j must communicate
+$ demand[i,j]: traffic demand between node i and node j (indices 1-based); a positive demand means the two nodes must communicate
 given demand : matrix indexed by [int(1..n), int(1..n)] of int
-$ config[k,i] is true when node i is installed on ring k (rings and nodes are 1-based in the model, 0-based in the output)
+
+$ ring_config[k,i]: node i is installed on ring k (indices 1-based, so the data's index 0 is the first entry)
 find ring_config : matrix indexed by [int(1..r), int(1..n)] of bool
-$ total_adms is the number of nodes installed on rings (one add-drop multiplexer per node per ring)
+$ total_adms: the total number of ADMs used, one per node installed on a ring
 find total_adms : int(0..n*r)
+
 minimising total_adms
 such that
-$ the total number of add-drop multiplexers is the number of node placements over all rings
+$ the total number of ADMs is the number of node placements over all rings
 total_adms = (sum k : int(1..r) . sum i : int(1..n) . toInt(ring_config[k,i])),
 $ each ring hosts no more nodes than its capacity
 forAll k : int(1..r) . ((sum i : int(1..n) . toInt(ring_config[k,i])) <= capacity_nodes[k]),
-$ two nodes with a traffic demand between them must be on at least one common ring
+$ every pair of nodes with a traffic demand between them shares at least one common ring
 forAll i : int(1..n) . forAll j : int(1..n) . ((i != j /\ demand[i,j] > 0) -> ((sum k : int(1..r) . toInt(ring_config[k,i]) * toInt(ring_config[k,j])) >= 1))

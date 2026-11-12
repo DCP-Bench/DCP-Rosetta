@@ -1,13 +1,28 @@
 language ESSENCE' 1.0
-$ Finding celebrities: a celebrity is known by everybody at the party and knows only other celebrities; at least one celebrity is present.
-$ number of people at the party, taken from the instance graph
+$ finding_celebrities: an Essence' model from DCP Rosetta.
+$
+$ Given a list of people at a party and, for each person, the list of people they know at the party, find the celebrities at the party. A celebrity is a person that everybody at the party knows but that only knows other celebrities. At least one celebrity is present at the party. For each person, say whether they are a celebrity or not.
+$
+$ Save this file as model.eprime. Download `finding_celebrities.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/finding_celebrities.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `finding_celebrities_1.param.solution`:
+$   python dcp_convert_essence.py finding_celebrities.json
+$   savilerow model.eprime finding_celebrities_1.param -run-solver
+
+$ graph_dim1: the number of people at the party (derived from the data; the graph is square)
 given graph_dim1 : int
-$ graph[i,j] = 1 when person i knows person j
-given graph : matrix indexed by [int(1..graph_dim1), int(1..graph_dim1)] of int
-$ celebrities[i] is true when person i is a celebrity
+$ graph[i,j]: 1 when person i knows person j, indices 1-based
+given graph : matrix indexed by [int(1..graph_dim1), int(1..graph_dim1)] of int(0..1)
+
+$ celebrities[i]: person i is a celebrity
 find celebrities : matrix indexed by [int(1..graph_dim1)] of bool
+
+branching on [celebrities]
+
 such that
 $ at least one celebrity is present at the party
 exists i : int(1..graph_dim1) . celebrities[i],
-$ a person is a celebrity exactly when everybody else knows that person (first conjunct) and that person knows only celebrities (second conjunct)
-forAll c : int(1..graph_dim1) . (celebrities[c] <-> (forAll i : int(1..graph_dim1) . ((i != c) -> (graph[i,c] = 1)))) /\ (celebrities[c] <-> (forAll j : int(1..graph_dim1) . ((graph[c,j] = 1) -> celebrities[j])))
+$ a person is a celebrity exactly when everybody else at the party knows them and they know only other celebrities
+forAll i : int(1..graph_dim1) . (celebrities[i] <-> (forAll j : int(1..graph_dim1) . (j != i -> (graph[j,i] = 1 /\ (graph[i,j] = 1 -> celebrities[j])))))

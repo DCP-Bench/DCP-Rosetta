@@ -1,25 +1,40 @@
 language ESSENCE' 1.0
-$ Hidato: fill an n by n board with the numbers 1 to n*n, each once, so that consecutive numbers touch horizontally, vertically or diagonally, and the given clue numbers stay in their cells.
-given puzzle_dim1, puzzle_dim2 : int(1..)
-$ the board is square, so its side is the number of rows
-letting n = puzzle_dim1
-$ the clue numbers as given, 0 for an empty cell
-given puzzle : matrix indexed by [int(1..puzzle_dim1), int(1..puzzle_dim2)] of int(0..puzzle_dim1*puzzle_dim2)
-$ the squares that touch each other (horizontally, vertically or diagonally), each square numbered (row-1)*n+column
-letting Touch = [ [(r1-1)*n+c1, (r2-1)*n+c2] | r1 : int(1..n), c1 : int(1..n), r2 : int(1..n), c2 : int(1..n), (|r1-r2| <= 1) /\ (|c1-c2| <= 1) /\ ((r1 != r2) \/ (c1 != c2)) ]
-find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n*n)
-$ row and column of the square holding each number
-find rowOf : matrix indexed by [int(1..n*n)] of int(1..n)
-find colOf : matrix indexed by [int(1..n*n)] of int(1..n)
-$ the square of each number as one index from 1 to n*n
-find cell : matrix indexed by [int(1..n*n)] of int(1..n*n)
-branching on [cell]
+$ hidato: an Essence' model from DCP Rosetta.
+$
+$ Hidato puzzles start semi-filled with numbered tiles. Connect the numbers together to win.
+$ Consecutive numbers must touch horizontally, vertically, or diagonally. The numbers must be in
+$ increasing order. Fill in the empty cells, marked 0 in the given puzzle, with the numbers that
+$ complete the puzzle, so that the grid holds each number from 1 to the number of cells exactly
+$ once.
+$
+$ Save this file as model.eprime. Download `hidato.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `hidato_1.param.solution`:
+$   python dcp_convert_essence.py hidato.json
+$   savilerow model.eprime hidato_1.param -run-solver
+
+$ puzzle_dim1, puzzle_dim2: the number of rows and of columns of the grid (derived from the data)
+given puzzle_dim1, puzzle_dim2 : int
+letting nr = puzzle_dim1
+letting nc = puzzle_dim2
+$ nn: the number of cells; the numbers are 1 to nn
+letting nn = nr * nc
+$ puzzle[r,c]: the number given in row r, column c, or 0 for an empty cell (1-based)
+given puzzle : matrix indexed by [int(1..nr), int(1..nc)] of int(0..nn)
+$ x[r,c]: the number in row r, column c of the solved grid
+find x : matrix indexed by [int(1..nr), int(1..nc)] of int(1..nn)
+$ at_row[k], at_col[k]: the row and the column of the cell holding the number k
+find at_row : matrix indexed by [int(1..nn)] of int(1..nr)
+find at_col : matrix indexed by [int(1..nn)] of int(1..nc)
+
 such that
-$ every square holds a different number
-allDiff(cell),
-$ each number k sits in the square given by rowOf and colOf, and x shows it
-forAll k : int(1..n*n) . ((cell[k] = (rowOf[k]-1)*n + colOf[k]) /\ (x[rowOf[k], colOf[k]] = k)),
-$ a clue number sits in its clue square
-forAll r : int(1..n) . forAll c : int(1..n) . (puzzle[r,c] != 0 -> cell[puzzle[r,c]] = (r-1)*n + c),
-$ consecutive numbers k and k+1 are in touching squares
-forAll k : int(1..n*n-1) . table([cell[k], cell[k+1]], Touch)
+$ every number from 1 to nn is used exactly once
+allDiff([x[r,c] | r : int(1..nr), c : int(1..nc)]),
+$ the numbers given in the puzzle are kept
+forAll r : int(1..nr) . forAll c : int(1..nc) . (puzzle[r,c] > 0 -> x[r,c] = puzzle[r,c]),
+$ at_row and at_col say where each number is
+forAll k : int(1..nn) . x[at_row[k], at_col[k]] = k,
+$ the number k+1 touches the number k horizontally, vertically or diagonally
+forAll k : int(1..nn-1) . (at_row[k] - at_row[k+1] <= 1 /\ at_row[k+1] - at_row[k] <= 1 /\ at_col[k] - at_col[k+1] <= 1 /\ at_col[k+1] - at_col[k] <= 1)

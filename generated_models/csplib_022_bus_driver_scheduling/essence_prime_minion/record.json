@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791952239.6814096,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794648315.5468998,
     "problem_id": "csplib_022_bus_driver_scheduling",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005909322004299611,
-        "execution_wall_seconds": 3.81485075695673,
+        "checking_seconds": 0.007661951007321477,
+        "execution_wall_seconds": 9.971818767953664,
         "first_solution": {
           "x": [
             false,
@@ -57,6 +87,12 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.08400154113769531,
+            5
+          ]
+        ],
         "instance_hash": "1436f4bc5f716939225011d527d9bc346a0038d8f9299c479560d43e87428aff",
         "is_optimization": true,
         "oom_killed": false,
@@ -65,9 +101,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8963951240293682,
+        "reference_setup_seconds": 1.860231233004015,
         "runner_status": {
+          "build_seconds": 1.5848701000213623,
           "detail": "",
+          "main_seconds": 6.933031196997035,
+          "read_seconds": 0.0006968710222281516,
           "status": "complete",
           "type": "status"
         },
@@ -77,8 +116,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01997322600800544,
-        "execution_wall_seconds": 5.462727422011085,
+        "checking_seconds": 0.02738408697769046,
+        "execution_wall_seconds": 14.707302303984761,
         "first_solution": {
           "x": [
             false,
@@ -161,6 +200,12 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.12800240516662598,
+            7
+          ]
+        ],
         "instance_hash": "1a47e60e7bfaf86a055e4d365b9581fa5f78f7fdded763cfd302d4c86f406766",
         "is_optimization": true,
         "oom_killed": false,
@@ -169,9 +214,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7534074780414812,
+        "reference_setup_seconds": 1.332673854951281,
         "runner_status": {
+          "build_seconds": 2.382448434829712,
           "detail": "",
+          "main_seconds": 11.714224400988314,
+          "read_seconds": 0.008474436006508768,
           "status": "limit",
           "type": "status"
         },
@@ -181,8 +229,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.009089459956157953,
-        "execution_wall_seconds": 4.797360434022266,
+        "checking_seconds": 0.019599393010139465,
+        "execution_wall_seconds": 9.808425959025044,
         "first_solution": {
           "x": [
             false,
@@ -218,6 +266,12 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.04000091552734375,
+            5
+          ]
+        ],
         "instance_hash": "2d76d41f5de5574bdc51f0f928fe79bfd9fee015f4794ac7225775e3e34bfe48",
         "is_optimization": true,
         "oom_killed": false,
@@ -226,9 +280,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6852858430356719,
+        "reference_setup_seconds": 1.7108845710172318,
         "runner_status": {
+          "build_seconds": 1.425908088684082,
           "detail": "",
+          "main_seconds": 6.993061838962603,
+          "read_seconds": 0.002334838965907693,
           "status": "complete",
           "type": "status"
         },
@@ -238,8 +295,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.014499702025204897,
-        "execution_wall_seconds": 6.4221663330099545,
+        "checking_seconds": 0.05560873297508806,
+        "execution_wall_seconds": 13.787136951985303,
         "first_solution": {
           "x": [
             false,
@@ -305,6 +362,16 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.07600164413452148,
+            12
+          ],
+          [
+            0.07600164413452148,
+            8
+          ]
+        ],
         "instance_hash": "46dfb070315b0e5b6d6dbc85993f5e601feb45139ee2a377fa92b5029d32cf6d",
         "is_optimization": true,
         "oom_killed": false,
@@ -313,9 +380,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7994834990240633,
+        "reference_setup_seconds": 0.6505886749946512,
         "runner_status": {
+          "build_seconds": 2.7220044136047363,
           "detail": "",
+          "main_seconds": 11.2033071279875,
+          "read_seconds": 0.0035267570056021214,
           "status": "limit",
           "type": "status"
         },
@@ -325,8 +395,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.029399733990430832,
-        "execution_wall_seconds": 8.297606598993298,
+        "checking_seconds": 0.09135841502575204,
+        "execution_wall_seconds": 17.49705606495263,
         "first_solution": {
           "x": [
             false,
@@ -452,6 +522,24 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.18400335311889648,
+            13
+          ],
+          [
+            0.18400335311889648,
+            12
+          ],
+          [
+            0.18400335311889648,
+            11
+          ],
+          [
+            0.18400335311889648,
+            10
+          ]
+        ],
         "instance_hash": "7ca25bf221b3ea66e82993c027bafff2bb65528b70642ffceefbb7513023f481",
         "is_optimization": true,
         "oom_killed": false,
@@ -460,9 +548,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8108363170176744,
+        "reference_setup_seconds": 1.704896661976818,
         "runner_status": {
+          "build_seconds": 3.4106576442718506,
           "detail": "",
+          "main_seconds": 14.775045053975191,
+          "read_seconds": 0.0007274390081875026,
           "status": "limit",
           "type": "status"
         },
@@ -474,21 +565,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "e2f20550a02d48c9eb169a4d3b9eabf6b10e7e59fc4a05e9794a8d16beedec63",
+    "model_hash": "429259b47febb5532d8e3909ad2c7512517d10904cf0df50f1c687d49d518766",
     "problem_id": "csplib_022_bus_driver_scheduling",
     "reason": "accepted",
-    "reference_hash": "f3aba87d181c4b5bf9f32570018f457b07c586228de81268ff7692f993675580",
+    "reference_hash": "6917d3f36ad44f344db8414edb6cd78477bc3057cd2c65e855a47017ee0f6781",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -499,11 +590,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 33.24264863500139,
+    "total_wall_seconds": 74.86655640701065,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.eprime",

@@ -1,23 +1,38 @@
 language ESSENCE' 1.0
-$ Partition the numbers 1..n into two sets A and B of equal size, equal sums and equal sums of squares.
-given n : int(1..100)
-find A : matrix indexed by [int(1..n / 2)] of int(1..n)
-find B : matrix indexed by [int(1..n / 2)] of int(1..n)
+$ csplib_049_number_partitioning: an Essence' model from DCP Rosetta.
+$
+$ Find a partition of the numbers 1 to N into two sets A and B such that A and B have the same cardinality, the sum of the numbers in A equals the sum of the numbers in B, and the sum of the squares of the numbers in A equals the sum of the squares of the numbers in B. There is no solution for N < 8.
+$
+$ Save this file as model.eprime. Download `csplib_049_number_partitioning.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_049_number_partitioning_1.param.solution`:
+$   python dcp_convert_essence.py csplib_049_number_partitioning.json
+$   savilerow model.eprime csplib_049_number_partitioning_1.param -run-solver
+
+$ n: the numbers are 1 to n (N in the problem), n even
+given n : int(1..)
+$ half: the size of each set, n / 2
+letting half = n / 2
+
+$ A[i]: the i-th number of set A, the sets listed in increasing order (indices 1-based)
+find A : matrix indexed by [int(1..half)] of int(1..n)
+$ B[i]: the i-th number of set B, the sets listed in increasing order (indices 1-based)
+find B : matrix indexed by [int(1..half)] of int(1..n)
 
 branching on [A, B]
-
 such that
-$ every number 1..n is in exactly one of the two sets (all entries of A and B together are distinct)
-allDiff(cat(A, B)),
-$ the entries of A are listed in increasing order (sets have no order; this removes only permutations within A)
-forAll i : int(1..n / 2 - 1) . A[i] < A[i + 1],
-$ the entries of B are listed in increasing order (sets have no order; this removes only permutations within B)
-forAll i : int(1..n / 2 - 1) . B[i] < B[i + 1],
-$ implied: the total of 1..n is n(n+1)/2, so each set sums to half of it
-(sum i : int(1..n / 2) . A[i]) = (n * (n + 1) / 4),
-$ implied: the sum of squares of 1..n is n(n+1)(2n+1)/6, so each set has half of it
-(sum i : int(1..n / 2) . A[i] * A[i]) = (n * (n + 1) * (2 * n + 1) / 12),
+$ the numbers within each set are distinct
+allDiff(A),
+allDiff(B),
+$ no number is in both sets, so A and B together hold each of the numbers 1 to n exactly once
+forAll i : int(1..half) . forAll j : int(1..half) . (A[i] != B[j]),
+$ the two sets have the same cardinality (both have half elements, by the declaration)
 $ the sum of the numbers in A equals the sum of the numbers in B
-(sum i : int(1..n / 2) . A[i]) = (sum i : int(1..n / 2) . B[i]),
+(sum i : int(1..half) . A[i]) = (sum i : int(1..half) . B[i]),
 $ the sum of the squares of the numbers in A equals the sum of the squares of the numbers in B
-(sum i : int(1..n / 2) . A[i] * A[i]) = (sum i : int(1..n / 2) . B[i] * B[i])
+(sum i : int(1..half) . A[i] * A[i]) = (sum i : int(1..half) . B[i] * B[i]),
+$ symmetry breaking: a set has no order, so its numbers are listed in increasing order
+forAll i : int(1..half-1) . (A[i] < A[i+1]),
+forAll i : int(1..half-1) . (B[i] < B[i+1])

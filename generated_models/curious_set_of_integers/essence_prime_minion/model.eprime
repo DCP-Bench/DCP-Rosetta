@@ -1,14 +1,29 @@
 language ESSENCE' 1.0
-$ Find a fifth number (at least 0) such that the product of it with any of the numbers 1, 3, 8, 120 is one less than a perfect square.
+$ curious_set_of_integers: an Essence' model from DCP Rosetta.
+$
+$ The integers 1, 3, 8 and 120 form a set with a remarkable property: the product of any two of them is one less than a perfect square. Find a fifth number (at least 0) that can be added to the set without destroying this property.
+$
+$ Save this file as model.eprime. Download `curious_set_of_integers.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/curious_set_of_integers.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `curious_set_of_integers_1.param.solution`:
+$   python dcp_convert_essence.py curious_set_of_integers.json
+$   savilerow model.eprime curious_set_of_integers_1.param -run-solver
+
+$ n: the number of integers in the completed set (5: the four members 1, 3, 8, 120 plus the number sought)
 given n : int(1..)
+$ max_val: the largest value the fifth number may take (the search bound)
 given max_val : int(0..)
-$ the three given numbers of the set and 1 (the first four members of the set)
+
+$ the four members of the set given in the problem, indexed 1-based
 letting Members = [1, 3, 8, 120]
-$ the fifth number, searched in 0 to max_val
+$ number: the fifth number, between 0 and max_val
 find number : int(0..max_val)
-$ roots[i] is the square root of (Members[i] times number plus one)
-find roots : matrix indexed by [int(1..4)] of int(0..11*max_val)
+$ roots[i]: the square root of Members[i] times number plus one (indices 1-based; the set has n-1 known members);
+$ it is at most 11*max_val+1, since 120*number+1 <= (11*max_val+1)^2
+find roots : matrix indexed by [int(1..n-1)] of int(0..11*max_val+1)
 
 such that
-$ the product of the fifth number with 1, 3, 8 and 120 is one less than a perfect square
-forAll i : int(1..4) . (roots[i] * roots[i] = Members[i] * number + 1)
+$ the product of the fifth number with each member, plus one, is a perfect square
+forAll i : int(1..n-1) . (roots[i] * roots[i] = Members[i] * number + 1)

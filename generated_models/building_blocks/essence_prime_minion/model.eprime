@@ -1,0 +1,48 @@
+language ESSENCE' 1.0
+$ building_blocks: an Essence' model from DCP Rosetta.
+$
+$ Each of a number of alphabet blocks has a single letter of the alphabet on each of its sides. In all, the blocks contain every letter but Q and Z. By arranging the blocks in various ways, you can spell all of the words in a given list, using each block for at most one letter of a word, so the letters of a word are all on different blocks. Each letter is on exactly one block, and each block has the same given number of sides. Can you figure out how the letters are arranged on the blocks?
+$
+$ Save this file as model.eprime. Download `building_blocks.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/building_blocks.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `building_blocks_1.param.solution`:
+$   python dcp_convert_essence.py building_blocks.json
+$   savilerow model.eprime building_blocks_1.param -run-solver
+
+$ number of blocks
+given num_blocks : int
+$ number of sides on each block: a block holds at most this many letters
+given num_sides : int
+$ number of letters of the alphabet (each letter is one id, 1 to num_letters)
+given num_letters : int
+$ number of words to spell, derived from the data (the number of rows of words_str)
+given words_str_dim1 : int
+$ the most letters in any word, derived from the data (the width of words_str)
+given words_str_dim2 : int
+$ words_str[w, k]: the k-th letter of word w, as its position in the alphabet (1 to num_letters, 1-based);
+$ a word shorter than words_str_dim2 is padded with 0 after its letters
+given words_str : matrix indexed by [int(1..words_str_dim1), int(1..words_str_dim2)] of int
+$ words_str_len[w]: the number of letters of word w, derived from the data
+given words_str_len : matrix indexed by [int(1..words_str_dim1)] of int
+
+$ the last block number (blocks are numbered 0 to num_blocks - 1)
+letting last_block = num_blocks - 1
+
+$ block_of[l]: the block (0-based) that letter l is on; index 0 is a padding slot for words_str, not a letter
+find block_of : matrix indexed by [int(0..num_letters)] of int(0..last_block)
+$ dice[l]: the block (0-based) on which letter l of the alphabet is placed, for l = 1 to num_letters
+find dice : matrix indexed by [int(1..num_letters)] of int(0..last_block)
+
+branching on [dice]
+
+such that
+$ the padding slot 0 is not a letter, so it is fixed to block 0
+block_of[0] = 0,
+$ dice gives the block of each letter
+forAll l : int(1..num_letters) . dice[l] = block_of[l],
+$ each block has the same number of sides, so it holds at most num_sides letters
+forAll b : int(0..last_block) . (sum l : int(1..num_letters) . toInt(block_of[l] = b)) <= num_sides,
+$ the letters of a word are all on different blocks: each block holds at most one letter of each word
+forAll w : int(1..words_str_dim1) . forAll b : int(0..last_block) . (sum k : int(1..words_str_dim2) . toInt((k <= words_str_len[w]) /\ (block_of[words_str[w, k]] = b))) <= 1

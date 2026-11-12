@@ -1,18 +1,32 @@
 language ESSENCE' 1.0
-$ Flip the signs of whole rows and columns of the input matrix so that every row and every column sums to a non-negative number, minimising the overall sum.
+$ flip_rows_cols: an Essence' model from DCP Rosetta.
+$
+$ Given an array of positive and negative numbers, you may flip the sign of entire rows and columns, as many of them as you like. The goal is to make every row and every column sum to a positive number (or zero), and then to find the flips that give the smallest overall sum. Report the sign of each row and each column (-1 or 1) that minimises the overall sum.
+$
+$ Save this file as model.eprime. Download `flip_rows_cols.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `flip_rows_cols_1.param.solution`:
+$   python dcp_convert_essence.py flip_rows_cols.json
+$   savilerow model.eprime flip_rows_cols_1.param -run-solver
+
+$ input_matrix_dim1, input_matrix_dim2: the number of rows and of columns of the array (derived from the data)
 given input_matrix_dim1, input_matrix_dim2 : int
+$ input_matrix[i,j]: the number in row i and column j, indices 1-based
 given input_matrix : matrix indexed by [int(1..input_matrix_dim1), int(1..input_matrix_dim2)] of int
+
+$ row_signs[i]: the sign of row i after the flips, -1 or 1
 find row_signs : matrix indexed by [int(1..input_matrix_dim1)] of int(-1,1)
+$ col_signs[j]: the sign of column j after the flips, -1 or 1
 find col_signs : matrix indexed by [int(1..input_matrix_dim2)] of int(-1,1)
-find total : int(-100000000..100000000)
 
-branching on [col_signs, row_signs]
+branching on [row_signs, col_signs]
 
-minimising total
+minimising (sum i : int(1..input_matrix_dim1) . sum j : int(1..input_matrix_dim2) . row_signs[i] * col_signs[j] * input_matrix[i,j])
+
 such that
-$ each row of the flipped matrix must sum to a positive number or zero
+$ every row sums to a positive number or zero after the flips
 forAll i : int(1..input_matrix_dim1) . (sum j : int(1..input_matrix_dim2) . row_signs[i] * col_signs[j] * input_matrix[i,j]) >= 0,
-$ each column of the flipped matrix must sum to a positive number or zero
-forAll j : int(1..input_matrix_dim2) . (sum i : int(1..input_matrix_dim1) . row_signs[i] * col_signs[j] * input_matrix[i,j]) >= 0,
-$ the overall sum is the sum of all entries of the flipped matrix
-total = (sum i : int(1..input_matrix_dim1) . (sum j : int(1..input_matrix_dim2) . row_signs[i] * col_signs[j] * input_matrix[i,j]))
+$ every column sums to a positive number or zero after the flips
+forAll j : int(1..input_matrix_dim2) . (sum i : int(1..input_matrix_dim1) . row_signs[i] * col_signs[j] * input_matrix[i,j]) >= 0

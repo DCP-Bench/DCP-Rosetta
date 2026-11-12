@@ -1,18 +1,54 @@
 language ESSENCE' 1.0
-$ Fill the n x n grid with digits 1 to n so that each row and each column holds each digit once, and each cage yields its target under one of the four operations.
-given n : int(1..)
-given problem_1 : matrix indexed by [int(1..problem_1_dim1)] of int(0..)
-given problem_2 : matrix indexed by [int(1..problem_2_dim1), int(1..problem_2_dim2), int(1..problem_2_dim3)] of int(0..)
-given problem_2_len : matrix indexed by [int(1..problem_2_dim1)] of int(1..)
-find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n)
+$ kenken: an Essence' model from DCP Rosetta.
+$
+$ Fill an n by n grid with the digits 1 to n so that each row and each column contains each digit exactly once. The grid is divided into cages, each with a target number. The operation of each cage is not given: a cage of one cell holds its target; a cage of two cells may use addition, subtraction, multiplication or division (a division must be exact, so the larger digit divided by the smaller one gives the target); a larger cage uses either addition or multiplication. Digits may repeat within a cage.
+$
+$ Save this file as model.eprime. Download `kenken.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/kenken.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `kenken_1.param.solution`:
+$   python dcp_convert_essence.py kenken.json
+$   savilerow model.eprime kenken_1.param -run-solver
 
-branching on [x]
-heuristic sdf
+$ n: the size of the grid, which has n rows and n columns
+given n : int
+$ number of cages, derived from the data (the reader's JSON has no such field)
+given num_p : int
+$ problem_1[c]: the target of cage c, cages indexed from 1 (the data's index 0 is 1)
+given problem_1 : matrix indexed by [int(1..num_p)] of int
+$ problem_2_len[c]: the number of cells of cage c, derived from the data (the reader's JSON has no such field)
+given problem_2_len : matrix indexed by [int(1..num_p)] of int
+$ problem_2_dim2: the largest number of cells of any cage, derived from the data (the reader's JSON has no such field)
+given problem_2_dim2 : int
+$ problem_2[c,k,1] and problem_2[c,k,2]: row and column (1-based, as in the data) of cell k of cage c; cells beyond problem_2_len[c] are padding and hold 0
+given problem_2 : matrix indexed by [int(1..num_p), int(1..problem_2_dim2), int(1..2)] of int
+
+$ the largest product of digits that a cage can have: n to the power of the largest cage size
+letting largest_product = n ** problem_2_dim2
+
+$ x[r,c]: the digit in row r and column c of the grid
+find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n)
+$ cell_val[c,k]: the digit in cell k of cage c (padding cells are fixed to 1, so that a product ignores them)
+find cell_val : matrix indexed by [int(1..num_p), int(1..problem_2_dim2)] of int(1..n)
+$ cage_prod[c,k]: the product of the first k digits of cage c (cage_prod[c,0] is the empty product, 1)
+find cage_prod : matrix indexed by [int(1..num_p), int(0..problem_2_dim2)] of int(1..largest_product)
 
 such that
-$ each row contains each digit exactly once
-forAll r : int(1..n) . allDiff([x[r, c] | c : int(1..n)]),
-$ each column contains each digit exactly once
-forAll c : int(1..n) . allDiff([x[r, c] | r : int(1..n)]),
-$ each cage's cells, combined by addition or multiplication, give the cage target (a single cell must equal it)
-forAll c : int(1..problem_2_dim1) . ((sum([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])]) = problem_1[c]) \/ (product([x[problem_2[c, k, 1], problem_2[c, k, 2]] | k : int(1..problem_2_len[c])]) = problem_1[c]) \/ ((problem_2_len[c] = 2) /\ ((|x[problem_2[c, 1, 1], problem_2[c, 1, 2]] - x[problem_2[c, 2, 1], problem_2[c, 2, 2]]| = problem_1[c]) \/ (x[problem_2[c, 1, 1], problem_2[c, 1, 2]] = problem_1[c] * x[problem_2[c, 2, 1], problem_2[c, 2, 2]]) \/ (x[problem_2[c, 2, 1], problem_2[c, 2, 2]] = problem_1[c] * x[problem_2[c, 1, 1], problem_2[c, 1, 2]]))))
+$ each row of the grid contains each digit exactly once
+forAll r : int(1..n) . allDiff([x[r,c] | c : int(1..n)]),
+$ each column of the grid contains each digit exactly once
+forAll c : int(1..n) . allDiff([x[r,c] | r : int(1..n)]),
+$ each cell of each cage takes the digit of the grid cell it names
+forAll c : int(1..num_p) . forAll k : int(1..problem_2_dim2) . forAll r : int(1..n) . forAll col : int(1..n) . (((k <= problem_2_len[c]) /\ (problem_2[c,k,1] = r) /\ (problem_2[c,k,2] = col)) -> (cell_val[c,k] = x[r,col])),
+$ padding cells of a cage are fixed to 1
+forAll c : int(1..num_p) . forAll k : int(1..problem_2_dim2) . ((k > problem_2_len[c]) -> (cell_val[c,k] = 1)),
+$ a cage of one cell holds its target
+forAll c : int(1..num_p) . ((problem_2_len[c] = 1) -> (cell_val[c,1] = problem_1[c])),
+$ a cage of two cells: the two digits add to, multiply to, differ by, or divide exactly to give the target
+forAll c : int(1..num_p) . ((problem_2_len[c] = 2) -> (((cell_val[c,1] + cell_val[c,2]) = problem_1[c]) \/ ((cell_val[c,1] * cell_val[c,2]) = problem_1[c]) \/ ((cell_val[c,1] - cell_val[c,2]) = problem_1[c]) \/ ((cell_val[c,2] - cell_val[c,1]) = problem_1[c]) \/ (cell_val[c,1] = (problem_1[c] * cell_val[c,2])) \/ (cell_val[c,2] = (problem_1[c] * cell_val[c,1])))),
+$ the cumulative product: each cage's product includes its cells, the empty product is 1
+forAll c : int(1..num_p) . (cage_prod[c,0] = 1),
+forAll c : int(1..num_p) . forAll k : int(1..problem_2_dim2) . (cage_prod[c,k] = (cage_prod[c,k-1] * cell_val[c,k])),
+$ a larger cage: its digits add up to the target, or multiply to it
+forAll c : int(1..num_p) . ((problem_2_len[c] >= 3) -> (((sum k : int(1..problem_2_dim2) . toInt(k <= problem_2_len[c]) * cell_val[c,k]) = problem_1[c]) \/ (cage_prod[c,problem_2_dim2] = problem_1[c])))

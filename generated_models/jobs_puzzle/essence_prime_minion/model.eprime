@@ -1,16 +1,46 @@
 language ESSENCE' 1.0
-$ Four people (0 to 3) hold eight different jobs between them; decide which person holds each job, with every person holding exactly two jobs.
-find chef, guard, nurse, clerk, police_officer, teacher, actor, boxer : int(0..3)
+$ jobs_puzzle: an Essence' model from DCP Rosetta.
+$
+$ Four people hold eight different jobs, and each person holds exactly two of them. The jobs are chef, guard, nurse, clerk, police officer, teacher, actor and boxer. Clues: the nurse is not a teacher, police officer or clerk; the clerk is not the chef; person 0 is not the boxer; person 3 is not the teacher, police officer or nurse; person 0, the chef and the police officer went golfing together. Determine which person holds which two jobs.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/jobs_puzzle.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the person (0 to 3) who holds the chef job
+find chef : int(0..3)
+$ the person who holds the guard job
+find guard : int(0..3)
+$ the person who holds the nurse job
+find nurse : int(0..3)
+$ the person who holds the clerk job
+find clerk : int(0..3)
+$ the person who holds the police officer job
+find police_officer : int(0..3)
+$ the person who holds the teacher job
+find teacher : int(0..3)
+$ the person who holds the actor job
+find actor : int(0..3)
+$ the person who holds the boxer job
+find boxer : int(0..3)
+
 such that
-$ each person holds exactly two jobs
+$ each person holds exactly two of the eight jobs
 gcc([chef, guard, nurse, clerk, police_officer, teacher, actor, boxer], [0, 1, 2, 3], [2, 2, 2, 2]),
-$ clue 1: the nurse is not a teacher, police officer, or clerk
-nurse != teacher, nurse != police_officer, nurse != clerk,
+$ clue 1: the nurse is not a teacher, police officer or clerk
+nurse != teacher,
+nurse != police_officer,
+nurse != clerk,
 $ clue 2: the clerk is not the chef
 clerk != chef,
 $ clue 3: person 0 is not the boxer
 boxer != 0,
-$ clue 4: person 3 is not the teacher, police officer, or nurse
-teacher != 3, police_officer != 3, nurse != 3,
-$ clue 5: person 0, the chef, and the police officer went golfing together, so they are three different people
-chef != 0, police_officer != 0, chef != police_officer
+$ clue 4: person 3 is not the teacher, police officer or nurse
+teacher != 3,
+police_officer != 3,
+nurse != 3,
+$ clue 5: person 0, the chef and the police officer are three different people (they went golfing together)
+chef != 0,
+police_officer != 0,
+chef != police_officer

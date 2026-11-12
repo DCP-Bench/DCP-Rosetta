@@ -20,6 +20,10 @@ instance the same row count and the same longest row.
 budget. Savile Row's Minion path has no optimality flag, so the runner must give
 `execution_timeout` and emit no solution, not the best one found so far.
 
+`standalone_run` and `standalone_run_without_model` are what a reader does: run dcp_convert_essence.py on a list
+of instances (the dataset file's form), with the model beside it or without, then `savilerow model.eprime
+<param file> -run-solver` in the image, once per file, and read the solution file Savile Row writes.
+
 The isolation check drives the image directly under the evaluator's own
 container flags instead of through a submission, as minizinc_gecode does.
 """
@@ -227,7 +231,14 @@ MISSING = HEAD + "given absent : int(0..3)\nsuch that x + y = n\n"
 
 ISOLATION_PROBE = """import os, socket
 probe = socket.socket(); probe.settimeout(0.5)
-assert os.getuid() != 0, "container runs as root"
+def host_uid(uid):
+    for line in open("/proc/self/uid_map"):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
+assert os.getuid() != 0 or host_uid(0) != 0, "container has host root privilege"
 assert sorted(os.listdir("/input")) == ["model.eprime", "request.json"], "unexpected /input"
 assert not os.path.exists("/dataset"), "dataset is visible to the candidate"
 assert probe.connect_ex(("1.1.1.1", 443)) != 0, "network reachable"
@@ -237,6 +248,43 @@ except OSError:
     pass
 print("isolated")
 """
+
+
+STANDALONE_INSTANCES = [{"n": 2, "optimize": False, "name": "two"}, {"n": 3, "optimize": False, "name": "three"}]
+
+
+def standalone_run(temp, with_model):
+    """The reader's path: convert a list of instances with dcp_convert_essence.py (the model beside it or
+    not), then run Savile Row on each parameter file in the image."""
+    staging = temp / ("standalone_model" if with_model else "standalone_bare")
+    staging.mkdir()
+    (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+    if with_model:
+        (staging / "model.eprime").write_text(GOOD, encoding="utf-8")
+    code, out, err = run_process([sys.executable, str(Path(__file__).with_name("dcp_convert_essence.py")),
+                                  str(staging / "instances.json")], 60)
+    files = sorted(staging.glob("instances_*.param"))
+    if code or len(files) != len(STANDALONE_INSTANCES):
+        print(err[-400:], file=sys.stderr)
+        return False
+    (staging / "model.eprime").write_text(GOOD, encoding="utf-8")
+    staging.chmod(0o777)  # Savile Row writes its files beside the parameter file
+    for path in staging.iterdir():
+        path.chmod(0o666)
+    for path in files:
+        code, out, err = run_process([
+            "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+            "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+            "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+            "--mount", f"type=bind,source={staging},target=/w",
+            "--workdir=/w", "--env=HOME=/tmp", "--entrypoint", "sh",
+            integration(SOLVER)["image"], "-c",
+            f"/opt/savilerow/savilerow model.eprime {path.name} -run-solver"], 300)
+        solution = staging / f"{path.name}.solution"
+        if code or not solution.exists() or "letting x be" not in solution.read_text():
+            print(path.name, (err or out)[-400:], file=sys.stderr)
+            return False
+    return True
 
 
 def isolation(temp):
@@ -260,6 +308,23 @@ def isolation(temp):
         print(err[-400:], file=sys.stderr)
     return code == 0 and "isolated" in out
 
+
+
+STRING_INSTANCE = {"devices": ["A", "B"], "links": [["A", "B", 3], ["B", "A", 1]], "alphabet": "abc",
+                   "words": ["cab", "ba"], "day": ["2024-05-01", "2024-05-03"], "name": "demo"}
+STRING_IDS = {"devices": [1, 2], "links": [[1, 2, 3], [2, 1, 1]], "alphabet": [1, 2, 3], "words": [[3, 1, 2], [2, 1]],
+              "day": [19844, 19846], "name": "demo"}
+
+
+def string_ids_bound():
+    """The converter's id rules (a vocabulary and the strings that refer to it, words over an alphabet, ISO dates)
+    and its reshaping of rows that start with a scalar and continue with a varying number of cells."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import dcp_convert_essence
+    clues = dcp_convert_essence.param_file_all({"clues": [[16, [1, 1], [1, 2]], [24, [1, 5]]]})
+    return (dcp_convert_essence.string_ids(STRING_INSTANCE) == STRING_IDS
+            and "letting clues_1 = [16, 24]" in clues and "letting clues_2_len = [[2, 1]]" not in clues
+            and "letting clues_2_len = [2, 1]" in clues)
 
 
 def main():
@@ -347,6 +412,9 @@ def main():
         results["declared_string_refused"] &= "Instance field `name` holds a string value" in declared_string.get("detail", "")
         missing = check("declared_given_missing_refused", MISSING, expected={"execution_error"})
         results["declared_given_missing_refused"] &= "`absent` has no value" in missing.get("detail", "")
+        results["string_ids"] = string_ids_bound()
+        results["standalone_run"] = standalone_run(temp, True)
+        results["standalone_run_without_model"] = standalone_run(temp, False)
         results["isolation"] = isolation(temp)
 
     try:

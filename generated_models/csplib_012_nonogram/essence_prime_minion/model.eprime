@@ -1,28 +1,53 @@
 language ESSENCE' 1.0
-$ Shade squares of a rows x cols grid so that the runs of shaded squares in each row and column match the given clues.
-given rows, cols : int
-given row_rule_len, col_rule_len : int
-given row_rules : matrix indexed by [int(1..rows), int(1..row_rule_len)] of int(0..)
-given col_rules : matrix indexed by [int(1..cols), int(1..col_rule_len)] of int(0..)
+$ csplib_012_nonogram: an Essence' model from DCP Rosetta.
+$
+$ Nonograms are a puzzle: shade squares in a grid so that the blocks of consecutive shaded squares in each row and column match the clues given for that row and column. A clue lists the block lengths in order, so 3,1,2 means a block of 3, then a gap of unspecified size, a block of 1, another gap, and then a block of 2.
+$
+$ Save this file as model.eprime. Download `csplib_012_nonogram.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_012_nonogram.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_012_nonogram_1.param.solution`:
+$   python dcp_convert_essence.py csplib_012_nonogram.json
+$   savilerow model.eprime csplib_012_nonogram_1.param -run-solver
+
+$ rows: number of rows of the grid
+given rows : int
+$ cols: number of columns of the grid
+given cols : int
+$ row_rule_len: number of clue slots per row (the width of the clue table)
+given row_rule_len : int
+$ col_rule_len: number of clue slots per column (the width of the clue table)
+given col_rule_len : int
+$ row_rules[r,k]: the k-th block length of the clue for row r, indices 1-based; a 0 is padding (no block); the blocks stay in clue order, padding may sit at either end
+given row_rules : matrix indexed by [int(1..rows), int(1..row_rule_len)] of int(0..cols)
+$ col_rules[c,k]: the k-th block length of the clue for column c, indices 1-based; a 0 is padding (no block); the blocks stay in clue order, padding may sit at either end
+given col_rules : matrix indexed by [int(1..cols), int(1..col_rule_len)] of int(0..rows)
+
+$ board[r,c]: square in row r, column c is shaded (1) or unshaded (0)
 find board : matrix indexed by [int(1..rows), int(1..cols)] of int(0..1)
+$ row_start[r,k]: column where block k of row r starts (auxiliary; fixed to 1 for padding)
 find row_start : matrix indexed by [int(1..rows), int(1..row_rule_len)] of int(1..cols)
+$ col_start[c,k]: row where block k of column c starts (auxiliary; fixed to 1 for padding)
 find col_start : matrix indexed by [int(1..cols), int(1..col_rule_len)] of int(1..rows)
 
+$ search hint: branch on the block starts first, which fixes the shading quickly
 branching on [row_start, col_start]
 
 such that
-$ a clue of 0 is padding and has no block: its block start is fixed to 1
+$ a padding clue entry has no block, so its block start is fixed to 1 in every row
 forAll r : int(1..rows) . forAll k : int(1..row_rule_len) . ((row_rules[r,k] = 0) -> (row_start[r,k] = 1)),
+$ a padding clue entry has no block, so its block start is fixed to 1 in every column
 forAll c : int(1..cols) . forAll k : int(1..col_rule_len) . ((col_rules[c,k] = 0) -> (col_start[c,k] = 1)),
-$ the blocks of a row are in clue order and separated by at least one unshaded square
-forAll r : int(1..rows) . forAll k : int(1..row_rule_len-1) . ((row_rules[r,k] = 0 \/ row_rules[r,k+1] = 0 \/ (row_start[r,k] + row_rules[r,k] + 1 <= row_start[r,k+1]))),
-$ the blocks of a column are in clue order and separated by at least one unshaded square
-forAll c : int(1..cols) . forAll k : int(1..col_rule_len-1) . ((col_rules[c,k] = 0 \/ col_rules[c,k+1] = 0 \/ (col_start[c,k] + col_rules[c,k] + 1 <= col_start[c,k+1]))),
-$ a block must fit inside its row
+$ the blocks of each row appear in clue order, and two consecutive blocks are separated by at least one unshaded square
+forAll r : int(1..rows) . forAll k : int(1..row_rule_len-1) . ((row_rules[r,k] = 0) \/ (row_rules[r,k+1] = 0) \/ (row_start[r,k] + row_rules[r,k] + 1 <= row_start[r,k+1])),
+$ the blocks of each column appear in clue order, and two consecutive blocks are separated by at least one unshaded square
+forAll c : int(1..cols) . forAll k : int(1..col_rule_len-1) . ((col_rules[c,k] = 0) \/ (col_rules[c,k+1] = 0) \/ (col_start[c,k] + col_rules[c,k] + 1 <= col_start[c,k+1])),
+$ every block of a row lies inside the row
 forAll r : int(1..rows) . forAll k : int(1..row_rule_len) . (row_start[r,k] + row_rules[r,k] - 1 <= cols),
-$ a block must fit inside its column
+$ every block of a column lies inside the column
 forAll c : int(1..cols) . forAll k : int(1..col_rule_len) . (col_start[c,k] + col_rules[c,k] - 1 <= rows),
-$ a square is shaded exactly when some row block covers it
+$ a square is shaded exactly when some block of its row covers it
 forAll r : int(1..rows) . forAll c : int(1..cols) . (board[r,c] = 1 <-> (exists k : int(1..row_rule_len) . ((row_start[r,k] <= c) /\ (c < row_start[r,k] + row_rules[r,k])))),
-$ a square is shaded exactly when some column block covers it
+$ a square is shaded exactly when some block of its column covers it
 forAll c : int(1..cols) . forAll r : int(1..rows) . (board[r,c] = 1 <-> (exists k : int(1..col_rule_len) . ((col_start[c,k] <= r) /\ (r < col_start[c,k] + col_rules[c,k]))))

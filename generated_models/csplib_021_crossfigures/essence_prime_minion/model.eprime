@@ -1,66 +1,37 @@
 language ESSENCE' 1.0
-$ Fill the 9x9 crossfigure grid with digits so that every clued Across and Down answer equals its clue, printing the grid with 0 for black squares.
+$ csplib_021_crossfigures: an Essence' model from DCP Rosetta.
+$
+$ Crossfigures are the numerical equivalent of crosswords. Fill the 9 by 9 grid with digits, with the black squares (X) left empty, so that every numbered Across and Down answer equals its clue. The grid, with the clue numbers in their squares and _ for an unnumbered white square, is:
+$   1  2  _  3  X  4  _  5  6
+$   7  _  X  8  _  _  X  9  _
+$   _  X  10 _  X  11 12 X  _
+$   13 14 _  _  X  15 _  16 _
+$   X  _  X  X  X  X  X  _  X
+$   17 _  18 19 X  20 21 _  22
+$   _  X  23 _  X  24 _  X  _
+$   25 26 X  27 _  _  X  28 _
+$   29 _  _  _  X  30 _  _  _
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ M[r,c]: the digit in row r, column c of the grid, indices 1-based; 0 for a black square
 find M : matrix indexed by [int(1..9), int(1..9)] of int(0..9)
+$ the Across answers (auxiliary), named by their clue numbers: across1 is the answer to 1 Across, read left to right from its squares
 find across1, across4, across7, across8, across9, across10, across11, across13, across15, across17, across20, across23, across24, across25, across27, across28, across29, across30 : int(0..9999)
+$ the Down answers (auxiliary), named by their clue numbers: down1 is the answer to 1 Down, read top to bottom from its squares
 find down1, down2, down3, down4, down5, down6, down10, down12, down14, down16, down17, down18, down19, down20, down21, down22, down26, down28 : int(0..9999)
 
 branching on [M]
 
 such that
-$ black squares hold 0, the empty or invalid cell value
-M[1,5] = 0,
-M[2,3] = 0,
-M[2,7] = 0,
-M[3,2] = 0,
-M[3,5] = 0,
-M[3,8] = 0,
-M[4,5] = 0,
-M[5,1] = 0,
-M[5,3] = 0,
-M[5,4] = 0,
-M[5,5] = 0,
-M[5,6] = 0,
-M[5,7] = 0,
-M[5,9] = 0,
-M[6,5] = 0,
-M[7,2] = 0,
-M[7,5] = 0,
-M[7,8] = 0,
-M[8,3] = 0,
-M[8,7] = 0,
-M[9,5] = 0,
-$ a number has no leading zero: the first square of every Across and Down answer holds a nonzero digit
-M[1,1] != 0,
-M[1,2] != 0,
-M[1,4] != 0,
-M[1,6] != 0,
-M[1,8] != 0,
-M[1,9] != 0,
-M[2,1] != 0,
-M[2,4] != 0,
-M[2,8] != 0,
-M[3,3] != 0,
-M[3,6] != 0,
-M[3,7] != 0,
-M[4,1] != 0,
-M[4,2] != 0,
-M[4,6] != 0,
-M[4,8] != 0,
-M[6,1] != 0,
-M[6,3] != 0,
-M[6,4] != 0,
-M[6,6] != 0,
-M[6,7] != 0,
-M[6,9] != 0,
-M[7,3] != 0,
-M[7,6] != 0,
-M[8,1] != 0,
-M[8,2] != 0,
-M[8,4] != 0,
-M[8,8] != 0,
-M[9,1] != 0,
-M[9,6] != 0,
-$ each Across answer is the number read from its squares, left to right
+$ the black squares hold 0
+M[1,5] = 0, M[2,3] = 0, M[2,7] = 0, M[3,2] = 0, M[3,5] = 0, M[3,8] = 0, M[4,5] = 0, M[5,1] = 0, M[5,3] = 0, M[5,4] = 0, M[5,5] = 0, M[5,6] = 0, M[5,7] = 0, M[5,9] = 0, M[6,5] = 0, M[7,2] = 0, M[7,5] = 0, M[7,8] = 0, M[8,3] = 0, M[8,7] = 0, M[9,5] = 0,
+$ convention the statement does not spell out: no answer starts with a zero, so the first square of every Across and Down answer holds a nonzero digit (it also keeps 23 Across from being read as 01, which the prime test would accept)
+M[1,1] != 0, M[1,2] != 0, M[1,4] != 0, M[1,6] != 0, M[1,8] != 0, M[1,9] != 0, M[2,1] != 0, M[2,4] != 0, M[2,8] != 0, M[3,3] != 0, M[3,6] != 0, M[3,7] != 0, M[4,1] != 0, M[4,2] != 0, M[4,6] != 0, M[4,8] != 0, M[6,1] != 0, M[6,3] != 0, M[6,4] != 0, M[6,6] != 0, M[6,7] != 0, M[6,9] != 0, M[7,3] != 0, M[7,6] != 0, M[8,1] != 0, M[8,2] != 0, M[8,4] != 0, M[8,8] != 0, M[9,1] != 0, M[9,6] != 0,
+$ each Across answer is the number read from its squares
 across1 = 1000 * M[1,1] + 100 * M[1,2] + 10 * M[1,3] + M[1,4],
 across4 = 1000 * M[1,6] + 100 * M[1,7] + 10 * M[1,8] + M[1,9],
 across7 = 10 * M[2,1] + M[2,2],
@@ -79,7 +50,7 @@ across27 = 100 * M[8,4] + 10 * M[8,5] + M[8,6],
 across28 = 10 * M[8,8] + M[8,9],
 across29 = 1000 * M[9,1] + 100 * M[9,2] + 10 * M[9,3] + M[9,4],
 across30 = 1000 * M[9,6] + 100 * M[9,7] + 10 * M[9,8] + M[9,9],
-$ each Down answer is the number read from its squares, top to bottom
+$ each Down answer is the number read from its squares
 down1 = 1000 * M[1,1] + 100 * M[2,1] + 10 * M[3,1] + M[4,1],
 down2 = 10 * M[1,2] + M[2,2],
 down3 = 1000 * M[1,4] + 100 * M[2,4] + 10 * M[3,4] + M[4,4],
@@ -108,7 +79,7 @@ $ 8 Across: 6 down divided by sixteen (an exact quotient)
 down6 = 16 * across8,
 $ 9 Across: 2 down minus eighteen
 across9 = down2 - 18,
-$ 10 Across: dozen in six gross, i.e. 6 * 144 / 12 = 72 dozens
+$ 10 Across: dozen in six gross, that is 6 * 144 / 12 = 72
 across10 = 72,
 $ 11 Across: 5 down minus seventy
 across11 = down5 - 70,
@@ -119,11 +90,11 @@ across15 = down6 - 350,
 $ 17 Across: 25 across times 23 across
 across17 = across25 * across23,
 $ 20 Across: a square number
-exists k : int(1..99) . k * k = across20,
-$ 23 Across: a prime number
-forAll k : int(2..97) . (k < across23) -> across23 % k != 0,
+exists k : int(1..99) . (k * k = across20),
+$ 23 Across: a prime number (no divisor from 2 up to itself)
+forAll k : int(2..97) . ((k < across23) -> (across23 % k != 0)),
 $ 24 Across: a square number
-exists k : int(1..9) . k * k = across24,
+exists k : int(1..9) . (k * k = across24),
 $ 25 Across: 20 across divided by seventeen (an exact quotient)
 across20 = 17 * across25,
 $ 27 Across: 6 down divided by four (an exact quotient)
