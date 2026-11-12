@@ -1,24 +1,48 @@
-vocabulary {
-    type Range_n <: Int
-    type Digit := {0..9}
-    type Cr <: Int
-    Cr_size: () -> Int
-    n: () -> Int
-    d: Range_n -> Digit
-    w: Range_n -> Int
-    c: () -> Int
-    number: () -> Int
+// dudeney_numbers: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A Dudeney number is a positive integer that is a perfect cube such that the sum of its digits is equal to the cube
+// root of the number. Find a Dudeney number that is also larger than 1 and has at most n digits.
+//
+// Save this file as model.idp. Download `dudeney_numbers.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/dudeney_numbers.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py dudeney_numbers.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_n <: Int                // the digit positions 1..n, position 1 being the rightmost digit
+    type Digit := {0..9}               // a decimal digit
+    n: () -> Int                       // the maximum number of digits
+    digit: Range_n -> Digit            // digit(i): the digit at position i of the number
+    place: Range_n -> Int              // place(i): the value of position i, which is 10 to the power i - 1
+    part: Range_n -> Int               // part(i): the digit at position i times its place value
+    root: () -> Int                    // the sum of the digits of the number, which must equal its cube root
+    number: () -> Int                  // the Dudeney number
 }
-theory {
-    Cr_size() = 9 * n().
-    // positional weights 1, 10, 100, ...
-    w(1) = 1.
-    ! i in Range_n: i > 1 => w(i) = 10 * w(i - 1).
-    // the number is built from its digits (at most n digits)
-    number() = sum{{ (d(i) * w(i)) | i in Range_n }}.
-    // the sum of its digits is the cube root of the number
-    c() = sum{{ d(i) | i in Range_n }}.
-    // a perfect cube, larger than 1
-    ! k in Cr: c() = k => number() = k * k * k.
+
+theory T:V {
+    // the value of the rightmost position is 1
+    place(1) = 1.
+
+    // the value of each position is ten times the value of the position to its right
+    ! i in Range_n: i ~= 1 => place(i) = 10 * place(i - 1).
+
+    // the number is the sum of its digits, each multiplied by the value of its position
+    ! i in Range_n: part(i) = digit(i) * place(i).
+    number() = sum{{ part(i) | i in Range_n }}.
+
+    // the cube root of the number is the sum of its digits
+    root() = sum{{ digit(i) | i in Range_n }}.
+
+    // the number is a perfect cube: it is its cube root multiplied by itself twice
+    number() = root() * root() * root().
+
+    // the number is larger than 1
     number() > 1.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

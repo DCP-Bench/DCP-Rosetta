@@ -1,18 +1,34 @@
-// Five brigands: five Spanish brigands (Alfonso A, Benito B, Carlos C, Diego D, Esteban E) share doubloons.
-vocabulary {
-    // each brigand has at least one and at most 200 doubloons (no brigand had less than one)
-    type Doubloons := {1..200}
-    // declared outputs: the doubloons held by each brigand
-    A: () -> Doubloons
-    B: () -> Doubloons
-    C: () -> Doubloons
-    D: () -> Doubloons
-    E: () -> Doubloons
+// five_brigands: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The five Spanish brigands, Alfonso, Benito, Carlos, Diego and Esteban, counted their spoils after a raid and found that
+// they had captured altogether exactly 200 doubloons. If Alfonso had twelve times as much, Benito three times as much,
+// Carlos the same amount, Diego half as much and Esteban one-third as much, they would still have altogether just 200
+// doubloons. How many doubloons did each have? No brigand had less than one doubloon.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/five_brigands.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+
+vocabulary V {
+    A: () -> Int                       // the doubloons Alfonso had
+    B: () -> Int                       // the doubloons Benito had
+    C: () -> Int                       // the doubloons Carlos had
+    D: () -> Int                       // the doubloons Diego had
+    E: () -> Int                       // the doubloons Esteban had
 }
-theory {
-    // they had altogether exactly 200 doubloons
+
+theory T:V {
+    // the five brigands together had exactly 200 doubloons
     A() + B() + C() + D() + E() = 200.
-    // if Alfonso had twelve times as much, Benito three times, Carlos the same, Diego half and Esteban one-third,
-    // they would still have altogether 200 doubloons; multiplied by 6 so that every term is an integer
+
+    // with the amounts changed as described (twelve, three, one, one half and one third times the amounts),
+    // they would still have 200 doubloons; this is written multiplied by 6 to keep the numbers whole
     72 * A() + 18 * B() + 6 * C() + 3 * D() + 2 * E() = 1200.
+
+    // no brigand had less than one doubloon
+    A() >= 1 & B() >= 1 & C() >= 1 & D() >= 1 & E() >= 1.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

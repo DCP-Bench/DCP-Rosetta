@@ -1,32 +1,39 @@
-// Hadamard matrix Legendre pairs: find two sequences A, B of l entries in {-1, +1}, l odd,
-// whose periodic autocorrelations sum to -2 at every shift s = 1..m, with m = (l-1)/2.
-vocabulary {
-    l: () -> Int
-    // the positions 1..l of each sequence
-    type Range_l <: Int
-    // the shifts 1..l (only shifts 1..m are constrained)
-    // the entries take values -1 or +1
-    type Sgn := {-1, 1}
-    // a_1..a_l
-    a: Range_l -> Sgn
-    // b_1..b_l
-    b: Range_l -> Sgn
-    // wrap(i, s) is i + s taken mod l, in 1..l
-    wrap: Range_l * Range_l -> Range_l
+// csplib_084_hadamard_matrix: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// For every odd positive integer l (and m = (l - 1) / 2), find two sequences a_1, ..., a_l and b_1, ..., b_l with values
+// -1 or 1 (the 2cc Hadamard matrix Legendre pairs problem), such that:
+// - for each shift s = 1, ..., m, the periodic autocorrelation of a plus that of b at shift s equals -2, where
+//   PAF(A, s) = sum over i of a_i a_(i+s), the index i+s taken modulo l;
+// - the entries of a sum to 1, and the entries of b sum to 1.
+//
+// Save this file as model.idp. Download `csplib_084_hadamard_matrix.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_084_hadamard_matrix.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_084_hadamard_matrix.json
+//   idp-engine model_1.idp
+vocabulary V {
+    l: () -> Int                       // the odd length l of the sequences
+    type Range_l <: Int                // the positions 1..l of the sequences
+    type Sign := {-1..1}               // the values of the entries; only -1 and 1 are allowed
+    a: Range_l -> Sign                 // a(i): entry i of sequence A, 1-based (declared output)
+    b: Range_l -> Sign                 // b(i): entry i of sequence B, 1-based (declared output)
 }
-theory {
-    // periodic index: i + s, wrapped around when it exceeds l
-    ! i in Range_l, s in Range_l: wrap(i, s) = (if i + s =< l() then i + s else i + s - l()).
+theory T:V {
+    // every entry of both sequences is -1 or 1
+    ! i in Range_l: a(i) ~= 0 & b(i) ~= 0.
 
-    // a product of two +-1 entries is +1 when they are equal and -1 when they differ,
-    // so PAF(A, s) = (number of equal pairs) - (number of different pairs) = 2 * (number of equal pairs) - l.
-    // PAF(A, s) + PAF(B, s) = -2 for every shift s = 1..m, with m = (l-1)/2, becomes
-    // (equal pairs in A) + (equal pairs in B) = l - 1 for every s with 2s + 1 =< l.
-    ! s in Range_l: 2 * s + 1 =< l() => #{i in Range_l: a(i) = a(wrap(i, s))} + #{i in Range_l: b(i) = b(wrap(i, s))} = l() - 1.
+    // for each shift s from 1 to m = (l - 1) / 2, the periodic autocorrelations of A and B at shift s add up to -2
+    // (a product of two entries is 1 when they are equal and -1 when they differ)
+    ! s in Range_l: s =< (l() - 1) / 2 => sum{{ (if a(i) = a(i + s) then 1 else -1) | i in Range_l: i + s =< l() }} + sum{{ (if a(i) = a(i + s - l()) then 1 else -1) | i in Range_l: i + s > l() }} + sum{{ (if b(i) = b(i + s) then 1 else -1) | i in Range_l: i + s =< l() }} + sum{{ (if b(i) = b(i + s - l()) then 1 else -1) | i in Range_l: i + s > l() }} = -2.
 
-    // the linear constraint on A: a_1 + ... + a_l = 1
+    // the entries of A sum to 1
     sum{{ a(i) | i in Range_l }} = 1.
 
-    // the linear constraint on B: b_1 + ... + b_l = 1
+    // the entries of B sum to 1
     sum{{ b(i) | i in Range_l }} = 1.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

@@ -1,22 +1,36 @@
-// A company is considering a number of investments; how to maximize the NPV obtained from the investments?
-vocabulary {
-    type I <: Int                       // the investments, sized from the NPV list
-    budget: () -> Int                   // a total budget available for investment
-    npv: I -> Int                       // each investment will yield a net present value (NPV)
-    cash_flow: I -> Int                 // each investment requires a certain cash outflow at the present time
-    x: I -> Bool                        // declared output: whether each investment is chosen
-    z: () -> Int                        // declared output: the total NPV
-    maximize: () -> Int                 // objective: maximize the NPV obtained
+// capital_budget: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A company is considering a number of investments. Each investment yields a net present value (NPV) and requires a
+// certain cash outflow at the present time. There is a total budget available for investment. Choose the investments
+// so that the total cash outflow fits within the budget and the total NPV obtained is as large as possible.
+//
+// Save this file as model.idp. Download `capital_budget.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/capital_budget.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py capital_budget.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type I <: Int                      // the investments, numbered from 0, sized from npv
+    budget: () -> Int                  // the total budget available for investment
+    npv: I -> Int                      // npv(i): the net present value of investment i
+    cash_flow: I -> Int                // cash_flow(i): the cash outflow at the present time required by investment i
+    x: I -> Bool                       // x(i): investment i is chosen (the output)
+    z: () -> Int                       // the total net present value of the investments chosen (the output)
+    maximize: () -> Int                // the total net present value to maximize
 }
-theory {
-    // whether each investment is chosen is a yes/no decision (x)
 
-    // the total cash outflow of the chosen investments must fit within the total budget available for investment
+theory T:V {
+    // the cash outflows of the investments chosen do not exceed the budget
     sum{{ cash_flow(i) | i in I: x(i) }} =< budget().
-
-    // the total NPV (z) is the sum of the NPVs of the chosen investments
+    // the total net present value is the net present value of the investments chosen
     z() = sum{{ npv(i) | i in I: x(i) }}.
-
-    // maximize the NPV obtained from the investments
+    // the total net present value obtained is to be maximized
     maximize() = z().
+}
+
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

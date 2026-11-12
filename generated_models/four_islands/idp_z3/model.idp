@@ -1,59 +1,60 @@
-// Four islands (Pwana, Quero, Rayou, Skern) on a 2x2 map with bridges, each with a different
-// primary export and tourist attraction: find the map position of each island, export and attraction.
-
-vocabulary {
-    // Map positions: A=0 (north-west), B=1 (north-east), C=2 (south-west), D=3 (south-east).
-    type Pos := {0..3}
-    // The four islands: Pwana=0, Quero=1, Rayou=2, Skern=3.
-    type Isl := {0..3}
-    // The four exports: alabaster=0, bananas=1, coconuts=2, durian fruit=3.
-    type Exp := {0..3}
-    // The four attractions: resort hotel=0, ice skating rink=1, jai alai stadium=2, koala preserve=3.
-    type Att := {0..3}
-
-    // The map position of each island, export and attraction.
-    island: Isl -> Pos
-    export: Exp -> Pos
-    attraction: Att -> Pos
-
-    // Relations between map positions.
-    dueSouth: Pos * Pos -> Bool
-    dueWest: Pos * Pos -> Bool
-    northSouthBridge: Pos * Pos -> Bool
-    eastWestBridge: Pos * Pos -> Bool
-    bridge: Pos * Pos -> Bool
+// four_islands: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A tiny nation in the South Pacific contains four islands connected by bridges. Each island (Pwana, Quero, Rayou and
+// Skern) has a different primary export (alabaster, bananas, coconuts and durian fruit) and a different tourist
+// attraction (resort hotel, ice skating rink, jai alai stadium and koala preserve). The map has the islands A, B, C and D
+// in a square: A and B on the top row, C and D on the bottom row, A above C and B above D. A is connected to B and to C,
+// B to D, and C to D by bridges. The clues are:
+// 1. The island with the koala preserve is due south of Pwana.
+// 2. The island exporting alabaster is due west of Quero.
+// 3. The island with the resort hotel is due east of the island exporting durian fruit.
+// 4. Skern and the island with the jai alai stadium are connected by a north-south bridge.
+// 5. Rayou and the island exporting bananas are connected by an east-west bridge.
+// 6. The islands with the ice skating rink and the jai alai stadium are not connected by a bridge.
+//
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/four_islands.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Pos <: Int                    // the map positions A, B, C, D, numbered 0, 1, 2, 3
+    type Name <: Int                   // the islands, numbered 0 Pwana, 1 Quero, 2 Rayou, 3 Skern
+    type Export <: Int                 // the exports, numbered 0 alabaster, 1 bananas, 2 coconuts, 3 durian fruit
+    type Attr <: Int                   // the attractions, numbered 0 resort hotel, 1 ice skating rink, 2 jai alai stadium, 3 koala preserve
+    row: Pos -> Int                    // row(p): 0 for the top row (A, B), 1 for the bottom row (C, D)
+    col: Pos -> Int                    // col(p): 0 for the left column (A, C), 1 for the right column (B, D)
+    island: Name -> Pos                // island(n): the map position of island n
+    export: Export -> Pos              // export(e): the map position of the island that exports e
+    attraction: Attr -> Pos            // attraction(a): the map position of the island with attraction a
 }
-
-theory {
-    // The map: x is due south of y, and x is due west of y, for the positions A=0, B=1, C=2, D=3.
-    { dueSouth(2, 0). dueSouth(3, 1). }
-    { dueWest(0, 1). dueWest(2, 3). }
-
-    // The bridges: A-B and C-D run east-west, A-C and B-D run north-south.
-    { northSouthBridge(0, 2). northSouthBridge(2, 0). northSouthBridge(1, 3). northSouthBridge(3, 1). }
-    { eastWestBridge(0, 1). eastWestBridge(1, 0). eastWestBridge(2, 3). eastWestBridge(3, 2). }
-    { ! x, y in Pos: bridge(x, y) <- northSouthBridge(x, y) | eastWestBridge(x, y). }
-
-    // Each island is on a different position, and each export and attraction is on a different position.
-    ! i, j in Isl: i ~= j => island(i) ~= island(j).
-    ! i, j in Exp: i ~= j => export(i) ~= export(j).
-    ! i, j in Att: i ~= j => attraction(i) ~= attraction(j).
-
-    // 1. The island noted for its koala preserve is due south of Pwana.
-    dueSouth(attraction(3), island(0)).
-
-    // 2. The island with the largest alabaster quarry is due west of Quero.
-    dueWest(export(0), island(1)).
-
-    // 3. The island with the resort hotel is due east of the one that exports durian fruit.
-    dueWest(export(3), attraction(0)).
-
-    // 4. Skern and the island with the jai alai stadium are connected by a north-south bridge.
-    northSouthBridge(island(3), attraction(2)).
-
-    // 5. Rayou and the island that exports bananas are connected by an east-west bridge.
-    eastWestBridge(island(2), export(1)).
-
-    // 6. The islands noted for the ice skating rink and for the jai alai stadium are not connected by a bridge.
-    ~bridge(attraction(1), attraction(2)).
+structure D:V {
+    Pos := {0..3}.
+    Name := {0..3}.
+    Export := {0..3}.
+    Attr := {0..3}.
+    row := { 0->0, 1->0, 2->1, 3->1 }.
+    col := { 0->0, 1->1, 2->0, 3->1 }.
+}
+theory T:V {
+    // each island is at a different map position
+    ! n1 in Name: ! n2 in Name: n1 ~= n2 => island(n1) ~= island(n2).
+    // each export is on a different island
+    ! e1 in Export: ! e2 in Export: e1 ~= e2 => export(e1) ~= export(e2).
+    // each attraction is on a different island
+    ! a1 in Attr: ! a2 in Attr: a1 ~= a2 => attraction(a1) ~= attraction(a2).
+    // 1. the island with the koala preserve is due south of Pwana
+    col(attraction(3)) = col(island(0)) & row(attraction(3)) > row(island(0)).
+    // 2. the island exporting alabaster is due west of Quero
+    row(export(0)) = row(island(1)) & col(export(0)) < col(island(1)).
+    // 3. the island with the resort hotel is due east of the island exporting durian fruit
+    row(attraction(0)) = row(export(3)) & col(attraction(0)) > col(export(3)).
+    // 4. Skern and the island with the jai alai stadium are connected by a north-south bridge
+    col(island(3)) = col(attraction(2)) & row(island(3)) ~= row(attraction(2)).
+    // 5. Rayou and the island exporting bananas are connected by an east-west bridge
+    row(island(2)) = row(export(1)) & col(island(2)) ~= col(export(1)).
+    // 6. the islands with the ice skating rink and the jai alai stadium are not connected by a bridge
+    row(attraction(1)) ~= row(attraction(2)) & col(attraction(1)) ~= col(attraction(2)).
+}
+procedure main() {
+    pretty_print(model_expand(T, D, max=1))
 }

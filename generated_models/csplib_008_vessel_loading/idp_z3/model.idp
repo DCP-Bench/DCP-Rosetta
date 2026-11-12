@@ -1,32 +1,57 @@
-vocabulary {
-    type I <: Int
-    type C <: Int
-    deck_length: () -> Int
-    deck_width: () -> Int
-    length: I -> Int
-    width: I -> Int
-    classes: I -> Int
-    separation: C * C -> Int
-    left: I -> Int
-    right: I -> Int
-    top: I -> Int
-    bottom: I -> Int
-    rot: I -> Bool
-    sep: I * I -> Int
+// csplib_008_vessel_loading: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Supply vessels transport containers from site to site. The deck area is rectangular. Containers are cuboid, and are
+// laid out in a single layer. All containers are positioned parallel to the sides of the deck. The contents of the
+// containers determine their class. Certain classes of containers are constrained to be separated by minimum distances
+// either along the deck or across the deck. A container occupies the area from left to right across the width of the
+// deck, and from bottom to top along its length, with right - left and top - bottom being its width and length, in that
+// order or rotated by 90 degrees. All of these lie between 0 and the deck's size in that direction. Two containers may
+// touch. separation[a-1][b-1] is the distance that containers of classes a and b must keep in at least one of the two
+// directions. Decide whether the given containers can be positioned on the given deck, without overlapping, and without
+// violating any of the separation constraints.
+//
+// Save this file as model.idp. Download `csplib_008_vessel_loading.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_008_vessel_loading.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Cont <: Int                          // the containers, numbered from 0
+    type Cls <: Int                           // the container classes, numbered from 0 (sized from the separation table)
+    deck_width: () -> Int                     // the extent of the deck across its width
+    deck_length: () -> Int                    // the extent of the deck along its length
+    width: Cont -> Int                        // width(c): the width of container c
+    length: Cont -> Int                       // length(c): the length of container c
+    classes: Cont -> Int                      // classes(c): the class of container c, numbered from 1
+    separation: Cls * Cls -> Int              // separation(a, b): the distance classes a+1 and b+1 must keep (0-based indices)
+    need: Cont * Cont -> Int                  // need(c, d): the distance containers c and d must keep (auxiliary)
+    left: Cont -> Int                         // left(c): the position across the deck of the left side of container c
+    right: Cont -> Int                        // right(c): the position across the deck of the right side of container c
+    bottom: Cont -> Int                       // bottom(c): the position along the deck of the bottom side of container c
+    top: Cont -> Int                          // top(c): the position along the deck of the top side of container c
 }
-theory {
-    // containers are positioned parallel to the sides of the deck (may be turned by 90 degrees)
-    ! i in I: 0 =< left(i) & left(i) =< deck_width().
-    ! i in I: 0 =< right(i) & right(i) =< deck_width().
-    ! i in I: 0 =< bottom(i) & bottom(i) =< deck_length().
-    ! i in I: 0 =< top(i) & top(i) =< deck_length().
-    ! i in I: ~rot(i) => right(i) - left(i) = width(i) & top(i) - bottom(i) = length(i).
-    ! i in I: rot(i) => right(i) - left(i) = length(i) & top(i) - bottom(i) = width(i).
 
-    // minimum separation between the classes of two containers
-    ! i, j in I: sep(i, j) = sum{{ separation(a, b) | a, b in C: classes(i) = a + 1 & classes(j) = b + 1 }}.
+theory T:V {
+    // each container lies on the deck
+    ! c in Cont: 0 =< left(c) & right(c) =< deck_width() & 0 =< bottom(c) & top(c) =< deck_length().
 
-    // without overlapping, and without violating any of the separation constraints
-    ! i, j in I: i < j => (right(i) + sep(i, j) =< left(j) | right(j) + sep(i, j) =< left(i)
-        | top(i) + sep(i, j) =< bottom(j) | top(j) + sep(i, j) =< bottom(i)).
+    // each container is placed with its width across the deck and its length along it, or rotated by 90 degrees
+    ! c in Cont: (right(c) - left(c) = width(c) & top(c) - bottom(c) = length(c)) |
+                 (right(c) - left(c) = length(c) & top(c) - bottom(c) = width(c)).
+
+    // the distance two containers must keep is the separation of their classes
+    ! c, d in Cont: need(c, d) = separation(classes(c) - 1, classes(d) - 1).
+
+    // two containers do not overlap, and keep their required distance: one lies to the left of the other, or below it,
+    // with at least the required distance between them
+    ! c, d in Cont: c < d =>
+        right(c) + need(c, d) =< left(d) | right(d) + need(c, d) =< left(c) |
+        top(c) + need(c, d) =< bottom(d) | top(d) + need(c, d) =< bottom(c).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

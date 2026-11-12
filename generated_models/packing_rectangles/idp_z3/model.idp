@@ -1,26 +1,39 @@
-vocabulary {
-    type I <: Int
-    widths: I -> Int
-    heights: I -> Int
-    pos_x: I -> Int
-    pos_y: I -> Int
-    total_x: () -> Int
-    total_y: () -> Int
-    minimize: () -> Int
+// packing_rectangles: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The rectangular packing problem involves placing a set of rectangular items into a larger rectangular area such that
+// no items overlap and all items are within the boundaries of the larger area. Given the widths and heights of the
+// items, determine their positions within the larger rectangle while ensuring no overlap. The objective is to minimize
+// the total area of the larger rectangle required to pack all the items.
+//
+// Save this file as model.idp. Download `packing_rectangles.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/packing_rectangles.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py packing_rectangles.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Item <: Int                   // the items, numbered from 0, sized from widths
+    widths: Item -> Int                // widths(i): the width of item i
+    heights: Item -> Int               // heights(i): the height of item i
+    pos_x: Item -> Int                 // pos_x(i): the x coordinate of the left edge of item i, from 0 (declared output)
+    pos_y: Item -> Int                 // pos_y(i): the y coordinate of the bottom edge of item i, from 0 (declared output)
+    total_x: () -> Int                 // the width of the larger rectangle (declared output)
+    total_y: () -> Int                 // the height of the larger rectangle (declared output)
+    minimize: () -> Int                // the area of the larger rectangle, to minimize
 }
-
-theory {
-    // each item lies within the larger rectangle, starting from 0
-    ! i in I: 0 =< pos_x(i) & pos_x(i) + widths(i) =< total_x().
-    ! i in I: 0 =< pos_y(i) & pos_y(i) + heights(i) =< total_y().
-
-    // no two items overlap
-    ! i, j in I: i < j => (pos_x(i) + widths(i) =< pos_x(j) | pos_x(j) + widths(j) =< pos_x(i) | pos_y(i) + heights(i) =< pos_y(j) | pos_y(j) + heights(j) =< pos_y(i)).
-
-    // the larger rectangle is no bigger than the items placed side by side or stacked
-    total_x() =< sum{{ widths(i) | i in I }}.
-    total_y() =< sum{{ heights(i) | i in I }}.
-
-    // minimize the total area of the larger rectangle
+theory T:V {
+    // every item lies within the larger rectangle, starting from the origin
+    ! i in Item: 0 =< pos_x(i) & pos_x(i) + widths(i) =< total_x().
+    ! i in Item: 0 =< pos_y(i) & pos_y(i) + heights(i) =< total_y().
+    // implied bound, not in the statement: an optimal larger rectangle is no wider or taller than all the items placed side by side (it keeps the variables bounded)
+    total_x() =< sum{{ widths(i) | i in Item }}.
+    total_y() =< sum{{ heights(i) | i in Item }}.
+    // no two items overlap: one lies to the left of, right of, below or above the other
+    ! i in Item, j in Item: i ~= j => (pos_x(i) + widths(i) =< pos_x(j) | pos_x(j) + widths(j) =< pos_x(i) | pos_y(i) + heights(i) =< pos_y(j) | pos_y(j) + heights(j) =< pos_y(i)).
+    // the area of the larger rectangle is minimized
     minimize() = total_x() * total_y().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

@@ -1,29 +1,42 @@
-// Who killed Aunt Agatha in Dreadsbury Mansion? Print the 0-based index of the killer.
-vocabulary {
-    // The three inhabitants, in the order of the instance names:
-    // 0 Agatha herself, 1 the butler, 2 Charles.
-    type Person := {0..2}
-    killer: () -> Person
-    hates: Person * Person -> Bool
-    richer: Person * Person -> Bool
+// who_killed_agatha: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Someone in Dreadsbury Mansion killed Aunt Agatha. Agatha, the butler, and Charles live in Dreadsbury Mansion, and
+// are the only ones to live there. A killer always hates, and is no richer than his victim. Charles hates no one that
+// Agatha hates. Agatha hates everybody except the butler. The butler hates everyone not richer than Aunt Agatha. The
+// butler hates everyone whom Agatha hates. No one hates everyone. Who killed Agatha?
+//
+// Save this file as model.idp. Download `who_killed_agatha.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/who_killed_agatha.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py who_killed_agatha.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Person := {0..2}              // the three people living in Dreadsbury Mansion: 0 Agatha, 1 the butler, 2 Charles
+    killer: () -> Person               // the person who killed Aunt Agatha (declared output)
+    hates: Person * Person -> Bool     // hates(x, y): person x hates person y
+    richer: Person * Person -> Bool    // richer(x, y): person x is richer than person y
 }
-theory {
-    // A killer always hates, and is no richer than his victim (Agatha, 0).
-    hates(killer(), 0).
-    ~richer(killer(), 0).
+theory T:V {
+    // the killer always hates his victim, Agatha, and is no richer than her
+    hates(killer(), 0) & ~richer(killer(), 0).
 
-    // Charles hates noone that Agatha hates.
+    // Agatha hates everybody except the butler
+    ! x in Person: hates(0, x) <=> x ~= 1.
+
+    // Charles hates no one that Agatha hates
     ! x in Person: hates(0, x) => ~hates(2, x).
 
-    // Agatha hates everybody except the butler.
-    ! x in Person: hates(0, x) <=> (x ~= 1).
-
-    // The butler hates everyone not richer than Aunt Agatha.
+    // the butler hates everyone not richer than Aunt Agatha
     ! x in Person: ~richer(x, 0) => hates(1, x).
 
-    // The butler hates everyone whom Agatha hates.
+    // the butler hates everyone whom Agatha hates
     ! x in Person: hates(0, x) => hates(1, x).
 
-    // Noone hates everyone.
+    // no one hates everyone
     ! x in Person: ? y in Person: ~hates(x, y).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

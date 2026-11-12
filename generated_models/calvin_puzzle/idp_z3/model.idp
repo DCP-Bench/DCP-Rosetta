@@ -1,24 +1,43 @@
-vocabulary {
-    type Range_n <: Int
-    n: () -> Int
-    x: Range_n * Range_n -> Int
-    move: Range_n * Range_n * Range_n * Range_n -> Bool
+// calvin_puzzle: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Take an n by n grid of n^2 squares and fill every square with the numbers 1 to n^2 in sequence, each used once,
+// starting from any square. If the next number in the sequence is placed vertically or horizontally, it is placed
+// exactly three squares away from the previous number (a two square gap between them). If the next number is placed
+// diagonally, it is placed exactly two squares away from the previous number (a one square gap between them).
+//
+// Save this file as model.idp. Download `calvin_puzzle.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/calvin_puzzle.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py calvin_puzzle.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_n <: Int                // the rows and the columns of the grid, numbered 1..n
+    type Val <: Int                    // the numbers written in the grid, 1..n^2 (sized by Val_size)
+    Val_size: () -> Int                // the count of numbers, n * n
+    n: () -> Int                       // the side of the grid
+    row: Val -> Range_n                // row(k): the row of the square holding the number k
+    col: Val -> Range_n                // col(k): the column of the square holding the number k
+    x: Range_n * Range_n -> Int        // x(r, c): the number written in the square of row r and column c (the output)
 }
-theory {
-    // every square of the n by n grid holds a number from 1 to n*n
-    ! r, c in Range_n: 1 =< x(r, c) & x(r, c) =< n() * n().
 
-    // every square is filled, and each number is used exactly once
-    ! r1, c1, r2, c2 in Range_n: (r1 ~= r2 | c1 ~= c2) => x(r1, c1) ~= x(r2, c2).
+theory T:V {
+    Val_size() = n() * n().
+    // the numbers 1 to n^2 each sit in one square, and no square holds two numbers
+    ! k1, k2 in Val: row(k1) = row(k2) & col(k1) = col(k2) => k1 = k2.
+    // every square holds one of the numbers
+    ! r, c in Range_n: ? k in Val: row(k) = r & col(k) = c.
+    // the grid entry of the square of each number is that number
+    ! k in Val: x(row(k), col(k)) = k.
+    // the number after k is placed three squares away vertically or horizontally, or two squares away diagonally
+    ! k in Val: k < n() * n() =>
+        ( ((row(k + 1) = row(k) + 3 | row(k) = row(k + 1) + 3) & col(k + 1) = col(k))
+        | (row(k + 1) = row(k) & (col(k + 1) = col(k) + 3 | col(k) = col(k + 1) + 3))
+        | ((row(k + 1) = row(k) + 2 | row(k) = row(k + 1) + 2) & (col(k + 1) = col(k) + 2 | col(k) = col(k + 1) + 2)) ).
+}
 
-    // the next number is placed exactly three squares horizontally or vertically away,
-    // or exactly two squares diagonally away
-    ! r1, c1 in Range_n: x(r1, c1) ~= n() * n() => ? r2, c2 in Range_n: x(r2, c2) = x(r1, c1) + 1 & move(r1, c1, r2, c2).
-
-    {
-        ! r1, c1, r2, c2 in Range_n: move(r1, c1, r2, c2) <-
-            (r1 = r2 & (c1 = c2 + 3 | c2 = c1 + 3)) |
-            (c1 = c2 & (r1 = r2 + 3 | r2 = r1 + 3)) |
-            ((r1 = r2 + 2 | r2 = r1 + 2) & (c1 = c2 + 2 | c2 = c1 + 2)).
-    }
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

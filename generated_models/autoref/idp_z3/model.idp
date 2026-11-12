@@ -1,16 +1,34 @@
-vocabulary {
-    type Pos <: Int
-    Pos_size: () -> Int
-    n: () -> Int
-    m: () -> Int
-    s: Pos -> Int          // declared output: s(p) is entry s_{p-1}
+// autoref: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given an integer n > 0 and an integer m >= 0, find a non-empty finite series S=(s0, s1, ..., sn, sn+1) of integers between 0 and n such that (1) there are si occurrences of i in S for each integer i ranging from 0 to n, and (2) sn+1=m.
+//
+// Save this file as model.idp. Download `autoref.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/autoref.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py autoref.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Pos <: Int                    // the positions of the series, numbered 1..n+2 (series index s_k is at position k+1)
+    Pos_size: () -> Int                // the length of the series, n + 2
+    n: () -> Int                       // the largest value in the series
+    m: () -> Int                       // the value of the last entry s_{n+1}
+    s: Pos -> Int                      // s(p): the entry s_{p-1} of the series
 }
-theory {
+
+theory T:V {
+    // the length of the series is n + 2
     Pos_size() = n() + 2.
-    // s_0..s_n are counts of occurrences of 0..n, so each lies between 0 and n
-    ! p in Pos: p =< n() + 1 => (0 =< s(p) & s(p) =< n()).
-    // there are s_i occurrences of i in S for each integer i from 0 to n
+    // every entry of the series is an integer between 0 and n
+    ! p in Pos: 0 =< s(p) & s(p) =< n().
+    // for each integer i from 0 to n, the series has exactly s_i occurrences of i
     ! p in Pos: p =< n() + 1 => s(p) = #{ q in Pos: s(q) = p - 1 }.
-    // s_{n+1} = m
+    // the last entry of the series, s_{n+1}, is m
     ! p in Pos: p = n() + 2 => s(p) = m().
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=300))
 }

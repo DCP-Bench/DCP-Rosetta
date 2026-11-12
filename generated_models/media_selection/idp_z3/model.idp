@@ -1,21 +1,34 @@
-// Media selection: choose advertising media so that all audiences are reached with minimum campaign cost.
-vocabulary {
-    type Audience <: Int                    // audiences, sized from the instance data
-    type Media <: Int                       // advertising media, sized from the instance data
-    incidence_matrix: Audience * Media -> Int   // 1 if the medium reaches the audience
-    media_costs: Media -> Int               // cost of each medium
-
-    is_selected: Media -> Bool              // the decision: whether each medium is selected
-    min_total_cost: () -> Int               // total cost of the selected media
-    minimize: () -> Int                     // objective, equal to the total cost
+// media_selection: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The media selection problem is a problem of allocating advertising budgets between possible advertising outlets.
+// Given a set of media options, determine which media should be selected so that all audiences are reached with
+// minimum campaign cost. It does not matter if an audience is covered more than once, as long as it is covered at
+// least once. Moreover, the company does not wish to spend more money on the campaign than necessary.
+//
+// Save this file as model.idp. Download `media_selection.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/media_selection.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py media_selection.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Audience <: Int               // the audiences, numbered from 0, sized from incidence_matrix
+    type Media <: Int                  // the advertising media, numbered from 0, sized from media_costs
+    incidence_matrix: Audience * Media -> Int  // incidence_matrix(a, m): 1 if medium m reaches audience a, else 0
+    media_costs: Media -> Int          // media_costs(m): the cost of medium m
+    is_selected: Media -> Bool         // is_selected(m): medium m is selected
+    min_total_cost: () -> Int          // the total cost of the selected media
+    minimize: () -> Int                // the total cost of the selected media, to minimize
 }
-theory {
+theory T:V {
     // every audience is reached by at least one selected medium
-    ! a in Audience: ? m in Media: is_selected(m) & (incidence_matrix(a, m) = 1).
-
+    ! a in Audience: ? m in Media: is_selected(m) & incidence_matrix(a, m) = 1.
     // the total cost is the sum of the costs of the selected media
     min_total_cost() = sum{{ media_costs(m) | m in Media: is_selected(m) }}.
-
-    // the campaign cost is minimized
+    // the campaign cost to minimize is the total cost of the selected media
     minimize() = min_total_cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

@@ -1,23 +1,50 @@
-vocabulary {
-    type Range_num_items <: Int
-    num_items: () -> Int
-    total_price: () -> Int
-    prices: Range_num_items -> Int      // declared output, in cents
-    partial: Range_num_items -> Int     // running product of the prices
-    scale: Range_num_items -> Int       // 100^(i-1): cents-to-dollars correction
+// session5_grocery: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A kid goes into a grocery store and buys a number of items. The cashier charges a total price, the kid pays and is
+// about to leave when the cashier calls the kid back, and says "Hold on, I multiplied the items instead of adding
+// them; I'll try again; Hah, with adding them the price still comes to the same total price". What were the prices of
+// the items? Each price is a positive whole number of cents, and total_price is given in cents. Both the sum and the
+// product of the prices in dollars equal the total price in dollars.
+//
+// Save this file as model.idp. Download `session5_grocery.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_grocery.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session5_grocery.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_num_items <: Int        // the items, numbered from 1 to num_items
+    num_items: () -> Int               // the number of items the kid buys
+    total_price: () -> Int             // the total price charged, in cents
+    prices: Range_num_items -> Int     // prices(k): the price of item k in cents (declared output)
+    prefix_product: Range_num_items -> Int  // prefix_product(k): the product of the prices of items 1 to k, in cents (auxiliary)
+    hundreds: Range_num_items -> Int   // hundreds(k): 100 to the power k - 1 (auxiliary)
 }
-theory {
-    // each item has a positive price in cents, at most the total
-    ! i in Range_num_items: 1 =< prices(i) & prices(i) =< total_price().
+theory T:V {
+    // each price is a positive whole number of cents
+    ! k in Range_num_items: prices(k) >= 1.
 
-    // the prices added come to the total price
-    sum{{ prices(i) | i in Range_num_items }} = total_price().
+    // the prices add up to the total price: in dollars, the sum of the prices equals the total price, so the sums in
+    // cents are equal too
+    sum{{ prices(k) | k in Range_num_items }} = total_price().
 
-    // the prices multiplied (in dollars) come to the same total: in cents the
-    // product is total * 100^(n-1)
-    partial(1) = prices(1).
-    ! i in Range_num_items: i > 1 => partial(i) = partial(i - 1) * prices(i).
-    scale(1) = 1.
-    ! i in Range_num_items: i > 1 => scale(i) = scale(i - 1) * 100.
-    partial(num_items()) = total_price() * scale(num_items()).
+    // no price is larger than the total, since all prices are positive and they add up to the total
+    ! k in Range_num_items: prices(k) =< total_price().
+
+    // hundreds(k) is 100 to the power k - 1
+    hundreds(1) = 1.
+    ! k in Range_num_items: k =< num_items() - 1 => hundreds(k + 1) = 100 * hundreds(k).
+
+    // prefix_product(k) is the product of the prices of the first k items, in cents
+    prefix_product(1) = prices(1).
+    ! k in Range_num_items: k >= 2 => prefix_product(k) = prefix_product(k - 1) * prices(k).
+
+    // the product of the prices in dollars equals the total price in dollars: the product of the prices in cents
+    // divided by 100 to the power num_items equals the total price in cents divided by 100, that is, the product of
+    // the prices in cents equals the total price times 100 to the power num_items - 1
+    prefix_product(num_items()) = total_price() * hundreds(num_items()).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=300))
 }

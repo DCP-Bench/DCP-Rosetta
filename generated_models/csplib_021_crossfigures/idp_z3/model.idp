@@ -1,229 +1,166 @@
-// Crossfigures (CSPLib 021): fill the 9 x 9 grid with digits so that every numbered
-// across and down clue holds. M(r, c) is the entry in row r, column c; a black square is 0.
-vocabulary {
-    type Row := {1..9}
-    type Col := {1..9}
-    type Digit := {0..9}
-    type Root4 := {32..99}
-    type Root2 := {4..9}
-    type TwoDigit := {10..99}
-
-    M: Row * Col -> Digit
-
-    // across entries, named by their clue number
-    A1: () -> Int
-    A4: () -> Int
-    A7: () -> Int
-    A8: () -> Int
-    A9: () -> Int
-    A10: () -> Int
-    A11: () -> Int
-    A13: () -> Int
-    A15: () -> Int
-    A17: () -> Int
-    A20: () -> Int
-    A23: () -> Int
-    A24: () -> Int
-    A25: () -> Int
-    A27: () -> Int
-    A28: () -> Int
-    A29: () -> Int
-    A30: () -> Int
-
-    // down entries, named by their clue number
-    D1: () -> Int
-    D2: () -> Int
-    D3: () -> Int
-    D4: () -> Int
-    D5: () -> Int
-    D6: () -> Int
-    D10: () -> Int
-    D12: () -> Int
-    D14: () -> Int
-    D16: () -> Int
-    D17: () -> Int
-    D18: () -> Int
-    D19: () -> Int
-    D20: () -> Int
-    D21: () -> Int
-    D22: () -> Int
-    D26: () -> Int
-    D28: () -> Int
+// csplib_021_crossfigures: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Crossfigures are the numerical equivalent of crosswords. A grid and some clues with numerical answers are to be placed
+// on the grid. The clues come in several forms: across and down clues, each with a number. The grid is
+//
+//   1  2  _  3  X  4  _  5  6    1
+//   7  _  X  8  _  _  X  9  _    2
+//   _  X  10 _  X  11 12 X  _    3
+//   13 14 _  _  X  15 _  16 _    4
+//   X  _  X  X  X  X  X  _  X    5
+//   17 _  18 19 X  20 21 _  22   6
+//   _  X  23 _  X  24 _  X  _    7
+//   25 26 X  27 _  _  X  28 _    8
+//   29 _  _  _  X  30 _  _  _    9
+//
+// where X cells hold 0, and every other cell holds a digit (which may also be 0). Each answer reads its cells from the
+// first cell of the clue along the across or down direction, as a number. The clues are: across 1 is 27 across times two;
+// across 4 is 4 down plus seventy-one; across 7 is 18 down plus four; across 8 is 6 down divided by sixteen; across 9 is
+// 2 down minus eighteen; across 10 is a dozen in six gross; across 11 is 5 down minus seventy; across 13 is 26 down times
+// 23 across; across 15 is 6 down minus 350; across 17 is 25 across times 23 across; across 20 is a square number; across
+// 23 is a prime number; across 24 is a square number; across 25 is 20 across divided by seventeen; across 27 is 6 down
+// divided by four; across 28 is four dozen; across 29 is seven gross; across 30 is 22 down plus 450; down 1 is 1 across
+// plus twenty-seven; down 2 is five dozen; down 3 is 30 across plus 888; down 4 is two times 17 across; down 5 is 29
+// across divided by twelve; down 6 is 28 across times 23 across; down 10 is 10 across plus four; down 12 is three times
+// 24 across; down 14 is 13 across divided by sixteen; down 16 is 28 down times fifteen; down 17 is 13 across minus 399;
+// down 18 is 29 across divided by eighteen; down 19 is 22 down minus ninety-four; down 20 is 20 across minus nine; down 21
+// is 25 across minus fifty-two; down 22 is 20 down times six; down 26 is five times 24 across; down 28 is 21 down plus
+// twenty-seven.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Row := {0..8}                 // the rows of the grid, numbered from 0
+    type Col := {0..8}                 // the columns of the grid, numbered from 0
+    type Digit := {0..9}               // a digit of a cell
+    type Clue := {1..30}               // the clue numbers
+    type Root := {0..99}               // the roots tried for a square number
+    type Factor := {2..99}             // the factors tried for a prime number
+    M: Row * Col -> Digit              // M(r, c): the digit in row r and column c of the grid (0 for an X cell)
+    across: Clue -> Int                // across(k): the number answering the across clue k
+    down: Clue -> Int                  // down(k): the number answering the down clue k
 }
-theory {
-    // the black squares hold 0
-    M(1,5) = 0.
-    M(2,3) = 0.
-    M(2,7) = 0.
-    M(3,2) = 0.
-    M(3,5) = 0.
-    M(3,8) = 0.
-    M(4,5) = 0.
-    M(5,1) = 0.
-    M(5,3) = 0.
-    M(5,4) = 0.
-    M(5,5) = 0.
-    M(5,6) = 0.
-    M(5,7) = 0.
-    M(5,9) = 0.
-    M(6,5) = 0.
-    M(7,2) = 0.
-    M(7,5) = 0.
-    M(7,8) = 0.
-    M(8,3) = 0.
-    M(8,7) = 0.
-    M(9,5) = 0.
 
-    // each entry is the number its cells spell, read left to right or top to bottom
-    A1() = 1000*M(1,1) + 100*M(1,2) + 10*M(1,3) + M(1,4).
-    A4() = 1000*M(1,6) + 100*M(1,7) + 10*M(1,8) + M(1,9).
-    A7() = 10*M(2,1) + M(2,2).
-    A8() = 100*M(2,4) + 10*M(2,5) + M(2,6).
-    A9() = 10*M(2,8) + M(2,9).
-    A10() = 10*M(3,3) + M(3,4).
-    A11() = 10*M(3,6) + M(3,7).
-    A13() = 1000*M(4,1) + 100*M(4,2) + 10*M(4,3) + M(4,4).
-    A15() = 1000*M(4,6) + 100*M(4,7) + 10*M(4,8) + M(4,9).
-    A17() = 1000*M(6,1) + 100*M(6,2) + 10*M(6,3) + M(6,4).
-    A20() = 1000*M(6,6) + 100*M(6,7) + 10*M(6,8) + M(6,9).
-    A23() = 10*M(7,3) + M(7,4).
-    A24() = 10*M(7,6) + M(7,7).
-    A25() = 10*M(8,1) + M(8,2).
-    A27() = 100*M(8,4) + 10*M(8,5) + M(8,6).
-    A28() = 10*M(8,8) + M(8,9).
-    A29() = 1000*M(9,1) + 100*M(9,2) + 10*M(9,3) + M(9,4).
-    A30() = 1000*M(9,6) + 100*M(9,7) + 10*M(9,8) + M(9,9).
+theory T:V {
+    // the cells marked X hold 0
+    M(0, 4) = 0 & M(1, 2) = 0 & M(1, 6) = 0 & M(2, 1) = 0 & M(2, 4) = 0 & M(2, 7) = 0 & M(3, 4) = 0 & M(4, 0) = 0 & M(4, 2) = 0 & M(4, 3) = 0 & M(4, 4) = 0 & M(4, 5) = 0 & M(4, 6) = 0 & M(4, 8) = 0 & M(5, 4) = 0 & M(6, 1) = 0 & M(6, 4) = 0 & M(6, 7) = 0 & M(7, 2) = 0 & M(7, 6) = 0 & M(8, 4) = 0.
 
-    D1() = 1000*M(1,1) + 100*M(2,1) + 10*M(3,1) + M(4,1).
-    D2() = 10*M(1,2) + M(2,2).
-    D3() = 1000*M(1,4) + 100*M(2,4) + 10*M(3,4) + M(4,4).
-    D4() = 1000*M(1,6) + 100*M(2,6) + 10*M(3,6) + M(4,6).
-    D5() = 10*M(1,8) + M(2,8).
-    D6() = 1000*M(1,9) + 100*M(2,9) + 10*M(3,9) + M(4,9).
-    D10() = 10*M(3,3) + M(4,3).
-    D12() = 10*M(3,7) + M(4,7).
-    D14() = 100*M(4,2) + 10*M(5,2) + M(6,2).
-    D16() = 100*M(4,8) + 10*M(5,8) + M(6,8).
-    D17() = 1000*M(6,1) + 100*M(7,1) + 10*M(8,1) + M(9,1).
-    D18() = 10*M(6,3) + M(7,3).
-    D19() = 1000*M(6,4) + 100*M(7,4) + 10*M(8,4) + M(9,4).
-    D20() = 1000*M(6,6) + 100*M(7,6) + 10*M(8,6) + M(9,6).
-    D21() = 10*M(6,7) + M(7,7).
-    D22() = 1000*M(6,9) + 100*M(7,9) + 10*M(8,9) + M(9,9).
-    D26() = 10*M(8,2) + M(9,2).
-    D28() = 10*M(8,8) + M(9,8).
+    // the answer to each across clue reads its cells from left to right
+    across(1) = 1000 * M(0, 0) + 100 * M(0, 1) + 10 * M(0, 2) + M(0, 3).
+    across(4) = 1000 * M(0, 5) + 100 * M(0, 6) + 10 * M(0, 7) + M(0, 8).
+    across(7) = 10 * M(1, 0) + M(1, 1).
+    across(8) = 100 * M(1, 3) + 10 * M(1, 4) + M(1, 5).
+    across(9) = 10 * M(1, 7) + M(1, 8).
+    across(10) = 10 * M(2, 2) + M(2, 3).
+    across(11) = 10 * M(2, 5) + M(2, 6).
+    across(13) = 1000 * M(3, 0) + 100 * M(3, 1) + 10 * M(3, 2) + M(3, 3).
+    across(15) = 1000 * M(3, 5) + 100 * M(3, 6) + 10 * M(3, 7) + M(3, 8).
+    across(17) = 1000 * M(5, 0) + 100 * M(5, 1) + 10 * M(5, 2) + M(5, 3).
+    across(20) = 1000 * M(5, 5) + 100 * M(5, 6) + 10 * M(5, 7) + M(5, 8).
+    across(23) = 10 * M(6, 2) + M(6, 3).
+    across(24) = 10 * M(6, 5) + M(6, 6).
+    across(25) = 10 * M(7, 0) + M(7, 1).
+    across(27) = 100 * M(7, 3) + 10 * M(7, 4) + M(7, 5).
+    across(28) = 10 * M(7, 7) + M(7, 8).
+    across(29) = 1000 * M(8, 0) + 100 * M(8, 1) + 10 * M(8, 2) + M(8, 3).
+    across(30) = 1000 * M(8, 5) + 100 * M(8, 6) + 10 * M(8, 7) + M(8, 8).
 
-    // no answer starts with a zero: a 4-digit entry is at least 1000
-    A1() >= 1000.
-    A4() >= 1000.
-    A13() >= 1000.
-    A15() >= 1000.
-    A17() >= 1000.
-    A20() >= 1000.
-    A29() >= 1000.
-    A30() >= 1000.
-    D1() >= 1000.
-    D3() >= 1000.
-    D4() >= 1000.
-    D6() >= 1000.
-    D17() >= 1000.
-    D19() >= 1000.
-    D20() >= 1000.
-    D22() >= 1000.
-    // a 3-digit entry is at least 100
-    A8() >= 100.
-    A27() >= 100.
-    D14() >= 100.
-    D16() >= 100.
-    // a 2-digit entry is at least 10
-    A7() >= 10.
-    A9() >= 10.
-    A10() >= 10.
-    A11() >= 10.
-    A23() >= 10.
-    A24() >= 10.
-    A25() >= 10.
-    A28() >= 10.
-    D2() >= 10.
-    D5() >= 10.
-    D10() >= 10.
-    D12() >= 10.
-    D18() >= 10.
-    D21() >= 10.
-    D26() >= 10.
-    D28() >= 10.
+    // the answer to each down clue reads its cells from top to bottom
+    down(1) = 1000 * M(0, 0) + 100 * M(1, 0) + 10 * M(2, 0) + M(3, 0).
+    down(2) = 10 * M(0, 1) + M(1, 1).
+    down(3) = 1000 * M(0, 3) + 100 * M(1, 3) + 10 * M(2, 3) + M(3, 3).
+    down(4) = 1000 * M(0, 5) + 100 * M(1, 5) + 10 * M(2, 5) + M(3, 5).
+    down(5) = 10 * M(0, 7) + M(1, 7).
+    down(6) = 1000 * M(0, 8) + 100 * M(1, 8) + 10 * M(2, 8) + M(3, 8).
+    down(10) = 10 * M(2, 2) + M(3, 2).
+    down(12) = 10 * M(2, 6) + M(3, 6).
+    down(14) = 100 * M(3, 1) + 10 * M(4, 1) + M(5, 1).
+    down(16) = 100 * M(3, 7) + 10 * M(4, 7) + M(5, 7).
+    down(17) = 1000 * M(5, 0) + 100 * M(6, 0) + 10 * M(7, 0) + M(8, 0).
+    down(18) = 10 * M(5, 2) + M(6, 2).
+    down(19) = 1000 * M(5, 3) + 100 * M(6, 3) + 10 * M(7, 3) + M(8, 3).
+    down(20) = 1000 * M(5, 5) + 100 * M(6, 5) + 10 * M(7, 5) + M(8, 5).
+    down(21) = 10 * M(5, 6) + M(6, 6).
+    down(22) = 1000 * M(5, 8) + 100 * M(6, 8) + 10 * M(7, 8) + M(8, 8).
+    down(26) = 10 * M(7, 1) + M(8, 1).
+    down(28) = 10 * M(7, 7) + M(8, 7).
 
-    // 1 across: 27 across times two
-    A1() = 2 * A27().
-    // 4 across: 4 down plus seventy-one
-    A4() = D4() + 71.
-    // 7 across: 18 down plus four
-    A7() = D18() + 4.
-    // 8 across: 6 down divided by sixteen
-    D6() = 16 * A8().
-    // 9 across: 2 down minus eighteen
-    A9() = D2() - 18.
-    // 10 across: Dozen in six gross (six gross is 864 and a dozen is 12)
-    A10() = 72.
-    // 11 across: 5 down minus seventy
-    A11() = D5() - 70.
-    // 13 across: 26 down times 23 across (case split on the prime 23 across keeps every product linear)
-    ! p in TwoDigit: A23() = p => A13() = p * D26().
-    // 15 across: 6 down minus 350
-    A15() = D6() - 350.
-    // 17 across: 25 across times 23 across (case split on the prime 23 across)
-    ! p in TwoDigit: A23() = p => A17() = p * A25().
-    // 20 across: A square number
-    ? k in Root4: A20() = k * k.
-    // 23 across: A prime number
-    A23() = 11 | A23() = 13 | A23() = 17 | A23() = 19 | A23() = 23 | A23() = 29 | A23() = 31 | A23() = 37 | A23() = 41 | A23() = 43 | A23() = 47 | A23() = 53 | A23() = 59 | A23() = 61 | A23() = 67 | A23() = 71 | A23() = 73 | A23() = 79 | A23() = 83 | A23() = 89 | A23() = 97.
-    // 24 across: A square number
-    ? k in Root2: A24() = k * k.
-    // 25 across: 20 across divided by seventeen
-    A20() = 17 * A25().
-    // 27 across: 6 down divided by four
-    D6() = 4 * A27().
-    // 28 across: Four dozen
-    A28() = 48.
-    // 29 across: Seven gross
-    A29() = 1008.
-    // 30 across: 22 down plus 450
-    A30() = D22() + 450.
+    // across 1 is twice across 27
+    across(1) = 2 * across(27).
+    // across 4 is down 4 plus 71
+    across(4) = down(4) + 71.
+    // across 7 is down 18 plus 4
+    across(7) = down(18) + 4.
+    // across 8 is down 6 divided by 16 (exactly)
+    16 * across(8) = down(6).
+    // across 9 is down 2 minus 18
+    across(9) = down(2) - 18.
+    // across 10 is a dozen in six gross, that is 72
+    across(10) = 72.
+    // across 11 is down 5 minus 70
+    across(11) = down(5) - 70.
+    // across 13 is down 26 times across 23
+    across(13) = down(26) * across(23).
+    // across 15 is down 6 minus 350
+    across(15) = down(6) - 350.
+    // across 17 is across 25 times across 23
+    across(17) = across(25) * across(23).
+    // across 20 is a square number
+    ? s in Root: s * s = across(20).
+    // across 23 is a prime number
+    across(23) > 1 & ~(? d, e in Factor: d * e = across(23)).
+    // across 24 is a square number
+    ? s in Root: s * s = across(24).
+    // across 25 is across 20 divided by 17 (exactly)
+    17 * across(25) = across(20).
+    // across 27 is down 6 divided by 4 (exactly)
+    4 * across(27) = down(6).
+    // across 28 is four dozen, that is 48
+    across(28) = 48.
+    // across 29 is seven gross, that is 1008
+    across(29) = 1008.
+    // across 30 is down 22 plus 450
+    across(30) = down(22) + 450.
 
-    // 1 down: 1 across plus twenty-seven
-    D1() = A1() + 27.
-    // 2 down: Five dozen
-    D2() = 60.
-    // 3 down: 30 across plus 888
-    D3() = A30() + 888.
-    // 4 down: Two times 17 across
-    D4() = 2 * A17().
-    // 5 down: 29 across divided by twelve
-    A29() = 12 * D5().
-    // 6 down: 28 across times 23 across (28 across is 48, four dozen)
-    D6() = 48 * A23().
-    // 10 down: 10 across plus four
-    D10() = A10() + 4.
-    // 12 down: Three times 24 across
-    D12() = 3 * A24().
-    // 14 down: 13 across divided by sixteen
-    A13() = 16 * D14().
-    // 16 down: 28 down times fifteen
-    D16() = 15 * D28().
-    // 17 down: 13 across minus 399
-    D17() = A13() - 399.
-    // 18 down: 29 across divided by eighteen
-    A29() = 18 * D18().
-    // 19 down: 22 down minus ninety-four
-    D19() = D22() - 94.
-    // 20 down: 20 across minus nine
-    D20() = A20() - 9.
-    // 21 down: 25 across minus fifty-two
-    D21() = A25() - 52.
-    // 22 down: 20 down times six
-    D22() = 6 * D20().
-    // 26 down: Five times 24 across
-    D26() = 5 * A24().
-    // 28 down: 21 down plus twenty-seven
-    D28() = D21() + 27.
+    // down 1 is across 1 plus 27
+    down(1) = across(1) + 27.
+    // down 2 is five dozen, that is 60
+    down(2) = 60.
+    // down 3 is across 30 plus 888
+    down(3) = across(30) + 888.
+    // down 4 is two times across 17
+    down(4) = 2 * across(17).
+    // down 5 is across 29 divided by 12 (exactly)
+    12 * down(5) = across(29).
+    // down 6 is across 28 times across 23
+    down(6) = across(28) * across(23).
+    // down 10 is across 10 plus 4
+    down(10) = across(10) + 4.
+    // down 12 is three times across 24
+    down(12) = 3 * across(24).
+    // down 14 is across 13 divided by 16 (exactly)
+    16 * down(14) = across(13).
+    // down 16 is down 28 times 15
+    down(16) = down(28) * 15.
+    // down 17 is across 13 minus 399
+    down(17) = across(13) - 399.
+    // down 18 is across 29 divided by 18 (exactly)
+    18 * down(18) = across(29).
+    // down 19 is down 22 minus 94
+    down(19) = down(22) - 94.
+    // down 20 is across 20 minus 9
+    down(20) = across(20) - 9.
+    // down 21 is across 25 minus 52
+    down(21) = across(25) - 52.
+    // down 22 is down 20 times six
+    down(22) = down(20) * 6.
+    // down 26 is five times across 24
+    down(26) = 5 * across(24).
+    // down 28 is down 21 plus 27
+    down(28) = down(21) + 27.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

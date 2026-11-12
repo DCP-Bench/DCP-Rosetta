@@ -1,23 +1,45 @@
-vocabulary {
-    type Car <: Int
-    type Opt <: Int
-    type Pos <: Int
-    Pos_size: () -> Int
-    demand: Car -> Int
-    requires: Car * Opt -> Int
-    at_most: Opt -> Int
-    per_slots: Opt -> Int
-    sequence: Pos -> Car
+// csplib_001_car_sequencing: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A number of cars are to be produced; they are not identical, because different options are available as variants on the
+// basic model. The assembly line has different stations which install the various options (air-conditioning, sunroof, etc.).
+// These stations have been designed to handle at most a certain percentage of the cars passing along the assembly line.
+// Furthermore, the cars requiring a certain option must not be bunched together, otherwise the station will not be able to
+// cope. Consequently, the cars must be arranged in a sequence so that the capacity of each station is never exceeded. For
+// example, if a particular station can only cope with at most half of the cars passing along the line, the sequence must
+// be built so that at most 1 car in any 2 requires that option.
+//
+// Save this file as model.idp. Download `csplib_001_car_sequencing.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_001_car_sequencing.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_001_car_sequencing.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Kind <: Int                   // the car types (variants), numbered from 0
+    type Opt <: Int                    // the options, numbered from 0; each option has its own station
+    type Pos <: Int                    // the positions along the assembly line, numbered from 1; sized from the demands
+    Pos_size: () -> Int                // the number of positions: the total number of cars to produce
+    demand: Kind -> Int                // demand(k): the number of cars of type k to produce
+    at_most: Opt -> Int                // at_most(o): station o copes with at most this many cars requiring its option ...
+    per_slots: Opt -> Int              // per_slots(o): ... in any window of this many consecutive positions
+    requires: Kind * Opt -> Int        // requires(k, o): 1 if a car of type k requires option o, 0 otherwise
+    sequence: Pos -> Kind              // sequence(p): the car type at position p, 0-based
 }
 
-theory {
-    // a number of cars are to be produced, the total is the sum of the demands
-    Pos_size() = sum{{ demand(c) | c in Car }}.
+theory T:V {
+    // the number of positions is the total number of cars demanded
+    Pos_size() = sum{{ demand(k) | k in Kind }}.
 
-    // each car type is produced as many times as its demand
-    ! c in Car: #{p in Pos: sequence(p) = c} = demand(c).
+    // each car type appears in the sequence as many times as it is demanded
+    ! k in Kind: #{ p in Pos: sequence(p) = k } = demand(k).
 
-    // the stations handle at most at_most(o) of every per_slots(o) consecutive cars
-    // cars requiring an option must not be bunched together
-    ! o in Opt: ! p in Pos: p + per_slots(o) - 1 =< Pos_size() => #{q in Pos: p =< q & q =< p + per_slots(o) - 1 & requires(sequence(q), o) = 1} =< at_most(o).
+    // for each option, every window of per_slots(o) consecutive positions holds at most at_most(o) cars requiring that option
+    ! o in Opt, p in Pos: p + per_slots(o) - 1 =< Pos_size() =>
+        #{j in Pos: p =< j & j < p + per_slots(o) & requires(sequence(j), o) = 1} =< at_most(o).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

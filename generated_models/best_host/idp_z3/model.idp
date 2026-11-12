@@ -1,33 +1,37 @@
-// Seating of six guests around a round dinner table: every pair of
-// neighbouring guests must get along.
-vocabulary {
-    type Seat := {0..5}     // the six seats around the table, in seating order
-    type Guest := {0..5}    // 0 Andrew, 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank
-    x: Seat -> Guest        // declared output: x(s) is the guest in seat s
-    gets_along: Guest * Guest -> Bool
+// best_host: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Six guests are to be seated around a round dinner table with six seats. Some guests do not get along with each other,
+// and if two guests who do not get along sit next to each other, it creates conflict at dinner. Arrange the guests in a
+// seating order around the table so that every guest sits only next to the two guests they will sit next to:
+// Andrew will only sit next to Dave and Frank; Betty will only sit next to Cara and Erica; Cara will only sit next to
+// Betty and Frank; Dave will only sit next to Andrew and Erica; Erica will only sit next to Betty and Dave; Frank will
+// only sit next to Andrew and Cara.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/best_host.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+
+vocabulary V {
+    type Seat := {0..5}                // the seats around the table, numbered 0..5 in seating order (seat 5 is next to seat 0)
+    type Guest := {0..5}               // the guests: 0 Andrew, 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank
+    x: Seat -> Guest                   // x(s): the guest sitting in seat s (the output)
+    gets_along: Guest * Guest -> Bool  // gets_along(g, h): guests g and h will sit next to each other
 }
-theory {
-    // the guests who get along with each other, from the problem statement
-    // (closed definition: any pair not listed does not get along)
-    {
-        // Andrew sits next to Dave and Frank
-        gets_along(0,3). gets_along(3,0). gets_along(0,5). gets_along(5,0).
-        // Betty sits next to Cara and Erica
-        gets_along(1,2). gets_along(2,1). gets_along(1,4). gets_along(4,1).
-        // Cara sits next to Betty and Frank
-        gets_along(2,5). gets_along(5,2).
-        // Dave sits next to Andrew and Erica
-        gets_along(3,4). gets_along(4,3).
-    }
 
-    // each guest is seated exactly once
-    ! s, t in Seat: s ~= t => x(s) ~= x(t).
-
-    // neighbouring guests around the table must get along (seats 0 to 5 form a ring)
-    gets_along(x(0), x(1)).
-    gets_along(x(1), x(2)).
-    gets_along(x(2), x(3)).
-    gets_along(x(3), x(4)).
-    gets_along(x(4), x(5)).
+theory T:V {
+    // every seat is taken by one guest, and every guest sits in exactly one seat
+    ! s, t in Seat: x(s) = x(t) => s = t.
+    // each guest sits next to guests they will sit next to, for each pair of neighbouring seats
+    ! s in Seat: s < 5 => gets_along(x(s), x(s + 1)).
+    // the guest in the last seat and the guest in the first seat are neighbours too, the table being round
     gets_along(x(5), x(0)).
+}
+
+structure S2:V {
+    // the pairs of guests who will sit next to each other (both ways round)
+    gets_along := { (0,3), (3,0), (0,5), (5,0), (1,2), (2,1), (1,4), (4,1), (2,5), (5,2), (3,4), (4,3) }.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S2, max=1))
 }

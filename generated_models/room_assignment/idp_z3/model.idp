@@ -1,0 +1,40 @@
+// room_assignment: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The room assignment problem involves assigning a set of requests to a limited number of rooms such that each
+// request is assigned to one room for its entire duration. Some requests may already have a room pre-assigned. The
+// main constraint is that a room can only serve one request at a time, meaning no overlapping requests can be
+// assigned to the same room. A request occupies its room from its start date up to, but not including, its end date,
+// so one request can start in a room on the day another ends there. A pre-assigned room of -1 means that the request
+// has none.
+//
+// Save this file as model.idp. Download `room_assignment.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/room_assignment.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py room_assignment.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Req <: Int                  // the requests, numbered from 0 in list order
+    max_rooms: () -> Int             // the number of rooms; the rooms are numbered from 0 to max_rooms minus one
+    start_data: Req -> Int           // start_data(r): the start date of request r, as its day number (days since 1970-01-01)
+    end_data: Req -> Int             // end_data(r): the end date of request r (exclusive), as its day number
+    preassigned_room_data: Req -> Int // preassigned_room_data(r): the room pre-assigned to request r, or -1 for none
+    room_assignments: Req -> Int     // room_assignments(r): the room, numbered from 0, that request r is assigned to
+}
+
+theory T:V {
+    // each request is assigned to one room, numbered from 0 to the number of rooms minus one
+    ! r in Req: room_assignments(r) >= 0 & room_assignments(r) < max_rooms().
+    // a request with a pre-assigned room (not -1) is assigned that room
+    ! r in Req: preassigned_room_data(r) ~= -1 => room_assignments(r) = preassigned_room_data(r).
+    // a room serves one request at a time: two different requests in the same room do not overlap in time, so one
+    // ends on or before the start of the other (a request runs up to, not including, its end date)
+    ! r1 in Req, r2 in Req: r1 ~= r2 & room_assignments(r1) = room_assignments(r2) =>
+        end_data(r1) =< start_data(r2) | end_data(r2) =< start_data(r1).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=300))
+}

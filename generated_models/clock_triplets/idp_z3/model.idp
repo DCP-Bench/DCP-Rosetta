@@ -1,23 +1,23 @@
-// Arrange the numbers 1 to 12 on the face of a clock so that no triplet of
-// adjacent numbers has a sum higher than 21.
-vocabulary {
-    // The twelve positions on the clock, 0-based like the list that is printed.
-    type Pos := {0..11}
-    // The numbers placed on the clock.
-    type Num := {1..12}
-    // x[p] is the number at position p (declared output).
-    x: Pos -> Num
-    // The position after p, going clockwise and wrapping from 11 back to 0.
-    nxt: Pos -> Pos
+// clock_triplets: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Rearrange the numbers on the face of a clock (1 to 12) so that no triplet of adjacent numbers has a sum higher than
+// 21. This is the smallest value that the highest sum of a triplet can have.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Pos := {0..11}                // the twelve positions around the face of the clock, numbered 0 to 11 in clock order
+    x: Pos -> Int                      // x(p): the number on the clock at position p
 }
-theory {
-    // every number from 1 to 12 is used once, so the positions hold different numbers
-    ! p1, p2 in Pos: p1 ~= p2 => x(p1) ~= x(p2).
-
-    // the clock wraps around, so position 11 is followed by position 0
-    nxt(11) = 0.
-    ! p in Pos: p < 11 => nxt(p) = p + 1.
-
-    // no triplet of adjacent numbers has a sum higher than 21
-    ! p in Pos: x(p) + x(nxt(p)) + x(nxt(nxt(p))) =< 21.
+theory T:V {
+    // each number on the clock is from 1 to 12
+    ! p in Pos: 1 =< x(p) & x(p) =< 12.
+    // each of the numbers 1 to 12 is on the clock exactly once
+    ! p, q in Pos: p ~= q => x(p) ~= x(q).
+    // the sum of each triplet of adjacent positions p, p+1, p+2 is at most 21 (the clock is circular)
+    ! p in Pos: x(p) + x((p + 1) % 12) + x((p + 2) % 12) =< 21.
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

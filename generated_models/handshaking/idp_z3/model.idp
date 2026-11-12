@@ -1,0 +1,77 @@
+// handshaking: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Hilary and Jocelyn are married and invite a number of couples who are friends for dinner. When
+// they arrive, they shake hands with each other. Nobody shakes hands with him or herself or with his
+// or her spouse. After there has been some handshaking, Jocelyn jumps up on a chair and says 'Stop
+// shaking hands!', and then asks how many hands each person has shaken. All the answers are different.
+//
+// How many hands has Hilary shaken?
+//
+// Save this file as model.idp. Download `handshaking.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py handshaking.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type P <: Int                      // the people at the party, numbered 1 to P_size: Hilary is 1, Jocelyn is 2
+    P_size: () -> Int                  // the number of people at the party: 2 plus two per invited couple
+    type D <: Int                      // the numbers of hands, shifted by one: d stands for d - 1 hands
+    D_size: () -> Int                  // the number of values of D: 0 to 2 * num_couples hands
+    num_couples: () -> Int             // the number of couples invited, not counting Hilary and Jocelyn
+    spouse: P * P -> Bool              // spouse(i, j): persons i and j are married to each other
+    shake: P * P -> Bool               // shake(i, j): persons i and j shake hands
+    deg: P * D -> Bool                 // deg(i, d): person i has shaken d - 1 hands
+    hands: P -> Int                    // hands(i): the number of hands person i has shaken
+    lead: P -> Bool                    // lead(i): person i is the first of an invited couple (an odd person from 3 on)
+    hil: () -> Int                     // the number of hands Hilary has shaken
+}
+
+theory T:V {
+    // the people at the party are 2 plus two for each invited couple
+    P_size() = 2 + 2 * num_couples().
+    D_size() = 2 * num_couples() + 1.
+
+    // the spouses are the couples 1 and 2, then 3 and 4, 5 and 6, and so on: persons 2k+1 and 2k+2 for k = 0, 1, ...
+    {
+        ! i in P, j in P: spouse(i, j) <- j = i + 1 & i = 2 * (i / 2) + 1.
+        ! i in P, j in P: spouse(i, j) <- i = j + 1 & j = 2 * (j / 2) + 1.
+        ! i in P: lead(i) <- 2 < i & i = 2 * (i / 2) + 1.
+    }
+
+    // a handshake is shared: if i shakes hands with j then j shakes hands with i
+    ! i in P, j in P: shake(i, j) => shake(j, i).
+
+    // nobody shakes hands with him or herself
+    ! i in P: ~shake(i, i).
+
+    // nobody shakes hands with his or her spouse
+    ! i in P, j in P: spouse(i, j) => ~shake(i, j).
+
+    // the number of hands each person has shaken is the number of people that person shook hands with
+    ! i in P: #{ j in P: shake(i, j) } = hands(i).
+    // each person has shaken exactly one number of hands
+    ! i in P: #{ d in D: deg(i, d) } = 1.
+    ! i in P, d in D: deg(i, d) => hands(i) = d - 1.
+
+    // all the answers Jocelyn is given are different: the people other than Jocelyn, who asks, have different numbers of hands (Hilary is asked)
+    ! d in D: #{ i in P: i ~= 2 & deg(i, d) } =< 1.
+
+    // the invited couples can be renamed freely, so the spouses are numbered so that within each couple the spouse
+    // with the fewer hands comes first, and the couples follow in the order of their first spouse's hands
+    ! i in P, j in P: lead(i) & j = i + 1 => hands(i) < hands(j).
+    ! i in P, i2 in P: lead(i) & lead(i2) & i < i2 => hands(i) < hands(i2).
+
+    // each invited couple together has shaken 2 * num_couples hands: a consequence of the answers all being different
+    // (it follows from the rest of the model, and it shortens the search)
+    ! i in P, j in P: spouse(i, j) & 2 < i => hands(i) + hands(j) = 2 * num_couples().
+
+    // the number of hands Hilary has shaken is the answer
+    ! i in P: i = 1 => hil() = #{ j in P: shake(i, j) }.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=170))
+}

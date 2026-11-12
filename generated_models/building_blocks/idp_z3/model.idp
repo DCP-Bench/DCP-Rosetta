@@ -1,0 +1,41 @@
+// building_blocks: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Each of a number of alphabet blocks has a single letter of the alphabet on each of its sides. In all, the blocks
+// contain every letter but Q and Z. By arranging the blocks in various ways, you can spell all of the words in a
+// given list, using each block for at most one letter of a word, so the letters of a word are all on different
+// blocks. Each letter is on exactly one block, and each block has the same given number of sides. Find how the
+// letters are arranged on the blocks.
+//
+// Save this file as model.idp. Download `building_blocks.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/building_blocks.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py building_blocks.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Letter <: Int               // the letters of the alphabet, numbered from 0 in alphabet order
+    type Word <: Int                 // the words to spell, numbered from 0
+    type Pos <: Int                  // the positions within a word, numbered from 0
+    num_blocks: () -> Int            // the number of blocks
+    num_sides: () -> Int             // the number of sides of each block, one letter per side
+    alphabet: Letter -> Int          // alphabet(l): the id of letter l (its position in the alphabet); only sizes Letter
+    words_str: Word * Pos -> Int     // words_str(w, j): the id of the letter at position j of word w
+    words_str_len: Word -> Int       // words_str_len(w): the number of letters of word w
+    dice: Letter -> Int              // dice(l): the block, numbered from 0, on which letter l is placed
+}
+
+theory T:V {
+    // every letter is placed on one of the blocks, numbered from 0 to the number of blocks minus one
+    ! l in Letter: dice(l) >= 0 & dice(l) < num_blocks().
+    // every block has the given number of sides: the letters on the block of any letter number num_sides
+    ! l in Letter: #{l2 in Letter: dice(l2) = dice(l)} = num_sides().
+    // the letters of a word are all on different blocks, so each block gives at most one letter of a word
+    ! w in Word, p1 in Pos, p2 in Pos:
+        (p1 < p2 & p2 < words_str_len(w)) => dice(words_str(w, p1)) ~= dice(words_str(w, p2)).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=300))
+}

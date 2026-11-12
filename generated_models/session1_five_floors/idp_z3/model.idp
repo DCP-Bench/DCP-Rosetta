@@ -1,49 +1,40 @@
-// Five people (Baker, Cooper, Fletcher, Miller, Smith) each live on one of the first five floors of an apartment house; find the floor of each.
-vocabulary {
-    B: () -> Int
-    C: () -> Int
-    F: () -> Int
-    M: () -> Int
-    S: () -> Int
+// session1_five_floors: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Baker, Cooper, Fletcher, Miller, and Smith live on the first five floors of an apartment house. Baker does not
+// live on the fifth floor. Cooper does not live on the first floor. Fletcher does not live on either the fifth or the
+// first floor. Miller lives on a higher floor than does Cooper. Smith does not live on a floor adjacent to Fletcher's.
+// Fletcher does not live on a floor adjacent to Cooper's. They all live on different floors.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_five_floors.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Floor := {1..5}               // the floors of the apartment house, numbered 1 (first) to 5 (fifth)
+    B: () -> Floor                     // the floor Baker lives on
+    C: () -> Floor                     // the floor Cooper lives on
+    F: () -> Floor                     // the floor Fletcher lives on
+    M: () -> Floor                     // the floor Miller lives on
+    S: () -> Floor                     // the floor Smith lives on
 }
-theory {
-    // each person lives on one of the first five floors
-    1 =< B() & B() =< 5.
-    1 =< C() & C() =< 5.
-    1 =< F() & F() =< 5.
-    1 =< M() & M() =< 5.
-    1 =< S() & S() =< 5.
-
-    // they all live on different floors
-    B() ~= C().
-    B() ~= F().
-    B() ~= M().
-    B() ~= S().
-    C() ~= F().
-    C() ~= M().
-    C() ~= S().
-    F() ~= M().
-    F() ~= S().
-    M() ~= S().
-
+theory T:V {
     // Baker does not live on the fifth floor
     B() ~= 5.
-
     // Cooper does not live on the first floor
     C() ~= 1.
-
     // Fletcher does not live on either the fifth or the first floor
-    F() ~= 5.
-    F() ~= 1.
-
-    // Miller lives on a higher floor than does Cooper
-    C() < M().
-
+    F() ~= 5 & F() ~= 1.
+    // Miller lives on a higher floor than Cooper
+    M() > C().
     // Smith does not live on a floor adjacent to Fletcher's
-    S() ~= F() + 1.
-    S() ~= F() - 1.
-
+    S() ~= F() + 1 & S() ~= F() - 1.
     // Fletcher does not live on a floor adjacent to Cooper's
-    F() ~= C() + 1.
-    F() ~= C() - 1.
+    F() ~= C() + 1 & F() ~= C() - 1.
+    // they all live on different floors
+    B() ~= C() & B() ~= F() & B() ~= M() & B() ~= S().
+    C() ~= F() & C() ~= M() & C() ~= S().
+    F() ~= M() & F() ~= S().
+    M() ~= S().
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

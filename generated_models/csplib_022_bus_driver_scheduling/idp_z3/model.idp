@@ -1,33 +1,35 @@
-vocabulary {
-    // Work pieces are counted from 1 to num_work in the description.
-    type Range_num_work <: Int
-    // One index per shift; sized from the shifts array (0-based).
-    type Shift <: Int
-    // Column index inside a shift; sized from the longest shift (0-based).
-    type Pos <: Int
-
-    num_work: () -> Int
-    // Ragged rows: shifts(s, j) is the j-th work id of shift s, valid while j < shifts_len(s).
-    shifts: Shift * Pos -> Int
-    shifts_len: Shift -> Int
-
-    // Declared output: 1 if the shift is selected.
-    x: Shift -> Bool
-
-    // Auxiliary: shift s covers work piece w.
-    covers: Shift * Range_num_work -> Bool
-
-    // Objective: number of selected shifts.
-    minimize: () -> Int
+// csplib_022_bus_driver_scheduling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Finding an optimal schedule for bus drivers. Given a set of tasks (pieces of work) to cover and a large set of possible
+// shifts, where each shift covers a subset of the tasks, select a subset of shifts that covers each piece of work exactly
+// once. The goal is to cover all tasks while minimizing the total number of shifts used. The cost of each shift is equal.
+//
+// Save this file as model.idp. Download `csplib_022_bus_driver_scheduling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_022_bus_driver_scheduling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_022_bus_driver_scheduling.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_num_work <: Int         // the tasks 1..num_work (the data numbers the tasks from 0, so task t is the number t - 1)
+    type Shift <: Int                  // the shifts, numbered from 0, sized from shifts_len
+    type Slot <: Int                   // the positions in the list of tasks of a shift, numbered from 0
+    num_work: () -> Int                // the number of tasks
+    shifts: Shift * Slot -> Int        // shifts(s, j): the j-th task (0-based) covered by shift s, for j < shifts_len(s)
+    shifts_len: Shift -> Int           // shifts_len(s): the number of tasks covered by shift s
+    x: Shift -> Bool                   // x(s): shift s is selected
+    minimize: () -> Int                // the number of shifts selected
 }
 
-theory {
-    // a shift covers a work piece when the piece appears in its list (ids stored 0-based)
-    { ! s in Shift, w in Range_num_work: covers(s, w) <- ? j in Pos: j < shifts_len(s) & shifts(s, j) = w - 1. }
+theory T:V {
+    // each task is covered by exactly one selected shift
+    ! t in Range_num_work: #{s in Shift: x(s) & (? j in Slot: j < shifts_len(s) & shifts(s, j) + 1 = t)} = 1.
 
-    // each piece of work is covered by exactly one selected shift
-    ! w in Range_num_work: ?=1 s in Shift: x(s) & covers(s, w).
+    // the number of shifts selected is the objective
+    minimize() = #{s in Shift: x(s)}.
+}
 
-    // minimize the number of selected shifts
-    minimize() = #{ s in Shift: x(s) }.
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

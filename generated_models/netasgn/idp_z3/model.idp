@@ -1,35 +1,41 @@
-// Project assignment problem: assign hours from people to projects at minimum total cost.
-vocabulary {
-    // Sizes come from the instance: People are the rows of cost, Projects its columns.
-    type Person <: Int
-    type Project <: Int
-    // Hours per cell. The reference bounds every assignment by 0..10.
-    type Hours := {0..10}
-
-    supply: Person -> Int
-    demand: Project -> Int
-    cost: Person * Project -> Int
-    limit: Person * Project -> Int
-
-    // Declared outputs
-    assign: Person * Project -> Hours
-    total_cost: () -> Int
-
-    minimize: () -> Int
+// netasgn: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A project assignment problem. Given a set of people and a set of projects. Each person has a certain number of
+// available hours, and each project requires a certain number of hours. The cost per hour of work for a person on a
+// project is given, and each person can contribute to a project up to a maximum limit of hours. The problem aims to
+// minimize the total cost of assigning people to projects. The total number of hours assigned from each person equals
+// its supply, and the total number of hours assigned to each project equals its demand.
+//
+// Save this file as model.idp. Download `netasgn.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/netasgn.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py netasgn.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Person <: Int                 // the people, numbered from 0, sized from supply
+    type Project <: Int                // the projects, numbered from 0, sized from demand
+    supply: Person -> Int              // supply(i): the available hours of person i
+    demand: Project -> Int             // demand(j): the hours required by project j
+    cost: Person * Project -> Int      // cost(i, j): the cost per hour of person i working on project j
+    limit: Person * Project -> Int     // limit(i, j): the most hours person i can contribute to project j
+    assign: Person * Project -> Int    // assign(i, j): the hours person i is assigned to project j (declared output)
+    total_cost: () -> Int              // the total cost of the hours assigned
+    minimize: () -> Int                // the total cost of the hours assigned, to minimize
 }
-theory {
-    // The total number of hours assigned from each person equals its supply.
+theory T:V {
+    // the hours assigned to a project from a person are between zero and the limit of that pair
+    ! i in Person, j in Project: 0 =< assign(i, j) & assign(i, j) =< limit(i, j).
+    // the total hours assigned from each person equal its supply
     ! i in Person: sum{{ assign(i, j) | j in Project }} = supply(i).
-
-    // The total number of hours assigned to each project equals its demand.
+    // the total hours assigned to each project equal its demand
     ! j in Project: sum{{ assign(i, j) | i in Person }} = demand(j).
-
-    // Person i can contribute to project j up to a maximum limit.
-    ! i in Person, j in Project: assign(i, j) =< limit(i, j).
-
-    // The total cost is the sum of cost per hour times hours assigned.
+    // the total cost is the cost per hour times the hours assigned, summed over all pairs
     total_cost() = sum{{ (cost(i, j) * assign(i, j)) | i in Person, j in Project }}.
-
-    // The objective is to minimize the total cost.
+    // the total cost is minimized
     minimize() = total_cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

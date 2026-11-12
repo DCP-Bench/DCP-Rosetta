@@ -1,33 +1,46 @@
-// Crew: assign 20 flight attendants to 10 flights so that each flight has its required crew size,
-// its required stewards, hostesses and speakers of each language, and every crew member has two flights off after an attended flight.
-vocabulary {
-    type Person <: Int
-    type Flight <: Int
-    type Attr <: Int
-    type Need <: Int
-    attributes: Person * Attr -> Int
-    required_crew: Flight * Need -> Int
-    crew: Flight * Person -> Bool
+// crew: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Assign flight attendants to flights. Each flight needs a certain number of cabin crew, and they have to speak certain
+// languages. attributes[p] describes person p as five 0/1 values: steward, hostess, speaks French, speaks Spanish,
+// speaks German. required_crew[f] describes flight f as six numbers: the number of cabin crew, then the numbers of
+// stewards, hostesses, French speakers, Spanish speakers and German speakers needed. A flight has exactly that number
+// of cabin crew, and at least the required number of each of the others; one person can count towards several of them.
+// Every cabin crew member has at least two flights off after an attended flight, so nobody attends more than one of any
+// three consecutive flights.
+//
+// Save this file as model.idp. Download `crew.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/crew.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py crew.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type P <: Int                      // the persons (flight attendants), numbered from 0
+    type F <: Int                      // the flights, numbered from 0
+    type A <: Int                      // the attributes of a person: 0 steward, 1 hostess, 2 speaks French, 3 speaks Spanish, 4 speaks German
+    type R <: Int                      // the requirements of a flight: 0 number of cabin crew, 1 stewards, 2 hostesses, 3 French, 4 Spanish, 5 German
+    attributes: P * A -> Int           // attributes(p, a): 1 if person p has attribute a, else 0
+    required_crew: F * R -> Int        // required_crew(f, r): the requirement r of flight f, as listed above
+    crew: F * P -> Bool                // crew(f, p): person p is assigned to flight f
 }
-theory {
-    // Each flight needs a certain number of cabin crew.
-    ! f in Flight: #{ p in Person: crew(f, p) } = required_crew(f, 0).
-
-    // Each flight needs a certain number of stewards (attribute 0 of an attendant).
-    ! f in Flight: sum{{ attributes(p, 0) | p in Person: crew(f, p) }} >= required_crew(f, 1).
-
-    // Each flight needs a certain number of hostesses (attribute 1 of an attendant).
-    ! f in Flight: sum{{ attributes(p, 1) | p in Person: crew(f, p) }} >= required_crew(f, 2).
-
-    // Each flight needs a certain number of speakers of the first language (attribute 2 of an attendant).
-    ! f in Flight: sum{{ attributes(p, 2) | p in Person: crew(f, p) }} >= required_crew(f, 3).
-
-    // Each flight needs a certain number of speakers of the second language (attribute 3 of an attendant).
-    ! f in Flight: sum{{ attributes(p, 3) | p in Person: crew(f, p) }} >= required_crew(f, 4).
-
-    // Each flight needs a certain number of speakers of the third language (attribute 4 of an attendant).
-    ! f in Flight: sum{{ attributes(p, 4) | p in Person: crew(f, p) }} >= required_crew(f, 5).
-
-    // Every cabin crew member has two flights off after an attended flight.
-    ! p in Person, f1, f2 in Flight: (f1 < f2 & f2 =< f1 + 2) => ~(crew(f1, p) & crew(f2, p)).
+theory T:V {
+    // a flight has exactly the required number of cabin crew
+    ! f in F: #{p in P: crew(f, p)} = required_crew(f, 0).
+    // a flight has at least the required number of stewards
+    ! f in F: #{p in P: crew(f, p) & attributes(p, 0) = 1} >= required_crew(f, 1).
+    // a flight has at least the required number of hostesses
+    ! f in F: #{p in P: crew(f, p) & attributes(p, 1) = 1} >= required_crew(f, 2).
+    // a flight has at least the required number of French speakers
+    ! f in F: #{p in P: crew(f, p) & attributes(p, 2) = 1} >= required_crew(f, 3).
+    // a flight has at least the required number of Spanish speakers
+    ! f in F: #{p in P: crew(f, p) & attributes(p, 3) = 1} >= required_crew(f, 4).
+    // a flight has at least the required number of German speakers
+    ! f in F: #{p in P: crew(f, p) & attributes(p, 4) = 1} >= required_crew(f, 5).
+    // nobody attends two flights that are one or two flights apart, so nobody attends more than one of any three
+    // consecutive flights
+    ! p in P, f in F, g in F: (g = f + 1 | g = f + 2) => ~(crew(f, p) & crew(g, p)).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

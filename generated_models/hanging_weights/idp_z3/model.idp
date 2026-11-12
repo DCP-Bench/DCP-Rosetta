@@ -1,73 +1,72 @@
-// Hanging weights: weights A-M hang from a system of bars and must balance as in the diagram.
-vocabulary {
-    a: () -> Int
-    b: () -> Int
-    c: () -> Int
-    d: () -> Int
-    e: () -> Int
-    f: () -> Int
-    g: () -> Int
-    h: () -> Int
-    i: () -> Int
-    j: () -> Int
-    k: () -> Int
-    l: () -> Int
-    m: () -> Int
-    // total weight of the bars hanging below each bar
-    tAB: () -> Int
-    tCD: () -> Int
-    tG: () -> Int
-    tQ: () -> Int
-    tP: () -> Int
-    tX: () -> Int
-    tY: () -> Int
+// hanging_weights: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A diagram shows weights (A to M) hanging from a system of bars. The weights have different integer values between 1
+// and 13, and the goal is to find what each weight must be for the diagram to balance. Each three characters along a
+// bar are one unit of distance. The rules are: (1) the weights on either side of a pivot point must be equal when
+// weighted by their distance from the pivot, and (2) a bar hanging beneath another contributes its total weight as
+// though it were a single weight. The bars, from the top, are: the top bar hangs the bar with L and M on its left and
+// the bar with J and K on its right; the bar with H, I and the bar with E and F; the bar with A and B; the bar with C
+// and D; and the bar with G, which hangs the bar with C and D.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Idx <: Int                    // the thirteen weights in alphabetical order, numbered from 0: A to M
+    weight: Idx -> Int                 // weight(i): the value of the i-th weight
+    a: () -> Int                       // the value of weight A
+    b: () -> Int                       // the value of weight B
+    c: () -> Int                       // the value of weight C
+    d: () -> Int                       // the value of weight D
+    e: () -> Int                       // the value of weight E
+    f: () -> Int                       // the value of weight F
+    g: () -> Int                       // the value of weight G
+    h: () -> Int                       // the value of weight H
+    i: () -> Int                       // the value of weight I
+    j: () -> Int                       // the value of weight J
+    k: () -> Int                       // the value of weight K
+    l: () -> Int                       // the value of weight L
+    m: () -> Int                       // the value of weight M
 }
-theory {
-    // Each weight has an integer value between 1 and 13.
-    1 =< a() & a() =< 13.
-    1 =< b() & b() =< 13.
-    1 =< c() & c() =< 13.
-    1 =< d() & d() =< 13.
-    1 =< e() & e() =< 13.
-    1 =< f() & f() =< 13.
-    1 =< g() & g() =< 13.
-    1 =< h() & h() =< 13.
-    1 =< i() & i() =< 13.
-    1 =< j() & j() =< 13.
-    1 =< k() & k() =< 13.
-    1 =< l() & l() =< 13.
-    1 =< m() & m() =< 13.
-
-    // a bar hanging beneath another contributes its total weight as though it were a single weight
-    tAB() = a() + b().
-    tCD() = c() + d().
-    tG() = g() + tCD().
-    tQ() = e() + f().
-    tP() = h() + i() + tQ().
-    tX() = tP() + l() + m().
-    tY() = tAB() + j() + k() + tG().
-
-    // the weights on either side of the top pivot must be equal, weighted by distance: 4 * X = 3 * Y
-    4 * tX() = 3 * tY().
-
-    // the left bar under the top bar: P at distance 1 balances L at distance 1 and M at distance 4
-    tP() = l() + 4 * m().
-
-    // the bar holding H and I, with the bar Q (E and F) at distance 2: 3*H = 3*I + 2*Q
-    3 * h() = 3 * i() + 2 * tQ().
-
-    // the bar holding E and F: 3*E = 2*F
-    3 * e() = 2 * f().
-
-    // the bar holding A and B: 4*A = B
+structure D:V {
+    Idx := {0..12}.
+}
+theory T:V {
+    // each weight is an integer from 1 to 13
+    ! p in Idx: 1 =< weight(p) & weight(p) =< 13.
+    // the weights have different values
+    ! p in Idx: ! q in Idx: p ~= q => weight(p) ~= weight(q).
+    // the name of each weight is its entry in the table of weights
+    a() = weight(0).
+    b() = weight(1).
+    c() = weight(2).
+    d() = weight(3).
+    e() = weight(4).
+    f() = weight(5).
+    g() = weight(6).
+    h() = weight(7).
+    i() = weight(8).
+    j() = weight(9).
+    k() = weight(10).
+    l() = weight(11).
+    m() = weight(12).
+    // the bar with A and B balances: A is 4 units left of its pivot and B is 1 unit right of it
     4 * a() = b().
-
-    // the bar holding J, K, the A-B bar and the G bar: 3*(A+B) + 2*J = K + 2*G
-    3 * tAB() + 2 * j() = k() + 2 * tG().
-
-    // the bar holding G and the bar C+D: 3*G = 2*(C+D)
-    3 * g() = 2 * tCD().
-
-    // the bottom right bar must have 5*C = D
+    // the bar with C and D balances: C is 5 units left of its pivot and D is 1 unit right of it
     5 * c() = d().
+    // the bar with E and F balances: E is 3 units left of its pivot and F is 2 units right of it
+    3 * e() = 2 * f().
+    // the bar with G balances: G is 3 units left of its pivot and the bar with C and D hangs 2 units right of it
+    3 * g() = 2 * (c() + d()).
+    // the bar with H and I balances: H is 3 units left of its pivot, the bar with E and F hangs 2 units right of it and I is 3 units right of it
+    3 * h() = 2 * (e() + f()) + 3 * i().
+    // the bar with J and K balances: the bar with A and B hangs 3 units left of its pivot, J is 2 units left of it, K is 1 unit right of it and the bar with G hangs 2 units right of it
+    3 * (a() + b()) + 2 * j() = k() + 2 * (g() + c() + d()).
+    // the bar with L and M balances: the bar with H and I hangs 1 unit left of its pivot, L is 1 unit right of it and M is 4 units right of it
+    h() + i() + e() + f() = l() + 4 * m().
+    // the top bar balances: the bar with L and M hangs 4 units left of its pivot and the bar with J and K hangs 3 units right of it
+    4 * (l() + m() + h() + i() + e() + f()) = 3 * (j() + k() + a() + b() + g() + c() + d()).
+}
+procedure main() {
+    pretty_print(model_expand(T, D, max=1))
 }

@@ -1,18 +1,32 @@
-vocabulary {
-    type Range_n <: Int            // elements are 1..n
-    n: () -> Int
-    type Tri <: Int                // one index per triple
-    Tri_size: () -> Int            // n(n-1)/6 triples
-    sets: Tri * Range_n -> Bool    // declared output: sets(t, e) iff element e is in triple t
+// csplib_044_steiner: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The ternary Steiner problem of order n: find a set of n * (n - 1) / 6 triples of distinct elements from {1, ..., n}
+// such that any two triples have at most one element in common. The problem has a solution only when n modulo 6 is 1 or 3.
+//
+// Save this file as model.idp. Download `csplib_044_steiner.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_044_steiner.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_044_steiner.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                   // the elements, numbered 1..n
+    type Triple <: Int                    // the triples, numbered 1..n * (n - 1) / 6, sized by Triple_size
+    Triple_size: () -> Int                // the number of triples, n * (n - 1) / 6
+    n: () -> Int                          // the order of the Steiner system: the number of elements
+    sets: Triple * Range_n -> Bool        // sets(t, e): element e is in triple t
 }
-
-theory {
-    // the number of triples is n(n-1)/6
-    Tri_size() = n() * (n() - 1) / 6.
+theory T:V {
+    // the number of triples is n * (n - 1) / 6
+    Triple_size() = n() * (n() - 1) / 6.
 
     // each triple consists of exactly three distinct elements
-    ! t in Tri: #{ e in Range_n: sets(t, e) } = 3.
+    ! t in Triple: #{ e in Range_n: sets(t, e) } = 3.
 
-    // any two distinct triples have at most one common element
-    ! t1 in Tri: ! t2 in Tri: t1 ~= t2 => #{ e in Range_n: sets(t1, e) & sets(t2, e) } =< 1.
+    // any two distinct triples have at most one element in common
+    ! t1, t2 in Triple: t1 ~= t2 => #{ e in Range_n: sets(t1, e) & sets(t2, e) } =< 1.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

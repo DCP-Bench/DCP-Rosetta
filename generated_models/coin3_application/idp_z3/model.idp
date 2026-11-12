@@ -1,20 +1,39 @@
-vocabulary {
-    type I <: Int                              // one entry per coin type, sized from denominations
-    type Range_max_amount_to_pay <: Int        // amounts 1..max_amount_to_pay
-    max_amount_to_pay: () -> Int
-    denominations: I -> Int
-    x: I -> Int                                // declared output: coins of each type used
-    y: Range_max_amount_to_pay * I -> Int      // coins of type i used to pay amount v
-    minimize: () -> Int
+// coin3_application: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find the minimum number of coins that allows one to pay exactly any amount smaller than a given maximum amount using
+// a given set of denominations.
+//
+// Save this file as model.idp. Download `coin3_application.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py coin3_application.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type D <: Int                              // the denominations, numbered from 0
+    type Range_max_amount_to_pay <: Int        // the integers from 1 to max_amount_to_pay
+    max_amount_to_pay: () -> Int               // the amount that must not be reached: every amount below it must be payable
+    denominations: D -> Int                    // denominations(i): the value of the coin of denomination i
+    x: D -> Int                                // x(i): the number of coins of denomination i used
+    pay: Range_max_amount_to_pay * D -> Int    // pay(v, i): the number of coins of denomination i used to pay the amount v (auxiliary)
+    paid: Range_max_amount_to_pay * D -> Int   // paid(v, i): the value paid with the coins of denomination i for the amount v (auxiliary)
+    minimize: () -> Int                        // the total number of coins used, to minimize
 }
-theory {
-    // the number of coins of each type is nonnegative
-    ! i in I: 0 =< x(i).
-    // a coin count never needs to exceed what amounts below the maximum can use
-    ! i in I: x(i) * denominations(i) =< max_amount_to_pay() - 1.
-    // every amount smaller than the maximum is paid exactly from the coins available
-    ! v in Range_max_amount_to_pay: v =< max_amount_to_pay() - 1 => (! i in I: (0 =< y(v, i) & y(v, i) =< x(i))).
-    ! v in Range_max_amount_to_pay: v =< max_amount_to_pay() - 1 => sum{{ (y(v, i) * denominations(i)) | i in I }} = v.
-    // the objective is the total number of coins used
-    minimize() = sum{{ x(i) | i in I }}.
+theory T:V {
+    // the number of coins of each denomination is not negative, and fewer than max_amount_to_pay (an optimal selection
+    // never uses more coins of one denomination: a coin of denomination d paying an amount below max_amount_to_pay is
+    // counted at most max_amount_to_pay - 1 times, so one coin more than that is never needed)
+    ! i in D: 0 =< x(i) & x(i) =< max_amount_to_pay() - 1.
+    // every amount v below max_amount_to_pay can be paid exactly with coins of the denominations in x
+    ! v in Range_max_amount_to_pay, i in D: paid(v, i) = denominations(i) * pay(v, i).
+    ! v in Range_max_amount_to_pay: v < max_amount_to_pay() => sum{{ paid(v, i) | i in D }} = v.
+    // the coins used to pay an amount are no more than the coins available of each denomination (pay(v, i) =< v is
+    // implied, as every denomination is at least 1, and only tightens the search)
+    ! v in Range_max_amount_to_pay, i in D: 0 =< pay(v, i) & pay(v, i) =< x(i) & pay(v, i) =< v.
+    // the total number of coins used is the value to minimize
+    minimize() = sum{{ x(i) | i in D }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

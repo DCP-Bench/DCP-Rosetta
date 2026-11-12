@@ -1,45 +1,67 @@
-// Magic hexagon (CSPLib 023): place the numbers 1 to NUM_CELLS in the 19 cells A..S
-// so that the sum on each of the 15 lines equals the magic constant MAGIC_SUM.
-// Range_NUM_CELLS letters map to positions: A=1, B=2, ..., S=19. LD(i) is the number in cell i.
-vocabulary {
-    MAGIC_SUM: () -> Int
-    type Range_NUM_CELLS <: Int
-    LD: Range_NUM_CELLS -> Range_NUM_CELLS
+// csplib_023_magic_hexagon: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A magic hexagon arranges the numbers 1 to 19 in a hexagonal pattern so that the sum of the numbers in each of the 15
+// lines (rows and diagonals) is equal to the magic constant, 38. The hexagon has cells A to S as follows:
+//
+//       A, B, C
+//      D, E, F, G
+//     H, I, J, K, L
+//      M, N, O, P
+//       Q, R, S
+//
+// Find an assignment of the numbers to the cells A to S that satisfies all the line sums.
+//
+// Save this file as model.idp. Download `csplib_023_magic_hexagon.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_023_magic_hexagon.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Cell := {1..19}               // the cells A..S, numbered 1..19 (A is 1, B is 2, ..., S is 19), which are also the numbers 1..19
+    MAGIC_SUM: () -> Int               // the magic constant, the sum of each line
+    LD: Cell -> Cell                   // LD(k): the number written in cell k (k = 1 is A, ..., k = 19 is S)
 }
-theory {
-    // the numbers placed in the cells are all different
-    ! i, j in Range_NUM_CELLS: i ~= j => LD(i) ~= LD(j).
 
-    // the first row A B C sums to the magic constant
+theory T:V {
+    // the numbers 1 to 19 are each used once
+    ! k, l in Cell: k ~= l => LD(k) ~= LD(l).
+
+    // the first row A, B, C sums to the magic constant
     LD(1) + LD(2) + LD(3) = MAGIC_SUM().
-    // the second row D E F G
+    // the second row D, E, F, G sums to the magic constant
     LD(4) + LD(5) + LD(6) + LD(7) = MAGIC_SUM().
-    // the middle row H I J K L
+    // the middle row H, I, J, K, L sums to the magic constant
     LD(8) + LD(9) + LD(10) + LD(11) + LD(12) = MAGIC_SUM().
-    // the fourth row M N O P
+    // the fourth row M, N, O, P sums to the magic constant
     LD(13) + LD(14) + LD(15) + LD(16) = MAGIC_SUM().
-    // the bottom row Q R S
+    // the last row Q, R, S sums to the magic constant
     LD(17) + LD(18) + LD(19) = MAGIC_SUM().
 
-    // the line A E J O S running down and to the right sums to the magic constant
-    LD(1) + LD(5) + LD(10) + LD(15) + LD(19) = MAGIC_SUM().
-    // the line B F K P running down and to the right
-    LD(2) + LD(6) + LD(11) + LD(16) = MAGIC_SUM().
-    // the line C G L running down and to the right
-    LD(3) + LD(7) + LD(12) = MAGIC_SUM().
-    // the line D I N R running down and to the right
-    LD(4) + LD(9) + LD(14) + LD(18) = MAGIC_SUM().
-    // the line H M Q running down and to the right
-    LD(8) + LD(13) + LD(17) = MAGIC_SUM().
-
-    // the line C F J N Q running down and to the left sums to the magic constant
-    LD(3) + LD(6) + LD(10) + LD(14) + LD(17) = MAGIC_SUM().
-    // the line B E I M running down and to the left
-    LD(2) + LD(5) + LD(9) + LD(13) = MAGIC_SUM().
-    // the line A D H running down and to the left
+    // the diagonal A, D, H sums to the magic constant
     LD(1) + LD(4) + LD(8) = MAGIC_SUM().
-    // the line G K O R running down and to the left
+    // the diagonal B, E, I, M sums to the magic constant
+    LD(2) + LD(5) + LD(9) + LD(13) = MAGIC_SUM().
+    // the diagonal C, F, J, N, Q sums to the magic constant
+    LD(3) + LD(6) + LD(10) + LD(14) + LD(17) = MAGIC_SUM().
+    // the diagonal G, K, O, R sums to the magic constant
     LD(7) + LD(11) + LD(15) + LD(18) = MAGIC_SUM().
-    // the line L P S running down and to the left
+    // the diagonal L, P, S sums to the magic constant
     LD(12) + LD(16) + LD(19) = MAGIC_SUM().
+
+    // the diagonal C, G, L sums to the magic constant
+    LD(3) + LD(7) + LD(12) = MAGIC_SUM().
+    // the diagonal B, F, K, P sums to the magic constant
+    LD(2) + LD(6) + LD(11) + LD(16) = MAGIC_SUM().
+    // the diagonal A, E, J, O, S sums to the magic constant
+    LD(1) + LD(5) + LD(10) + LD(15) + LD(19) = MAGIC_SUM().
+    // the diagonal D, I, N, R sums to the magic constant
+    LD(4) + LD(9) + LD(14) + LD(18) = MAGIC_SUM().
+    // the diagonal H, M, Q sums to the magic constant
+    LD(8) + LD(13) + LD(17) = MAGIC_SUM().
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

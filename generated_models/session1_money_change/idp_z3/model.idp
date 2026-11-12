@@ -1,20 +1,35 @@
-// Change-making: Alice gives Bob change using coins of several values,
-// with a limited number of coins of each value, minimizing the number of coins used.
-vocabulary {
-    type I <: Int                      // one index per coin type, sized from the instance
+// session1_money_change: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Alice has to give Bob some change. She has different types of coins of different values and she has a certain number
+// of coins of each value available. How can the change be composed with the available coins minimizing the number of
+// coins used?
+//
+// Save this file as model.idp. Download `session1_money_change.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_money_change.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session1_money_change.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Coin <: Int                   // the types of coins, numbered from 0
     amount: () -> Int                  // the amount of change to give
-    types_of_coins: I -> Int           // value of each coin type
-    available_coins: I -> Int          // number of coins of each type Alice has
-    coin_counts: I -> Int              // declared output: coins of each type given to Bob
-    minimize: () -> Int                // total number of coins used
+    types_of_coins: Coin -> Int        // types_of_coins(c): the value of a coin of type c
+    available_coins: Coin -> Int       // available_coins(c): the number of coins of type c available
+    coin_counts: Coin -> Int           // coin_counts(c): the number of coins of type c given to Bob
+    paid: Coin -> Int                  // paid(c): the value of the coins of type c given to Bob (auxiliary)
+    minimize: () -> Int                // the total number of coins given
 }
-theory {
-    // the number of coins of each type given is between 0 and the number available
-    ! i in I: 0 =< coin_counts(i) & coin_counts(i) =< available_coins(i).
-
-    // the coins given add up to the amount of change
-    sum{{ (types_of_coins(i) * coin_counts(i)) | i in I }} = amount().
-
-    // the objective is the total number of coins used
-    minimize() = sum{{ coin_counts(i) | i in I }}.
+theory T:V {
+    // the coins given to Bob are at most the coins available of each type
+    ! c in Coin: 0 =< coin_counts(c) & coin_counts(c) =< available_coins(c).
+    // the value of the coins of each type given is their value times their number
+    ! c in Coin: paid(c) = types_of_coins(c) * coin_counts(c).
+    // the value of all the coins given adds up to the amount of change
+    sum{{ paid(c) | c in Coin }} = amount().
+    // the number of coins used is to be minimized
+    minimize() = sum{{ coin_counts(c) | c in Coin }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

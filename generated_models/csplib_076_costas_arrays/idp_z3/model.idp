@@ -1,16 +1,29 @@
-// Costas array problem: place n marks on an n x n grid, one per row and one per column,
-// such that the vectors between all pairs of marks are different.
-vocabulary {
-    n: () -> Int
-    // the grid rows and columns, 1..n
-    type Range_n <: Int
-    // costas(r) is the column of the mark in row r
-    costas: Range_n -> Range_n
+// csplib_076_costas_arrays: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A Costas array is a pattern of n marks on an n x n grid, one mark per row and one per column, in which the
+// n(n-1)/2 vectors between the marks are all different. Find such a pattern for the given n: a permutation X_1, ..., X_n
+// of 1..n in which, for each length l in 1..n-1, the difference triangle values X_i - X_(i+l) for i in 1..n-l are all
+// different.
+//
+// Save this file as model.idp. Download `csplib_076_costas_arrays.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_076_costas_arrays.json
+//   idp-engine model_1.idp
+vocabulary V {
+    n: () -> Int                       // the size n of the array
+    type Range_n <: Int                // the positions 1..n, and the lengths l in 1..n-1
+    costas: Range_n -> Range_n         // costas(i): the mark in column i is in row costas(i) (declared output)
 }
-theory {
-    // one mark per row and one mark per column (the array is a permutation)
-    ! r1, r2 in Range_n: r1 ~= r2 => costas(r1) ~= costas(r2).
+theory T:V {
+    // the marks form a permutation: each row holds exactly one mark, each column exactly one mark
+    ! i, j in Range_n: i ~= j => costas(i) ~= costas(j).
 
-    // the difference triangle: for each length l, the differences X_i - X_{i+l} are all different
-    ! l, i, j in Range_n: (i + l =< n() & j + l =< n() & i ~= j) => costas(i) - costas(i + l) ~= costas(j) - costas(j + l).
+    // for each length l, the differences costas(i) - costas(i + l) between marks l apart are all different
+    ! l, i, j in Range_n: (l < n() & i + l =< n() & j + l =< n() & i ~= j) => costas(i) - costas(i + l) ~= costas(j) - costas(j + l).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

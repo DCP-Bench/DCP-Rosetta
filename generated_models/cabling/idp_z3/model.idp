@@ -1,0 +1,41 @@
+// cabling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Take a rack cabinet. There are a number of 1U devices, maybe servers, routers and whatnot. Devices must be connected
+// by cables: probably twisted pair or whatever network engineers are using today. Some devices must be connected by
+// several cables. Each device takes one position in the rack, and neighbouring positions are one unit apart. A cable
+// between two devices is as long as the distance between their positions, so connecting them by `k` cables costs `k`
+// times that distance. Find the order in which to place the devices so that the sum of all cable lengths is as short
+// as possible, and the minimal sum of all cable lengths.
+//
+// Save this file as model.idp. Download `cabling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py cabling.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Device <: Int               // the devices, numbered from 0 in list order; the positions are numbered the same way
+    type Cable <: Int                // the cable rows of the data, numbered from 0
+    type Field <: Int                // the columns of a cable row: 0 and 1 are the two devices (ids), 2 is the number of cables
+    devices: Device -> Int           // devices(d): the id of device d (the list of device names, as ids 0, 1, ...); only sizes Device
+    cable_struct: Cable * Field -> Int // cable_struct(c, 0) and cable_struct(c, 1): the two devices of cable row c as ids;
+                                     // cable_struct(c, 2): the number of cables between them
+    place: Device -> Device          // place(d): the position of device d in the rack, from 0 to the number of devices minus one
+    final_sum: () -> Int             // the sum of all cable lengths
+    minimize: () -> Int              // the sum of all cable lengths, to be minimised
+}
+
+theory T:V {
+    // the devices take distinct positions, one device per position
+    ! d1 in Device, d2 in Device: place(d1) = place(d2) => d1 = d2.
+    // the sum of all cable lengths: each cable row costs its number of cables times the distance between its devices
+    final_sum() = sum{{ (cable_struct(c, 2) * abs(place(cable_struct(c, 0)) - place(cable_struct(c, 1)))) | c in Cable }}.
+    // the objective is the sum of all cable lengths
+    minimize() = final_sum().
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
+}

@@ -1,32 +1,39 @@
-vocabulary {
-    type J <: Int                   // jobs, sized from durations_data
-    type R <: Int                   // resources, sized from resource_capacities_data
-    type K <: Int                   // the two columns of a successor link
-    type L <: Int                   // successor links, sized from successors_link_data
-
-    durations_data: J -> Int
-    resource_capacities_data: R -> Int
-    resource_needs_data: J * R -> Int
-    successors_link_data: L * K -> Int
-
-    start_time: J -> Int            // declared output
-    precedes: J * J -> Bool         // precedence between two jobs, read from the links
-    minimize: () -> Int
+// resource_constrained_project_scheduling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The resource-constrained project scheduling problem involves scheduling a set of jobs, each with a specific duration
+// and resource requirement, such that the total project duration (makespan) is minimized. Each job may have precedence
+// constraints, meaning certain jobs must be completed before others can start. Additionally, there are multiple types
+// of resources, each with a limited capacity that must not be exceeded at any time. Given the durations of the jobs,
+// their resource requirements, the capacities of the resources, and the precedence constraints between the jobs,
+// determine the start times of the jobs that minimize the makespan while satisfying all constraints.
+//
+// Save this file as model.idp. Download `resource_constrained_project_scheduling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/resource_constrained_project_scheduling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py resource_constrained_project_scheduling.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Job <: Int                    // the jobs, numbered from 0, sized from durations_data
+    type Res <: Int                    // the resources, numbered from 0, sized from resource_capacities_data
+    type Link <: Int                   // the precedence links, numbered from 0, sized from successors_link_data
+    type Side <: Int                   // the two columns of a link: 0 for the predecessor job, 1 for the successor job
+    durations_data: Job -> Int         // durations_data(j): the duration of job j
+    resource_capacities_data: Res -> Int   // resource_capacities_data(r): the capacity of resource r
+    resource_needs_data: Job * Res -> Int  // resource_needs_data(j, r): the amount of resource r that job j requires
+    successors_link_data: Link * Side -> Int  // successors_link_data(l, 0) must finish before successors_link_data(l, 1) starts
+    start_time: Job -> Int             // start_time(j): the start time of job j, from 0 (declared output)
+    minimize: () -> Int                // the makespan: the finish time of the project, to minimize
 }
-
-theory {
-    // a job pair is a precedence when some link names it
-    { ! a, b in J: precedes(a, b) <- ? l in L: successors_link_data(l, 0) = a & successors_link_data(l, 1) = b. }
-
-    // jobs start at or after time 0 and within the total duration
-    ! j in J: 0 =< start_time(j) & start_time(j) =< sum{{ durations_data(k) | k in J }}.
-
-    // each successor starts after its predecessor finishes
-    ! a, b in J: precedes(a, b) => (start_time(a) + durations_data(a)) =< start_time(b).
-
-    // at every job start, the needs of the running jobs fit in each resource capacity
-    ! j in J: ! r in R: resource_needs_data(j, r) + sum{{ (resource_needs_data(k, r)) | k in J: k ~= j & start_time(k) =< start_time(j) & start_time(j) < (start_time(k) + durations_data(k)) }} =< resource_capacities_data(r).
-
-    // minimize the makespan, the latest finish time of any job
-    minimize() = max{ (start_time(j) + durations_data(j)) | j in J }.
+theory T:V {
+    // every job starts at or after time 0 and finishes no later than the makespan
+    ! j in Job: start_time(j) >= 0 & start_time(j) + durations_data(j) =< minimize().
+    // a successor job starts only after its predecessor job has finished
+    ! l in Link, j1 in Job, j2 in Job: (j1 = successors_link_data(l, 0) & j2 = successors_link_data(l, 1)) => start_time(j2) >= start_time(j1) + durations_data(j1).
+    // at the start time of each job, the jobs running then need no more of each resource than its capacity
+    ! j in Job, r in Res: sum{{ resource_needs_data(k, r) | k in Job: start_time(k) =< start_time(j) & start_time(j) < start_time(k) + durations_data(k) }} =< resource_capacities_data(r).
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

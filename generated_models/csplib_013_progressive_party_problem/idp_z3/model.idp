@@ -1,36 +1,54 @@
-// Progressive party problem: timetable a yacht club party, minimizing the number of host boats.
-vocabulary {
-    // boats are indexed 0..n_boats-1, sized from the capacity array
-    type Boat <: Int
-    // half-hour visiting periods, 1..n_periods
-    type Range_n_periods <: Int
-
-    capacity: Boat -> Int
-    crew_size: Boat -> Int
-
-    // a boat is a host
-    is_host: Boat -> Bool
-    // visits[p,b] = v: in period p, boat b visits boat v
-    visits: Range_n_periods * Boat -> Boat
-
-    minimize: () -> Int
+// csplib_013_progressive_party_problem: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A party is timetabled at a yacht club. Certain boats are designated hosts, and the crews of the remaining boats in turn
+// visit the host boats for several successive half-hour periods. The crew of a host boat remains on board to act as
+// hosts while the crew of a guest boat together visits several hosts. Every boat can only hold a limited number of people
+// at a time (its capacity), and crew sizes are different. The total number of people aboard a boat, including the host
+// crew and the guest crews, must not exceed the capacity. A guest boat cannot revisit a host, and guest and host crews
+// cannot meet more than once. Minimize the number of host boats.
+//
+// Save this file as model.idp. Download `csplib_013_progressive_party_problem.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_013_progressive_party_problem.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_013_progressive_party_problem.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Boat <: Int                   // the boats, numbered from 0, sized from capacity
+    type Period <: Int                 // the half-hour periods, numbered from 0, sized by Period_size
+    Period_size: () -> Int             // the number of periods of the party (the size of Period)
+    n_periods: () -> Int               // the number of periods of the party
+    capacity: Boat -> Int              // capacity(b): the number of people boat b can hold at a time
+    crew_size: Boat -> Int             // crew_size(b): the number of people in the crew of boat b
+    is_host: Boat -> Bool              // is_host(b): boat b is a host boat
+    visits: Period * Boat -> Boat      // visits(p, b): in period p, boat b visits boat visits(p, b) (its own index if it is a host)
+    minimize: () -> Int                // the number of host boats
 }
-theory {
-    // the crew of a host boat remains on board and hosts
-    ! p in Range_n_periods, b in Boat: is_host(b) => visits(p, b) = b.
 
-    // the crew of a guest boat visits host boats
-    ! p in Range_n_periods, b in Boat: ~is_host(b) => is_host(visits(p, b)).
+theory T:V {
+    // the number of periods is the number of periods of the party
+    Period_size() = n_periods().
 
-    // the total number of people aboard a host boat, including the host crew and guest crews, must not exceed its capacity
-    ! p in Range_n_periods, h in Boat: is_host(h) => sum{{ crew_size(g) | g in Boat: visits(p, g) = h }} =< capacity(h).
+    // a host boat stays on board, so it is visited by its own crew in every period
+    ! p in Period, b in Boat: is_host(b) => visits(p, b) = b.
+
+    // a guest boat visits a host boat other than itself in every period
+    ! p in Period, b in Boat: ~is_host(b) => is_host(visits(p, b)) & visits(p, b) ~= b.
 
     // a guest boat cannot revisit a host
-    ! g in Boat, h in Boat: (~is_host(g) & is_host(h)) => #{ p in Range_n_periods: visits(p, g) = h } =< 1.
+    ! b in Boat, p1, p2 in Period: p1 < p2 & ~is_host(b) => visits(p1, b) ~= visits(p2, b).
 
-    // guest crews cannot meet more than once
-    ! g1 in Boat, g2 in Boat: g1 ~= g2 => #{ p in Range_n_periods: visits(p, g1) = visits(p, g2) } =< 1.
+    // two crews meet at most once: boats b1 and b2 are in the same boat in at most one period
+    ! b1, b2 in Boat: b1 < b2 => #{p in Period: visits(p, b1) = visits(p, b2)} =< 1.
 
-    // minimize the number of host boats
-    minimize() = #{ b in Boat: is_host(b) }.
+    // the total number of people aboard a host boat, its host crew and the guest crews visiting it, does not exceed its capacity
+    ! p in Period, h in Boat: is_host(h) => crew_size(h) + sum{{ crew_size(b) | b in Boat: ~is_host(b) & visits(p, b) = h }} =< capacity(h).
+
+    // the objective is the number of host boats
+    minimize() = #{h in Boat: is_host(h)}.
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

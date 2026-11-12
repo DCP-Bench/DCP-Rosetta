@@ -1,27 +1,44 @@
-vocabulary {
-    type Range_N <: Int
-    matrix: Range_N * Range_N -> Bool
-    deg: Range_N -> Int
+// csplib_050_diamond_free: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find a simple undirected graph on N vertices (no loops, no two edges between the same pair of vertices) that is
+// diamond-free: every set of four vertices has at most four edges between them. Every vertex has a degree greater than
+// zero that is divisible by 3, and the sum of the degrees is divisible by 12.
+//
+// Save this file as model.idp. Download `csplib_050_diamond_free.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_050_diamond_free.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_050_diamond_free.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_N <: Int                   // the vertices, numbered 1..N
+    N: () -> Int                          // the number of vertices
+    matrix: Range_N * Range_N -> Bool     // matrix(u, v): there is an edge between vertices u and v
+    degree: Range_N -> Int                // degree(v): the number of edges at vertex v
+    third: Range_N -> Int                 // third(v): degree(v) / 3, the degree of v divided by 3
+    twelfth: () -> Int                    // the sum of the degrees divided by 12
 }
+theory T:V {
+    // the graph has no loops: no vertex is adjacent to itself
+    ! v in Range_N: ~matrix(v, v).
 
-theory {
-    // the graph is simple: no loop edges
-    ! i in Range_N: ~matrix(i, i).
-    // the graph is undirected
-    ! i, j in Range_N: matrix(i, j) <=> matrix(j, i).
+    // the graph is undirected: an edge between u and v is an edge between v and u
+    ! u, v in Range_N: matrix(u, v) <=> matrix(v, u).
 
-    // the degree of a vertex is the number of its neighbours
-    ! i in Range_N: deg(i) = #{ j in Range_N: matrix(i, j) }.
-    // each degree is greater than zero
-    ! i in Range_N: deg(i) > 0.
-    // each degree is modulo 3
-    ! i in Range_N: deg(i) % 3 = 0.
-    // the sum of the degrees is modulo 12
-    sum{{ (deg(i)) | i in Range_N }} % 12 = 0.
-    // the degree sequence is non-increasing
-    ! i, j in Range_N: i < j => deg(i) >= deg(j).
+    // the degree of a vertex is the number of vertices adjacent to it
+    ! v in Range_N: degree(v) = #{ u in Range_N: matrix(v, u) }.
 
-    // diamond-free: two triangles sharing an edge form a diamond, so every edge
-    // lies in at most one triangle (at most one common neighbour per adjacent pair)
-    ! a, b in Range_N: matrix(a, b) => #{ c in Range_N: matrix(a, c) & matrix(b, c) } =< 1.
+    // the degree of each vertex is greater than zero and divisible by 3
+    ! v in Range_N: degree(v) > 0 & degree(v) = 3 * third(v).
+
+    // the sum of the degrees is divisible by 12
+    sum{{ degree(v) | v in Range_N }} = 12 * twelfth().
+
+    // diamond-free: every set of four vertices a < b < c < d has at most four edges between them
+    ! a, b, c, d in Range_N: a < b & b < c & c < d =>
+        #{ u, v in Range_N: u < v & (u = a | u = b | u = c | u = d) & (v = a | v = b | v = c | v = d) & matrix(u, v) } =< 4.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

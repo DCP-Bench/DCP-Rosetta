@@ -1,11 +1,22 @@
-// Eighteen-hole golf: a random course of 18 holes, each of length 3, 4 or 5, with a total length of 72.
-vocabulary {
-    type Hole := {0..17}             // the eighteen holes, first hole first
-    type Len := {3..5}               // a hole has length 3, 4 or 5
+// eighteen_hole_golf: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Generate an 18-hole golf course where each hole has a length of 3, 4, or 5, and the total length of the course is 72.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
 
-    holes: Hole -> Len               // the length of each hole
+vocabulary V {
+    type Hole := {0..17}               // the holes of the course, numbered from 0
+    type Length := {3..5}              // the length of a hole: 3, 4 or 5
+    holes: Hole -> Length              // holes(h): the length of hole h
 }
-theory {
-    // the total length of the course is 72
+
+theory T:V {
+    // the total length of the course, summed over all holes, is 72
     sum{{ holes(h) | h in Hole }} = 72.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

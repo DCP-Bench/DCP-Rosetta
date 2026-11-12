@@ -1,23 +1,43 @@
-vocabulary {
-    type Range_n <: Int
-    n: () -> Int
-    gap: Range_n -> Bool
-    x: Range_n -> Int
-    diffs: Range_n -> Int (domain: gap)
-}
-theory {
-    // the series has one pitch-class per position, each in 0..n-1
-    ! i in Range_n: 0 =< x(i) & x(i) =< n() - 1.
-    // each pitch-class occurs exactly once
-    ! i in Range_n: ! j in Range_n: i ~= j => x(i) ~= x(j).
+// csplib_007_all_interval: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given the pitch-classes 0, 1, ..., n-1 (residues modulo n), find a sequence s = (s_1, ..., s_n) that is a permutation of
+// 0, 1, ..., n-1 and whose interval vector v = (|s_2 - s_1|, |s_3 - s_2|, ..., |s_n - s_{n-1}|) is a permutation of
+// 1, 2, ..., n-1. Such a sequence is an all-interval series of size n.
+//
+// Save this file as model.idp. Download `csplib_007_all_interval.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_007_all_interval.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_007_all_interval.json
+//   idp-engine model_1.idp
 
-    // there are n-1 neighbouring pairs
+vocabulary V {
+    type Range_n <: Int                       // the positions of the series, numbered 1 to n
+    n: () -> Int                              // n: the number of pitch-classes
+    gap: Range_n -> Bool                      // gap(i): position i has a next position, that is i < n (auxiliary)
+    x: Range_n -> Int                         // x(i): the pitch-class at position i, from 0 to n - 1
+    diffs: Range_n -> Int (domain: gap)       // diffs(i): the interval between positions i and i + 1, n - 1 entries
+}
+
+theory T:V {
+    // the series holds each pitch-class from 0 to n-1 once: the values are in range and all different
+    ! i in Range_n: 0 =< x(i) & x(i) =< n() - 1.
+    ! i, j in Range_n: i ~= j => x(i) ~= x(j).
+
+    // positions 1 to n - 1 have a next position
     { ! i in Range_n: gap(i) <- i < n(). }
 
-    // each interval is the absolute difference of neighbouring pitch-classes
-    ! i in Range_n: gap(i) & i < n() => diffs(i) = abs(x(i + 1) - x(i)).
+    // each interval is the absolute difference of the pitch-classes at neighbouring positions
+    ! i in Range_n: gap(i) => ?j in Range_n: j = i + 1 & diffs(i) = abs(x(j) - x(i)).
 
-    // the intervals are all different, so they cover 1..n-1
-    ! i in Range_n: ! j in Range_n: gap(i) & gap(j) & i ~= j => diffs(i) ~= diffs(j).
+    // the intervals are all different
+    ! i, j in Range_n: gap(i) & gap(j) & i ~= j => diffs(i) ~= diffs(j).
+
+    // the intervals are between 1 and n - 1, so together they are the numbers 1 to n - 1
     ! i in Range_n: gap(i) => 1 =< diffs(i) & diffs(i) =< n() - 1.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }
