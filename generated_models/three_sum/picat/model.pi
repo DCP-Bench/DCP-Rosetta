@@ -1,14 +1,40 @@
-% Three sum: choose m of the numbers so that they add up to zero.
+% three_sum: a Picat model from DCP Rosetta.
+%
+% Given a collection of integers, find exactly `m` elements that sum to zero.
+%
+% Save this file as model.pi. Download `three_sum.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/three_sum.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py three_sum.json
+%   picat model.pi three_sum_1.dat
+%
+% Data.get(m): the number of elements to select; Data.get(nums): the integers (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Nums = Data.get(nums),
     M = Data.get(m),
-    N = len(Nums),
-    Indices = new_list(N),
-    Indices :: 0..1,
-    sum([Nums[I] * Indices[I] : I in 1..N]) #= 0,
-    sum(Indices) #= M,
-    Vars = Indices,
-    Outputs = [indices = Indices],
+    N = len(Nums),                         % the number of integers
+    Selected = new_list(N),
+    Selected :: 0..1,                      % Selected[I] = 1 when integer I is selected
+    % exactly m elements are selected
+    sum(Selected) #= M,
+    % the selected elements sum to zero
+    sum([Nums[I] * Selected[I] : I in 1..N]) #= 0,
+    Vars = Selected,
+    Outputs = [indices = Selected],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

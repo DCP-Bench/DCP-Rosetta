@@ -23,7 +23,9 @@ the optimum and once more to enumerate (the model is rebuilt from scratch each t
 `Vars` is the decision variables to label (a list, array, or nested lists/arrays). The
 driver labels every variable in `Vars` first, in that order, then any still free in
 `Outputs` or the objective; under `cp` it finally labels whatever remains in suspended
-constraints (`solve_suspended`). A `model/4` that fails is reported as `unsat`.
+constraints (`solve_suspended`). A `model/4` that fails is reported as `unsat`. A standalone model also defines
+`main/1` over one file name (see [Standalone run](#standalone-run)); the driver never calls it, since its own
+`main/1` takes the request and record files.
 
 ## Instance
 
@@ -104,6 +106,13 @@ network, a read-only root file system, user 65534, `HOME=/tmp`, a 512 MiB writab
 
 ## Traps
 
+- **`Data.get(key)` can return a wrong value for a key named like a built-in** (`length` in Picat 3.9): use the
+  three-argument `get(Data, length, Default)`. A key starting with a capital or underscore is quoted, `Data.get('N')`.
+- **Indices**: `X[I,J]`, never `X[I][J]` (a syntax error); an index that is a decision variable needs `element/3` in
+  `cp`. A `table_in` tuple is `{A,B}`, not `(A,B)` or a list.
+- A model with a slow search runs the same in a reader's `picat model.pi data.dat` as in the evaluator: give it a
+  finite domain per variable and a global constraint (`all_different`, `circuit`, ...) rather than pairwise `#!=`.
+
 - **Import exactly one of `cp` and `sat`.** Neither, both, `mip` or `smt` is an `error`
   before any solving.
 - **Write `$min(...)` / `$max(...)`**: without `$`, Picat calls the `min`/`max` function
@@ -116,6 +125,64 @@ network, a read-only root file system, user 65534, `HOME=/tmp`, a 512 MiB writab
 - Avoid predicate names starting with `dcp_`, and do not define `main/1`: the
   submission is loaded into the driver's program.
 - Printing (`println`) is harmless but useless: stdout is relayed to stderr as a log.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header comment: the problem
+statement, where the data comes from and the commands that run it. The data is converted by
+[dcp_convert_picat.py](dcp_convert_picat.py), the same file the runner imports, which the model's page offers beside
+the instances: it writes `<problem>_1.dat`, `<problem>_2.dat`, ... (one Picat term per instance), and the model ends
+with a run block that reads one, builds `Data` as a map, calls `model/4`, solves and prints the outputs:
+
+```picat
+% <problem>: a Picat model from DCP Rosetta.
+%
+% <the problem statement, as below>
+%
+% Save this file as model.pi. Download `<problem>.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py <problem>.json
+%   picat model.pi <problem>_1.dat
+```
+
+```picat
+% Reads the data file, builds the model, solves it and prints each output.
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.
+```
+
+`solve(Options, Vars)` labels `Vars` and optimises the `$min`/`$max` in `Options`, as the driver does, and
+`solve(vars(Outputs))` labels an output variable that is not in `Vars`. **A problem with no instance data** (the
+instance is `{}`) has a shorter header with no download or convert line, `picat model.pi` to run it, and a run block
+`main =>` (Picat calls `main/0` when no argument is given) that calls `model(new_map(), Vars, Outputs, Options)`:
+
+```picat
+% <problem>: a Picat model from DCP Rosetta.
+%
+% <the problem statement>
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them (never a narrowing: "any
+two landings", not "consecutive landings"), no longer than needed: no instruction about printing and no remark about
+the instance. A comment after the header says what each field the model reads holds (`Data.get(values)`: the value
+of each item, a list indexed from 1), since the data is a map, not declared parameters. The run block is the same in
+every model apart from the no-data form.
 
 ## Example
 

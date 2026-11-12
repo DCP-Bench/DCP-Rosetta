@@ -1,30 +1,48 @@
-% Who killed Agatha: Agatha, the butler and Charles live in Dreadsbury Mansion.
-% A killer always hates, and is no richer than, his victim. Charles hates no one
-% Agatha hates. Agatha hates everybody except the butler. The butler hates
-% everyone not richer than Agatha, and everyone Agatha hates. No one hates
-% everyone. The killer is given as a 0-based index into the names.
+% who_killed_agatha: a Picat model from DCP Rosetta.
+%
+% Someone in Dreadsbury Mansion killed Aunt Agatha. Agatha, the butler, and Charles live in Dreadsbury
+% Mansion, and are the only ones to live there. A killer always hates, and is no richer than his victim.
+% Charles hates no one that Agatha hates. Agatha hates everybody except the butler. The butler hates
+% everyone not richer than Aunt Agatha. The butler hates everyone whom Agatha hates. No one hates
+% everyone. Who killed Agatha?
+%
+% Save this file as model.pi. Download `who_killed_agatha.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/who_killed_agatha.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py who_killed_agatha.json
+%   picat model.pi who_killed_agatha_1.dat
+%
+% Data.get(names): the names of the three people, in the order Agatha, the butler, Charles (a list
+% indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = len(Data.get(names)),     % Agatha, the butler and Charles
-    Agatha = 1, Butler = 2, Charles = 3,
-    % hates[i, j] = 1 when i hates j; richer[i, j] = 1 when i is richer than j
+    N = len(Data.get(names)),              % the number of people: 3
+    Agatha = 1, Butler = 2, Charles = 3,   % the positions of the three people
+    % Hates[I, J] = 1 when person I hates person J
     Hates = new_array(N, N),
     Hates :: 0..1,
+    % Richer[I, J] = 1 when person I is richer than person J
     Richer = new_array(N, N),
     Richer :: 0..1,
-    % the killer, 0-based, and the victim is Agatha
-    Killer :: 0..N-1,
-    % a killer hates his victim and is no richer than her
+    % the killer, as a 0-based index into the names
+    Killer :: 0..N - 1,
+    % a killer hates his victim, Agatha
     element0(Killer, [Hates[I, Agatha] : I in 1..N], 1),
+    % a killer is no richer than his victim, Agatha
     element0(Killer, [Richer[I, Agatha] : I in 1..N], 0),
-    % no one is richer than himself, and of two people exactly one is the richer
+    % no one is richer than himself, and no two people are richer than each other
     foreach (I in 1..N)
         Richer[I, I] #= 0
     end,
-    foreach (I in 1..N-1, J in I+1..N)
-        Richer[I, J] #<=> #~ Richer[J, I]
+    foreach (I in 1..N, J in 1..N, I != J)
+        Richer[I, J] + Richer[J, I] #=< 1
     end,
+    % Agatha hates everybody except the butler
+    Hates[Agatha, Agatha] #= 1,
+    Hates[Agatha, Charles] #= 1,
+    Hates[Agatha, Butler] #= 0,
     foreach (I in 1..N)
         % Charles hates no one that Agatha hates
         Hates[Agatha, I] #=> #~ Hates[Charles, I],
@@ -35,10 +53,19 @@ model(Data, Vars, Outputs, Options) =>
         % no one hates everyone
         sum([Hates[I, J] : J in 1..N]) #=< N - 1
     end,
-    % Agatha hates everybody except the butler
-    Hates[Agatha, Agatha] #= 1,
-    Hates[Agatha, Charles] #= 1,
-    Hates[Agatha, Butler] #= 0,
     Vars = [Killer] ++ vars(Hates) ++ vars(Richer),
     Outputs = [killer = Killer],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

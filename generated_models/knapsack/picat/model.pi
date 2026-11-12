@@ -1,18 +1,43 @@
-% 0/1 knapsack: choose items whose total weight fits the capacity and whose
-% total value is as large as possible.
+% knapsack: a Picat model from DCP Rosetta.
+%
+% A hiker is planning a trip and needs to decide which items to take in their backpack.
+% Each item has a certain value and weight, and the hiker wants to maximize the total value of the
+% items in the backpack without exceeding the weight capacity of the backpack.
+%
+% Save this file as model.pi. Download `knapsack.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py knapsack.json
+%   picat model.pi knapsack_1.dat
+%
+% Data.get(capacity): the weight capacity of the backpack; Data.get(values), Data.get(weights): the
+% value and the weight of each item (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
+    Capacity = Data.get(capacity),
     Values = Data.get(values),
     Weights = Data.get(weights),
-    Capacity = Data.get(capacity),
-    N = len(Values),
-    % x[i] = 1 when item i is taken
+    N = len(Values),                       % the number of items
     X = new_list(N),
-    X :: 0..1,
-    % the taken items fit into the knapsack
+    X :: 0..1,                             % X[I] = 1 when item I is taken into the backpack
+    % the items taken weigh no more than the weight capacity of the backpack
     sum([Weights[I] * X[I] : I in 1..N]) #=< Capacity,
     Vars = X,
     Outputs = [x = X],
-    % the value of the taken items is maximal
+    % maximize the total value of the items taken
     Options = [$max(sum([Values[I] * X[I] : I in 1..N]))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

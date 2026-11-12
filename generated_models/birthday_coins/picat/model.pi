@@ -1,16 +1,33 @@
-% Birthday coins: Tommy was given 15 coins (half-crowns, shillings and sixpences)
-% worth 1 pound 5 shillings 6 pence. How many half-crowns did he get?
+% birthday_coins: a Picat model from DCP Rosetta.
+%
+% Tommy was given 15 coins for his birthday. Each coin is a half-crown, a shilling or a sixpence, but he
+% was not necessarily given coins of all three kinds. When he added it up, he found that he had 1 pound
+% 5 shillings 6 pence. How many half-crowns could he have been given? A pound is 20 shillings and a
+% shilling is 12 pence, so a pound is 240 pence; a half-crown is 2 shillings and sixpence, which is 30
+% pence; a shilling is 12 pence; a sixpence is 6 pence.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/birthday_coins.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    Values = [30, 12, 6],               % pence in a half-crown, a shilling, a sixpence
-    TotalValue = 240 + 5 * 12 + 6,      % 1 pound 5 shillings 6 pence, in pence
-    % coins[t] = how many coins of type t he was given
-    Coins = new_list(3),
-    Coins :: 0..15,
-    sum([Values[T] * Coins[T] : T in 1..3]) #= TotalValue,
-    sum(Coins) #= 15,
-    Vars = Coins,
-    Outputs = [half_crowns = Coins[1]],
+    % the number of coins of each kind: half-crowns, shillings and sixpences
+    HalfCrowns :: 0..15,
+    Shillings :: 0..15,
+    Sixpences :: 0..15,
+    Vars = [HalfCrowns, Shillings, Sixpences],
+    % the coins are 15 in all
+    HalfCrowns + Shillings + Sixpences #= 15,
+    % the coins add up to 1 pound 5 shillings 6 pence, which is 240 + 60 + 6 = 306 pence
+    30 * HalfCrowns + 12 * Shillings + 6 * Sixpences #= 306,
+    Outputs = [half_crowns = HalfCrowns],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

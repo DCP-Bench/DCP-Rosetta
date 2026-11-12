@@ -1,26 +1,58 @@
-% Aircraft assignment: choose how many aircraft of each type fly each route so
-% that every route's passenger demand is met, no type is used beyond its fleet,
-% and the total operating cost is as small as possible.
+% aircraft_assignment: a Picat model from DCP Rosetta.
+%
+% This problem involves assigning multiple types of aircraft to a set of routes to minimize the
+% total operational cost. Each aircraft type has a limited number of available units. Each route
+% has a specific passenger demand that must be satisfied. For each aircraft type and route, we are
+% given the passenger capacity and the operational cost. The goal is to determine how many aircraft
+% of each type to assign to each route to meet all passenger demands, stay within the availability
+% limits for each aircraft type, and minimize the overall cost.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_assignment.html
+% Save this file as model.pi. Download `aircraft_assignment.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_assignment.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py aircraft_assignment.json
+%   picat model.pi aircraft_assignment_1.dat
+%
+% Data.get(availability): the number of aircraft available of each type; Data.get(demand): the
+% passenger demand of each route; Data.get(capabilities), Data.get(costs): the passenger capacity
+% and the operational cost of one aircraft of each type on each route (lists of lists, indexed
+% from 1: row = type, column = route).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Availability = Data.get(availability),   % aircraft available of each type
-    Demand = Data.get(demand),               % passengers to carry on each route
-    Capabilities = Data.get(capabilities),   % passengers a type carries on a route
-    Costs = Data.get(costs),                 % cost of one aircraft of a type on a route
-    NTypes = len(Availability),
-    NRoutes = len(Demand),
-    % allocation[i, j] = aircraft of type i on route j
+    Availability = Data.get(availability),
+    Demand = Data.get(demand),
+    Capabilities = Data.get(capabilities),
+    Costs = Data.get(costs),
+    NTypes = len(Availability),            % the number of aircraft types
+    NRoutes = len(Demand),                 % the number of routes
+    % Allocation[I, J] is the number of aircraft of type I assigned to route J
     Allocation = new_array(NTypes, NRoutes),
     Allocation :: 0..max(Availability),
-    % a type is not used beyond its fleet
+    % each type assigns no more aircraft than it has available
     foreach (I in 1..NTypes)
         sum([Allocation[I, J] : J in 1..NRoutes]) #=< Availability[I]
     end,
-    % every route carries at least its demand
+    % each route carries at least its passenger demand
     foreach (J in 1..NRoutes)
         sum([Capabilities[I, J] * Allocation[I, J] : I in 1..NTypes]) #>= Demand[J]
     end,
     Vars = Allocation,
     Outputs = [allocation = Allocation],
+    % minimize the total operational cost of all the aircraft assigned
     Options = [$min(sum([Costs[I, J] * Allocation[I, J] : I in 1..NTypes, J in 1..NRoutes]))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

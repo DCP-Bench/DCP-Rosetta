@@ -1,16 +1,42 @@
-% Magic sequence of length n: integers x_0..x_{n-1}, each between 0 and n-1, such that
-% the number i occurs exactly x_i times in the sequence, for every i from 0 to n-1.
+% csplib_019_magic_squares_and_sequences: a Picat model from DCP Rosetta.
+%
+% A magic sequence of length n is a sequence of integers x_0, ..., x_{n-1}, each between 0 and
+% n - 1, such that for every i from 0 to n - 1 the number i occurs exactly x_i times in the
+% sequence. For example 6, 2, 1, 0, 0, 0, 1, 0, 0, 0 is a magic sequence, since 0 occurs six
+% times in it, 1 occurs twice, and so on.
+%
+% Save this file as model.pi. Download `csplib_019_magic_squares_and_sequences.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_019_magic_squares_and_sequences.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_019_magic_squares_and_sequences.json
+%   picat model.pi csplib_019_magic_squares_and_sequences_1.dat
+%
+% Data.get(n): the length of the sequence.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),                  % length of the sequence
-    % X[i + 1] = x_i; a value can occur at most n times, and 0..n-1 is the declared range
+    N = Data.get(n),
+    % X[I + 1] = x_I, the number of times the value I occurs in the sequence (lists indexed from 1)
     X = new_list(N),
     X :: 0..N - 1,
-    % the number i occurs exactly x_i times
+    % the number I occurs exactly x_I times in the sequence
     foreach (I in 0..N - 1)
         sum([X[J] #= I : J in 1..N]) #= X[I + 1]
     end,
     Vars = X,
     Outputs = [x = X],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

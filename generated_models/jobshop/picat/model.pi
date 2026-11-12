@@ -1,32 +1,64 @@
-% Job shop: each job is a sequence of tasks, each on a given machine for a given
-% time; a job's tasks run in order, a machine runs one task at a time, and the
-% schedule is as short as possible.
+% jobshop: a Picat model from DCP Rosetta.
+%
+% In the job shop problem, several jobs are processed on several machines. Each job is a sequence of tasks
+% that must be performed in the given order, and each task must be processed on a specific machine. The aim is
+% to schedule the tasks on the machines so as to minimize the length of the schedule, the time it takes for
+% all the jobs to be completed. The constraints are:
+% - no task of a job can start until the previous task of that job is completed;
+% - a machine can work on only one task at a time;
+% - a task, once started, must run to completion.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+% Save this file as model.pi. Download `jobshop.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py jobshop.json
+%   picat model.pi jobshop_1.dat
+%
+% Data.get(jobs_data): the jobs as lists indexed from 1; Jobs[J, T] is the T-th task of job J, as [machine, duration].
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Jobs = Data.get(jobs_data),    % per job, its tasks as [machine, duration]
-    Horizon = sum([Task[2] : Job in Jobs, Task in Job]),
-    Machines = sort_remove_dups([Task[1] : Job in Jobs, Task in Job]),
-    % start[j][t] = the start time of task t of job j
+    Jobs = Data.get(jobs_data),
+    NJobs = len(Jobs),                        % the number of jobs
+    % the total duration of all the tasks bounds every start time and the makespan
+    Horizon = sum([Jobs[J, T, 2] : J in 1..NJobs, T in 1..len(Jobs[J])]),
+    Machines = sort_remove_dups([Jobs[J, T, 1] : J in 1..NJobs, T in 1..len(Jobs[J])]),
+    % Starts[J, T] is the start time of the T-th task of job J
     Starts = [new_list(len(Job)) : Job in Jobs],
-    foreach (J in 1..len(Jobs))
+    foreach (J in 1..NJobs)
         Starts[J] :: 0..Horizon
     end,
-    % the tasks of a job run in order
-    foreach (J in 1..len(Jobs), T in 2..len(Jobs[J]))
+    % the tasks of a job are performed in order: a task starts after the previous task of the job is completed
+    foreach (J in 1..NJobs, T in 2..len(Jobs[J]))
         Starts[J, T] #>= Starts[J, T - 1] + Jobs[J, T - 1, 2]
     end,
-    % a machine runs one task at a time
+    % a machine works on one task at a time, and a task runs to completion once started
     foreach (M in Machines)
-        OnMachine = [{J, T} : J in 1..len(Jobs), T in 1..len(Jobs[J]), Jobs[J, T, 1] == M],
-        serialized([Starts[P[1], P[2]] : P in OnMachine], [Jobs[P[1], P[2], 2] : P in OnMachine])
+        OnM = [[J, T] : J in 1..NJobs, T in 1..len(Jobs[J]), Jobs[J, T, 1] == M],
+        serialized([Starts[J, T] : [J, T] in OnM], [Jobs[J, T, 2] : [J, T] in OnM])
     end,
-    % the makespan is when the last task of any job ends
+    % the makespan is at least the completion time of the last task of every job
     Makespan :: 0..Horizon,
-    foreach (J in 1..len(Jobs))
+    foreach (J in 1..NJobs)
         Last = len(Jobs[J]),
         Starts[J, Last] + Jobs[J, Last, 2] #=< Makespan
     end,
-    Vars = vars(Starts),
+    Vars = Starts,
     Outputs = [makespan = Makespan],
+    % minimize the makespan
     Options = [ff, $min(Makespan)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

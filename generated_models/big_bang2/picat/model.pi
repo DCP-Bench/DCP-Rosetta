@@ -1,24 +1,34 @@
-% Big Bang nontransitive dice: five dice (Rock, Paper, Scissors, Lizard, Spock) with six
-% faces each, face values 1 to 12, repeats allowed. Die A beats die B when A shows a larger
-% face than B in more than half of all pairs of faces. The ten Rock-Paper-Scissors-Lizard-
-% Spock "beats" relations have to hold between the dice.
-% Module sat: with cp the counted comparisons propagate too weakly and the search ran out of
-% time; the SAT solver learns from conflicts across the ten counting constraints.
+% big_bang2: a Picat model from DCP Rosetta.
+%
+% Nontransitive dice: the idea is to create a set of five dice such that the dominance relationships
+% between the dice is isomorphic to the corresponding relationships in the game Rock-Paper-Scissors
+% extended by the choices Lizard and Spock. Each choice beats two other choices and is beaten by two
+% other choices. The ten 'beats' relationships are: Rock(1) crushes Scissors(3); Rock(1) crushes
+% Lizard(4); Paper(2) covers Rock(1); Paper(2) disproves Spock(5); Scissors(3) cuts Paper(2); Scissors(3)
+% decapitate Lizard(4); Lizard(4) eats Paper(2); Lizard(4) poisons Spock(5); Spock(5) vaporizes Rock(1);
+% Spock(5) smashes Scissors(3). Each die has six integer-valued faces, and each face value must be between
+% 1 and 12 inclusive. Face values may repeat, both within a die and across dice. A die A beats die B when A
+% has a strictly larger face value than die B in more than half of all possible pairs of faces.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import sat.
 
-model(Data, Vars, Outputs, Options) =>
-    NumDice = 5,                     % Rock, Paper, Scissors, Lizard, Spock (rows 1..5)
-    NumFaces = 6,                    % faces of each die
-    MaxFace = 12,                    % largest face value (all three fixed by the problem)
+model(_Data, Vars, Outputs, Options) =>
+    NumDice = 5,                           % the five dice: Rock, Paper, Scissors, Lizard, Spock (rows 1..5)
+    NumFaces = 6,                          % the faces of each die
+    MaxFace = 12,                          % the largest face value
     Rock = 1, Paper = 2, Scissors = 3, Lizard = 4, Spock = 5,
-    % {winner, loser}: the ten relations of the game
+    % {Winner, Loser}: the ten 'beats' relationships of the game
     Edges = [{Rock, Scissors}, {Rock, Lizard}, {Paper, Rock}, {Paper, Spock},
              {Scissors, Paper}, {Scissors, Lizard}, {Lizard, Paper}, {Lizard, Spock},
              {Spock, Rock}, {Spock, Scissors}],
-    % Dice[i, j] = value of face j of die i
+    % Dice[D, F] = the value of face F of die D
     Dice = new_array(NumDice, NumFaces),
     Dice :: 1..MaxFace,
-    % the winner shows the larger value in more than half of the NumFaces * NumFaces pairs of faces
+    % the winner's die has a strictly larger face value than the loser's die in more than half of the
+    % NumFaces * NumFaces pairs of faces
     foreach ({Winner, Loser} in Edges)
         sum([Dice[Winner, X] #> Dice[Loser, Y] : X in 1..NumFaces, Y in 1..NumFaces])
             #> (NumFaces * NumFaces) // 2
@@ -26,3 +36,11 @@ model(Data, Vars, Outputs, Options) =>
     Vars = Dice,
     Outputs = [dice = Dice],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

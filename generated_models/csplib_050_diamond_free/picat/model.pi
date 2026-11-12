@@ -1,22 +1,34 @@
-% Diamond-free graph on N vertices, given by its 0/1 adjacency matrix: no isolated
-% vertex, every vertex degree divisible by 3, the sum of the degrees divisible by 12,
-% and no four vertices carry five or more of the six possible edges between them.
+% csplib_050_diamond_free: a Picat model from DCP Rosetta.
+%
+% Given a number of vertices, find a simple undirected graph (no loop edges) that is diamond-free: a diamond
+% is a set of four vertices with at least five edges between them, so every set of four vertices carries at
+% most four edges. The degree of each vertex is greater than zero and divisible by 3, and the sum of the
+% degrees is divisible by 12 (so that the number of edges is divisible by 6).
+%
+% Save this file as model.pi. Download `csplib_050_diamond_free.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_050_diamond_free.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_050_diamond_free.json
+%   picat model.pi csplib_050_diamond_free_1.dat
+%
+% Data.get('N'): the number of vertices, numbered from 1 to N.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get('N'),               % number of vertices
-    % Matrix[u, v] = 1 if u and v are adjacent
+    N = Data.get('N'),
+    % Matrix[U, V] = 1 when the vertices U and V are adjacent
     Matrix = new_array(N, N),
     Matrix :: 0..1,
     % the graph is simple: no vertex is adjacent to itself
     foreach (U in 1..N)
         Matrix[U, U] #= 0
     end,
-    % the graph is undirected: u adjacent to v means v adjacent to u
+    % the graph is undirected: U is adjacent to V exactly when V is adjacent to U
     foreach (U in 1..N - 1, V in U + 1..N)
         Matrix[U, V] #= Matrix[V, U]
     end,
-    % every vertex has a degree that is positive and a multiple of 3: degree = 3 * k
+    % the degree Deg[U] of each vertex is positive and divisible by 3: Deg[U] = 3 * Mult[U]
     Deg = new_list(N),
     Deg :: 1..N - 1,
     Mult = new_list(N),
@@ -25,7 +37,7 @@ model(Data, Vars, Outputs, Options) =>
         Deg[U] #= sum([Matrix[U, V] : V in 1..N]),
         Deg[U] #= 3 * Mult[U]
     end,
-    % the sum of the degrees (twice the number of edges) is a multiple of 12
+    % the sum of the degrees is divisible by 12: the sum equals 12 * Blocks
     Blocks :: 1..N * (N - 1) // 12,
     sum(Deg) #= 12 * Blocks,
     % diamond-free: any four vertices have at most four edges between them
@@ -35,3 +47,16 @@ model(Data, Vars, Outputs, Options) =>
     Vars = Matrix,
     Outputs = [matrix = Matrix],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

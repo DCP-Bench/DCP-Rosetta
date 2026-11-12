@@ -1,30 +1,66 @@
-% Multi-commodity transportation: ship every product from the origins to the
-% destinations, within the supplies and the per-route limits and meeting the
-% demands, at the least total cost.
+% multi: a Picat model from DCP Rosetta.
+%
+% A multi-commodity transportation problem: there are origins, destinations and products. Each
+% origin has a supply of each product, each destination has a demand for each product, and shipping
+% one unit of a product from an origin to a destination costs a given amount. Ship all products from
+% the origins to the destinations, within the supplies, meeting the demands and the limits on the
+% routes, at the minimum total cost.
+%
+% Save this file as model.pi. Download `multi.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/multi.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py multi.json
+%   picat model.pi multi_1.dat
+%
+% Data.get(supply): Supply[I, P] = the supply of product P at origin I; Data.get(demand): Demand[J, P]
+% = the demand for product P at destination J; Data.get(limit): Limit[I, J] = the most units, of all
+% products together, that may be shipped from origin I to destination J; Data.get(cost):
+% Cost[I, J, P] = the cost of shipping one unit of product P from origin I to destination J (lists
+% indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Supply = Data.get(supply),     % supply[i][p]
-    Demand = Data.get(demand),     % demand[j][p]
-    Limit = Data.get(limit),       % limit[i][j], over all products
-    Cost = Data.get(cost),         % cost[i][j][p] per unit
-    NO = len(Supply),
-    ND = len(Demand),
-    NPr = len(Supply[1]),
+    Supply = Data.get(supply),
+    Demand = Data.get(demand),
+    Limit = Data.get(limit),
+    Cost = Data.get(cost),
+    NumOrigins = len(Supply),
+    NumDestinations = len(Demand),
+    NumProducts = len(Supply[1]),
     MaxSupply = max([max(Row) : Row in Supply]),
-    % x[i, j, p] = units of product p shipped from origin i to destination j
-    X = new_array(NO, ND, NPr),
+    % X[I, J, P] = units of product P shipped from origin I to destination J
+    X = new_array(NumOrigins, NumDestinations, NumProducts),
     X :: 0..MaxSupply,
-    foreach (I in 1..NO, P in 1..NPr)
-        sum([X[I, J, P] : J in 1..ND]) #=< Supply[I, P]
+    % the units of each product shipped out of an origin do not exceed its supply
+    foreach (I in 1..NumOrigins, P in 1..NumProducts)
+        sum([X[I, J, P] : J in 1..NumDestinations]) #=< Supply[I, P]
     end,
-    foreach (J in 1..ND, P in 1..NPr)
-        sum([X[I, J, P] : I in 1..NO]) #>= Demand[J, P]
+    % the units of each product shipped to a destination meet its demand
+    foreach (J in 1..NumDestinations, P in 1..NumProducts)
+        sum([X[I, J, P] : I in 1..NumOrigins]) #>= Demand[J, P]
     end,
-    foreach (I in 1..NO, J in 1..ND)
-        sum([X[I, J, P] : P in 1..NPr]) #=< Limit[I, J]
+    % the units shipped on each route, of all products together, do not exceed its limit
+    foreach (I in 1..NumOrigins, J in 1..NumDestinations)
+        sum([X[I, J, P] : P in 1..NumProducts]) #=< Limit[I, J]
     end,
-    TotalCost #= sum([X[I, J, P] * Cost[I, J, P] : I in 1..NO, J in 1..ND, P in 1..NPr]),
+    % the total cost of shipping all products
+    TotalCost #= sum([X[I, J, P] * Cost[I, J, P] : I in 1..NumOrigins,
+                      J in 1..NumDestinations, P in 1..NumProducts]),
     Vars = X,
     Outputs = [total_cost = TotalCost],
+    % minimize the total cost
     Options = [$min(TotalCost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

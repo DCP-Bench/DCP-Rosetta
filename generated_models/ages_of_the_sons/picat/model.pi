@@ -1,26 +1,60 @@
-% Ages of the sons: three sons whose ages multiply to 36. Knowing their sum is not
-% enough, so another triple with product 36 has the same sum; and there is an
-% oldest son (the "blue eyes" clue), so the oldest age is not shared.
+% ages_of_the_sons: a Picat model from DCP Rosetta.
+%
+% An old man asked a mathematician to guess the ages of his three sons.
+%
+% Old man said: "The product of their ages is 36."
+% Mathematician said: "I need more information."
+%
+% Old man said: "Over there you can see a building. The sum of their ages equals the number of the
+% windows in that building."
+% After a short while the mathematician said: "I need more information."
+%
+% Old man said: "The oldest son has blue eyes."
+% Mathematician said: "I got it."
+%
+% What are the ages of the three sons of the old man?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    % a1..a3 are the ages, oldest first; b1..b3 the other triple with the same sum
+    % Triples: every set of three ages (oldest first) whose product is 36; ground, computed now
+    Triples = [[X, Y, Z] : X in 1..36, Y in 1..X, Z in 1..Y, X * Y * Z == 36],
+    NT = len(Triples),
+    % the sons' ages, oldest first
     Ages = [A1, A2, A3],
-    Other = [B1, B2, B3],
-    Ages :: 0..36,
-    Other :: 0..36,
-    % the actual triple has a strictly oldest son
-    A1 #> A2,
+    Ages :: 1..36,
+    A1 #>= A2,
     A2 #>= A3,
+    % the product of their ages is 36
     A1 * A2 * A3 #= 36,
-    % the other triple may have twins first, and a different oldest age
-    B1 #>= B2,
-    B2 #>= B3,
-    B1 #!= A1,
-    B1 * B2 * B3 #= 36,
-    % both triples add up to the same number of windows
-    A1 + A2 + A3 #= B1 + B2 + B3,
-    Vars = Ages ++ Other,
+    % Same[I] = 1 when the I-th triple has the same sum as the sons
+    Same = new_list(NT),
+    Same :: 0..1,
+    foreach (I in 1..NT)
+        Same[I] #<=> (A1 + A2 + A3 #= sum(Triples[I]))
+    end,
+    % the mathematician still needs more information: another triple has the same sum
+    sum(Same) #>= 2,
+    % the oldest son is the only one of the oldest age, so the mathematician got it:
+    % the sons are the only triple with that sum whose oldest age is not shared
+    A1 #> A2,
+    foreach (I in 1..NT)
+        T = Triples[I],
+        if T[1] != T[2] then
+            Same[I] #=> (A1 #= T[1] #/\ A2 #= T[2] #/\ A3 #= T[3])
+        end
+    end,
+    Vars = Ages ++ Same,
     Outputs = ['A1' = A1, 'A2' = A2, 'A3' = A3],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

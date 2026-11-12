@@ -1,6 +1,21 @@
-% Network assignment: hours from people to projects, every person working all
-% their hours and every project getting all its hours, within the per-pair
-% limits, at the least total cost.
+% netasgn: a Picat model from DCP Rosetta.
+%
+% A project assignment problem: there are people and projects. Each person has a number of available
+% hours, and each project requires a number of hours. The cost per hour of work of a person on a
+% project is given, and a person can contribute to a project up to a given limit of hours. Decide
+% how many hours each person works on each project so that every person's hours are all assigned,
+% every project receives exactly its required hours, and the total cost is as small as possible.
+%
+% Save this file as model.pi. Download `netasgn.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/netasgn.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py netasgn.json
+%   picat model.pi netasgn_1.dat
+%
+% Data.get(supply): the available hours of each person; Data.get(demand): the hours required by each
+% project; Data.get(cost): Cost[I, J] = the cost per hour of person I on project J; Data.get(limit):
+% Limit[I, J] = the most hours person I can work on project J (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
@@ -8,21 +23,42 @@ model(Data, Vars, Outputs, Options) =>
     Demand = Data.get(demand),
     Cost = Data.get(cost),
     Limit = Data.get(limit),
-    NP = len(Supply),
-    NJ = len(Demand),
-    % assign[i, j] = the hours person i works on project j (0..10, as the reference bounds it)
-    Assign = new_array(NP, NJ),
-    Assign :: 0..10,
-    foreach (I in 1..NP)
-        sum([Assign[I, J] : J in 1..NJ]) #= Supply[I]
+    NumPeople = len(Supply),
+    NumProjects = len(Demand),
+    % Assign[I, J] = the hours person I works on project J
+    Assign = new_array(NumPeople, NumProjects),
+    foreach (I in 1..NumPeople, J in 1..NumProjects)
+        % no person works more hours on a project than the person's supply or the project's demand
+        Assign[I, J] :: 0..min(Supply[I], Demand[J])
     end,
-    foreach (J in 1..NJ)
-        sum([Assign[I, J] : I in 1..NP]) #= Demand[J]
+    % every person works all of the available hours
+    foreach (I in 1..NumPeople)
+        sum([Assign[I, J] : J in 1..NumProjects]) #= Supply[I]
     end,
-    foreach (I in 1..NP, J in 1..NJ)
+    % every project receives exactly the hours it requires
+    foreach (J in 1..NumProjects)
+        sum([Assign[I, J] : I in 1..NumPeople]) #= Demand[J]
+    end,
+    % the hours of a person on a project do not exceed the limit for that pair
+    foreach (I in 1..NumPeople, J in 1..NumProjects)
         Assign[I, J] #=< Limit[I, J]
     end,
-    TotalCost #= sum([Assign[I, J] * Cost[I, J] : I in 1..NP, J in 1..NJ]),
+    % the total cost of the hours worked
+    TotalCost #= sum([Assign[I, J] * Cost[I, J] : I in 1..NumPeople, J in 1..NumProjects]),
     Vars = Assign,
     Outputs = [assign = Assign, total_cost = TotalCost],
+    % minimize the total cost
     Options = [$min(TotalCost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

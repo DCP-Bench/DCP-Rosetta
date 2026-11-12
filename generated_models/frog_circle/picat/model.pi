@@ -1,30 +1,53 @@
-% Frog circle: arrange the cards 1..n round a circle so that a frog starting on
-% card 1, and jumping from a card showing k to the card k places clockwise,
-% lands on every card.
+% frog_circle: a Picat model from DCP Rosetta.
+%
+% Cards numbered 1 to n are arranged in a circle. A frog jumps on card 1, then jumps to the card 1 place
+% clockwise around the circle. Then, from card k, he jumps directly to the card k places clockwise around
+% the circle. The frog continues jumping in this way forever. Find an arrangement of cards that allows the
+% frog to jump on every card starting from card 1.
+%
+% Save this file as model.pi. Download `frog_circle.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/frog_circle.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py frog_circle.json
+%   picat model.pi frog_circle_1.dat
+%
+% Data.get(n): the number of cards.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
-    % x[p + 1] = the card at position p, 0..n-1
+    % X[P] = the card at place P of the circle, places numbered 1 to N clockwise
     X = new_list(N),
     X :: 1..N,
-    all_distinct(X),
+    % every card is a different card
+    all_different(X),
+    % the circle is numbered from card 1, which is at place 1 (the arrangement is taken up to rotation)
     X[1] #= 1,
-    % pos[i] = the position of the i-th card the frog lands on; visited[i] = that card
-    Pos = new_list(N),
-    Pos :: 0..N-1,
-    all_distinct(Pos),
-    Visited = new_list(N),
-    Visited :: 1..N,
-    all_distinct(Visited),
-    Pos[1] #= 0,
-    Visited[1] #= 1,
-    foreach (I in 2..N)
-        % the frog jumps as many places as the card it is on shows
-        element0(Pos[I - 1], X, Jump),
-        Pos[I] #= (Pos[I - 1] + Jump) mod N,
-        element0(Pos[I], X, Visited[I])
+    % Visit[T] = the place the frog is on at its T-th jump; the frog starts on card 1
+    Visit = new_list(N),
+    Visit :: 1..N,
+    Visit[1] #= 1,
+    % the frog lands on a different place at each jump, so it jumps on every card
+    all_different(Visit),
+    foreach (T in 1..N-1)
+        % from a place with card C, the frog moves C places clockwise around the circle
+        element(Visit[T], X, C),
+        Visit[T+1] #= ((Visit[T] - 1 + C) mod N) + 1
     end,
-    Vars = X ++ Pos,
+    Vars = X,
     Outputs = [x = X],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

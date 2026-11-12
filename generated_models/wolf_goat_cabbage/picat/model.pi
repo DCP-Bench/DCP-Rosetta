@@ -1,35 +1,66 @@
-% Wolf, goat and cabbage: a farmer ferries a wolf, a goat and a cabbage across a
-% river in a boat that carries him and at most one item. The wolf is never left
-% alone with the goat, nor the goat with the cabbage. For each stage the answer
-% gives the shore (0 = start, 1 = far side) of each item and of the boat.
+% wolf_goat_cabbage: a Picat model from DCP Rosetta.
+%
+% The wolf, goat and cabbage problem is a river crossing puzzle. A farmer with a wolf, a goat, and a
+% cabbage must cross a river by boat. The boat can carry only the farmer and a single item. If left
+% unattended together, the wolf would eat the goat, or the goat would eat the cabbage. How can they
+% cross the river without anything being eaten? The crossing takes the given number of stages. At the
+% first stage everything is on the starting shore, at the last stage everything is on the destination
+% shore, and the boat, with the farmer, changes shore from each stage to the next.
+%
+% Save this file as model.pi. Download `wolf_goat_cabbage.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/wolf_goat_cabbage.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py wolf_goat_cabbage.json
+%   picat model.pi wolf_goat_cabbage_1.dat
+%
+% Data.get(stage): the number of stages of the crossing (the shore of each item and of the boat is
+% 0 at the starting shore, 1 at the destination shore).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Stage = Data.get(stage),
-    Wolf = new_list(Stage),
-    Goat = new_list(Stage),
-    Cabbage = new_list(Stage),
-    Boat = new_list(Stage),
+    Stages = Data.get(stage),
+    % the shore, 0 = starting, 1 = destination, of the wolf, the goat, the cabbage and the boat at each stage
+    Wolf = new_list(Stages),
+    Goat = new_list(Stages),
+    Cabbage = new_list(Stages),
+    Boat = new_list(Stages),
     Wolf :: 0..1, Goat :: 0..1, Cabbage :: 0..1, Boat :: 0..1,
-    % everything starts on the first shore and ends on the far one
-    foreach (P in [Wolf, Goat, Cabbage, Boat])
-        P[1] #= 0,
-        P[Stage] #= 1
+    % at the first stage everything is on the starting shore, at the last on the destination shore
+    foreach (Shore in [Wolf, Goat, Cabbage, Boat])
+        Shore[1] #= 0,
+        Shore[Stages] #= 1
     end,
-    % the boat crosses at every stage
-    foreach (I in 2..Stage)
-        Boat[I] #!= Boat[I - 1]
+    % the boat, with the farmer, changes shore from each stage to the next
+    foreach (I in 1..Stages - 1)
+        Boat[I] #!= Boat[I + 1]
     end,
-    foreach (I in 1..Stage)
-        % the wolf and the goat are not alone: if they share a shore, the boat is there
-        Wolf[I] #= Goat[I] #=> Boat[I] #= Goat[I],
-        % the goat and the cabbage are not alone either
-        Goat[I] #= Cabbage[I] #=> Boat[I] #= Goat[I]
-    end,
-    % at most one of the three items changes shore between two stages
-    foreach (I in 1..Stage-1)
+    % the boat carries the farmer and at most one item: an item that changes shore is on the boat's shore
+    foreach (I in 1..Stages - 1)
+        (Wolf[I] #!= Wolf[I + 1]) #=> (Wolf[I] #= Boat[I]),
+        (Goat[I] #!= Goat[I + 1]) #=> (Goat[I] #= Boat[I]),
+        (Cabbage[I] #!= Cabbage[I + 1]) #=> (Cabbage[I] #= Boat[I]),
         (Wolf[I] #!= Wolf[I + 1]) + (Goat[I] #!= Goat[I + 1]) + (Cabbage[I] #!= Cabbage[I + 1]) #=< 1
+    end,
+    % the wolf would eat the goat: they are on the same shore only when the farmer is there too
+    foreach (I in 1..Stages)
+        Wolf[I] #= Goat[I] #=> Boat[I] #= Wolf[I],
+        % the goat would eat the cabbage: they are on the same shore only when the farmer is there too
+        Goat[I] #= Cabbage[I] #=> Boat[I] #= Goat[I]
     end,
     Vars = Wolf ++ Goat ++ Cabbage ++ Boat,
     Outputs = [wolf_pos = Wolf, goat_pos = Goat, cabbage_pos = Cabbage, boat_pos = Boat],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

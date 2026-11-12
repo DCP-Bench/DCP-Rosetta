@@ -1,41 +1,71 @@
-% Resource-constrained project scheduling: schedule jobs of given durations so that the
-% precedence constraints hold and, at every moment, the jobs running together do not use more
-% of any resource than its capacity. Minimise the makespan, the latest start time (the last job
-% is a dummy of duration 0). Jobs are numbered from 0 in the instance, so job j is stored at
-% position j + 1 of the lists.
-% Encoded with sat: with cp the three instances of 32 jobs did not finish within 180 s, with sat
-% they took 2 to 7 s.
+% resource_constrained_project_scheduling: a Picat model from DCP Rosetta.
+%
+% Schedule a set of jobs, each with a duration and a requirement of each kind of resource, so that
+% the total project duration (the makespan) is as small as possible. Some jobs must be completed
+% before others can start. At any time the jobs running together must not need more of a resource
+% than its capacity.
+%
+% Save this file as model.pi. Download `resource_constrained_project_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/resource_constrained_project_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py resource_constrained_project_scheduling.json
+%   picat model.pi resource_constrained_project_scheduling_1.dat
+%
+% Data.get(durations_data): the duration of each job; Data.get(resource_needs_data): the amount of
+% each resource that each job needs, one row per job; Data.get(resource_capacities_data): the
+% capacity of each resource; Data.get(successors_link_data): each link [I, J], where job I must end
+% before job J starts. Jobs are numbered from 0 in the data; the model numbers job j as j+1.
+% The model uses sat, since cp is too slow on the larger problems.
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
-    Durations = Data.get(durations_data),                 % duration of each job
-    ResourceNeeds = Data.get(resource_needs_data),        % ResourceNeeds[j + 1][r] = demand of job j for resource r
-    Capacities = Data.get(resource_capacities_data),      % capacity of each resource
-    Links = Data.get(successors_link_data),               % each link [i, j]: job j starts after job i ends
+    Durations = Data.get(durations_data),
+    NeedsRows = Data.get(resource_needs_data),
+    Capacities = Data.get(resource_capacities_data),
+    Links = Data.get(successors_link_data),
     NumJobs = len(Durations),
     NumResources = len(Capacities),
-    % the horizon: all jobs one after another (the reference's own loose bound)
+    % a job starts no later than all the jobs together take
     Horizon = sum(Durations),
-    % StartTime[j + 1] = the start time of job j
+    % StartTime[J] = the start time of job J; EndTime[J] = its end time
     StartTime = new_list(NumJobs),
     StartTime :: 0..Horizon,
-    % precedence: a job starts when the job before it has ended
-    foreach (Link in Links)
-        StartTime[Link[2] + 1] #>= StartTime[Link[1] + 1] + Durations[Link[1] + 1]
+    EndTime = new_list(NumJobs),
+    foreach (J in 1..NumJobs)
+        EndTime[J] #= StartTime[J] + Durations[J]
     end,
-    % resources: the demand of the jobs running at the same time stays within the capacity.
-    % Jobs with no duration or no demand for a resource take no part in it.
+    % precedence: a job starts only after each job it follows has ended
+    foreach (Link in Links)
+        StartTime[Link[2] + 1] #>= EndTime[Link[1] + 1]
+    end,
+    % resources: at every moment the jobs running together need no more of a resource than its
+    % capacity; a job that takes no time or needs none of the resource takes no part in it
     foreach (R in 1..NumResources)
-        Running = [J : J in 1..NumJobs, Durations[J] > 0, ResourceNeeds[J, R] > 0],
+        Running = [J : J in 1..NumJobs, Durations[J] > 0, NeedsRows[J, R] > 0],
         if Running != [] then
             cumulative([StartTime[J] : J in Running],
                        [Durations[J] : J in Running],
-                       [ResourceNeeds[J, R] : J in Running],
+                       [NeedsRows[J, R] : J in Running],
                        Capacities[R])
         end
     end,
-    % the makespan is the latest start time
-    Makespan #= max(StartTime),
+    % the makespan is the latest end time of the jobs
+    Makespan #= max(EndTime),
     Vars = StartTime,
     Outputs = [start_time = StartTime],
+    % minimize the makespan
     Options = [$min(Makespan)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

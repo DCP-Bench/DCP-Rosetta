@@ -1,31 +1,59 @@
-% Flow Free: a board has pairs of cells of the same colour (the endpoints, numbered 1..K) and
-% empty cells (0). Connect each pair with a pipe of its colour so that every cell of the
-% board is covered. The answer gives the colour of every cell. A pipe is a path, so an
-% endpoint touches exactly one cell of its colour and every other cell on the pipe touches
-% exactly two.
+% flow_free_game: a Picat model from DCP Rosetta.
+%
+% Connect matching colors with pipe to create a flow. Pair all colors, and cover the entire board to
+% solve each puzzle in Flow Free. Pipes must not cross or overlap. The cells of the board are colored
+% with the numbers 1 to 5. The numbered cells keep their colors and the empty cells (0) must be filled
+% with a color. Cells are connected horizontally and vertically: a numbered cell has exactly one
+% neighbour of its own color, and a filled cell has exactly two.
+%
+% Save this file as model.pi. Download `flow_free_game.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/flow_free_game.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py flow_free_game.json
+%   picat model.pi flow_free_game_1.dat
+%
+% Data.get(board): the rows of the board, each a list of numbers (lists indexed from 1); 0 marks an
+% empty cell and a number from 1 to 5 a numbered cell of that color.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Board = Data.get(board),         % Board[i, j] = colour of the endpoint at (i, j), 0 if empty
-    NRows = len(Board),
-    NCols = len(Board[1]),
-    NColors = max([E : Row in Board, E in Row]),   % colours are 1..K, K the largest on the board
-    % B[i, j] = colour of the pipe through cell (i, j)
-    B = new_array(NRows, NCols),
-    B :: 1..NColors,
-    foreach (I in 1..NRows, J in 1..NCols)
-        % the cells next to (I, J) that lie on the board
-        Neighbours = [{K, L} : {K, L} in [{I - 1, J}, {I + 1, J}, {I, J - 1}, {I, J + 1}],
-                               K >= 1, K =< NRows, L >= 1, L =< NCols],
-        if Board[I, J] != 0 then
-            % an endpoint keeps its colour and continues into exactly one neighbour of that colour
-            B[I, J] #= Board[I, J],
-            sum([B[I, J] #= B[K, L] : {K, L} in Neighbours]) #= 1
-        else
-            % an empty cell lies on a pipe: exactly two neighbours share its colour
-            sum([B[I, J] #= B[K, L] : {K, L} in Neighbours]) #= 2
+    Given = Data.get(board),
+    NR = len(Given),                       % the number of rows
+    NC = len(Given[1]),                    % the number of columns
+    NumColors = 5,                         % the colors are 1 to 5
+    B = new_array(NR, NC),                 % B[R,C] = the color of the cell in row R, column C
+    foreach (R in 1..NR, C in 1..NC)
+        B[R,C] :: 1..NumColors,
+        % a numbered cell keeps its color
+        if Given[R,C] > 0 then
+            B[R,C] #= Given[R,C]
         end
     end,
-    Vars = B,
+    % the neighbours of each cell, horizontally and vertically, inside the board
+    foreach (R in 1..NR, C in 1..NC)
+        Nbrs = [(R+DR, C+DC) : (DR,DC) in [(-1,0), (1,0), (0,-1), (0,1)],
+                R+DR >= 1, R+DR =< NR, C+DC >= 1, C+DC =< NC],
+        % a numbered cell has exactly one neighbour of its own color, and a filled cell exactly two
+        if Given[R,C] > 0 then
+            sum([(B[R2,C2] #= B[R,C]) : (R2,C2) in Nbrs]) #= 1
+        else
+            sum([(B[R2,C2] #= B[R,C]) : (R2,C2) in Nbrs]) #= 2
+        end
+    end,
+    Vars = [B[R,C] : R in 1..NR, C in 1..NC],
     Outputs = ['B' = B],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

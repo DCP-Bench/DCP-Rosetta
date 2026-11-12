@@ -1,64 +1,89 @@
-% Vessel loading: place rectangular containers on a rectangular deck, without overlap and
-% parallel to the deck sides, so that containers of certain classes keep a minimum distance
-% between them. Containers may be rotated by a quarter turn. The output is the left, right,
-% top and bottom coordinate of every container, counted from 0.
-% Encoded with sat: with cp the 16 x 16 instances (10 containers whose areas fill the deck
-% exactly) did not finish within 180 s.
-import sat.
+% csplib_008_vessel_loading: a Picat model from DCP Rosetta.
+%
+% Supply vessels transport containers from site to site. The deck area is rectangular. Containers are cuboid,
+% and are laid out in a single layer. All containers are positioned parallel to the sides of the deck. The
+% contents of the containers determine their class. Certain classes of containers are constrained to be
+% separated by minimum distances either along the deck or across the deck.
+%
+% A container occupies the area from left to right across the width of the deck, and from bottom to top along
+% its length, with right - left and top - bottom being its width and length, in that order or rotated by 90
+% degrees. All of these lie between 0 and the deck's size in that direction. Two containers may touch.
+% separation[a-1][b-1] is the distance that containers of classes a and b must keep in at least one of the two
+% directions.
+%
+% The vessel loading decision problem is to determine whether a given set of containers can be positioned on a
+% given deck, without overlapping, and without violating any of the separation constraints.
+%
+% Save this file as model.pi. Download `csplib_008_vessel_loading.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_008_vessel_loading.json
+%   picat model.pi csplib_008_vessel_loading_1.dat
+%
+% Data.get(deck_width), Data.get(deck_length): the size of the deck across its width and along its length;
+% Data.get(n_containers): the number of containers; Data.get(width), 'length' key: the width and the length
+% of each container (lists indexed from 1); Data.get(classes): the class of each container, numbered from 1;
+% Data.get(separation): separation[A][B] is the distance that containers of classes A and B must keep in at
+% least one direction (classes numbered from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     DeckWidth = Data.get(deck_width),
     DeckLength = Data.get(deck_length),
     N = Data.get(n_containers),
-    Widths = Data.get(width),            % one side of each container
-    % Data.get(length) with the atom written out returns 2 instead of the field, so the
-    % key goes through a variable
-    LengthKey = 'length',
-    Lengths = Data.get(LengthKey),       % the other side of each container
-    Classes = Data.get(classes),         % class of each container (1-based)
-    Separation = Data.get(separation),   % minimum distance between two classes
-    % each container lies on the deck: x coordinates in 0..deck_width, y in 0..deck_length
+    Width = Data.get(width),
+    % Picat 3.9 returns a wrong value for the two-argument get on the key 'length', so the key is read with
+    % the three-argument get (the default is never used: the key is present)
+    Length = get(Data, 'length', []),
+    Classes = Data.get(classes),
+    Separation = Data.get(separation),
+    % Rot[I] = 1 when container I is rotated by 90 degrees
+    Rot = new_list(N),
+    Rot :: 0..1,
+    % the extent of container I across the deck and along it, after its rotation
+    ExtentX = new_list(N),
+    ExtentY = new_list(N),
+    foreach (I in 1..N)
+        ExtentX[I] #= Width[I] * (1 - Rot[I]) + Length[I] * Rot[I],
+        ExtentY[I] #= Length[I] * (1 - Rot[I]) + Width[I] * Rot[I]
+    end,
+    % Left[I], Bottom[I] = the position of the left and bottom sides of container I
     Left = new_list(N),
-    Right = new_list(N),
-    Top = new_list(N),
     Bottom = new_list(N),
     Left :: 0..DeckWidth,
-    Right :: 0..DeckWidth,
-    Top :: 0..DeckLength,
     Bottom :: 0..DeckLength,
-    % a container keeps its width and length, either as given (Turned = 0) or turned by a
-    % quarter turn (Turned = 1); this replaces the either/or of the two shapes by one
-    % 0/1 variable per container. A square has one shape only, so it is not turned.
-    Turned = new_list(N),
-    Turned :: 0..1,
+    % Right[I], Top[I] = the position of the right and top sides of container I
+    Right = new_list(N),
+    Top = new_list(N),
     foreach (I in 1..N)
-        Right[I] #= Left[I] + Widths[I] + Turned[I] * (Lengths[I] - Widths[I]),
-        Top[I] #= Bottom[I] + Lengths[I] - Turned[I] * (Lengths[I] - Widths[I]),
-        if Widths[I] == Lengths[I] then
-            Turned[I] #= 0
-        end
+        Right[I] #= Left[I] + ExtentX[I],
+        Top[I] #= Bottom[I] + ExtentY[I],
+        % every container lies on the deck
+        Right[I] #=< DeckWidth,
+        Top[I] #=< DeckLength
     end,
-    % two containers do not overlap, and are at least the separation of their classes apart:
-    % one is to the left of, to the right of, below or above the other
-    foreach (A in 1..N - 1, B in A + 1..N)
-        SepRow = Separation[Classes[A]],
-        Sep = SepRow[Classes[B]],
-        (Right[A] + Sep #=< Left[B]) #\/ (Left[A] #>= Right[B] + Sep) #\/
-        (Top[A] + Sep #=< Bottom[B]) #\/ (Bottom[A] #>= Top[B] + Sep)
+    % containers do not overlap, and containers of classes A and B are separated by their minimum distance
+    % in at least one of the two directions
+    foreach (I in 1..N - 1, J in I + 1..N)
+        S = Separation[Classes[I], Classes[J]],
+        (Left[J] #>= Right[I] + S) #\/ (Left[I] #>= Right[J] + S) #\/
+        (Bottom[J] #>= Top[I] + S) #\/ (Bottom[I] #>= Top[J] + S)
     end,
-    % implied: along any vertical line over the deck, the containers it crosses have lengths
-    % adding up to at most the deck length (their heights, whether turned or not); along any
-    % horizontal line, widths adding up to at most the deck width
-    foreach (Col in 0..DeckWidth - 1)
-        sum([Lengths[I] * (Left[I] #=< Col #/\ Col #< Right[I])
-             - (Lengths[I] - Widths[I]) * (Left[I] #=< Col #/\ Col #< Right[I] #/\ Turned[I] #= 1)
-             : I in 1..N]) #=< DeckLength
-    end,
-    foreach (Row in 0..DeckLength - 1)
-        sum([Widths[I] * (Bottom[I] #=< Row #/\ Row #< Top[I])
-             + (Lengths[I] - Widths[I]) * (Bottom[I] #=< Row #/\ Row #< Top[I] #/\ Turned[I] #= 1)
-             : I in 1..N]) #=< DeckWidth
-    end,
-    Vars = Left ++ Bottom ++ Turned ++ Right ++ Top,
+    Vars = [Left, Bottom, Rot],
     Outputs = [left = Left, right = Right, top = Top, bottom = Bottom],
+    % any placement that meets the constraints will do
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

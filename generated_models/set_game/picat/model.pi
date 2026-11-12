@@ -1,26 +1,71 @@
-% Set: among the cards on the table choose three (0-based indices) that form a
-% set, that is, for each of the four features (number, fill, colour, shape) the
-% three cards show either the same value or three different values.
+% set_game: a Picat model from DCP Rosetta.
+%
+% Set (stylized as SET or SET!) is a real-time card game designed by Marsha Falco in 1974 and published by Set
+% Enterprises in 1991. The deck consists of 81 unique cards that vary in four features across three possibilities for
+% each kind of feature: number of shapes (one, two, or three), shape (diamond, squiggle, oval), shading (solid,
+% striped, or open), and color (red, green, or purple). Each possible combination of features appears as a card
+% precisely once in the deck.
+%
+% In the game, certain combinations of three cards are said to make up a "set". For each one of the four categories of
+% features (color, number, shape, and shading), the three cards must display that feature as either a) all the same,
+% or b) all different. Put another way: For each feature the three cards must avoid having two cards showing one
+% version of the feature and the remaining card showing a different version.
+%
+% For example, 3 solid red diamonds, 2 solid green squiggles, and 1 solid purple oval form a set, because the shadings
+% of the three cards are all the same, while the numbers, the colors, and the shapes among the three cards are all
+% different.
+%
+% Given a list of cards, each written as [number, shading, color, shape], find three different cards that form a set.
+%
+% Save this file as model.pi. Download `set_game.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/set_game.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py set_game.json
+%   picat model.pi set_game_1.dat
+%
+% Data.get(cards_data): the cards on the table (a list indexed from 1), each card a list [number, shading, color,
+% shape] of feature values 1 to 3. The other fields name those values (ONE, TWO, THREE, FULL, EMPTY, STRIPED, RED,
+% GREEN, PURPLE, DIAMOND, RECT, ELLIPSE) and are not needed by the model.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Cards = Data.get(cards_data),   % each card is [number, fill, colour, shape]
+    Cards = Data.get(cards_data),
     NCards = len(Cards),
+    % Chosen[K] = the 0-based index of the K-th winning card
     Chosen = new_list(3),
-    Chosen :: 0..NCards-1,
+    Chosen :: 0..NCards - 1,
     % three different cards
     all_different(Chosen),
+    % Position[K] = the 1-based position of that card in the list of cards
+    Position = new_list(3),
+    foreach (K in 1..3)
+        Position[K] #= Chosen[K] + 1
+    end,
     foreach (F in 1..4)
-        % the value of feature f on every card, and on each chosen card
+        % the value of feature F on every card
         Column = [Card[F] : Card in Cards],
         Values = new_list(3),
         foreach (K in 1..3)
-            element0(Chosen[K], Column, Values[K])
+            element(Position[K], Column, Values[K])
         end,
-        % all the same, or all different
+        % for each feature the three cards are all the same, or all different
         (Values[1] #= Values[2] #/\ Values[2] #= Values[3]) #\/
         (Values[1] #!= Values[2] #/\ Values[1] #!= Values[3] #/\ Values[2] #!= Values[3])
     end,
     Vars = Chosen,
     Outputs = [winning_cards = Chosen],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

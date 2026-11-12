@@ -1,13 +1,35 @@
-% Bank card: a PIN abcd with four different digits, where cd = 3 * ab and
-% da = 2 * bc, each read as a two-digit number.
+% session1_bank_card: a Picat model from DCP Rosetta.
+%
+% My bank card has a 4 digit pin, abcd. I use the following facts to help me remember it:
+%
+% - no two digits are the same
+% - the 2-digit number cd is 3 times the 2-digit number ab
+% - the 2-digit number da is 2 times the 2-digit number bc
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_bank_card.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
+% The puzzle has no data: the digits A, B, C, D of the PIN are the decision variables.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
+    % each digit of the PIN is a digit from 0 to 9
     [A, B, C, D] :: 0..9,
+    % no two digits are the same
     all_different([A, B, C, D]),
+    % the 2-digit number cd is 3 times the 2-digit number ab
     10 * C + D #= 3 * (10 * A + B),
+    % the 2-digit number da is 2 times the 2-digit number bc
     10 * D + A #= 2 * (10 * B + C),
     Vars = [A, B, C, D],
     Outputs = [a = A, b = B, c = C, d = D],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

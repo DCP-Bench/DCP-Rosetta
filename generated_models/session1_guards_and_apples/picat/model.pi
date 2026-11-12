@@ -1,19 +1,48 @@
-% Guards and apples: a boy passes several gates. At each gate he gives the guard
-% half of his apples plus one, and after the last gate one apple is left for the girl.
+% session1_guards_and_apples: a Picat model from DCP Rosetta.
+%
+% A boy wants to give an apple to a girl. To get to her, he has to pass through a number of gates, each with a guard.
+% He bribes each guard with half of his apples, plus one. The boy does not have a knife, therefore he gives the guard
+% an integer number of apples. After he's given the apple to the girl, he has no apples left, so he has exactly one
+% apple after the last gate.
+%
+% Save this file as model.pi. Download `session1_guards_and_apples.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_guards_and_apples.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session1_guards_and_apples.json
+%   picat model.pi session1_guards_and_apples_1.dat
+%
+% Data.get(num_gates): the number of gates.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NumGates = Data.get(num_gates),
-    % apples[i] = the apples before gate i; the last entry is what is left after
-    % the last gate. Between 0 and 100 apples.
+    % Apples[I] = the apples the boy has before gate I, for I = 1..NumGates; Apples[NumGates + 1] = the apples he
+    % has after the last gate
     Apples = new_list(NumGates + 1),
-    Apples :: 0..100,
-    % after the last gate the boy keeps the one apple for the girl
+    % the apples he has never exceed what he had before the first gate, which is 3 * 2^NumGates - 2 at most
+    Apples :: 0..3 * 2 ** NumGates,
+    % after the last gate he has no apples left for himself: one apple is left, the one for the girl
     Apples[NumGates + 1] #= 1,
-    % at each gate the guard gets half plus one, so before = 2 * (after + 1)
+    % at each gate the guard gets half of his apples plus one, so the apples he has after the gate are the apples
+    % before it minus half of them plus one, which gives before = 2 * (after + 1)
     foreach (I in 1..NumGates)
         Apples[I] #= 2 * (Apples[I + 1] + 1)
     end,
     Vars = Apples,
     Outputs = [apples = Apples],
     Options = [].
+
+% Reads the data file, builds the model, solves it and prints each output.
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

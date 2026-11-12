@@ -1,25 +1,54 @@
-% Revenue maximisation: how many units of each flight package to sell, within
-% the seats of the legs it uses and its demand, for the largest revenue.
+% revenue_maximization: a Picat model from DCP Rosetta.
+%
+% We have a set of flight legs (one-way non-stop flights) with a limited passenger capacity. According to market
+% research, we defined a set of flight itineraries to sell as packages, each with a given price and an estimated
+% demand. How many units of each package should we sell to maximize the revenue? We reserve the passenger seats
+% according to the number of packages we want to sell.
+%
+% Save this file as model.pi. Download `revenue_maximization.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/revenue_maximization.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py revenue_maximization.json
+%   picat model.pi revenue_maximization_1.dat
+%
+% Data.get(available_seats): the seats of each flight leg; Data.get(demand): the estimated demand for each
+% package; Data.get(revenue): the price of each package; Data.get(delta): delta[i][j] = 1 when package i uses
+% flight leg j (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Seats = Data.get(available_seats),   % seats on each flight leg
-    Demand = Data.get(demand),           % estimated demand for each package
+    Seats = Data.get(available_seats),
+    Demand = Data.get(demand),
     Revenue = Data.get(revenue),
-    Delta = Data.get(delta),             % delta[i][j] = 1 when package i uses leg j
-    NP = len(Demand),
-    NL = len(Seats),
-    Sell = new_list(NP),
+    Delta = Data.get(delta),
+    NP = len(Demand),                      % the number of packages
+    NL = len(Seats),                       % the number of flight legs
+    Sell = new_list(NP),                   % Sell[I] = units of package I to sell
     Sell :: 0..max(Demand),
-    % the packages sold fit the seats of every leg
+    % the packages sold use no more seats on a leg than the leg has
     foreach (J in 1..NL)
         sum([Delta[I, J] * Sell[I] : I in 1..NP]) #=< Seats[J]
     end,
-    % no more than the demand of a package is sold
+    % no more units of a package are sold than its estimated demand
     foreach (I in 1..NP)
         Sell[I] #=< Demand[I]
     end,
     MaxRevenue #= sum([Revenue[I] * Sell[I] : I in 1..NP]),
     Vars = Sell,
     Outputs = [packages_to_sell = Sell, max_revenue = MaxRevenue],
+    % maximize the total revenue of the packages sold
     Options = [$max(MaxRevenue)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

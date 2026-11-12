@@ -1,20 +1,55 @@
-% All-interval series: order the pitch classes 0..n-1 so that the absolute
-% differences between neighbours are also all different (they are 1..n-1).
-import sat.
+% csplib_007_all_interval: a Picat model from DCP Rosetta.
+%
+% Given the twelve standard pitch-classes (c, c#, d, ...), represented by numbers 0, 1, ..., 11, find a series
+% in which each pitch-class occurs exactly once and in which the musical intervals between neighbouring notes
+% cover the full set of intervals from the minor second (1 semitone) to the major seventh (11 semitones). That
+% is, for each of the intervals, there is a pair of neighbouring pitch-classes in the series, between which this
+% interval appears.
+%
+% The problem of finding such a series can be easily formulated as an arithmetic problem on Z_n, the set of
+% integer residues modulo n. Given n, find a vector s = (s_1, ..., s_n), such that s is a permutation of
+% {0, 1, ..., n-1}; and the interval vector v = (|s_2 - s_1|, |s_3 - s_2|, ..., |s_n - s_(n-1)|) is a permutation
+% of {1, 2, ..., n-1}. A vector v satisfying these conditions is called an all-interval series of size n.
+%
+% Save this file as model.pi. Download `csplib_007_all_interval.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_007_all_interval.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_007_all_interval.json
+%   picat model.pi csplib_007_all_interval_1.dat
+%
+% Data.get(n): the number n of pitch-classes (the size of the series).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
+    % X[I] = the pitch-class (0..n-1) at place I of the series; places are numbered from 1
     X = new_list(N),
-    X :: 0..N-1,
-    Diffs = new_list(N - 1),
-    Diffs :: 1..N-1,
-    % every pitch class once, and every interval once
+    X :: 0..N - 1,
+    % each pitch-class occurs exactly once
     all_different(X),
-    all_different(Diffs),
-    % the intervals are the distances between successive pitch classes
-    foreach (I in 1..N-1)
-        Diffs[I] #= abs(X[I + 1] - X[I])
+    % Diff[I] = the interval between the neighbouring notes at places I and I+1, its absolute difference
+    Diff = new_list(N - 1),
+    Diff :: 1..N - 1,
+    foreach (I in 1..N - 1)
+        Diff[I] #= abs(X[I + 1] - X[I])
     end,
-    Vars = X ++ Diffs,
-    Outputs = [x = X, diffs = Diffs],
+    % each interval from 1 to n-1 occurs exactly once among the neighbouring pairs
+    all_different(Diff),
+    Vars = X,
+    Outputs = [x = X, diffs = Diff],
+    % any all-interval series will do
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

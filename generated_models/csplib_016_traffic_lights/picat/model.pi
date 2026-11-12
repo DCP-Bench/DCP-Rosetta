@@ -1,19 +1,51 @@
-% Traffic lights: four vehicle lights V1..V4 and four pedestrian lights P1..P4 at
-% a junction. Each (V_i, P_i, V_i+1, P_i+1), going round the junction, must be one
-% of the allowed combinations.
+% csplib_016_traffic_lights: a Picat model from DCP Rosetta.
+%
+% Imagine a four-way traffic junction with eight traffic lights. Four lights (V1 to V4) are for
+% vehicles and four (P1 to P4) are for pedestrians, and each light has a state (for example red or
+% green). For i = 1..4, with V5 = V1 and P5 = P1, the combination (V_i, P_i, V_{i+1}, P_{i+1}) must
+% be one of the combinations that is safe for intersecting roads; every other combination is
+% disallowed. Vehicle light states: 0 = red, 1 = red-yellow, 2 = green, 3 = yellow. Pedestrian
+% light states: 0 = red, 1 = green.
+%
+% Save this file as model.pi. Download `csplib_016_traffic_lights.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_016_traffic_lights.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_016_traffic_lights.json
+%   picat model.pi csplib_016_traffic_lights_1.dat
+%
+% Data.get(allowed_tuples): the safe combinations (V_i, P_i, V_i+1, P_i+1), one list of four states
+% per row, indexed from 1.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    % the allowed combinations as tuples, which table_in/2 expects
+    % the safe combinations as tuples, as table_in/2 expects them
     Allowed = [to_array(T) : T in Data.get(allowed_tuples)],
+    % V[I] = the state of vehicle light I (0 red, 1 red-yellow, 2 green, 3 yellow)
     V = new_list(4),
-    V :: 0..3,    % vehicle lights: 0 red, 1 red-yellow, 2 green, 3 yellow
+    V :: 0..3,
+    % P[I] = the state of pedestrian light I (0 red, 1 green)
     P = new_list(4),
-    P :: 0..1,    % pedestrian lights: 0 red, 1 green
+    P :: 0..1,
+    % going round the junction, every pair of neighbouring light groups is a safe combination
     foreach (I in 1..4)
         Next = I mod 4 + 1,
         table_in({V[I], P[I], V[Next], P[Next]}, Allowed)
     end,
+    % the lights in the order V1..V4, P1..P4
     Vars = V ++ P,
     Outputs = [lights = V ++ P],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

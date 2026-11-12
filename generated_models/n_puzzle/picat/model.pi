@@ -1,9 +1,20 @@
-% N-puzzle: a square board holds the tiles 1..n and one empty square (0). Slide tiles into the
-% empty square, one move at a time, to get from the start board to the end board in exactly
-% N_STEPS boards, the start and the end board included. A board must differ from the one
-% before it. The output is the board at every step.
-% Encoded with sat: the plan is a sequence of boards whose length is fixed, which suits
-% propagation by clauses better than the depth-first search of cp.
+% n_puzzle: a Picat model from DCP Rosetta.
+%
+% The N-Puzzle is a sliding puzzle: a square board holds the tiles 1 to N and one empty square,
+% marked 0. Trace the steps from the start board to the end board, in exactly N_STEPS boards, the
+% start board and the end board included. Each step moves one tile that is horizontally or
+% vertically next to the empty square into the empty square, so the board changes at every step.
+%
+% Save this file as model.pi. Download `n_puzzle.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/n_puzzle.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py n_puzzle.json
+%   picat model.pi n_puzzle_1.dat
+%
+% Data.get('N_STEPS'): the number of boards, the start and the end board included;
+% Data.get(puzzle_start), Data.get(puzzle_end): the start and the end board, each a 3 x 3 list of
+% rows (lists indexed from 1), 0 being the empty square.
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
@@ -12,27 +23,27 @@ model(Data, Vars, Outputs, Options) =>
     End = Data.get(puzzle_end),
     D = len(Start),                       % the board is D x D
     N = D * D - 1,                        % the tiles are 1..N, 0 is the empty square
-    % X[t, i, j] = the tile on the board at step t, row i, column j (0 = empty)
+    % X[T, I, J] = the tile in row I, column J of board T (0 = empty)
     X = new_array(NSteps, D, D),
     X :: 0..N,
-    % the first board is the start board and the last one is the end board
+    % the first board is the start board and the last board is the end board
     foreach (I in 1..D, J in 1..D)
         X[1, I, J] #= Start[I, J],
         X[NSteps, I, J] #= End[I, J]
     end,
+    % every board holds each tile and the empty square exactly once
+    foreach (T in 1..NSteps)
+        Cells = [X[T, I, J] : I in 1..D, J in 1..D],
+        all_different(Cells)
+    end,
     foreach (T in 2..NSteps)
-        % every board holds each tile (and the empty square) once
-        foreach (I1 in 1..D, J1 in 1..D, I2 in 1..D, J2 in 1..D, (I1 - 1) * D + J1 < (I2 - 1) * D + J2)
-            X[T, I1, J1] #!= X[T, I2, J2]
-        end,
+        % the empty square of board T is the square that was empty on board T-1, or a square next
+        % to it, since a single tile moves into the empty square
         foreach (I in 1..D, J in 1..D)
-            % the empty square of the new board was, on the previous board, on the same square
-            % or on a square next to it (the empty square moves by one square)
-            Around = [[I + RR, J + CC] : Off in [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
-                                         RR = Off[1], CC = Off[2],
-                                         I + RR >= 1, I + RR =< D, J + CC >= 1, J + CC =< D],
-            X[T, I, J] #= 0 #=> (sum([X[T - 1, Cell[1], Cell[2]] #= 0 : Cell in Around]) #>= 1),
-            % only the empty square moves: any other square keeps its tile
+            Near = [X[T - 1, I + DR, J + DC] : {DR, DC} in [{0, 0}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}],
+                    I + DR >= 1, I + DR =< D, J + DC >= 1, J + DC =< D],
+            X[T, I, J] #= 0 #=> (sum([V #= 0 : V in Near]) #>= 1),
+            % a square that is not empty on either board keeps its tile
             X[T - 1, I, J] #= 0 #\/ X[T, I, J] #= 0 #\/ X[T - 1, I, J] #= X[T, I, J]
         end,
         % the board changes at every step
@@ -41,3 +52,16 @@ model(Data, Vars, Outputs, Options) =>
     Vars = [X[T, I, J] : T in 1..NSteps, I in 1..D, J in 1..D],
     Outputs = [steps = [[[X[T, I, J] : J in 1..D] : I in 1..D] : T in 1..NSteps]],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

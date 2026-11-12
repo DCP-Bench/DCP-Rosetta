@@ -1,6 +1,19 @@
-% Balanced incomplete block design (v, b, r, k, l): a v x b 0/1 matrix in which
-% every row has r ones, every column has k ones, and every two rows have ones in
-% exactly l common columns.
+% csplib_028_bibd: a Picat model from DCP Rosetta.
+%
+% A balanced incomplete block design (BIBD) is an arrangement of v distinct objects into b blocks such that
+% each block contains exactly k distinct objects, each object occurs in exactly r different blocks, and every
+% two distinct objects occur together in exactly lambda blocks. Equivalently, it is a v by b binary incidence
+% matrix with exactly r ones per row, k ones per column, and a scalar product of lambda between any pair of
+% distinct rows.
+%
+% Save this file as model.pi. Download `csplib_028_bibd.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_028_bibd.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_028_bibd.json
+%   picat model.pi csplib_028_bibd_1.dat
+%
+% Data.get(v), Data.get(b), Data.get(r), Data.get(k), Data.get(l): the parameters v, b, r, k and lambda.
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
@@ -9,20 +22,34 @@ model(Data, Vars, Outputs, Options) =>
     R = Data.get(r),
     K = Data.get(k),
     L = Data.get(l),
+    % Matrix[I, J] = 1 when object I occurs in block J
     Matrix = new_array(V, B),
     Matrix :: 0..1,
-    % every object occurs in r blocks
+    % each object occurs in exactly r blocks
     foreach (I in 1..V)
         sum([Matrix[I, J] : J in 1..B]) #= R
     end,
-    % every block holds k objects
+    % each block contains exactly k objects
     foreach (J in 1..B)
         sum([Matrix[I, J] : I in 1..V]) #= K
     end,
-    % every two objects occur together in exactly l blocks
+    % every two distinct objects occur together in exactly lambda blocks
     foreach (I1 in 1..V-1, I2 in I1+1..V)
         sum([Matrix[I1, J] #/\ Matrix[I2, J] : J in 1..B]) #= L
     end,
     Vars = Matrix,
     Outputs = [matrix = Matrix],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,18 +1,34 @@
-% Building blocks: distribute the letters of the alphabet over num_blocks alphabet blocks
-% with num_sides sides each (one letter per side) so that every given word can be spelled,
-% i.e. the letters of a word all lie on different blocks.
+% building_blocks: a Picat model from DCP Rosetta.
+%
+% Each of a number of alphabet blocks has a single letter of the alphabet on each of its sides. In all, the
+% blocks contain every letter but Q and Z. By arranging the blocks in various ways, you can spell all of the
+% words in a given list, using each block for at most one letter of a word, so the letters of a word are all
+% on different blocks. Each letter is on exactly one block, and each block has the same given number of
+% sides. Find how the letters are arranged on the blocks.
+%
+% Save this file as model.pi. Download `building_blocks.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/building_blocks.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py building_blocks.json
+%   picat model.pi building_blocks_1.dat
+%
+% Data.get(alphabet): the letters, one per letter of the alphabet in order; Data.get(words_str): the words
+% to spell; Data.get(num_blocks): the number of blocks; Data.get(num_sides): the number of sides of each
+% block; Data.get(num_letters): the number of letters (strings and lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
+    Alphabet = Data.get(alphabet),
+    Words = Data.get(words_str),
     NumBlocks = Data.get(num_blocks),
     NumSides = Data.get(num_sides),
     NumLetters = Data.get(num_letters),
-    Alphabet = Data.get(alphabet),       % the letter at position i (from 1) is letter i - 1
-    Words = Data.get(words_str),
-    % Dice[l] = the block (numbered from 0) holding letter l of the alphabet
+    % Dice[L] = the block, numbered from 0, that carries letter L of the alphabet
     Dice = new_list(NumLetters),
     Dice :: 0..NumBlocks - 1,
-    % the letters of a word are on different blocks
+    % the letters of a word are all on different blocks: the letter of each position of the word is
+    % found in the alphabet
     foreach (Word in Words)
         Letters = [I : C in Word, I in 1..NumLetters, Alphabet[I] == C],
         all_different([Dice[L] : L in Letters])
@@ -24,3 +40,16 @@ model(Data, Vars, Outputs, Options) =>
     Vars = Dice,
     Outputs = [dice = Dice],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

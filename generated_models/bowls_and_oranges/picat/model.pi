@@ -1,19 +1,47 @@
-% Bowls and oranges: put oranges in bowls placed in a line, at most one per bowl,
-% so that no three oranges are at equal distances (B - A = C - B).
+% bowls_and_oranges: a Picat model from DCP Rosetta.
+%
+% You have a number of bowls, numbered from 1 and all placed in a line at exact intervals of 1 meter. You
+% also have a number of oranges. You wish to place all the oranges in the bowls, no more than one orange in
+% each bowl, so that there are no three oranges A, B, and C such that the distance between A and B is equal
+% to the distance between B and C.
+%
+% Save this file as model.pi. Download `bowls_and_oranges.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bowls_and_oranges.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py bowls_and_oranges.json
+%   picat model.pi bowls_and_oranges_1.dat
+%
+% Data.get(n): the number of bowls; Data.get(m): the number of oranges.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Bowls = Data.get(n),
-    Oranges = Data.get(m),
-    % x[i] = the bowl, 1..n, of the i-th orange, in ascending order
-    X = new_list(Oranges),
-    X :: 1..Bowls,
+    NumBowls = Data.get(n),
+    NumOranges = Data.get(m),
+    % X[I] = the bowl, numbered from 1, of the I-th orange
+    X = new_list(NumOranges),
+    X :: 1..NumBowls,
+    % each bowl holds no more than one orange
     all_different(X),
+    % the oranges are listed in ascending order of their bowls
     increasing(X),
-    % no three oranges A < B < C with B - A = C - B
-    foreach (I in 1..Oranges-2, J in I+1..Oranges-1, K in J+1..Oranges)
+    % no three oranges I < J < K have the same distance between I and J as between J and K
+    foreach (I in 1..NumOranges - 2, J in I + 1..NumOranges - 1, K in J + 1..NumOranges)
         2 * X[J] #!= X[I] + X[K]
     end,
     Vars = X,
     Outputs = [x = X],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

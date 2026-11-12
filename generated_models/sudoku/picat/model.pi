@@ -1,29 +1,53 @@
-% Sudoku: fill the grid with the digits 1..9 so that every row, every column and
-% every 3 x 3 box holds each digit once, keeping the given digits (0 marks an
-% empty cell).
+% sudoku: a Picat model from DCP Rosetta.
+%
+% The goal of Sudoku is to fill a 9x9 grid with numbers so that each row, column and 3x3 section contain all the digits
+% between 1 and 9. Input is a grid with some cells filled with numbers and some empty.
+%
+% Save this file as model.pi. Download `sudoku.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/sudoku.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py sudoku.json
+%   picat model.pi sudoku_1.dat
+%
+% Data.get(input_grid): the 9 rows of the grid, numbered from 1, each a list of 9 numbers where 0 is an empty cell
+% (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Given = Data.get(input_grid),
-    N = len(Given),          % side of the grid
-    B = to_int(sqrt(N)),     % side of a box
-    Grid = new_array(N, N),
-    Grid :: 1..N,
-    % the given digits stay where they are
-    foreach (I in 1..N, J in 1..N)
-        if Given[I, J] != 0 then
-            Grid[I, J] #= Given[I, J]
-        end
+    Input = Data.get(input_grid),
+    % Grid[R,C] = the digit in row R, column C
+    Grid = [new_list(9) : _R in 1..9],
+    foreach (Row in Grid)
+        Row :: 1..9
     end,
-    % each row and each column holds different digits
-    foreach (I in 1..N)
-        all_distinct([Grid[I, J] : J in 1..N]),
-        all_distinct([Grid[J, I] : J in 1..N])
+    % each row, each column and each 3x3 section holds the digits 1 to 9 once each
+    foreach (R in 1..9)
+        all_different([Grid[R,C] : C in 1..9])
     end,
-    % each box holds different digits
-    foreach (R in 0..B-1, C in 0..B-1)
-        all_distinct([Grid[R * B + I, C * B + J] : I in 1..B, J in 1..B])
+    foreach (C in 1..9)
+        all_different([Grid[R,C] : R in 1..9])
+    end,
+    foreach (BR in 0..2, BC in 0..2)
+        all_different([Grid[3 * BR + R, 3 * BC + C] : R in 1..3, C in 1..3])
+    end,
+    % the digits already filled in keep their values
+    foreach (R in 1..9, C in 1..9, Input[R,C] != 0)
+        Grid[R,C] #= Input[R,C]
     end,
     Vars = Grid,
     Outputs = [grid = Grid],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

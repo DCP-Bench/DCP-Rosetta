@@ -1,25 +1,46 @@
-% Celebrities: a celebrity is known by everybody at the party and knows only
-% celebrities. At least one celebrity is present.
+% finding_celebrities: a Picat model from DCP Rosetta.
+%
+% Given a list of people at a party and for each person the list of people they know at the party, find the
+% celebrities at the party. A celebrity is a person that everybody at the party knows but that only knows other
+% celebrities. At least one celebrity is present at the party.
+%
+% Save this file as model.pi. Download `finding_celebrities.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/finding_celebrities.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py finding_celebrities.json
+%   picat model.pi finding_celebrities_1.dat
+%
+% Data.get(graph): Graph[I,J] = 1 when person I knows person J, 0 otherwise (a list of lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Graph = Data.get(graph),     % graph[i][j] = 1 when person i knows person j
-    N = len(Graph),
-    C = new_list(N),
-    C :: 0..1,
-    NumCelebrities :: 1..N,
-    NumCelebrities #= sum(C),
-    foreach (I in 1..N)
-        KnownBy = sum([Graph[J, I] : J in 1..N]),
-        Knows = sum([Graph[I, J] : J in 1..N]),
-        % i is a celebrity exactly when everybody knows i and i knows as many
-        % people as there are celebrities
-        if KnownBy == N then
-            C[I] #<=> (NumCelebrities #= Knows)
-        else
-            C[I] #= 0
-        end
+    Graph = Data.get(graph),
+    N = len(Graph),                        % the number of people
+    Celeb = new_list(N),                   % Celeb[I] = 1 when person I is a celebrity, 0 otherwise
+    Celeb :: 0..1,
+    % at least one celebrity is present
+    sum(Celeb) #>= 1,
+    foreach (I in 1..N, J in 1..N, I != J)
+        % a celebrity is known by everybody else at the party
+        Celeb[I] #=< Graph[J,I],
+        % a celebrity knows only other celebrities
+        Graph[I,J] * Celeb[I] #=< Celeb[J]
     end,
-    Vars = C,
-    Outputs = [celebrities = C],
+    Vars = Celeb,
+    Outputs = [celebrities = Celeb],
+    % a satisfaction problem: no objective
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

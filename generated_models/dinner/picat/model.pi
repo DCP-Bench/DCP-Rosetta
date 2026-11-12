@@ -1,15 +1,30 @@
-% Dinner: 1-6 grandparents at $3, 1-10 parents at $2 and 1-40 children at $0.50;
-% twenty people in all, for $20.
+% dinner: a Picat model from DCP Rosetta.
+%
+% We are going out to dinner taking 1-6 grandparents, 1-10 parents and/or 1-40 children. Grandparents cost $3
+% for dinner, parents $2 and children $0.50. There must be 20 total people at dinner and it must cost $20.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/dinner.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
     Grandparents :: 1..6,
     Parents :: 1..10,
     Children :: 1..40,
-    % the cost, counted in half dollars
-    Grandparents * 6 + Parents * 4 + Children #= 20 * 2,
+    % there are 20 people at dinner in all
     Grandparents + Parents + Children #= 20,
+    % the dinner costs $20, in cents: $3 per grandparent, $2 per parent and 50 cents per child
+    300 * Grandparents + 200 * Parents + 50 * Children #= 2000,
     Vars = [Grandparents, Parents, Children],
     Outputs = [grandparents = Grandparents, parents = Parents, children = Children],
+    % a satisfaction problem: no objective
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

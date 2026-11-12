@@ -1,21 +1,49 @@
-% Appointment scheduling: give each of n people one of n interview slots, one person per
-% slot, using only slots where the person is free (m[i][j] = 1 if person i is free in slot j).
+% appointment_scheduling: a Picat model from DCP Rosetta.
+%
+% Schedule 4 people into 4 interview slots based on their free-busy schedules, where `m[i][j]` is 1
+% if person i is free in slot j. Each person gets exactly one slot in which they are free, and each
+% slot goes to exactly one person.
+%
+% Save this file as model.pi. Download `appointment_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/appointment_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py appointment_scheduling.json
+%   picat model.pi appointment_scheduling_1.dat
+%
+% Data.get(m): the free-busy schedule, a list of lists indexed from 1: m[I][J] is 1 when person I
+% is free in slot J, 0 otherwise.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    M = Data.get(m),                  % free/busy schedule of each person
-    N = len(M),
-    % X[i, j] = 1 if person i is assigned to slot j
+    M = Data.get(m),
+    N = len(M),                            % the number of people, and of slots
+    % X[I, J] = 1 when person I is assigned to slot J
     X = new_array(N, N),
     X :: 0..1,
     foreach (I in 1..N)
-        % each person is assigned to a slot in which they are free
+        % each person gets exactly one slot in which they are free
         sum([M[I, J] * X[I, J] : J in 1..N]) #= 1,
         % each person gets exactly one slot
-        sum([X[I, J] : J in 1..N]) #= 1,
-        % each slot is taken by exactly one person
-        sum([X[J, I] : J in 1..N]) #= 1
+        sum([X[I, J] : J in 1..N]) #= 1
+    end,
+    % each slot goes to exactly one person
+    foreach (J in 1..N)
+        sum([X[I, J] : I in 1..N]) #= 1
     end,
     Vars = X,
     Outputs = [x = X],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

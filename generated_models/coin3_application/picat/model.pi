@@ -1,26 +1,52 @@
-% Coins: choose how many coins of each denomination to carry, as few as
-% possible, so that every amount from 1 up to (not including) the maximum can
-% be paid exactly.
-import sat.
+% coin3_application: a Picat model from DCP Rosetta.
+%
+% Find the minimum number of coins that allows one to pay exactly any amount smaller than a given
+% maximum amount, using a given set of denominations.
+%
+% Save this file as model.pi. Download `coin3_application.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py coin3_application.json
+%   picat model.pi coin3_application_1.dat
+%
+% Data.get(denominations): the value of each type of coin (a list indexed from 1);
+% Data.get(max_amount_to_pay): the amount that must be payable, every amount smaller than it.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Denominations = Data.get(denominations),
-    MaxAmount = Data.get(max_amount_to_pay),   % the largest amount is one less
-    N = len(Denominations),
-    % x[i] = the coins of denomination i carried
-    X = new_list(N),
-    X :: 0..MaxAmount,
-    % used[a, i] = the coins of denomination i used to pay the amount a
-    Used = new_array(MaxAmount - 1, N),
-    Used :: 0..MaxAmount,
-    foreach (A in 1..MaxAmount-1)
-        % a payment uses no more coins of a kind than are carried ...
-        foreach (I in 1..N)
-            Used[A, I] #=< X[I]
-        end,
-        % ... and adds up to the amount
-        sum([Denominations[I] * Used[A, I] : I in 1..N]) #= A
+    MaxAmount = Data.get(max_amount_to_pay),
+    K = len(Denominations),                % the number of types of coin
+    M = MaxAmount - 1,                     % the number of amounts that must be payable: 1 to M
+    X = new_list(K),
+    X :: 0..MaxAmount,                     % X[I] = the number of coins of type I used
+    % Y[V,I] = the number of coins of type I paid for the amount V
+    Y = new_array(M, K),
+    Y :: 0..MaxAmount,
+    foreach (V in 1..M)
+        % each amount V from 1 to the maximum amount less one is paid exactly
+        sum([Denominations[I] * Y[V,I] : I in 1..K]) #= V,
+        foreach (I in 1..K)
+            % the coins paid for an amount are among the coins used
+            Y[V,I] #=< X[I]
+        end
     end,
-    Vars = X ++ vars(Used),
+    Z #= sum(X),                           % the total number of coins
+    Vars = [X, Y],
     Outputs = [x = X],
-    Options = [$min(sum(X))].
+    % minimize the number of coins
+    Options = [$min(Z)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

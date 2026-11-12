@@ -1,42 +1,71 @@
-% Facility location: decide which of four candidate warehouses to open and how
-% many units each ships to each region, meeting every region's demand at the
-% least fixed plus shipping cost, under three rules about which warehouses may be
-% open together.
-import sat.
+% facility_location: a Picat model from DCP Rosetta.
+%
+% A company is considering opening warehouses in four cities to meet regional demands at minimal costs. The
+% potential cities are New York, Los Angeles, Chicago and Atlanta. Each open warehouse has a fixed weekly cost and
+% can ship at most max_shipping units per week, and a closed one ships nothing. Shipping one unit from a warehouse
+% to a region has a given cost, and each region must receive at least its weekly demand. The company must decide
+% which warehouses to open under these constraints: 1. if New York is opened, then Los Angeles must also be opened;
+% 2. no more than three warehouses can be operational in any given week; 3. either Atlanta or Los Angeles must be
+% opened. The objective is the total cost: the fixed costs of the open warehouses plus the shipping costs.
+%
+% Save this file as model.pi. Download `facility_location.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/facility_location.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py facility_location.json
+%   picat model.pi facility_location_1.dat
+%
+% Data.get(fixed_costs): the fixed weekly cost of each warehouse; Data.get(max_shipping): the most units a warehouse
+% ships per week; Data.get(shipping_costs): the cost of shipping one unit from warehouse I to region J (lists
+% indexed from 1, warehouses in the order New York, Los Angeles, Chicago, Atlanta); Data.get(demands): the weekly
+% demand of each region.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Names = Data.get(warehouse_s),               % warehouse cities
-    FixedCosts = Data.get(fixed_costs),          % weekly fixed cost of each warehouse
-    MaxShipping = Data.get(max_shipping),        % most units a warehouse sends per week
-    Demands = Data.get(demands),                 % weekly demand of each region
-    ShippingCosts = Data.get(shipping_costs),    % cost per unit from warehouse i to region j
-    NW = len(Names),
-    NR = len(Demands),
-    NY = [I : I in 1..NW, Names[I] == "New York"],
-    LA = [I : I in 1..NW, Names[I] == "Los Angeles"],
-    AT = [I : I in 1..NW, Names[I] == "Atlanta"],
-    NewYork = NY[1], LosAngeles = LA[1], Atlanta = AT[1],
-    Open = new_list(NW),
+    FixedCosts = Data.get(fixed_costs),
+    MaxShipping = Data.get(max_shipping),
+    ShippingCosts = Data.get(shipping_costs),
+    Demands = Data.get(demands),
+    W = len(FixedCosts),                   % the number of warehouses
+    R = len(Demands),                      % the number of regions
+    % Open[I] = 1 when warehouse I is opened: 1 New York, 2 Los Angeles, 3 Chicago, 4 Atlanta
+    Open = new_list(W),
     Open :: 0..1,
-    % ships[i, j] = units from warehouse i to region j
-    Ships = new_array(NW, NR),
-    Ships :: 0..MaxShipping,
-    % a warehouse sends at most max_shipping units, and nothing when closed
-    foreach (I in 1..NW)
-        sum([Ships[I, J] : J in 1..NR]) #=< MaxShipping * Open[I]
+    % Ships[I,J] = the units shipped from warehouse I to region J
+    Ships = [new_list(R) : _I in 1..W],
+    foreach (I in 1..W, J in 1..R)
+        Ships[I,J] :: 0..MaxShipping
     end,
-    % every region receives at least its demand
-    foreach (J in 1..NR)
-        sum([Ships[I, J] : I in 1..NW]) #>= Demands[J]
-    end,
-    % 1. if the New York warehouse is open, the Los Angeles one is open too
-    Open[NewYork] #=> Open[LosAngeles],
-    % 2. at most three warehouses are open
+    % if New York is opened, then Los Angeles is opened too
+    Open[1] #=< Open[2],
+    % no more than three warehouses are operational
     sum(Open) #=< 3,
-    % 3. the Atlanta or the Los Angeles warehouse (or both) is open
-    Open[Atlanta] #\/ Open[LosAngeles],
-    TotalCost #= sum([FixedCosts[I] * Open[I] : I in 1..NW]) +
-                 sum([ShippingCosts[I, J] * Ships[I, J] : I in 1..NW, J in 1..NR]),
-    Vars = Open ++ vars(Ships),
-    Outputs = [total_cost = TotalCost, open_warehouse = Open, ships = Ships],
-    Options = [$min(TotalCost)].
+    % either Atlanta or Los Angeles is opened
+    Open[4] + Open[2] #>= 1,
+    % a closed warehouse ships nothing, and an open one ships at most max_shipping units
+    foreach (I in 1..W)
+        sum(Ships[I]) #=< MaxShipping * Open[I]
+    end,
+    % each region receives at least its weekly demand
+    foreach (J in 1..R)
+        sum([Ships[I,J] : I in 1..W]) #>= Demands[J]
+    end,
+    % the total cost: the fixed costs of the open warehouses plus the shipping costs
+    Cost #= sum([FixedCosts[I] * Open[I] : I in 1..W]) + sum([ShippingCosts[I,J] * Ships[I,J] : I in 1..W, J in 1..R]),
+    Vars = [Open, Ships],
+    Outputs = [total_cost = Cost, open_warehouse = Open, ships = Ships],
+    % minimise the total cost
+    Options = [$min(Cost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

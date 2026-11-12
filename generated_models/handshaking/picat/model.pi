@@ -1,35 +1,57 @@
-% Handshaking: Hilary and Jocelyn host some couples. Nobody shakes hands with
-% themselves or their spouse, and everybody except Hilary shook a different
-% number of hands. How many hands did Hilary shake?
-import sat.
+% handshaking: a Picat model from DCP Rosetta.
+%
+% Hilary and Jocelyn are married. They invite some couples who are friends for dinner. On arrival, everyone
+% shakes hands with the others. Nobody shakes hands with themselves or with their own spouse. After some
+% handshaking, Jocelyn stops everyone and asks how many hands each person has shaken. All the answers are
+% different. How many hands did Hilary shake?
+%
+% Save this file as model.pi. Download `handshaking.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py handshaking.json
+%   picat model.pi handshaking_1.dat
+%
+% Data.get(num_couples): the number of couples invited besides Hilary and Jocelyn.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Couples = Data.get(num_couples),
-    N = 2 + 2 * Couples,       % Hilary is person 1 and Jocelyn person 2; spouses are 2k-1, 2k
-    % y[i, j] = 1 when i and j shook hands
-    Y = new_array(N, N),
-    Y :: 0..1,
-    % x[i] = the hands person i shook
-    X = new_list(N),
-    X :: 0..N-2,
+    N = 2 + 2 * Couples,                   % the people: Hilary 1, Jocelyn 2, then couples (2K-1, 2K)
+    % H[I, J] = 1 when persons I and J shake hands
+    H = new_array(N, N),
+    H :: 0..1,
+    % Hands[I] is the number of hands person I shakes
+    Hands = new_list(N),
+    Hands :: 0..N-2,
+    % nobody shakes hands with themselves
     foreach (I in 1..N)
-        Y[I, I] #= 0,
-        X[I] #= sum([Y[I, J] : J in 1..N])
+        H[I, I] #= 0,
+        Hands[I] #= sum([H[I, J] : J in 1..N])
+    end,
+    % a handshake is between two people, so H is symmetric
+    foreach (I in 1..N, J in I+1..N)
+        H[I, J] #= H[J, I]
     end,
     % nobody shakes hands with their spouse
     foreach (K in 1..N div 2)
-        Y[2 * K - 1, 2 * K] #= 0
+        H[2 * K - 1, 2 * K] #= 0
     end,
-    % a handshake is mutual
-    foreach (I in 1..N, J in I+1..N)
-        Y[I, J] #= Y[J, I]
-    end,
-    % all answers except Hilary's differ. Stated pair by pair: the counts are
-    % sums of 0/1 variables, and in Picat 3.9#12 sat's all_different/1 has
-    % returned assignments that break such sums, while pairwise #!= has not.
-    foreach (I in 2..N-1, J in I+1..N)
-        X[I] #!= X[J]
-    end,
-    Vars = X ++ vars(Y),
-    Outputs = [hil = X[1]],
+    % Jocelyn does not answer; all the answers of the other people are different
+    all_distinct([Hands[I] : I in 1..N, I != 2]),
+    Vars = [Hands, H],
+    Outputs = [hil = Hands[1]],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

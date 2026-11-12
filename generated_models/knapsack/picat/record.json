@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-opus-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790718380.1118572,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/picat/picat/CONTRACT.md": "84202cb7387163b69f6023ef9f5658182a3bd8e8b5d15cc07f32426b75c94ebf"
+    },
+    "created_at": 1794501156.0372791,
     "problem_id": "knapsack",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20260929T2116Z-picat-0895",
-    "schema": 2,
-    "skill_bundle_hash": "af69b3a1f8f7bef39c3329699413479af027d2d4d554c107d569578acaf82b22",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "6349758252cdf8d0bc71631c157efe55d743038b912f2bc780627c63a8272e69",
+    "run_id": "20261114-picat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b49a99cf7ce143ff33ec9b03d0e89b5519a7e9a4",
+      "commit": "211d89699ba6371b7e554bfde104999852e3c8b6",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "211d89699ba6371b7e554bfde104999852e3c8b6",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "d8c844033a146dbc55f9571b6929affc6badcd3bc8fe96c77a521a26987179a4",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "211d89699ba6371b7e554bfde104999852e3c8b6",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:5ea63b9832d8270c8ab826fa631a98480e54b76ff46e38a5ec48e72ce8414e71",
+      "recipe": "sha256:f06a73c33be291578424d0b82082735dcc778ac1de62ed2561dd6d102739f621",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005811000009998679,
-        "execution_wall_seconds": 2.7556524999672547,
+        "checking_seconds": 0.005229685979429632,
+        "execution_wall_seconds": 0.696791669994127,
         "first_solution": {
           "x": [
             false,
@@ -48,6 +78,24 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0,
+            0
+          ],
+          [
+            0.0,
+            1
+          ],
+          [
+            0.0,
+            7
+          ],
+          [
+            0.0,
+            10
+          ]
+        ],
         "instance_hash": "b9c0a952e55f93f38d92433686ac0199720cef67c30376c5f8a34419d7bd7d69",
         "is_optimization": true,
         "oom_killed": false,
@@ -56,9 +104,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.142748099984601,
+        "reference_setup_seconds": 0.24805160699179396,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -68,8 +119,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007941800053231418,
-        "execution_wall_seconds": 2.714060200029053,
+        "checking_seconds": 0.006046894006431103,
+        "execution_wall_seconds": 0.7977016509976238,
         "first_solution": {
           "x": [
             true,
@@ -85,6 +136,76 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0,
+            0
+          ],
+          [
+            0.0,
+            72
+          ],
+          [
+            0.0,
+            87
+          ],
+          [
+            0.0,
+            139
+          ],
+          [
+            0.0,
+            154
+          ],
+          [
+            0.0,
+            170
+          ],
+          [
+            0.0,
+            183
+          ],
+          [
+            0.0,
+            195
+          ],
+          [
+            0.0,
+            204
+          ],
+          [
+            0.0,
+            220
+          ],
+          [
+            0.0,
+            234
+          ],
+          [
+            0.0,
+            239
+          ],
+          [
+            0.0,
+            247
+          ],
+          [
+            0.0,
+            263
+          ],
+          [
+            0.0,
+            276
+          ],
+          [
+            0.0,
+            284
+          ],
+          [
+            0.0,
+            309
+          ]
+        ],
         "instance_hash": "e4b134fff05a7deab3f2a6ca9835c770599a8a632223f82eb2f44ae7d6e2fddd",
         "is_optimization": true,
         "oom_killed": false,
@@ -93,9 +214,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.843789399950765,
+        "reference_setup_seconds": 0.25317908701254055,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -105,8 +229,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006925199995748699,
-        "execution_wall_seconds": 2.953471399960108,
+        "checking_seconds": 0.005095386004541069,
+        "execution_wall_seconds": 0.8473746940144338,
         "first_solution": {
           "x": [
             false,
@@ -117,6 +241,32 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0,
+            0
+          ],
+          [
+            0.0,
+            16
+          ],
+          [
+            0.0,
+            31
+          ],
+          [
+            0.0,
+            39
+          ],
+          [
+            0.0,
+            44
+          ],
+          [
+            0.0,
+            51
+          ]
+        ],
         "instance_hash": "175d086ba3367031639211aa47eb9538c375501b66852c8bf602bae01bb4f96e",
         "is_optimization": true,
         "oom_killed": false,
@@ -125,9 +275,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.114181699929759,
+        "reference_setup_seconds": 0.2622658669715747,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -137,8 +290,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.009076799964532256,
-        "execution_wall_seconds": 2.7403727000346407,
+        "checking_seconds": 0.0059271909995004535,
+        "execution_wall_seconds": 0.7968509219936095,
         "first_solution": {
           "x": [
             true,
@@ -159,6 +312,60 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0,
+            0
+          ],
+          [
+            0.0,
+            240
+          ],
+          [
+            0.0,
+            469
+          ],
+          [
+            0.0,
+            690
+          ],
+          [
+            0.0,
+            904
+          ],
+          [
+            0.0,
+            1114
+          ],
+          [
+            0.0,
+            1315
+          ],
+          [
+            0.0,
+            1440
+          ],
+          [
+            0.0,
+            1443
+          ],
+          [
+            0.0,
+            1453
+          ],
+          [
+            0.0,
+            1454
+          ],
+          [
+            0.0,
+            1456
+          ],
+          [
+            0.0,
+            1458
+          ]
+        ],
         "instance_hash": "296ef14caa5c34eb9eea9acacc8c0433cb5de375edc8b2107cf1eee1e671fa2b",
         "is_optimization": true,
         "oom_killed": false,
@@ -167,9 +374,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2139703000430018,
+        "reference_setup_seconds": 0.25247122201835737,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -179,8 +389,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008569000056013465,
-        "execution_wall_seconds": 2.3517703000688925,
+        "checking_seconds": 0.006442181998863816,
+        "execution_wall_seconds": 0.6974235930247232,
         "first_solution": {
           "x": [
             true,
@@ -208,6 +418,580 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.0,
+            0
+          ],
+          [
+            0.0,
+            10
+          ],
+          [
+            0.0,
+            50
+          ],
+          [
+            0.0,
+            60
+          ],
+          [
+            0.0,
+            62
+          ],
+          [
+            0.0,
+            72
+          ],
+          [
+            0.0,
+            80
+          ],
+          [
+            0.0,
+            82
+          ],
+          [
+            0.0,
+            92
+          ],
+          [
+            0.0,
+            130
+          ],
+          [
+            0.0,
+            140
+          ],
+          [
+            0.0,
+            142
+          ],
+          [
+            0.0,
+            152
+          ],
+          [
+            0.0,
+            160
+          ],
+          [
+            0.0,
+            162
+          ],
+          [
+            0.0,
+            172
+          ],
+          [
+            0.0,
+            205
+          ],
+          [
+            0.0,
+            215
+          ],
+          [
+            0.0,
+            217
+          ],
+          [
+            0.0,
+            227
+          ],
+          [
+            0.0,
+            235
+          ],
+          [
+            0.0,
+            237
+          ],
+          [
+            0.0,
+            247
+          ],
+          [
+            0.0,
+            275
+          ],
+          [
+            0.0,
+            285
+          ],
+          [
+            0.01,
+            287
+          ],
+          [
+            0.01,
+            297
+          ],
+          [
+            0.01,
+            305
+          ],
+          [
+            0.01,
+            307
+          ],
+          [
+            0.01,
+            317
+          ],
+          [
+            0.01,
+            325
+          ],
+          [
+            0.01,
+            327
+          ],
+          [
+            0.01,
+            337
+          ],
+          [
+            0.01,
+            345
+          ],
+          [
+            0.01,
+            347
+          ],
+          [
+            0.01,
+            357
+          ],
+          [
+            0.01,
+            367
+          ],
+          [
+            0.01,
+            372
+          ],
+          [
+            0.01,
+            382
+          ],
+          [
+            0.01,
+            387
+          ],
+          [
+            0.01,
+            397
+          ],
+          [
+            0.01,
+            402
+          ],
+          [
+            0.01,
+            412
+          ],
+          [
+            0.01,
+            415
+          ],
+          [
+            0.01,
+            417
+          ],
+          [
+            0.01,
+            427
+          ],
+          [
+            0.01,
+            437
+          ],
+          [
+            0.01,
+            442
+          ],
+          [
+            0.01,
+            452
+          ],
+          [
+            0.01,
+            457
+          ],
+          [
+            0.01,
+            467
+          ],
+          [
+            0.01,
+            472
+          ],
+          [
+            0.01,
+            482
+          ],
+          [
+            0.01,
+            487
+          ],
+          [
+            0.01,
+            497
+          ],
+          [
+            0.01,
+            502
+          ],
+          [
+            0.01,
+            512
+          ],
+          [
+            0.01,
+            522
+          ],
+          [
+            0.01,
+            527
+          ],
+          [
+            0.01,
+            537
+          ],
+          [
+            0.01,
+            542
+          ],
+          [
+            0.01,
+            547
+          ],
+          [
+            0.01,
+            557
+          ],
+          [
+            0.01,
+            562
+          ],
+          [
+            0.01,
+            567
+          ],
+          [
+            0.01,
+            572
+          ],
+          [
+            0.01,
+            575
+          ],
+          [
+            0.01,
+            577
+          ],
+          [
+            0.01,
+            587
+          ],
+          [
+            0.01,
+            590
+          ],
+          [
+            0.01,
+            592
+          ],
+          [
+            0.01,
+            602
+          ],
+          [
+            0.01,
+            610
+          ],
+          [
+            0.01,
+            617
+          ],
+          [
+            0.01,
+            622
+          ],
+          [
+            0.01,
+            632
+          ],
+          [
+            0.01,
+            635
+          ],
+          [
+            0.01,
+            637
+          ],
+          [
+            0.01,
+            647
+          ],
+          [
+            0.01,
+            650
+          ],
+          [
+            0.01,
+            652
+          ],
+          [
+            0.01,
+            655
+          ],
+          [
+            0.01,
+            657
+          ],
+          [
+            0.01,
+            662
+          ],
+          [
+            0.01,
+            672
+          ],
+          [
+            0.01,
+            675
+          ],
+          [
+            0.01,
+            677
+          ],
+          [
+            0.01,
+            687
+          ],
+          [
+            0.01,
+            690
+          ],
+          [
+            0.01,
+            692
+          ],
+          [
+            0.01,
+            695
+          ],
+          [
+            0.01,
+            697
+          ],
+          [
+            0.01,
+            707
+          ],
+          [
+            0.01,
+            710
+          ],
+          [
+            0.01,
+            712
+          ],
+          [
+            0.01,
+            717
+          ],
+          [
+            0.01,
+            722
+          ],
+          [
+            0.01,
+            725
+          ],
+          [
+            0.01,
+            737
+          ],
+          [
+            0.01,
+            740
+          ],
+          [
+            0.01,
+            742
+          ],
+          [
+            0.01,
+            745
+          ],
+          [
+            0.01,
+            752
+          ],
+          [
+            0.01,
+            755
+          ],
+          [
+            0.01,
+            757
+          ],
+          [
+            0.01,
+            767
+          ],
+          [
+            0.01,
+            772
+          ],
+          [
+            0.01,
+            782
+          ],
+          [
+            0.01,
+            785
+          ],
+          [
+            0.01,
+            787
+          ],
+          [
+            0.01,
+            790
+          ],
+          [
+            0.01,
+            795
+          ],
+          [
+            0.01,
+            797
+          ],
+          [
+            0.01,
+            800
+          ],
+          [
+            0.01,
+            815
+          ],
+          [
+            0.01,
+            827
+          ],
+          [
+            0.01,
+            830
+          ],
+          [
+            0.01,
+            835
+          ],
+          [
+            0.01,
+            837
+          ],
+          [
+            0.01,
+            845
+          ],
+          [
+            0.01,
+            857
+          ],
+          [
+            0.01,
+            860
+          ],
+          [
+            0.01,
+            875
+          ],
+          [
+            0.01,
+            880
+          ],
+          [
+            0.01,
+            887
+          ],
+          [
+            0.01,
+            892
+          ],
+          [
+            0.01,
+            902
+          ],
+          [
+            0.01,
+            905
+          ],
+          [
+            0.01,
+            907
+          ],
+          [
+            0.01,
+            910
+          ],
+          [
+            0.01,
+            922
+          ],
+          [
+            0.01,
+            935
+          ],
+          [
+            0.01,
+            940
+          ],
+          [
+            0.01,
+            945
+          ],
+          [
+            0.01,
+            947
+          ],
+          [
+            0.01,
+            950
+          ],
+          [
+            0.01,
+            965
+          ],
+          [
+            0.01,
+            977
+          ],
+          [
+            0.01,
+            987
+          ],
+          [
+            0.01,
+            995
+          ],
+          [
+            0.01,
+            1005
+          ],
+          [
+            0.01,
+            1010
+          ],
+          [
+            0.01,
+            1030
+          ]
+        ],
         "instance_hash": "adf5a9aecfce8064faeca1e8e8dd62e5a715a28798503bb440577e4a7e1239ad",
         "is_optimization": true,
         "oom_killed": false,
@@ -216,9 +1000,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.3304748999653384,
+        "reference_setup_seconds": 0.26172993500949815,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -230,21 +1017,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "d37b384bd08ecb10322f82e0d2943c4bce409eaba91cfefd1307d46ce6f59c92",
+    "model_hash": "4a08498a609e1c5d3c7980f98fc0506cc086c6d8c7e97cecc88323f6201739f2",
     "problem_id": "knapsack",
     "reason": "accepted",
-    "reference_hash": "555485f214dfdce0e529337219fd5e26a8ec62eddb5250877a09a39b9bcd2978",
+    "reference_hash": "3f77705de9f14ade2dcaafcb609e5db99ad99d73b7b4dddd4212b70a72e2fdd8",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -255,11 +1042,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "picat",
-    "total_wall_seconds": 27.397690600017086,
+    "total_wall_seconds": 5.563397577032447,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-opus-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pi",

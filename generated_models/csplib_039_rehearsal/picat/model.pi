@@ -1,49 +1,76 @@
-% Rehearsal problem: order the pieces of a concert for rehearsal so that the total time players
-% spend waiting is as small as possible. A player arrives just before the first piece they play
-% in and leaves just after the last one; the time a player waits is the total duration of the
-% pieces rehearsed in between in which they do not play. Pieces and slots are counted from 0.
+% csplib_039_rehearsal: a Picat model from DCP Rosetta.
+%
+% A concert is to consist of a number of pieces of music of different durations, each involving a different
+% combination of the members of the orchestra. Players can arrive at rehearsals immediately before the first
+% piece in which they are involved and depart immediately after the last piece in which they are involved.
+% The problem is to devise an order in which the pieces can be rehearsed so as to minimise the total time that
+% players are waiting to play, i.e. the total time when players are present but not currently playing.
+%
+% Save this file as model.pi. Download `csplib_039_rehearsal.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_039_rehearsal.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_039_rehearsal.json
+%   picat model.pi csplib_039_rehearsal_1.dat
+%
+% Data.get(num_pieces): the number of pieces; Data.get(num_players): the number of players;
+% Data.get(duration): the duration of each piece (a list indexed from 1, piece I is at index I);
+% Data.get(rehearsal): rehearsal[player][piece] = 1 when the player plays in the piece (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NumPieces = Data.get(num_pieces),
     NumPlayers = Data.get(num_players),
-    Duration = Data.get(duration),        % Duration[i + 1] = duration of piece i
-    Rehearsal = Data.get(rehearsal),      % Rehearsal[p + 1][i + 1] = 1 if player p plays in piece i
-    % Order[s] = the piece rehearsed in slot s (slots counted from 0, stored from index 1)
+    Duration = Data.get(duration),
+    Rehearsal = Data.get(rehearsal),
+    % Order[S] = the piece rehearsed in slot S, slots and pieces numbered from 0
     Order = new_list(NumPieces),
     Order :: 0..NumPieces - 1,
-    % arrival[p], departure[p] = the first and the last slot at which player p is present
-    Arrival = new_list(NumPlayers),
-    Departure = new_list(NumPlayers),
-    Arrival :: 0..NumPieces - 1,
-    Departure :: 0..NumPieces - 1,
-    % every piece is rehearsed exactly once
+    % every piece is rehearsed in exactly one slot
     all_different(Order),
-    % SlotDuration[s] = the duration of the piece rehearsed in slot s
+    % SlotDuration[S] = the duration of the piece rehearsed in slot S
     SlotDuration = new_list(NumPieces),
     SlotDuration :: 0..max(Duration),
     foreach (S in 1..NumPieces)
         element0(Order[S], Duration, SlotDuration[S])
     end,
-    % Plays[p, s] = 1 if player p plays in the piece rehearsed in slot s
+    % Plays[P, S] = 1 when player P plays in the piece rehearsed in slot S
     Plays = new_array(NumPlayers, NumPieces),
     Plays :: 0..1,
     foreach (P in 1..NumPlayers, S in 1..NumPieces)
-        RowOfPlayer = Rehearsal[P],
-        element0(Order[S], RowOfPlayer, Plays[P, S])
+        element0(Order[S], Rehearsal[P], Plays[P, S])
     end,
-    % a player is present in every slot in which they play: between arrival and departure
+    % Arrival[P] and Departure[P] = the slots in which player P arrives and departs: the player is present
+    % from before the first slot in which they play to after the last one
+    Arrival = new_list(NumPlayers),
+    Arrival :: 0..NumPieces - 1,
+    Departure = new_list(NumPlayers),
+    Departure :: 0..NumPieces - 1,
     foreach (P in 1..NumPlayers, S in 1..NumPieces)
         Plays[P, S] #= 1 #=> (Arrival[P] #=< S - 1 #/\ S - 1 #=< Departure[P])
     end,
-    % Waits[p, s] = 1 if player p is present in slot s without playing
+    % Waits[P, S] = 1 when player P is present in slot S without playing in it
     Waits = new_array(NumPlayers, NumPieces),
     Waits :: 0..1,
     foreach (P in 1..NumPlayers, S in 1..NumPieces)
         Waits[P, S] #<=> (Plays[P, S] #= 0 #/\ Arrival[P] #=< S - 1 #/\ S - 1 #=< Departure[P])
     end,
-    % total waiting time: the duration of each slot's piece for every player waiting in it
+    % the total waiting time: the duration of the piece in each slot, for each player waiting in it
     TotalWaiting #= sum([SlotDuration[S] * Waits[P, S] : P in 1..NumPlayers, S in 1..NumPieces]),
     Vars = Order ++ Arrival ++ Departure,
     Outputs = [rehearsal_order = Order],
+    % minimise the total waiting time
     Options = [$min(TotalWaiting)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,33 +1,46 @@
-% De Bruijn sequence B(base, n): a cyclic sequence of base^n symbols from
-% 0..base-1 in which every string of length n occurs exactly once. Each
-% position starts one string; row i of `binary` is the string starting at
-% position i, written in base `base`, and x[i] is its value.
+% de_bruijn_sequence: a Picat model from DCP Rosetta.
+%
+% A de Bruijn sequence of order n on an alphabet of k symbols is a cyclic sequence in which every possible
+% string of length n on the alphabet occurs exactly once as a substring (reading the sequence cyclically).
+% Its length is k^n. Find such a sequence, with the symbols 0 to k-1.
+%
+% Save this file as model.pi. Download `de_bruijn_sequence.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py de_bruijn_sequence.json
+%   picat model.pi de_bruijn_sequence_1.dat
+
+% Data.get(base): the size k of the alphabet; Data.get(n): the order of the sequence.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Base = Data.get(base),
+    K = Data.get(base),
     N = Data.get(n),
-    M = Base ** N,
-    Place = [Base ** (N - J) : J in 1..N],   % place value of each digit
-    X = new_list(M),
-    X :: 0..M-1,
-    Binary = new_array(M, N),
-    Binary :: 0..Base-1,
-    % every string occurs once: the values of the M strings are all different
-    all_different(X),
-    foreach (I in 1..M)
-        X[I] #= sum([Binary[I, J] * Place[J] : J in 1..N])
+    L = K ** N,                           % the length of the sequence, and the number of strings of length N
+    S = new_list(L),                      % S[I] is the symbol at position I of the cyclic sequence
+    S :: 0..K-1,
+    % the string of length N that starts at position I (read cyclically) is coded as a number
+    Code = new_list(L),
+    Code :: 0..L-1,
+    foreach (I in 1..L)
+        Code[I] #= sum([S[1 + (I - 1 + J) mod L] * K ** J : J in 0..N-1])
     end,
-    % the string at position i + 1 is the string at i shifted by one symbol ...
-    foreach (I in 2..M, J in 2..N)
-        Binary[I - 1, J] #= Binary[I, J - 1]
-    end,
-    % ... and the sequence wraps around
-    foreach (J in 2..N)
-        Binary[M, J] #= Binary[1, J - 1]
-    end,
-    % the sequence is the first symbol of every string
-    DeBruijn = [Binary[I, 1] : I in 1..M],
-    Vars = Binary,
-    Outputs = [de_bruijn = DeBruijn],
-    Options = [ff].
+    % every string of length N occurs exactly once, so the codes are all different
+    all_distinct(Code),
+    Vars = S,
+    Outputs = [de_bruijn = S],
+    Options = [ff].                       % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

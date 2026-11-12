@@ -1,14 +1,28 @@
-% SEND + MORE = MONEY: give each letter a different digit, with no leading zero
-% in SEND, MORE or MONEY, so that the addition is correct.
+% send_more_money: a Picat model from DCP Rosetta.
+%
+% The "Send More Money" puzzle is a classic cryptarithmetic problem where each letter represents a unique digit. The
+% goal is to assign digits to the letters such that SEND + MORE = MONEY holds, each word read as a number:
+%
+%    SEND
+%   + MORE
+%   ------
+%    MONEY
+%
+% Each letter must be assigned a unique digit from 0 to 9, and the first letter of each word cannot be zero.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/send_more_money.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
+% The puzzle has no data: the letters S, E, N, D, M, O, R, Y are the decision variables.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
     Letters = [S, E, N, D, M, O, R, Y],
     Letters :: 0..9,
-    % every letter stands for a different digit
+    % each letter stands for a different digit
     all_different(Letters),
-    % SEND and MORE start with S and M, MONEY with M, so neither is zero
+    % the first letters of SEND, MORE and MONEY are not zero
     S #> 0,
     M #> 0,
     % SEND + MORE = MONEY, each word read as a number
@@ -17,3 +31,11 @@ model(_Data, Vars, Outputs, Options) =>
     Vars = Letters,
     Outputs = [s = S, e = E, n = N, d = D, m = M, o = O, r = R, y = Y],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

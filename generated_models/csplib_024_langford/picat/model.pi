@@ -1,22 +1,54 @@
-% Langford's problem L(2, k): arrange two copies of each of 1..k in a sequence of
-% 2k numbers so that the two copies of i are i numbers apart (their positions
-% differ by i + 1).
-import sat.
+% csplib_024_langford: a Picat model from DCP Rosetta.
+%
+% Consider two sets of the numbers from 1 to k. The problem is to arrange the 2k numbers in the two sets
+% into a single sequence in which the two 1's appear one number apart, the two 2's appear two numbers
+% apart, ..., and the two k's appear k numbers apart.
+%
+% Save this file as model.pi. Download `csplib_024_langford.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_024_langford.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_024_langford.json
+%   picat model.pi csplib_024_langford_1.dat
+%
+% Data.get(k): the k of the problem (the numbers are 1..k).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     K = Data.get(k),
-    % position[i] and position[k + i] are the positions, 1..2k, of the two copies of i
-    Position = new_list(2 * K),
-    Position :: 1..2 * K,
-    all_different(Position),
-    % sol[p] = the number at position p
-    Sol = new_list(2 * K),
-    Sol :: 1..K,
+    N2 = 2 * K,                            % the length of the sequence
+    % First[I] = the position of the first copy of I, Second[I] = the position of its second copy
+    First = new_list(K),
+    First :: 1..N2 - 1,
+    Second = new_list(K),
+    Second :: 2..N2,
+    % the 2k positions are all different
+    all_different(First ++ Second),
+    % the two copies of I are I + 1 positions apart, so that I numbers lie between them
     foreach (I in 1..K)
-        Position[K + I] #= Position[I] + I + 1,
-        element(Position[I], Sol, I),
-        element(Position[K + I], Sol, I)
+        Second[I] #= First[I] + I + 1
     end,
-    Vars = Position ++ Sol,
+    % Sol[P] = the number at position P of the sequence
+    Sol = new_list(N2),
+    Sol :: 1..K,
+    % each number occupies its two positions
+    foreach (I in 1..K)
+        element(First[I], Sol, I),
+        element(Second[I], Sol, I)
+    end,
+    Vars = First ++ Second ++ Sol,
     Outputs = [sol = Sol],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

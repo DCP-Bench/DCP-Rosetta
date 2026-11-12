@@ -1,6 +1,23 @@
-% Car sequencing: order the cars on an assembly line so that every option's station
-% is never overloaded, i.e. at most at_most[o] of any per_slots[o] consecutive cars
-% need option o, while each car type is produced exactly as often as demanded.
+% csplib_001_car_sequencing: a Picat model from DCP Rosetta.
+%
+% A number of cars are to be produced; they are not identical, because different options are available as variants
+% on the basic model. The assembly line has different stations which install the various options (air-conditioning,
+% sunroof, etc.). These stations have been designed to handle at most a certain percentage of the cars passing along
+% the assembly line. Furthermore, the cars requiring a certain option must not be bunched together, otherwise the
+% station will not be able to cope. Consequently, the cars must be arranged in a sequence so that the capacity of
+% each station is never exceeded. For example, if a particular station can only cope with at most half of the cars
+% passing along the line, the sequence must be built so that at most 1 car in any 2 requires that option.
+%
+% Save this file as model.pi. Download `csplib_001_car_sequencing.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_001_car_sequencing.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_001_car_sequencing.json
+%   picat model.pi csplib_001_car_sequencing_1.dat
+
+% Data.get(at_most), Data.get(per_slots): for each option, the capacity p and the window length q of its station
+% (lists, indexed from 1). Data.get(demand): the number of cars wanted of each type (list). Data.get(requires):
+% Requires[t, o] = 1 when type t needs option o (list of lists).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
@@ -21,10 +38,11 @@ model(Data, Vars, Outputs, Options) =>
     % Seq[s] = the rank of the type of the car in slot s
     Seq = new_list(NCars),
     Seq :: 1..NTypes,
-    % each type appears exactly as many times as demanded
+    % each car type is produced exactly as often as demanded
     foreach (R in 1..NTypes)
         count(R, Seq, #=, Demand[Perm[R]])
     end,
+    % no option's station is overloaded: at most p of any q consecutive cars need option o
     foreach (O in 1..NOptions)
         P = AtMost[O],
         Q = PerSlots[O],
@@ -67,3 +85,16 @@ model(Data, Vars, Outputs, Options) =>
     Vars = Seq,
     Outputs = [sequence = Sequence],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

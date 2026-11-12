@@ -14,6 +14,6 @@ open('/tmp/picat.tar.gz', 'wb').write(data)" "$PICAT_URL" "$PICAT_SHA256" \
  && rm -rf /tmp/picat.tar.gz /opt/picat/doc /opt/picat/exs \
  && /opt/picat/picat --version
 COPY runner/runtime.py /opt/runner/runtime.py
-COPY solvers/picat/picat/run.py /opt/runner/run.py
+COPY solvers/picat/picat/run.py solvers/picat/picat/dcp_convert_picat.py /opt/runner/
 COPY solvers/picat/picat/driver.pi /opt/runner/driver.pi
 ENTRYPOINT ["python", "/opt/runner/run.py"]

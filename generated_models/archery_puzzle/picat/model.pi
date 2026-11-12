@@ -1,19 +1,48 @@
-% Archery puzzle: how close can the archer come to the target score, hitting
-% each target as often as she likes?
+% archery_puzzle: a Picat model from DCP Rosetta.
+%
+% How close can the young archer come to scoring a total of a target score using as many arrows as
+% she pleases? The targets are given as a list of integers, and each may be hit any number of
+% times. Her score is the sum of the values of all her hits, and the aim is to minimize the absolute
+% difference between that score and the target score.
+%
+% Save this file as model.pi. Download `archery_puzzle.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/archery_puzzle.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py archery_puzzle.json
+%   picat model.pi archery_puzzle_1.dat
+%
+% Data.get(targets): the value of each target (a list indexed from 1); Data.get(target_score): the
+% target score.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Targets = Data.get(targets),
     TargetScore = Data.get(target_score),
-    N = len(Targets),
-    % hits[i] = the arrows that hit target i
+    N = len(Targets),                      % the number of targets
+    % Hits[I] is the number of arrows that hit target I
     Hits = new_list(N),
-    Hits :: 0..TargetScore,
-    Score :: 0..2 * TargetScore,
+    Hits :: 0..TargetScore,                % target values are positive, so more than TargetScore hits can never score closer
+    % the score is the sum of the values of all the hits
+    Score :: 0..2 * TargetScore,           % a score above 2 * TargetScore is farther away than scoring nothing
     Score #= sum([Hits[I] * Targets[I] : I in 1..N]),
-    % the distance from the target score, as small as possible
-    Deviation :: 0..2 * TargetScore,
-    Deviation #= abs(TargetScore - Score),
+    % the difference between the score and the target score, to be as small as possible
+    Difference :: 0..2 * TargetScore,
+    Difference #= abs(TargetScore - Score),
     Vars = Hits,
     Outputs = [hits = Hits],
-    Options = [$min(Deviation)].
+    % minimize the absolute difference
+    Options = [$min(Difference)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

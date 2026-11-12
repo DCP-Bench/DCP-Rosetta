@@ -1,31 +1,83 @@
-% Crossword: choose different words from a list of 15 for the 8 numbered slots
-% of a small grid so that every crossing shows the same letter in both words.
+% crossword: a Picat model from DCP Rosetta.
+%
+% We are to complete the puzzle
+%
+% ```text
+%      1   2   3   4   5
+%    +---+---+---+---+---+       Given the list of words:
+%  1 | 1 |   | 2 |   | 3 |             AFT     LASER
+%    +---+---+---+---+---+             ALE     LEE
+%  2 | # | # |   | # |   |             EEL     LINE
+%    +---+---+---+---+---+             HEEL    SAILS
+%  3 | # | 4 |   | 5 |   |             HIKE    SHEET
+%    +---+---+---+---+---+             HOSES   STEER
+%  4 | 6 | # | 7 |   |   |             KEEL    TIE
+%    +---+---+---+---+---+             KNOT
+%  5 | 8 |   |   |   |   |
+%    +---+---+---+---+---+
+%  6 |   | # | # |   | # |       The numbers 1,2,3,4,5,6,7,8 in the crossword
+%    +---+---+---+---+---+       puzzle correspond to the words
+%                                that will start at those locations.
+% ```
+%
+% We need to select 8 words from the list of 15 words above, such that the above crossword puzzle can be
+% completed.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/crossword.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The puzzle has no data file: the words and the grid are in the model. Words are numbered from 0 in the
+% order of the statement's sorting (longest first, then alphabetically): HOSES is word 0 and TIE word 14.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
     Words = ["HOSES", "LASER", "SAILS", "SHEET", "STEER",
              "HEEL", "HIKE", "KEEL", "KNOT", "LINE",
              "AFT", "ALE", "EEL", "LEE", "TIE"],
-    NWords = len(Words),
-    % letters as numbers A = 1 .. Z = 26, padded with 0 up to five letters
-    Letters = [[ord(C) - ord('A') + 1 : C in W] ++ new_list(5 - len(W), 0) : W in Words],
-    % each crossing: [slot a, letter position in a, slot b, letter position in b], 0-based
-    Crossings = [[0, 2, 1, 0], [0, 4, 2, 0], [3, 1, 1, 2], [3, 2, 4, 0], [3, 3, 2, 2],
-                 [6, 0, 1, 3], [6, 1, 4, 1], [6, 2, 2, 3], [7, 0, 5, 1], [7, 2, 1, 4],
-                 [7, 3, 4, 2], [7, 4, 2, 4]],
-    % e[s] = the 0-based index of the word in slot s; all slots get different words
-    E = new_list(8),
-    E :: 0..NWords-1,
-    all_different(E),
-    % at a crossing the two words show the same letter: the allowed pairs of words
-    foreach (Crossing in Crossings)
-        PA = Crossing[2] + 1,
-        PB = Crossing[4] + 1,
-        Pairs = [{WA, WB} : WA in 0..NWords-1, WB in 0..NWords-1,
-                 Letters[WA + 1, PA] == Letters[WB + 1, PB]],
-        table_in({E[Crossing[1] + 1], E[Crossing[3] + 1]}, Pairs)
+    NumWords = len(Words),
+    % Codes[W,P] = the character code of letter P of word W (0 past the end of the word)
+    Codes = [[ord(C) : C in W] ++ [0 : _ in len(W) + 1..5] : W in Words],
+    WordLengths = [len(W) : W in Words],
+    % the slots are the numbered words of the puzzle, slot S being the word that starts at number S
+    Lens = [5, 5, 5, 4, 4, 3, 3, 5],
+    NumSlots = len(Lens),
+    % Choice[S] = the number, from 1, of the word placed in slot S
+    Choice = new_list(NumSlots),
+    Choice :: 1..NumWords,
+    % each slot takes a word of its own length
+    foreach (S in 1..NumSlots)
+        element(Choice[S], WordLengths, Lens[S])
     end,
-    Vars = E,
+    % the 8 words are different words of the list
+    all_different(Choice),
+    % Letter[S,P] = the letter at position P of the word in slot S
+    Letter = [new_list(L) : L in Lens],
+    foreach (S in 1..NumSlots, P in 1..Lens[S])
+        element(Choice[S], [Codes[W,P] : W in 1..NumWords], Letter[S,P])
+    end,
+    % the letters of two words that cross in a cell of the grid are the same
+    % (slot 1 letter 3 and slot 2 letter 1 share cell row 1, column 3; and so on)
+    Crossings = [[1,3,2,1], [1,5,3,1], [4,3,5,1], [4,4,3,3], [4,2,2,3], [2,4,7,1],
+                 [5,2,7,2], [3,4,7,3], [6,2,8,1], [2,5,8,3], [5,3,8,4], [3,5,8,5]],
+    foreach ([S1,P1,S2,P2] in Crossings)
+        Letter[S1,P1] #= Letter[S2,P2]
+    end,
+    % the output E[i] is the word, numbered from 0, that starts at number i+1
+    E = new_list(NumSlots),
+    E :: 0..NumWords - 1,
+    foreach (S in 1..NumSlots)
+        E[S] #= Choice[S] - 1
+    end,
+    Vars = Choice,
     Outputs = ['E' = E],
+    % any completed puzzle will do
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

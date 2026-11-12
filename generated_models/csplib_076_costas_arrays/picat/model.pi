@@ -1,22 +1,47 @@
-% Costas array: a permutation of 1..n (one mark per row and column of an n x n
-% grid) in which, for every distance d, the differences costas[j] - costas[j - d]
-% are all different.
+% csplib_076_costas_arrays: a Picat model from DCP Rosetta.
+%
+% A Costas array is a pattern of n marks on an n x n grid, one mark in each row and one in each column,
+% in which the n(n-1)/2 vectors between the marks are all different. Find such a pattern.
+%
+% Save this file as model.pi. Download `csplib_076_costas_arrays.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_076_costas_arrays.json
+%   picat model.pi csplib_076_costas_arrays_1.dat
+
+% Data.get(n): the number of marks, the side of the grid.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
-    Costas = new_list(N),
-    Costas :: 1..N,
-    all_distinct(Costas),
-    % the difference triangle: row d holds costas[j] - costas[j - d] for j > d,
-    % and its entries are all different (rows 1..n-2, as in the reference)
-    foreach (D in 1..N-2)
-        Diffs = new_list(N - D),
-        foreach (J in D+1..N)
-            Diffs[J - D] #= Costas[J] - Costas[J - D]
+    X = new_list(N),                      % X[I] is the column of the mark in row I, a permutation of 1..N
+    X :: 1..N,
+    % the marks are in different columns
+    all_different(X),
+    % difference triangle: row L holds the differences X[I+L] - X[I] for I = 1..N-L
+    Diff = [new_list(N-L) : L in 1..N-1],
+    foreach (L in 1..N-1)
+        Diff[L] :: -(N-1)..N-1,
+        foreach (I in 1..N-L)
+            Diff[L,I] #= X[I+L] - X[I]
         end,
-        all_distinct(Diffs)
+        % no difference occurs twice in the same row of the triangle
+        all_different(Diff[L])
     end,
-    Vars = Costas,
-    Outputs = [costas = Costas],
-    Options = [ff].
+    Vars = [X | Diff],
+    Outputs = [costas = X],
+    Options = [].                         % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

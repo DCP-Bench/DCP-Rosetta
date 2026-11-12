@@ -1,25 +1,55 @@
-% Cell towers: choose sites to build towers on within the budget so that the
-% population of the regions they cover is as large as possible.
+% cell_tower: a Picat model from DCP Rosetta.
+%
+% A telecom company chooses which of several potential sites to build cell towers on, so as to
+% provide signal coverage to the largest population possible. Each tower has a fixed range, and only
+% a limited budget is available: the towers built must cost no more than the budget. The city is split
+% into regions, each with a known population; a region is covered when a tower built at a site that
+% reaches it is built.
+%
+% Save this file as model.pi. Download `cell_tower.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/cell_tower.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py cell_tower.json
+%   picat model.pi cell_tower_1.dat
+%
+% Data.get(budget): the budget for building towers; Data.get(cost): the cost of a tower at each site;
+% Data.get(delta): delta[I][J] is 1 when a tower at site I covers region J, and 0 otherwise;
+% Data.get(population): the population of each region (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Delta = Data.get(delta),             % delta[i][j] = 1 when site i covers region j
-    Cost = Data.get(cost),
-    Population = Data.get(population),
     Budget = Data.get(budget),
-    NS = len(Cost),
-    NR = len(Population),
-    Build = new_list(NS),
-    Build :: 0..1,
-    Covered = new_list(NR),
-    Covered :: 0..1,
-    % a region is covered only if some tower covering it is built
-    foreach (J in 1..NR)
-        Covered[J] #=< sum([Delta[I, J] * Build[I] : I in 1..NS])
+    Cost = Data.get(cost),
+    Delta = Data.get(delta),
+    Population = Data.get(population),
+    M = len(Cost),                         % the number of potential sites
+    R = len(Population),                   % the number of regions
+    B = new_list(M),
+    B :: 0..1,                             % B[I] = 1 when a tower is built at site I
+    C = new_list(R),
+    C :: 0..1,                             % C[J] = 1 when region J is covered
+    % the towers built cost no more than the budget
+    sum([Cost[I] * B[I] : I in 1..M]) #=< Budget,
+    foreach (J in 1..R)
+        % a region is covered only when a tower is built at a site that reaches it
+        C[J] #=< sum([Delta[I,J] * B[I] : I in 1..M])
     end,
-    % the towers fit the budget
-    sum([Cost[I] * Build[I] : I in 1..NS]) #=< Budget,
-    TotalPopulation #= sum([Population[J] * Covered[J] : J in 1..NR]),
-    Vars = Build ++ Covered,
-    Outputs = [build_tower = Build, total_population_covered = TotalPopulation],
-    Options = [$max(TotalPopulation)].
+    P #= sum([Population[J] * C[J] : J in 1..R]), % the total population covered
+    Vars = [B, C],
+    Outputs = [build_tower = B, total_population_covered = P],
+    % maximize the population covered
+    Options = [$max(P)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

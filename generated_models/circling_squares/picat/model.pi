@@ -1,24 +1,45 @@
-% Circling the squares: place a different number from 1 to 99 in each of ten
-% squares round a circle so that the squares of any two adjacent numbers add up
-% to the squares of the two opposite them. A, B, F and G are given.
+% circling_squares: a Picat model from DCP Rosetta.
+%
+% Place a different number in each of the ten squares of a circle, so that the sum of the squares of
+% any two adjacent numbers is equal to the sum of the squares of the two numbers diametrically opposite
+% to them. The numbers are whole numbers of at most two figures. The numbers placed are A=16, B=2,
+% F=8 and G=14.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    X = [A, B, C, D, E, F, G, H, I, K],
-    X :: 1..99,
+    % X[1..10] are the squares A, B, C, D, E, F, G, H, I, K in order around the circle
+    N = 10,                                % the number of squares in the circle
+    X = new_list(N),
+    X :: 1..99,                            % whole numbers of at most two figures, taken to be positive
+    % the ten numbers are different
     all_different(X),
-    A #= 16,
-    B #= 2,
-    F #= 8,
-    G #= 14,
-    % adjacent pair squares = opposite pair squares
-    A * A + B * B #= F * F + G * G,
-    B * B + C * C #= G * G + H * H,
-    C * C + D * D #= H * H + I * I,
-    D * D + E * E #= I * I + K * K,
-    E * E + F * F #= K * K + A * A,
+    % the numbers placed as examples stand as they are
+    X[1] #= 16,                            % A
+    X[2] #= 2,                             % B
+    X[6] #= 8,                             % F
+    X[7] #= 14,                            % G
+    foreach (I in 1..N)
+        Next = I mod N + 1,               % the square after square I, around the circle
+        Opp = (I + N // 2 - 1) mod N + 1,          % the square diametrically opposite to square I
+        OppNext = Opp mod N + 1,          % the square after the opposite square
+        % the squares of two adjacent numbers sum to the squares of the two opposite numbers
+        X[I] * X[I] + X[Next] * X[Next] #= X[Opp] * X[Opp] + X[OppNext] * X[OppNext]
+    end,
     Vars = X,
-    Outputs = ['A' = A, 'B' = B, 'C' = C, 'D' = D, 'E' = E, 'F' = F, 'G' = G,
-               'H' = H, 'I' = I, 'K' = K],
-    Options = [ff].
+    Outputs = ['A' = X[1], 'B' = X[2], 'C' = X[3], 'D' = X[4], 'E' = X[5],
+               'F' = X[6], 'G' = X[7], 'H' = X[8], 'I' = X[9], 'K' = X[10]],
+    % a satisfaction problem: no objective
+    Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

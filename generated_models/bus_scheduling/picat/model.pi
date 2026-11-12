@@ -1,19 +1,48 @@
-% Bus scheduling: the day is cut into time slots and a bus works two consecutive
-% slots. Choose how many buses start in each slot so that every slot's demand is
-% met with as few buses as possible.
+% bus_scheduling: a Picat model from DCP Rosetta.
+%
+% Progress City is considering a mass-transit bus system to reduce in-city driving. The goal is to determine
+% the minimum number of buses required to meet the transportation needs throughout the day. The demand for
+% buses is approximated as constant over successive 4-hour intervals. Each bus can operate only 8 successive
+% hours a day, so a bus that starts in one interval also works in the next one. The day is cyclic: the first
+% interval follows the last. The number of buses available in each 4-hour interval, those starting in it and
+% those that started in the interval before, meets the demand for that interval.
+%
+% Save this file as model.pi. Download `bus_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bus_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py bus_scheduling.json
+%   picat model.pi bus_scheduling_1.dat
+%
+% Data.get(demands): the number of buses needed in each 4-hour interval (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Demands = Data.get(demands),
-    N = len(Demands),
-    % x[i] = the number of buses that start in slot i
+    N = len(Demands),                      % the number of 4-hour intervals in the day
+    % X[K] = the number of buses that start in interval K
     X = new_list(N),
     X :: 0..sum(Demands),
-    % slot i + 1 is served by the buses starting in slots i and i + 1 (the day wraps)
-    foreach (I in 1..N)
-        Next = I mod N + 1,
-        X[I] + X[Next] #>= Demands[Next]
+    foreach (K in 1..N)
+        % the interval before interval K, the day being cyclic
+        Prev = (K + N - 2) mod N + 1,
+        % the buses starting in interval K and those starting in the interval before meet its demand
+        X[K] + X[Prev] #>= Demands[K]
     end,
     Vars = X,
     Outputs = [x = X],
+    % minimize the number of buses
     Options = [$min(sum(X))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

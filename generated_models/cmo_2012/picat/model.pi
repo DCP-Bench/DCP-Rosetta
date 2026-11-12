@@ -1,21 +1,54 @@
-% CMO 2012: find positive integers a and b, with a - b a prime number p and a * b a perfect
-% square n * n, such that a is the smallest value that is at least min_a.
+% cmo_2012: a Picat model from DCP Rosetta.
+%
+% Given two positive integers a and b, where a - b is a prime number p and a * b is a perfect square
+% n^2, find the smallest value of a no less than a given minimum min_a. Also b is larger than 0, and
+% none of the four values a, b, n and p exceeds the given maximum max_val.
+%
+% Save this file as model.pi. Download `cmo_2012.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py cmo_2012.json
+%   picat model.pi cmo_2012_1.dat
+%
+% Data.get(min_a): the minimum value of a; Data.get(max_val): the largest value of a, b, n and p.
 import cp.
 
+% the prime numbers from 2 up to M
+primes_upto(M) = [P : P in 2..M, is_prime(P)].
+
+is_prime(P) =>
+    Divisors = [D : D in 2..P - 1, D * D =< P, P mod D == 0],
+    Divisors == [].
+
 model(Data, Vars, Outputs, Options) =>
-    MinA = Data.get(min_a),            % lower bound on a
-    MaxVal = Data.get(max_val),        % upper bound on every number of the model
-    % the primes below max_val, the possible values of p (trial division up to sqrt)
-    Primes = [Q : Q in 2..MaxVal - 1, [D : D in 2..floor(sqrt(Q)), Q mod D == 0] == []],
-    A :: MinA..MaxVal,
-    B :: 1..MaxVal,
-    N :: 0..MaxVal,
-    P :: Primes,
-    % a is at least b, and their difference is the prime p
-    A #>= B,
-    P #= A - B,
-    % the product a * b is the perfect square n * n
+    MinA = Data.get(min_a),
+    MaxVal = Data.get(max_val),
+    Primes = primes_upto(MaxVal),
+    A :: MinA..MaxVal,                     % a is no less than min_a and at most max_val
+    B :: 1..MaxVal,                        % b is larger than 0 and at most max_val
+    N :: 1..MaxVal,                        % n is at most max_val
+    % p is a prime number no larger than max_val: P is the Q-th prime
+    Q :: 1..len(Primes),
+    element(Q, Primes, P),
+    % a - b is the prime number p
+    A - B #= P,
+    % a * b is the perfect square n^2
     A * B #= N * N,
-    Vars = [A, P, B, N],
+    Vars = [A, B, N, Q],
     Outputs = [a = A, b = B, n = N, p = P],
+    % minimize a
     Options = [$min(A)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

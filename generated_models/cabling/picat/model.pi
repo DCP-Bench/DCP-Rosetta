@@ -1,20 +1,52 @@
-% Cabling: put the devices one above another in a rack, one device per slot, so
-% that the total cable length is as small as possible. The cables between two
-% devices cost their count times the distance between the two slots.
+% cabling: a Picat model from DCP Rosetta.
+%
+% Take a rack cabinet with a number of 1U devices, such as servers and routers. Devices must be connected by
+% cables. Some devices must be connected by several cables. Each device takes one position in the rack, and
+% neighbouring positions are one unit apart. A cable between two devices is as long as the distance between
+% their positions, so connecting them by k cables costs k times that distance. Place the devices in such an
+% order that the sum of all cable lengths is as short as possible.
+%
+% Save this file as model.pi. Download `cabling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py cabling.json
+%   picat model.pi cabling_1.dat
+%
+% Data.get(n): the number of devices; Data.get(devices): the name of each device (a list indexed from 1);
+% Data.get(cable_struct): one row per connection, [name of a device, name of another device, number of
+% cables between them] (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
-    Devices = Data.get(devices),       % device names
-    Cables = Data.get(cable_struct),   % [device a, device b, number of cables]
+    Devices = Data.get(devices),
+    Cables = Data.get(cable_struct),
+    % Index.get(Name) = the number of the device with that name
     Index = new_map([Devices[I] = I : I in 1..N]),
-    % slot[d] = the slot, 1..n, of device d; every device gets its own slot
+    % Slot[D] = the position in the rack, from 1 to N, of device D
     Slot = new_list(N),
     Slot :: 1..N,
+    % each device takes its own position
     all_distinct(Slot),
-    % the total cable length
+    % each connection: the two devices it joins, and the number of cables
     Links = [{Index.get(Cable[1]), Index.get(Cable[2]), Cable[3]} : Cable in Cables],
-    FinalSum #= sum([Link[3] * abs(Slot[Link[1]] - Slot[Link[2]]) : Link in Links]),
+    % the total cable length: the cables between two devices, times the distance between their positions
+    TotalLength #= sum([Count * abs(Slot[A] - Slot[B]) : {A, B, Count} in Links]),
     Vars = Slot,
-    Outputs = [final_sum = FinalSum],
-    Options = [ff, $min(FinalSum)].
+    Outputs = [final_sum = TotalLength],
+    % the sum of all cable lengths is as short as possible
+    Options = [ff, $min(TotalLength)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

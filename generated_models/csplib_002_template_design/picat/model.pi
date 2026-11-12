@@ -1,37 +1,69 @@
-% Template design: a printing firm prints products (variations) from templates, each template
-% holding a fixed number of slots, every slot printing one variation. Decide how many sheets to
-% print from each template and how many copies of each variation to put on it, so that the
-% demand for every variation is met and as few sheets as possible are printed in total.
-% Encoded with sat: with cp the instance with 3 templates did not finish within 180 s, with sat it
-% took about 100 s.
-import sat.
+% csplib_002_template_design: a Picat model from DCP Rosetta.
+%
+% This problem arises from a colour printing firm which produces a variety of products from thin board,
+% including cartons for human and animal food and magazine inserts. Food products, for example, are often
+% marketed as a basic brand with several variations (typically flavours). Packaging for such variations usually
+% has the same overall design, in particular the same size and shape, but differs in a small proportion of the
+% text displayed and/or in colour. For example, two variations of a cat food carton may differ only in that on
+% one is printed 'Chicken Flavour' on a blue background whereas the other has 'Rabbit Flavour' printed on a
+% green background. A typical order is for a variety of quantities of several design variations. Because each
+% variation is identical in dimension, we know in advance exactly how many items can be printed on each mother
+% sheet of board, whose dimensions are largely determined by the dimensions of the printing machinery. Each
+% mother sheet is printed from a template, consisting of a thin aluminium sheet on which the design for several
+% of the variations is etched. The problem is to decide, for a given number of templates with a given number of
+% slots each, which variations, and how many copies of each, to include on each template, and how many sheets to
+% make from each template. Every slot of a template is filled. Each template yields between 1 sheet and as many
+% sheets as the largest demand. The sheets printed must meet at least the demand of every variation, and the
+% objective is to minimize the total number of printed sheets.
+%
+% Save this file as model.pi. Download `csplib_002_template_design.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_002_template_design.json
+%   picat model.pi csplib_002_template_design_1.dat
+%
+% Data.get(n_templates): the number of templates; Data.get(n_slots): the number of slots of each template;
+% Data.get(n_var): the number of variations; Data.get(demand): the demand for each variation (lists indexed
+% from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    NSlots = Data.get(n_slots),           % slots on a template
-    NTemplates = Data.get(n_templates),   % number of templates
-    NVar = Data.get(n_var),               % number of variations
-    Demand = Data.get(demand),            % Demand[v] = copies of variation v needed
-    % the most sheets printed from one template: the largest demand (the reference's bound)
-    UB = max(Demand),
-    % Production[t] = number of sheets printed from template t
-    Production = new_list(NTemplates),
-    Production :: 1..UB,
-    % Layout[t, v] = number of slots of template t that print variation v; at most n_var,
-    % the bound the reference uses
-    Layout = new_array(NTemplates, NVar),
-    Layout :: 0..NVar,
-    % every slot of a template is used
-    foreach (T in 1..NTemplates)
-        sum([Layout[T, V] : V in 1..NVar]) #= NSlots
+    NumTemplates = Data.get(n_templates),
+    NumSlots = Data.get(n_slots),
+    NumVars = Data.get(n_var),
+    Demand = Data.get(demand),
+    MaxDemand = max(Demand),
+    % Layout[T,V] = the number of copies of variation V on template T
+    Layout = new_array(NumTemplates, NumVars),
+    Layout :: 0..NumSlots,
+    % every slot of a template is filled
+    foreach (T in 1..NumTemplates)
+        sum([Layout[T,V] : V in 1..NumVars]) #= NumSlots
     end,
-    % the demand for each variation is met: each sheet of template t carries Layout[t, v] copies
-    foreach (V in 1..NVar)
-        sum([Production[T] * Layout[T, V] : T in 1..NTemplates]) #>= Demand[V]
+    % Production[T] = the number of sheets printed from template T, between 1 and the largest demand
+    Production = new_list(NumTemplates),
+    Production :: 1..MaxDemand,
+    % the sheets printed meet at least the demand of every variation
+    foreach (V in 1..NumVars)
+        sum([Production[T] * Layout[T,V] : T in 1..NumTemplates]) #>= Demand[V]
     end,
-    % implied: all slots are used, so the sheets together carry at least the total demand
-    NSlots * sum(Production) #>= sum(Demand),
-    % the number of sheets printed in total
-    Total #= sum(Production),
-    Vars = Production ++ Layout,
+    % the total number of printed sheets
+    TotalSheets #= sum(Production),
+    Vars = [Production, Layout],
     Outputs = [production = Production, layout = Layout],
-    Options = [$min(Total)].
+    % minimize the total number of printed sheets
+    Options = [$min(TotalSheets)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

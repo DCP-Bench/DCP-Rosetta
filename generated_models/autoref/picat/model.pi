@@ -1,21 +1,44 @@
-% Autoref: a series s[0..n+1] in which every value i from 0 to n occurs exactly
-% s[i] times, and whose last element s[n+1] is m.
+% autoref: a Picat model from DCP Rosetta.
+%
+% Given an integer n > 0 and an integer m >= 0, find a non-empty finite series S = (s0, s1, ..., sn, sn+1)
+% of integers between 0 and n such that (1) there are si occurrences of i in S for each integer i from 0
+% to n, and (2) sn+1 = m.
+%
+% Save this file as model.pi. Download `autoref.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/autoref.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py autoref.json
+%   picat model.pi autoref_1.dat
+%
+% Data.get(n): the integer n; Data.get(m): the integer m.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     M = Data.get(m),
-    % s[k + 1] = the k-th element of the series, 0..n
-    S = new_list(N + 2),
-    S :: 0..N,
-    % the last element is m
-    S[N + 2] #= M,
-    % the value i occurs exactly s[i] times
+    S = new_list(N + 2),                   % S[I + 1] = s_I, for I = 0..N+1
+    S :: 0..N,                             % every element of S is an integer between 0 and n
+    % there are s_i occurrences of i in S for each integer i from 0 to n
     foreach (I in 0..N)
-        count(I, S) #= S[I + 1]
+        Count = S[I + 1],
+        count(I, S, #=, Count)
     end,
-    % implied by the counts: every one of the n + 2 elements is counted once
-    sum([S[I] : I in 1..N+1]) #= N + 2,
+    % the last element s_{n+1} equals m
+    S[N + 2] #= M,
     Vars = S,
     Outputs = [s = S],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

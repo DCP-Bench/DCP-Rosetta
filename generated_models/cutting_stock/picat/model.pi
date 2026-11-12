@@ -1,24 +1,49 @@
-% Cutting stock: raw rolls are cut into smaller pieces following a given set of cutting
-% patterns. Choose how many raw rolls to cut with each pattern so that every width gets at
-% least the number of pieces ordered, using as few raw rolls as possible.
+% cutting_stock: a Picat model from DCP Rosetta.
+%
+% Cutting stock: raw rolls of a fixed width are cut into pieces of several smaller widths. Each order asks
+% for a number of pieces of one width. A cutting pattern is a way of cutting one raw roll, and gives a number
+% of pieces of each width. Choose how many rolls to cut with each pattern so that at least the ordered
+% number of pieces of each width is produced, using as few raw rolls as possible.
+%
+% Save this file as model.pi. Download `cutting_stock.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/cutting_stock.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py cutting_stock.json
+%   picat model.pi cutting_stock_1.dat
+
+% Data.get(num_patterns): the number of cutting patterns; Data.get(num_rolls_width): the pieces of each
+% width that one raw roll cut with each pattern yields (a list of rows indexed from 1, one row per pattern);
+% Data.get(orders): the number of pieces ordered of each width (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Widths = Data.get(widths),                   % the widths of the pieces to be cut
-    Orders = Data.get(orders),                   % Orders[w] = pieces of width w ordered
-    NumPatterns = Data.get(num_patterns),
-    PatternPieces = Data.get(num_rolls_width),   % PatternPieces[p][w] = pieces of width w in pattern p
-    NumWidths = len(Widths),
-    % PatternsUsed[p] = how many raw rolls are cut with pattern p; at most 100 each, the bound
-    % the reference puts on it (the roll_width field is not needed: the patterns already fit)
-    PatternsUsed = new_list(NumPatterns),
-    PatternsUsed :: 0..100,
-    % for each width, the pieces cut by all patterns cover the orders
-    foreach (W in 1..NumWidths)
-        sum([PatternPieces[P, W] * PatternsUsed[P] : P in 1..NumPatterns]) #>= Orders[W]
+    P = Data.get(num_patterns),
+    Yield = Data.get(num_rolls_width),
+    Orders = Data.get(orders),
+    W = len(Orders),                      % the number of widths
+    Total = sum(Orders),
+    Used = new_list(P),                   % Used[I] is the number of rolls cut with pattern I
+    Used :: 0..Total,                     % no optimal plan cuts a pattern more often than the total number of pieces ordered
+    % for each width, the rolls cut produce at least the ordered number of pieces of that width
+    foreach (J in 1..W)
+        sum([Yield[I,J] * Used[I] : I in 1..P]) #>= Orders[J]
     end,
-    % the total number of raw rolls cut
-    MinRollsCut #= sum(PatternsUsed),
-    Vars = PatternsUsed,
-    Outputs = [patterns_used = PatternsUsed, min_rolls_cut = MinRollsCut],
-    Options = [$min(MinRollsCut)].
+    Rolls #= sum(Used),
+    Vars = Used,
+    Outputs = [min_rolls_cut = Rolls, patterns_used = Used],
+    % minimise the total number of raw rolls cut
+    Options = [$min(Rolls)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

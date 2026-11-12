@@ -1,17 +1,54 @@
-% Movie scheduling: accept as many movie offers as possible, where two accepted
-% movies never have overlapping filming periods (first to last day, inclusive).
+% session2_movie_scheduling: a Picat model from DCP Rosetta.
+%
+% Consider the following scheduling problem. Imagine you are a highly-in-demand actor, who has been presented with
+% offers to star in n different movie projects under development. Each offer comes specified with the first and last
+% day of filming. To take the job, you must commit to being available throughout this entire period. Thus, you cannot
+% simultaneously accept two jobs whose intervals overlap. For an artist such as yourself, the criteria for job
+% acceptance is clear: you want to make as much money as possible. Because each of these films pays the same fee per
+% film, this implies you seek the largest possible set of jobs (intervals) such that no two of them conflict with each
+% other.
+%
+% Save this file as model.pi. Download `session2_movie_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_movie_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session2_movie_scheduling.json
+%   picat model.pi session2_movie_scheduling_1.dat
+%
+% Data.get(movies): the movies in order, each as [title, first day of filming, last day of filming] (lists, indexed
+% from 1; the days are inclusive).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Movies = Data.get(movies),    % [title, first day, last day]
-    N = len(Movies),
-    Selected = new_list(N),
+    Movies = Data.get(movies),
+    N = len(Movies),                       % the number of movie offers
+    First = [M[2] : M in Movies],          % first day of filming of each movie
+    Last = [M[3] : M in Movies],           % last day of filming of each movie
+    Selected = new_list(N),                % Selected[I] = 1 when movie I is accepted
     Selected :: 0..1,
+    % two accepted movies never have overlapping filming periods: they overlap when each starts no later than the
+    % other ends
     foreach (I in 1..N-1, J in I+1..N)
-        if (Movies[I, 3] >= Movies[J, 2], Movies[J, 3] >= Movies[I, 2]) then
+        if (Last[I] >= First[J], Last[J] >= First[I]) then
             Selected[I] + Selected[J] #=< 1
         end
     end,
     Vars = Selected,
     Outputs = [selected_movies = Selected],
-    Options = [$max(sum(Selected))].
+    % accept the largest possible number of movies
+    NumSelected #= sum(Selected),
+    Options = [$max(NumSelected)].
+
+% Reads the data file, builds the model, solves it and prints each output.
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

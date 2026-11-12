@@ -1,20 +1,33 @@
-% Calvin puzzle: fill an n x n grid with the numbers 1..n*n, each once, so that every number
-% k + 1 is placed exactly three squares away from k horizontally or vertically (a gap of two
-% squares between them), or exactly two squares away diagonally (a gap of one square).
-% Encoded by the position of each number: the square holding k is known by its row and
-% column, and the square of k + 1 is one of the allowed moves away.
+% calvin_puzzle: a Picat model from DCP Rosetta.
+%
+% To take an n by n grid, representing n^2 squares, and completely fill every square with the numbers 1 to
+% n^2 in sequence, each used once, starting from any square, based on two types of movements. Movement type
+% I: if the next number in the sequence is going to be placed vertically or horizontally, then it must be
+% placed exactly three squares away from the previous number (there must be a two square gap between the
+% numbers). Movement type II: if the next number in the sequence is going to be placed diagonally, then it
+% must be placed exactly two squares away from the previous number (there must be a one square gap between
+% the numbers).
+%
+% Save this file as model.pi. Download `calvin_puzzle.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/calvin_puzzle.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py calvin_puzzle.json
+%   picat model.pi calvin_puzzle_1.dat
+%
+% Data.get(n): the size n of the grid.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     Cells = N * N,
-    % Grid is the squares in reading order: Grid[(i - 1) * n + j] is the number in row i, column j
+    % Grid[(I - 1) * N + J] = the number in row I, column J, read in reading order
     Grid = new_list(Cells),
     Grid :: 1..Cells,
-    % every number is used once
+    % every number from 1 to n^2 is used once
     all_different(Grid),
-    % Row[k], Col[k] = the row and the column of the square holding number k, and Pos[k] its
-    % place in reading order
+    % Row[K], Col[K] = the row and the column of the square holding number K; Pos[K] = its place in
+    % reading order
     Row = new_list(Cells),
     Col = new_list(Cells),
     Pos = new_list(Cells),
@@ -23,21 +36,34 @@ model(Data, Vars, Outputs, Options) =>
     Pos :: 1..Cells,
     foreach (K in 1..Cells)
         Pos[K] #= (Row[K] - 1) * N + Col[K],
-        % the square at that place holds number k
+        % the square at that place holds the number K
         element(Pos[K], Grid, K)
     end,
-    % the moves from number k to number k + 1: three squares along a row or a column, or two
-    % squares along both a row and a column
+    % the moves from one number to the next: three squares vertically or horizontally, or two squares
+    % diagonally
     Moves = [[3, 0], [-3, 0], [0, 3], [0, -3], [2, 2], [2, -2], [-2, 2], [-2, -2]],
-    % Allowed lists every (row, column, row of the next number, column of the next number)
-    % that stays inside the grid
+    % Allowed lists every (row, column, row of the next number, column of the next number) on the board
     Allowed = [{R, C, R + Move[1], C + Move[2]} :
                R in 1..N, C in 1..N, Move in Moves,
                R + Move[1] >= 1, R + Move[1] =< N, C + Move[2] >= 1, C + Move[2] =< N],
+    % each number is placed by one of the moves from the number before it
     foreach (K in 1..Cells - 1)
         table_in({Row[K], Col[K], Row[K + 1], Col[K + 1]}, Allowed)
     end,
-    % search along the sequence 1, 2, 3, ...
     Vars = [V : K in 1..Cells, V in [Row[K], Col[K]]],
-    Outputs = [x = [[Grid[(I - 1) * N + J] : J in 1..N] : I in 1..N]],
+    Board = [[Grid[(I - 1) * N + J] : J in 1..N] : I in 1..N],
+    Outputs = [x = Board],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

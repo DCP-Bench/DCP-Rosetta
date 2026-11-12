@@ -1,19 +1,44 @@
-% Bin packing: assign every item to one of num_bins bins so that the total weight of the
-% items in each bin does not exceed the capacity.
+% bin_packing: a Picat model from DCP Rosetta.
+%
+% Given several items of specific weights and a number of bins of a fixed capacity, assign each
+% item to a bin so that the total weight of the items in each bin does not exceed the capacity.
+%
+% Save this file as model.pi. Download `bin_packing.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bin_packing.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py bin_packing.json
+%   picat model.pi bin_packing_1.dat
+%
+% Data.get(capacity): the capacity of each bin; Data.get(num_bins): the number of bins;
+% Data.get(weights): the weight of each item (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Weights = Data.get(weights),
-    Capacity = Data.get(capacity),       % capacity of each bin
+    Capacity = Data.get(capacity),
     NumBins = Data.get(num_bins),
-    N = len(Weights),
-    % Bins[j] = the bin (numbered from 0) that item j is put in
-    Bins = new_list(N),
-    Bins :: 0..NumBins - 1,
-    % the items in a bin weigh at most the capacity
+    Weights = Data.get(weights),
+    N = len(Weights),                      % the number of items
+    % Bin[I] = the bin, numbered from 0, that item I is assigned to
+    Bin = new_list(N),
+    Bin :: 0..NumBins - 1,
+    % the total weight of the items in each bin does not exceed the capacity
     foreach (B in 0..NumBins - 1)
-        sum([Weights[J] * (Bins[J] #= B) : J in 1..N]) #=< Capacity
+        sum([Weights[I] * (Bin[I] #= B) : I in 1..N]) #=< Capacity
     end,
-    Vars = Bins,
-    Outputs = [bins = Bins],
+    Vars = Bin,
+    Outputs = [bins = Bin],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,40 +1,67 @@
-% Fixed-charge production: a company makes shirts, shorts and pants. Each product needs some
-% labor and cloth, both limited, and can only be made on an appropriate machine that has to be
-% rented. Maximise the profit: the profit of the products made minus the rent of the machines.
-% Products, machines and resources are numbered from 0 in the instance, so index i is stored
-% at position i + 1 of the lists.
+% fixed_charge: a Picat model from DCP Rosetta.
+%
+% A company manufactures shirts, shorts, and pants. Each product requires a number of hours of labor
+% and a certain amount of cloth, and the company has a limited capacity of both. In addition, all of
+% these products can be manufactured only by renting an appropriate machine, each product having its
+% own machine type. The renting cost of a machine is paid once, however much is made on it. The profit
+% on the products (excluding the cost of renting the equipment) is also known, per unit, and each
+% product is made in a whole number of units. The company would like to maximize its profit: the
+% profit on the units made, less the cost of the machines rented.
+%
+% Save this file as model.pi. Download `fixed_charge.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/fixed_charge.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py fixed_charge.json
+%   picat model.pi fixed_charge_1.dat
+%
+% Data.get(renting_cost): the rent of each machine; Data.get(capacity): the amount available of each
+% resource (labor, cloth); Data.get(max_production): the most units of one product that can be made;
+% Data.get(product): for each product, its profit per unit and the number of the machine it needs
+% (machines numbered from 0); Data.get(use): for each product, the amount of each resource used per
+% unit (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Machines = Data.get(machines),                 % machine numbers
-    Products = Data.get(products),                 % product numbers
-    Resources = Data.get(resources),               % resource numbers (labor, cloth)
-    RentingCost = Data.get(renting_cost),          % rent of each machine
-    Capacity = Data.get(capacity),                 % amount available of each resource
-    MaxProduction = Data.get(max_production),      % most units of one product
-    Product = Data.get(product),                   % Product[p] = [profit per unit, machine needed]
-    Use = Data.get(use),                           % Use[p][r] = resource r used per unit of product p
-    NumMachines = len(Machines),
-    NumProducts = len(Products),
-    % Rent[m] = 1 if machine m is rented
+    RentingCost = Data.get(renting_cost),
+    Capacity = Data.get(capacity),
+    MaxProduction = Data.get(max_production),
+    Product = Data.get(product),
+    Use = Data.get(use),
+    NumMachines = len(RentingCost),
+    NumProducts = len(Product),
+    NumResources = len(Capacity),
+    % Rent[M] = 1 when machine M is rented
     Rent = new_list(NumMachines),
     Rent :: 0..1,
-    % Produce[p] = units made of product p
+    % Produce[P] = the units of product P that are made
     Produce = new_list(NumProducts),
     Produce :: 0..MaxProduction,
-    % Z = the profit; 10000 is the bound the reference puts on it
-    Z :: 0..10000,
-    % the profit is the income from the products made minus the rent of the machines rented
-    Z #= sum([Product[P + 1, 1] * Produce[P + 1] : P in Products])
-         - sum([RentingCost[M + 1] * Rent[M + 1] : M in Machines]),
-    % the resources used by all the products stay within their capacity
-    foreach (R in Resources)
-        sum([Use[P + 1, R + 1] * Produce[P + 1] : P in Products]) #=< Capacity[R + 1]
+    % a product can only be made on a machine that is rented
+    foreach (P in 1..NumProducts)
+        Produce[P] #=< MaxProduction * Rent[Product[P,2] + 1]
     end,
-    % a product can only be made if the machine it needs is rented
-    foreach (P in Products)
-        Produce[P + 1] #=< MaxProduction * Rent[Product[P + 1, 2] + 1]
+    % the labor and the cloth used by the products made stay within the capacity of each
+    foreach (R in 1..NumResources)
+        sum([Use[P,R] * Produce[P] : P in 1..NumProducts]) #=< Capacity[R]
     end,
+    % the profit is the profit on the units made, less the cost of the machines rented
+    Z #= sum([Product[P,1] * Produce[P] : P in 1..NumProducts])
+         - sum([RentingCost[M] * Rent[M] : M in 1..NumMachines]),
     Vars = Rent ++ Produce,
     Outputs = [z = Z],
+    % maximize the profit
     Options = [$max(Z)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

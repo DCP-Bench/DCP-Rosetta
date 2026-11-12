@@ -1,13 +1,33 @@
-% Huey, Dewey and Louie cannot lie. Huey: Dewey and Louie share the guilt equally.
-% Dewey: if Huey is guilty, so am I. Louie: Dewey and I are not both guilty.
+% huey_dewey_louie: a Picat model from DCP Rosetta.
+%
+% Huey, Dewey and Louie are being questioned by their uncle, and each may be guilty or not. They make these
+% statements, and as cub scouts they cannot tell a lie:
+% - Huey: Dewey and Louie have an equal share in it; if one is guilty, so is the other.
+% - Dewey: If Huey is guilty, then so am I.
+% - Louie: Dewey and I are not both guilty.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/huey_dewey_louie.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
+% The puzzle reads no data: the statements are fixed in the model. Each guilt is 1 (guilty) or 0 (not guilty).
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
     [Huey, Dewey, Louie] :: 0..1,
+    % Huey's statement is true: Dewey and Louie are both guilty or both not guilty
     Dewey #= Louie,
+    % Dewey's statement is true: if Huey is guilty, then Dewey is guilty
     Huey #=> Dewey,
+    % Louie's statement is true: Dewey and Louie are not both guilty
     #~ (Dewey #/\ Louie),
     Vars = [Huey, Dewey, Louie],
     Outputs = [huey = Huey, dewey = Dewey, louie = Louie],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

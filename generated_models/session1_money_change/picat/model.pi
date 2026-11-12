@@ -1,18 +1,48 @@
-% Money change: pay the amount with the available coins using as few coins as
-% possible.
+% session1_money_change: a Picat model from DCP Rosetta.
+%
+% Alice has to give Bob some change. She has different types of coins of different values and she has a certain
+% number of coins of each value available. How can the change be composed with the available coins minimizing the
+% number of coins used?
+%
+% Save this file as model.pi. Download `session1_money_change.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_money_change.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session1_money_change.json
+%   picat model.pi session1_money_change_1.dat
+%
+% Data.get(amount): the amount of change to give; Data.get(types_of_coins): the value of each type of coin;
+% Data.get(available_coins): the number of coins of each type available (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Amount = Data.get(amount),
-    Types = Data.get(types_of_coins),        % value of each type of coin
-    Available = Data.get(available_coins),   % coins of each type available
-    N = len(Types),
-    Counts = new_list(N),
+    Types = Data.get(types_of_coins),
+    Available = Data.get(available_coins),
+    N = len(Types),                        % the number of types of coins
+    Counts = new_list(N),                  % Counts[I] = the coins of type I given to Bob
     Counts :: 0..max(Available),
+    % the coins given to Bob add up to the amount of change
     sum([Counts[I] * Types[I] : I in 1..N]) #= Amount,
+    % no more coins of a type are given than Alice has of that type
     foreach (I in 1..N)
         Counts[I] #=< Available[I]
     end,
+    NumCoins #= sum(Counts),
     Vars = Counts,
     Outputs = [coin_counts = Counts],
-    Options = [$min(sum(Counts))].
+    % minimize the number of coins used
+    Options = [$min(NumCoins)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

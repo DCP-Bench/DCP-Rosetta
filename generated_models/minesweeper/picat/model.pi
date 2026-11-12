@@ -1,25 +1,54 @@
-% Minesweeper: decide which unopened cells hold mines. An opened cell holds no
-% mine, and its number counts the mines among its (up to eight) neighbours.
+% minesweeper: a Picat model from DCP Rosetta.
+%
+% The board is divided into cells, with mines distributed among them. The number on an opened cell
+% shows the number of mines among its neighbouring cells (up to eight of them), and an opened cell
+% holds no mine. Decide which of the unopened cells, marked X, are mines, from the numbers of the
+% opened cells.
+%
+% Save this file as model.pi. Download `minesweeper.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/minesweeper.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py minesweeper.json
+%   picat model.pi minesweeper_1.dat
+%
+% Data.get('X'): the value that marks an unopened cell; Data.get(game_data): the board, a list of
+% rows (lists indexed from 1) holding the number of each opened cell and the value X for each
+% unopened cell.
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
-    Unopened = Data.get('X'),     % the value marking an unopened cell
-    Game = Data.get(game_data),
-    R = len(Game),
-    C = len(Game[1]),
-    % mines[i, j] = 1 when cell (i, j) holds a mine
-    Mines = new_array(R, C),
+    Unopened = Data.get('X'),
+    Board = Data.get(game_data),
+    NumRows = len(Board),
+    NumCols = len(Board[1]),
+    % Mines[R, C] = 1 when the cell in row R, column C is a mine
+    Mines = new_array(NumRows, NumCols),
     Mines :: 0..1,
-    foreach (I in 1..R, J in 1..C)
-        Value = Game[I, J],
+    foreach (R in 1..NumRows, C in 1..NumCols)
+        Value = Board[R, C],
         if Value != Unopened then
-            % an opened cell holds no mine ...
-            Mines[I, J] #= 0,
-            % ... and its number is the count of mines around it
-            sum([Mines[I + A, J + B] : A in -1..1, B in -1..1, abs(A) + abs(B) > 0,
-                 I + A >= 1, I + A =< R, J + B >= 1, J + B =< C]) #= Value
+            % an opened cell is not a mine
+            Mines[R, C] #= 0,
+            % the number of an opened cell is the count of mines among its neighbours
+            sum([Mines[R + DR, C + DC] : DR in -1..1, DC in -1..1,
+                 abs(DR) + abs(DC) > 0,
+                 R + DR >= 1, R + DR =< NumRows, C + DC >= 1, C + DC =< NumCols]) #= Value
         end
     end,
     Vars = Mines,
     Outputs = [mines = Mines],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

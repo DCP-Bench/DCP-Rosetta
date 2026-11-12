@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-opus-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790718521.7396078,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/picat/picat/CONTRACT.md": "84202cb7387163b69f6023ef9f5658182a3bd8e8b5d15cc07f32426b75c94ebf"
+    },
+    "created_at": 1794501381.4884775,
     "problem_id": "bales_of_hay",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20260929T2116Z-picat-0895",
-    "schema": 2,
-    "skill_bundle_hash": "af69b3a1f8f7bef39c3329699413479af027d2d4d554c107d569578acaf82b22",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "6349758252cdf8d0bc71631c157efe55d743038b912f2bc780627c63a8272e69",
+    "run_id": "20261114-picat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b49a99cf7ce143ff33ec9b03d0e89b5519a7e9a4",
+      "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "d8c844033a146dbc55f9571b6929affc6badcd3bc8fe96c77a521a26987179a4",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:5ea63b9832d8270c8ab826fa631a98480e54b76ff46e38a5ec48e72ce8414e71",
+      "recipe": "sha256:f06a73c33be291578424d0b82082735dcc778ac1de62ed2561dd6d102739f621",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.011274600052274764,
-        "execution_wall_seconds": 3.6050710000563413,
+        "checking_seconds": 0.002771810977719724,
+        "execution_wall_seconds": 0.8042561040492728,
         "first_solution": {
           "bales": [
             39,
@@ -56,9 +86,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.329901200020686,
+        "reference_setup_seconds": 0.3222126519540325,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.02,
+          "read_seconds": 0.0,
           "status": "limit",
           "type": "status"
         },
@@ -68,8 +101,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0057521999115124345,
-        "execution_wall_seconds": 1.3848058000439778,
+        "checking_seconds": 0.0023150300257839262,
+        "execution_wall_seconds": 0.6949891209951602,
         "first_solution": {
           "bales": [
             14,
@@ -86,9 +119,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4706860999576747,
+        "reference_setup_seconds": 0.3114147239830345,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "limit",
           "type": "status"
         },
@@ -98,8 +134,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.005338600021786988,
-        "execution_wall_seconds": 1.0510970999021083,
+        "checking_seconds": 0.0025809829821810126,
+        "execution_wall_seconds": 0.6950911799794994,
         "first_solution": {
           "bales": [
             15,
@@ -117,9 +153,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1701845000497997,
+        "reference_setup_seconds": 0.3011103490134701,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "limit",
           "type": "status"
         },
@@ -129,16 +168,16 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008453599992208183,
-        "execution_wall_seconds": 1.1414799999911338,
+        "checking_seconds": 0.0035275989794172347,
+        "execution_wall_seconds": 0.7944239919888787,
         "first_solution": {
           "bales": [
             9,
             16,
-            38,
-            39,
             24,
-            35
+            35,
+            38,
+            39
           ]
         },
         "id": "json:3",
@@ -150,9 +189,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.304780300008133,
+        "reference_setup_seconds": 0.35484789503971115,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.09,
+          "read_seconds": 0.0,
           "status": "limit",
           "type": "status"
         },
@@ -162,17 +204,17 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007795299985446036,
-        "execution_wall_seconds": 1.1300046999240294,
+        "checking_seconds": 0.004300151020288467,
+        "execution_wall_seconds": 6.815927918010857,
         "first_solution": {
           "bales": [
             4,
             9,
+            12,
             21,
-            43,
-            44,
             30,
-            12
+            43,
+            44
           ]
         },
         "id": "json:4",
@@ -184,9 +226,12 @@
           "bales"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.304600700037554,
+        "reference_setup_seconds": 0.38175835099536926,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 6.12,
+          "read_seconds": 0.0,
           "status": "limit",
           "type": "status"
         },
@@ -198,21 +243,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a6f534606ba166efd394e345db54fc5e1ed413a79794328bafe4a5296cdeb058",
+    "model_hash": "562e880708b2277803c42d852763383712c4523c5a9c9041b14352333a7f15e1",
     "problem_id": "bales_of_hay",
     "reason": "accepted",
-    "reference_hash": "69b6ae74d49064a60e9b54a530c658ab4881f6fe368eb3206b19e86b9f9402c9",
+    "reference_hash": "b42b2f74bb3eb1804388e1987a6a390d2328c8a1359564541c44ba61c5266993",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -223,11 +268,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "picat",
-    "total_wall_seconds": 18.22356579999905,
+    "total_wall_seconds": 11.863928361970466,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-opus-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.pi",

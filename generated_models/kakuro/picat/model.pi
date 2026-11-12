@@ -1,29 +1,57 @@
-% Kakuro: put a digit 1..9 in each white cell so that every entry (a run of
-% cells across or down) adds up to its clue with no digit repeated in it.
-% Blank cells hold 0.
+% kakuro: a Picat model from DCP Rosetta.
+%
+% Kakuro: insert a digit from 1 to 9 into each white cell so that the digits of each entry (a run of white
+% cells across or down) add up to the clue of that entry, and no digit is repeated within an entry. The
+% blank (black) cells hold 0 in the solution.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/kakuro.html
+% Save this file as model.pi. Download `kakuro.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/kakuro.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py kakuro.json
+%   picat model.pi kakuro_1.dat
+%
+% Data.get(n): the size of the grid, n by n. Data.get(blanks): the [row, col] of each blank cell, indexed from 1.
+% Data.get(problem): the entries, each a list [clue, [row, col], [row, col], ...] of its clue and its white cells.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),
-    Entries = Data.get(problem),   % [clue, [row, col], [row, col], ...], 1-based
-    Blanks = Data.get(blanks),     % [row, col] of the blank cells
+    N = Data.get(n),                          % the size of the grid
+    Entries = Data.get(problem),
+    Blanks = Data.get(blanks),
+    % X[R, C] is the digit in row R, column C
     X = new_array(N, N),
     X :: 0..9,
-    % blank cells are 0
+    % the blank cells hold 0
     foreach (Cell in Blanks)
         X[Cell[1], Cell[2]] #= 0
     end,
     foreach (Entry in Entries)
         Clue = Entry[1],
-        Run = [X[Entry[K, 1], Entry[K, 2]] : K in 2..len(Entry)],
-        % the cells of an entry hold digits 1..9 ...
+        Run = [X[Entry[K, 1], Entry[K, 2]] : K in 2..len(Entry)],   % the white cells of the entry
+        % each white cell of the entry holds a digit from 1 to 9
         foreach (V in Run)
             V #>= 1
         end,
-        % ... that add up to the clue and are all different
+        % the digits of the entry add up to its clue
         sum(Run) #= Clue,
+        % no digit is repeated within the entry
         all_distinct(Run)
     end,
     Vars = X,
     Outputs = [x = X],
     Options = [ff].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

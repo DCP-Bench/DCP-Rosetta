@@ -1,21 +1,50 @@
-% Travelling salesman: the shortest round trip through all the cities, with the
-% distance between two cities their Euclidean distance rounded to an integer.
-import sat.
+% tsp: a Picat model from DCP Rosetta.
+%
+% The travelling salesman problem asks: given a list of cities and the distances between each pair of
+% cities (or the locations of the cities), what is the shortest possible route that visits each city
+% exactly once and returns to the origin city? The distance between two points is their Euclidean
+% distance rounded to an integer.
+%
+% Save this file as model.pi. Download `tsp.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/tsp.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py tsp.json
+%   picat model.pi tsp_1.dat
+%
+% Data.get(locations): the [x, y] coordinates of each city (a list indexed from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Locations = Data.get(locations),
-    N = len(Locations),
+    N = len(Locations),                    % the number of cities
+    % Dist[I][J]: the Euclidean distance between cities I and J, rounded to an integer
     Dist = [[round(sqrt((P[1] - Q[1]) ** 2 + (P[2] - Q[2]) ** 2)) : Q in Locations] : P in Locations],
-    % next[i] = the city visited after city i; the successors form one circuit
+    % Next[I] = the city visited right after city I; the successors form one tour through all cities
     Next = new_list(N),
     Next :: 1..N,
     circuit(Next),
-    % leg[i] = the distance from city i to its successor
+    % Leg[I] = the distance from city I to the city visited after it
     Leg = new_list(N),
     foreach (I in 1..N)
         element(Next[I], Dist[I], Leg[I])
     end,
+    % the length of the round trip
     TravelDistance #= sum(Leg),
     Vars = Next,
     Outputs = [travel_distance = TravelDistance],
+    % the shortest possible route
     Options = [$min(TravelDistance)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,23 +1,36 @@
-% Killer sudoku: a sudoku whose cages (groups of cells) add up to given totals,
-% with no digit repeated inside a cage.
+% csplib_057_killer_sudoku: a Picat model from DCP Rosetta.
+%
+% Killer sudoku: fill the grid with the numbers 1 to 9 so that each row, each column and each nonet
+% contains each number exactly once, the sum of all numbers in each cage equals the total printed in its
+% corner, and no number appears more than once in a cage.
+%
+% Save this file as model.pi. Download `csplib_057_killer_sudoku.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_057_killer_sudoku.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_057_killer_sudoku.json
+%   picat model.pi csplib_057_killer_sudoku_1.dat
+
+% Data.get(n): the side of the grid (9); Data.get(problem): the cages, each a list [Total, Cells] with
+% Total the sum of the cage and Cells the list of its cells [Row, Column], indexed from 1.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),                  % side of the grid
-    Cages = Data.get(problem),        % [total, [[row, col], ...]], 1-based
-    B = to_int(sqrt(N)),              % side of a box
-    X = new_array(N, N),
+    N = Data.get(n),
+    Cages = Data.get(problem),
+    B = to_int(sqrt(N)),                  % the side of a nonet (box)
+    X = new_array(N, N),                  % X[I,J] is the digit in row I, column J
     X :: 1..N,
-    % each row and each column holds different digits
+    % each row and each column holds each digit once
     foreach (I in 1..N)
         all_distinct([X[I, J] : J in 1..N]),
         all_distinct([X[J, I] : J in 1..N])
     end,
-    % each box holds different digits
+    % each nonet holds each digit once
     foreach (R in 0..B-1, C in 0..B-1)
         all_distinct([X[R * B + I, C * B + J] : I in 1..B, J in 1..B])
     end,
-    % each cage adds up to its total with different digits
+    % each cage adds up to its total, with no digit repeated inside the cage
     foreach (Cage in Cages)
         Total = Cage[1],
         Cells = [X[Cell[1], Cell[2]] : Cell in Cage[2]],
@@ -26,4 +39,17 @@ model(Data, Vars, Outputs, Options) =>
     end,
     Vars = X,
     Outputs = [x = X],
-    Options = [ff].
+    Options = [ff].                       % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

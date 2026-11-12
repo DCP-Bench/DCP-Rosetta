@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-opus-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790719770.6665044,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/picat/picat/CONTRACT.md": "84202cb7387163b69f6023ef9f5658182a3bd8e8b5d15cc07f32426b75c94ebf"
+    },
+    "created_at": 1794501416.954667,
     "problem_id": "multi",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,34 +18,126 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20260929T2116Z-picat-0895",
-    "schema": 2,
-    "skill_bundle_hash": "af69b3a1f8f7bef39c3329699413479af027d2d4d554c107d569578acaf82b22",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "6349758252cdf8d0bc71631c157efe55d743038b912f2bc780627c63a8272e69",
+    "run_id": "20261114-picat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "7d7d9ea7c78a9591021b3399025a14f69f372174",
+      "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "d8c844033a146dbc55f9571b6929affc6badcd3bc8fe96c77a521a26987179a4",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:5ea63b9832d8270c8ab826fa631a98480e54b76ff46e38a5ec48e72ce8414e71",
+      "recipe": "sha256:f06a73c33be291578424d0b82082735dcc778ac1de62ed2561dd6d102739f621",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.019794499967247248,
-        "execution_wall_seconds": 3.110147300059907,
+        "checking_seconds": 0.006136788986623287,
+        "execution_wall_seconds": 0.8038928839960136,
         "first_solution": {
           "total_cost": 235
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0,
+            280
+          ],
+          [
+            0.0,
+            277
+          ],
+          [
+            0.0,
+            274
+          ],
+          [
+            0.0,
+            271
+          ],
+          [
+            0.0,
+            268
+          ],
+          [
+            0.0,
+            265
+          ],
+          [
+            0.0,
+            262
+          ],
+          [
+            0.0,
+            259
+          ],
+          [
+            0.0,
+            256
+          ],
+          [
+            0.0,
+            253
+          ],
+          [
+            0.0,
+            250
+          ],
+          [
+            0.0,
+            247
+          ],
+          [
+            0.0,
+            244
+          ],
+          [
+            0.0,
+            241
+          ],
+          [
+            0.0,
+            238
+          ],
+          [
+            0.0,
+            235
+          ]
+        ],
         "instance_hash": "48c6384c415410f40ca3166ad3d44aedfdde91412181d0a3edebeb47ee2d9663",
         "is_optimization": true,
         "oom_killed": false,
@@ -50,9 +146,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2658396000042558,
+        "reference_setup_seconds": 0.3205096760066226,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -62,12 +161,82 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.020409999997355044,
-        "execution_wall_seconds": 20.070543800015002,
+        "checking_seconds": 0.006185141974128783,
+        "execution_wall_seconds": 5.670756960986182,
         "first_solution": {
           "total_cost": 279
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0,
+            313
+          ],
+          [
+            0.0,
+            302
+          ],
+          [
+            0.03,
+            297
+          ],
+          [
+            0.09,
+            296
+          ],
+          [
+            0.15,
+            295
+          ],
+          [
+            0.21,
+            293
+          ],
+          [
+            0.31,
+            292
+          ],
+          [
+            0.42,
+            291
+          ],
+          [
+            0.52,
+            289
+          ],
+          [
+            0.67,
+            288
+          ],
+          [
+            0.87,
+            287
+          ],
+          [
+            1.03,
+            285
+          ],
+          [
+            1.24,
+            284
+          ],
+          [
+            1.46,
+            283
+          ],
+          [
+            1.67,
+            281
+          ],
+          [
+            1.96,
+            280
+          ],
+          [
+            2.24,
+            279
+          ]
+        ],
         "instance_hash": "24ed6557d77094cd59232bb34bb762691d885e6f20936467229d10e358bf61d9",
         "is_optimization": true,
         "oom_killed": false,
@@ -76,9 +245,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.868836099980399,
+        "reference_setup_seconds": 0.37806047697085887,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 4.92,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -88,12 +260,294 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015704500023275614,
-        "execution_wall_seconds": 60.97398350003641,
+        "checking_seconds": 0.00490845600143075,
+        "execution_wall_seconds": 30.213965152041055,
         "first_solution": {
           "total_cost": 544
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0,
+            655
+          ],
+          [
+            0.0,
+            652
+          ],
+          [
+            0.0,
+            649
+          ],
+          [
+            0.0,
+            646
+          ],
+          [
+            0.0,
+            643
+          ],
+          [
+            0.0,
+            640
+          ],
+          [
+            0.0,
+            637
+          ],
+          [
+            0.0,
+            634
+          ],
+          [
+            0.0,
+            631
+          ],
+          [
+            0.0,
+            628
+          ],
+          [
+            0.0,
+            625
+          ],
+          [
+            0.0,
+            622
+          ],
+          [
+            0.0,
+            619
+          ],
+          [
+            0.0,
+            618
+          ],
+          [
+            0.0,
+            615
+          ],
+          [
+            0.0,
+            614
+          ],
+          [
+            0.0,
+            613
+          ],
+          [
+            0.01,
+            612
+          ],
+          [
+            0.01,
+            611
+          ],
+          [
+            0.01,
+            608
+          ],
+          [
+            0.02,
+            607
+          ],
+          [
+            0.02,
+            606
+          ],
+          [
+            0.03,
+            605
+          ],
+          [
+            0.03,
+            604
+          ],
+          [
+            0.04,
+            601
+          ],
+          [
+            0.05,
+            600
+          ],
+          [
+            0.06,
+            599
+          ],
+          [
+            0.06,
+            598
+          ],
+          [
+            0.08,
+            597
+          ],
+          [
+            0.09,
+            594
+          ],
+          [
+            0.1,
+            593
+          ],
+          [
+            0.11,
+            592
+          ],
+          [
+            0.12,
+            591
+          ],
+          [
+            0.14,
+            590
+          ],
+          [
+            0.16,
+            587
+          ],
+          [
+            0.17,
+            586
+          ],
+          [
+            0.19,
+            585
+          ],
+          [
+            0.2,
+            584
+          ],
+          [
+            0.22,
+            583
+          ],
+          [
+            0.25,
+            580
+          ],
+          [
+            0.26,
+            579
+          ],
+          [
+            0.29,
+            578
+          ],
+          [
+            0.3,
+            577
+          ],
+          [
+            0.33,
+            576
+          ],
+          [
+            0.36,
+            573
+          ],
+          [
+            0.38,
+            572
+          ],
+          [
+            0.4,
+            571
+          ],
+          [
+            0.42,
+            570
+          ],
+          [
+            0.45,
+            569
+          ],
+          [
+            0.48,
+            566
+          ],
+          [
+            0.5,
+            565
+          ],
+          [
+            0.52,
+            564
+          ],
+          [
+            0.55,
+            563
+          ],
+          [
+            0.57,
+            562
+          ],
+          [
+            0.6,
+            559
+          ],
+          [
+            0.63,
+            558
+          ],
+          [
+            0.65,
+            557
+          ],
+          [
+            0.67,
+            556
+          ],
+          [
+            0.7,
+            555
+          ],
+          [
+            0.73,
+            554
+          ],
+          [
+            0.76,
+            553
+          ],
+          [
+            0.79,
+            552
+          ],
+          [
+            0.82,
+            551
+          ],
+          [
+            0.84,
+            550
+          ],
+          [
+            3.3,
+            549
+          ],
+          [
+            5.6,
+            548
+          ],
+          [
+            9.26,
+            547
+          ],
+          [
+            13.01,
+            546
+          ],
+          [
+            17.25,
+            545
+          ],
+          [
+            21.53,
+            544
+          ]
+        ],
         "instance_hash": "b39b83202d29bb0c0fa35171f2f599bfa4fb90df0b49acfb594084fe884b44df",
         "is_optimization": true,
         "oom_killed": false,
@@ -102,9 +556,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.045704299933277,
+        "reference_setup_seconds": 0.3327426420291886,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 29.55,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -114,12 +571,162 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013303200015798211,
-        "execution_wall_seconds": 32.704332099994645,
+        "checking_seconds": 0.0038398890173994005,
+        "execution_wall_seconds": 14.986189423012547,
         "first_solution": {
           "total_cost": 293
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0,
+            340
+          ],
+          [
+            0.01,
+            336
+          ],
+          [
+            0.01,
+            332
+          ],
+          [
+            0.02,
+            329
+          ],
+          [
+            0.03,
+            326
+          ],
+          [
+            0.04,
+            325
+          ],
+          [
+            0.05,
+            324
+          ],
+          [
+            0.07,
+            322
+          ],
+          [
+            0.09,
+            321
+          ],
+          [
+            0.12,
+            320
+          ],
+          [
+            0.15,
+            319
+          ],
+          [
+            0.19,
+            318
+          ],
+          [
+            0.22,
+            317
+          ],
+          [
+            0.26,
+            316
+          ],
+          [
+            0.32,
+            315
+          ],
+          [
+            0.38,
+            314
+          ],
+          [
+            0.45,
+            313
+          ],
+          [
+            0.52,
+            312
+          ],
+          [
+            0.59,
+            311
+          ],
+          [
+            0.7,
+            310
+          ],
+          [
+            0.82,
+            309
+          ],
+          [
+            0.94,
+            308
+          ],
+          [
+            1.06,
+            307
+          ],
+          [
+            1.24,
+            306
+          ],
+          [
+            1.44,
+            305
+          ],
+          [
+            1.63,
+            304
+          ],
+          [
+            1.82,
+            303
+          ],
+          [
+            2.11,
+            302
+          ],
+          [
+            2.39,
+            301
+          ],
+          [
+            2.67,
+            300
+          ],
+          [
+            2.95,
+            299
+          ],
+          [
+            3.36,
+            298
+          ],
+          [
+            3.77,
+            297
+          ],
+          [
+            4.19,
+            296
+          ],
+          [
+            4.78,
+            295
+          ],
+          [
+            5.36,
+            294
+          ],
+          [
+            5.95,
+            293
+          ]
+        ],
         "instance_hash": "86382ab5f2ac200fb61ef0c8f637ac81f8aa4ad9ec8d4e2925ae5bc1c382f98a",
         "is_optimization": true,
         "oom_killed": false,
@@ -128,9 +735,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3112406999571249,
+        "reference_setup_seconds": 0.32877432100940496,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 14.35,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -140,9 +750,9 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 7.00005330145359e-07,
+        "checking_seconds": 2.9098009690642357e-07,
         "detail": "The execution budget ran out",
-        "execution_wall_seconds": 180.119429100072,
+        "execution_wall_seconds": 179.68147061299533,
         "id": "json:4",
         "instance_hash": "09286e30e83fd10ea15c8671cf521ada2785b0c858437c3a6be464503cd5cb67",
         "is_optimization": true,
@@ -152,7 +762,7 @@
           "total_cost"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 1.7810928000835702,
+        "reference_setup_seconds": 0.3180775110376999,
         "runner_status": {
           "detail": "The execution budget ran out",
           "status": "timeout",
@@ -167,21 +777,21 @@
     "instances_available": 5,
     "instances_checked": 4,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "0e37205c68a5dcd396ed62e822a807e196c6955e66b27be463d7bdb13bb9978a",
+    "model_hash": "228041b530655279dad9039c197b4be8c41235607247c4ee52b669fc5b443cf9",
     "problem_id": "multi",
     "reason": "accepted",
-    "reference_hash": "94e8c0cf0402af44a7768ab321c7008be41e13be82ea6302256044cc2785781e",
+    "reference_hash": "da7edd83cc42044ab10e122899c3d419c3ad9489c51b398d7bf9cdf54f353c2b",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -194,11 +804,11 @@
     ],
     "solutions_checked": 4,
     "solver_id": "picat",
-    "total_wall_seconds": 309.6740960999159,
+    "total_wall_seconds": 233.44791842403356,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-opus-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pi",

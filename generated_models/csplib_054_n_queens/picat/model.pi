@@ -1,24 +1,49 @@
-% N-queens: place n queens on an n x n board, one in each row, so that no two
-% share a column or a diagonal. queens[i] is the column, 1..n, of the queen in row i.
+% csplib_054_n_queens: a Picat model from DCP Rosetta.
+%
+% Can n queens (of the same color) be placed on an n x n chessboard so that none of the queens can attack
+% each other? A queen attacks the squares on its row, its column and its two diagonals. Find n locations,
+% no two of which are on the same row, column or diagonal.
+%
+% Save this file as model.pi. Download `csplib_054_n_queens.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_054_n_queens.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_054_n_queens.json
+%   picat model.pi csplib_054_n_queens_1.dat
+
+% Data.get(n): the size of the board, which holds n queens.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     Queens = new_list(N),
-    Queens :: 1..N,
-    % no two queens in the same column
-    all_distinct(Queens),
-    % no two queens on the same diagonal: the values queens[i] - i are all
-    % different, and so are queens[i] + i. They are named first, because a
-    % global constraint would compute an expression it is given directly.
-    Down = new_list(N),
+    Queens :: 1..N,                       % Queens[I] is the column of the queen in row I
+    % no two queens are in the same column
+    all_different(Queens),
+    % no two queens are on the same diagonal
     Up = new_list(N),
-    foreach (I in 1..N)
-        Down[I] #= Queens[I] - I,
-        Up[I] #= Queens[I] + I
+    Down = new_list(N),
+    Up :: 2..2*N,
+    Down :: 1-N..N-1,
+    foreach(I in 1..N)
+        Up[I] #= Queens[I] + I,
+        Down[I] #= Queens[I] - I
     end,
-    all_distinct(Down),
-    all_distinct(Up),
+    all_different(Up),
+    all_different(Down),
     Vars = Queens,
     Outputs = [queens = Queens],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

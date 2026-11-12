@@ -1,29 +1,44 @@
-% Giant cat army riddle: start from 0 and extend the list by adding 5, adding 7
-% or taking a square root, so that all 24 numbers are different integers of at
-% most 60, the list holds 2 and later 10, and it ends with 14.
+% giant_cat_army: a Picat model from DCP Rosetta.
+%
+% Start with [0] and build a list by repeatedly adding 5, adding 7, or taking the square root of the last
+% number. The finished list has 24 numbers, all distinct integers of at most 60, and it ends with 14. It must
+% contain 2, then later 10, then 14, with any other numbers allowed between them.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/giant_cat_army.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
+% The riddle reads no data: its numbers are fixed in the model.
 model(_Data, Vars, Outputs, Options) =>
-    % The riddle fixes these numbers; the instance carries no data.
-    MaxValue = 60,
-    N = 24,
-    X = new_list(N),
-    X :: 0..MaxValue,
-    all_distinct(X),
+    MaxValue = 60,                              % every number is at most 60
+    Len = 24,                                   % the list has 24 numbers
+    X = new_list(Len),                          % X[I] is the I-th number of the list
+    X :: 0..MaxValue,                           % integers from 0 to 60
+    % the list starts with 0 and ends with 14
     X[1] #= 0,
-    X[N] #= 14,
-    % each step adds 5, adds 7, or takes the square root: the allowed pairs of
-    % consecutive numbers, as a table
-    Moves = [{V, W} : V in 0..MaxValue, W in 0..MaxValue,
+    X[Len] #= 14,
+    % all the numbers are distinct
+    all_distinct(X),
+    % each number follows the one before it by adding 5, by adding 7, or by taking its square root
+    Steps = [{V, W} : V in 0..MaxValue, W in 0..MaxValue,
              (W == V + 5 ; W == V + 7 ; W * W == V)],
-    foreach (I in 1..N-1)
-        table_in({X[I], X[I + 1]}, Moves)
+    foreach (I in 1..Len-1)
+        table_in({X[I], X[I + 1]}, Steps)
     end,
-    % 2 comes before 10
-    [Ix2, Ix10] :: 1..N,
-    element(Ix2, X, 2),
-    element(Ix10, X, 10),
-    Ix2 #< Ix10,
+    % the list contains 2 and 10, with 2 before 10 (14 is already last)
+    [P2, P10] :: 1..Len,
+    element(P2, X, 2),
+    element(P10, X, 10),
+    P2 #< P10,
     Vars = X,
     Outputs = [x = X],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

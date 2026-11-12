@@ -23,6 +23,7 @@ import time
 
 sys.path.insert(0, "/opt/runner")
 from runtime import emit, finish, strict_loads  # noqa: E402
+from dcp_convert_picat import string, term  # noqa: E402
 
 INPUT = Path("/input")
 PICAT = "/opt/picat/picat"
@@ -39,53 +40,10 @@ TIMING = ("build_seconds", "read_seconds", "main_seconds")
 POLL_SECONDS = 0.1
 
 
-def atom(text):
-    """A quoted Picat atom, which is what every instance key becomes."""
-    return "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
-def string(text):
-    escaped = []
-    for char in text:
-        if char in "\\\"":
-            escaped.append("\\" + char)
-        elif char == "\n":
-            escaped.append("\\n")
-        elif char == "\t":
-            escaped.append("\\t")
-        elif ord(char) < 32:
-            raise ValueError(f"Instance string holds control character {ord(char)}, which has no Picat escape here")
-        else:
-            escaped.append(char)
-    return '"' + "".join(escaped) + '"'
 
 
-def term(value):
-    """The instance value as Picat term text for read_term/1.
-
-    Arrays become lists and objects json_object(Keys, Values), which the driver
-    turns into maps. Picat has no Boolean type, and its constraints read 1 as
-    true, so JSON true and false become 1 and 0.
-    """
-    if isinstance(value, bool):
-        return "1" if value else "0"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ValueError("Instance holds a non-finite number")
-        return repr(value)
-    if isinstance(value, str):
-        return string(value)
-    if value is None:
-        return "null"
-    if isinstance(value, list):
-        return "[" + ", ".join(term(item) for item in value) + "]"
-    if isinstance(value, dict):
-        keys = ", ".join(atom(key) for key in value)
-        values = ", ".join(term(item) for item in value.values())
-        return f"json_object([{keys}], [{values}])"
-    raise ValueError(f"Instance value of type {type(value).__name__} is not JSON")
 
 
 def relay_incumbents(recorded):

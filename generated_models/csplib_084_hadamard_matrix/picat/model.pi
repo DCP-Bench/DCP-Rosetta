@@ -1,23 +1,49 @@
-% Hadamard matrix via Legendre pairs: for an odd l, two sequences a and b of l
-% entries, each +1 or -1 and adding up to 1, whose periodic autocorrelations
-% satisfy PAF(a, s) + PAF(b, s) = -2 for s = 1..(l-1)/2, where
-% PAF(a, s) = sum over i of a[i] * a[i + s], indices taken round the sequence.
-import sat.
+% csplib_084_hadamard_matrix: a Picat model from DCP Rosetta.
+%
+% Legendre pairs for a Hadamard matrix: for an odd length l, find two sequences a and b of l values, each
+% -1 or 1, such that the periodic autocorrelations of a and b add up to -2 at every shift s = 1..m, where
+% m = (l - 1) / 2 and the periodic autocorrelation of a at shift s is the sum over i of a[i] * a[i+s], with
+% i+s taken modulo l. The sum of the values of a is 1 and the sum of the values of b is 1.
+%
+% Save this file as model.pi. Download `csplib_084_hadamard_matrix.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_084_hadamard_matrix.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_084_hadamard_matrix.json
+%   picat model.pi csplib_084_hadamard_matrix_1.dat
+
+% Data.get(l): the odd length of the two sequences.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     L = Data.get(l),
-    M = (L - 1) // 2,
+    M = (L - 1) // 2,                     % the number of shifts to check
     A = new_list(L),
-    A :: [-1, 1],
     B = new_list(L),
+    A :: [-1, 1],
     B :: [-1, 1],
-    sum(A) #= 1,
-    sum(B) #= 1,
+    % the periodic autocorrelations of a and b add up to -2 at every shift s
     foreach (S in 1..M)
-        % the position s places after i, going round
-        Shift = [((I - 1 + S) mod L) + 1 : I in 1..L],
-        sum([A[I] * A[Shift[I]] : I in 1..L]) + sum([B[I] * B[Shift[I]] : I in 1..L]) #= -2
+        sum([A[I] * A[1 + (I + S - 1) mod L] : I in 1..L]) +
+        sum([B[I] * B[1 + (I + S - 1) mod L] : I in 1..L]) #= -2
     end,
-    Vars = A ++ B,
+    % the values of a sum to 1
+    sum(A) #= 1,
+    % the values of b sum to 1
+    sum(B) #= 1,
+    Vars = [A, B],
     Outputs = [a = A, b = B],
-    Options = [].
+    Options = [].                         % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

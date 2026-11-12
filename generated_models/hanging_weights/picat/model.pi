@@ -1,24 +1,45 @@
-% Hanging weights: thirteen weights A-M, each an integer from 1 to 13 and all
-% different, hang from a system of bars that has to balance.
+% hanging_weights: a Picat model from DCP Rosetta.
+%
+% Thirteen weights, A to M, hang from a system of bars that must balance. Each weight is a different integer
+% from 1 to 13. Every bar balances: the weights on either side of its pivot point, each multiplied by its
+% distance from the pivot, are equal. A bar hanging beneath another counts as one weight equal to its total.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
+% The puzzle reads no data: the bars and distances are fixed in the model.
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    W = [A, B, C, D, E, F, G, H, I, J, K, L, M],
+    W = [A, B, C, D, E, F, G, H, I, J, K, L, M],   % the weights
+    % the weights are integers from 1 to 13, all different
     W :: 1..13,
     all_different(W),
-    % Every bar balances: the weights on either side of the pivot, each times its
-    % distance from the pivot, are equal, and a bar hanging beneath another counts
-    % as one weight equal to its total.
+    % the bar holding A and B balances: 4 times A is B
     4 * A #= B,
+    % the bottom right bar balances: 5 times C is D
     5 * C #= D,
+    % the bar holding E and F balances: 3 times E is 2 times F
     3 * E #= 2 * F,
+    % the bar holding G balances against the bar holding C and D: 3 times G is 2 times (C + D)
     3 * G #= 2 * (C + D),
+    % the bar holding J and K, with the bar of A and B on one side and the bar of G, C and D on the other, balances
     3 * (A + B) + 2 * J #= K + 2 * (G + C + D),
+    % the bar holding H and I balances against the bar of E and F: 3 times H is 2 times (E + F) plus 3 times I
     3 * H #= 2 * (E + F) + 3 * I,
+    % the bar holding L and M balances against the bar holding H, I, E and F
     H + I + E + F #= L + 4 * M,
+    % the top bar balances: the left part (L, M, H, I, E, F) at distance 4 against the right part at distance 3
     4 * (L + M + H + I + E + F) #= 3 * (J + K + G + A + B + C + D),
     Vars = W,
     Outputs = [a = A, b = B, c = C, d = D, e = E, f = F, g = G, h = H, i = I,
                j = J, k = K, l = L, m = M],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

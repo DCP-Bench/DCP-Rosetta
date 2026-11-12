@@ -1,14 +1,22 @@
-% Crossfigures: a crossword whose answers are numbers. The 9x9 grid below has black boxes;
-% every white cell holds a digit, and each across and down entry reads as a number. The
-% clues relate the entries to each other (27 across times two, a square number, a prime,
-% ...). The grid and the clues are the problem itself, so they are written out here; this
-% problem has no instance fields. As in the statement, an entry may start with a zero digit.
+% csplib_021_crossfigures: a Picat model from DCP Rosetta.
+%
+% Crossfigures are the numerical equivalent of crosswords: a grid is filled with digits, and every
+% across and down entry (a run of white squares) reads as a number. Clues give each entry's number
+% in words, or in terms of other entries (for example "27 across times two", "a square number",
+% "a prime number", "six gross"). Fill the white squares so that every entry's number satisfies its
+% clue. The grid is a 9 by 9 grid of white and black squares, and the clues are written out in the
+% model below, since this problem has no data.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = 9,
-    MaxValue = 9999,                 % entries have at most 4 digits
-    % Black[r, c] = 1 if the cell is a black box (an invalid cell, shown as 0 in the answer)
+    % every number of an entry has at most four digits
+    MaxValue = 9999,
+    % Black[R][C] = 1 if the square in row R, column C is black (it holds 0 in the answer)
     Black = [[0, 0, 0, 0, 1, 0, 0, 0, 0],
              [0, 0, 1, 0, 0, 0, 1, 0, 0],
              [0, 1, 0, 0, 1, 0, 0, 1, 0],
@@ -18,17 +26,18 @@ model(Data, Vars, Outputs, Options) =>
              [0, 1, 0, 0, 1, 0, 0, 1, 0],
              [0, 0, 1, 0, 0, 0, 1, 0, 0],
              [0, 0, 0, 0, 1, 0, 0, 0, 0]],
-    % entries as {clue number, number of digits, row, column of the first digit}
+    % the across entries as {clue number, number of digits, row, column of the first digit}
     AcrossEntries = [{1, 4, 1, 1}, {4, 4, 1, 6}, {7, 2, 2, 1}, {8, 3, 2, 4}, {9, 2, 2, 8},
                      {10, 2, 3, 3}, {11, 2, 3, 6}, {13, 4, 4, 1}, {15, 4, 4, 6},
                      {17, 4, 6, 1}, {20, 4, 6, 6}, {23, 2, 7, 3}, {24, 2, 7, 6},
                      {25, 2, 8, 1}, {27, 3, 8, 4}, {28, 2, 8, 8}, {29, 4, 9, 1},
                      {30, 4, 9, 6}],
+    % the down entries in the same form
     DownEntries = [{1, 4, 1, 1}, {2, 2, 1, 2}, {3, 4, 1, 4}, {4, 4, 1, 6}, {5, 2, 1, 8},
                    {6, 4, 1, 9}, {10, 2, 3, 3}, {12, 2, 3, 7}, {14, 3, 4, 2}, {16, 3, 4, 8},
                    {17, 4, 6, 1}, {18, 2, 6, 3}, {19, 4, 6, 4}, {20, 4, 6, 6}, {21, 2, 6, 7},
                    {22, 4, 6, 9}, {26, 2, 8, 2}, {28, 2, 8, 8}],
-    % the digits of the grid; a black box holds 0
+    % M[R, C] = the digit of the square in row R, column C (0 on a black square)
     M = new_array(N, N),
     M :: 0..9,
     foreach (R in 1..N, C in 1..N)
@@ -36,7 +45,7 @@ model(Data, Vars, Outputs, Options) =>
             M[R, C] #= 0
         end
     end,
-    % A[k] / D[k] = the number written by the entry of clue k across / down
+    % A[K] / D[K] = the number that the across / down entry of clue K reads
     A = new_array(30),
     D = new_array(30),
     foreach ({K, Len, R, C} in AcrossEntries)
@@ -47,95 +56,96 @@ model(Data, Vars, Outputs, Options) =>
         D[K] :: 0..MaxValue,
         digits_to_number([M[R + I - 1, C] : I in 1..Len], D[K])
     end,
-    % the numbers a clue can ask for: squares and primes that fit in the entries
+    % the numbers that a square or a prime clue can ask for, within the entries
     Squares = [I * I : I in 1..ceiling(sqrt(MaxValue))],
     Primes = [P : P in 2..MaxValue, is_prime(P)],
-    % Across clues
-    % 1  27 across times two
+    % across clues
+    % 1: 27 across times two
     A[1] #= 2 * A[27],
-    % 4  4 down plus seventy-one
+    % 4: 4 down plus seventy-one
     A[4] #= D[4] + 71,
-    % 7  18 down plus four
+    % 7: 18 down plus four
     A[7] #= D[18] + 4,
-    % 8  6 down divided by sixteen
+    % 8: 6 down divided by sixteen
     16 * A[8] #= D[6],
-    % 9  2 down minus eighteen
+    % 9: 2 down minus eighteen
     A[9] #= D[2] - 18,
-    % 10 Dozen in six gross (6 * 144 / 12)
+    % 10: dozen in six gross (six gross is 6 * 144, and a dozen is 12)
     12 * A[10] #= 6 * 144,
-    % 11 5 down minus seventy
+    % 11: 5 down minus seventy
     A[11] #= D[5] - 70,
-    % 13 26 down times 23 across
+    % 13: 26 down times 23 across
     A[13] #= D[26] * A[23],
-    % 15 6 down minus 350
+    % 15: 6 down minus 350
     A[15] #= D[6] - 350,
-    % 17 25 across times 23 across
+    % 17: 25 across times 23 across
     A[17] #= A[25] * A[23],
-    % 20 A square number
+    % 20: a square number
     A[20] :: Squares,
-    % 23 A prime number
+    % 23: a prime number
     A[23] :: Primes,
-    % 24 A square number
+    % 24: a square number
     A[24] :: Squares,
-    % 25 20 across divided by seventeen
+    % 25: 20 across divided by seventeen
     17 * A[25] #= A[20],
-    % 27 6 down divided by four
+    % 27: 6 down divided by four
     4 * A[27] #= D[6],
-    % 28 Four dozen
+    % 28: four dozen
     A[28] #= 4 * 12,
-    % 29 Seven gross
+    % 29: seven gross
     A[29] #= 7 * 144,
-    % 30 22 down plus 450
+    % 30: 22 down plus 450
     A[30] #= D[22] + 450,
-    % Down clues
-    % 1  1 across plus twenty-seven
+    % down clues
+    % 1: 1 across plus twenty-seven
     D[1] #= A[1] + 27,
-    % 2  Five dozen
+    % 2: five dozen
     D[2] #= 5 * 12,
-    % 3  30 across plus 888
+    % 3: 30 across plus 888
     D[3] #= A[30] + 888,
-    % 4  Two times 17 across
+    % 4: two times 17 across
     D[4] #= 2 * A[17],
-    % 5  29 across divided by twelve
+    % 5: 29 across divided by twelve
     12 * D[5] #= A[29],
-    % 6  28 across times 23 across
+    % 6: 28 across times 23 across
     D[6] #= A[28] * A[23],
-    % 10 10 across plus four
+    % 10: 10 across plus four
     D[10] #= A[10] + 4,
-    % 12 Three times 24 across
+    % 12: three times 24 across
     D[12] #= 3 * A[24],
-    % 14 13 across divided by sixteen
+    % 14: 13 across divided by sixteen
     16 * D[14] #= A[13],
-    % 16 28 down times fifteen
+    % 16: 28 down times fifteen
     D[16] #= 15 * D[28],
-    % 17 13 across minus 399
+    % 17: 13 across minus 399
     D[17] #= A[13] - 399,
-    % 18 29 across divided by eighteen
+    % 18: 29 across divided by eighteen
     18 * D[18] #= A[29],
-    % 19 22 down minus ninety-four
+    % 19: 22 down minus ninety-four
     D[19] #= D[22] - 94,
-    % 20 20 across minus nine
+    % 20: 20 across minus nine
     D[20] #= A[20] - 9,
-    % 21 25 across minus fifty-two
+    % 21: 25 across minus fifty-two
     D[21] #= A[25] - 52,
-    % 22 20 down times six
+    % 22: 20 down times six
     D[22] #= 6 * D[20],
-    % 26 Five times 24 across
+    % 26: five times 24 across
     D[26] #= 5 * A[24],
-    % 28 21 down plus twenty-seven
+    % 28: 21 down plus twenty-seven
     D[28] #= D[21] + 27,
     Vars = M,
     Outputs = ['M' = M],
     Options = [].
 
-% Value is the number whose decimal digits, most significant first, are Digits. The place
-% values are worked out first because arithmetic inside a constraint is not evaluated.
+% digits_to_number(Digits, Value): Value is the number whose decimal digits, most significant
+% first, are Digits. The place values are worked out first, since arithmetic inside a constraint
+% is not evaluated.
 digits_to_number(Digits, Value) =>
     Len = len(Digits),
     Weights = [pow10(Len - I) : I in 1..Len],
     Value #= sum([Weights[I] * Digits[I] : I in 1..Len]).
 
-% 10 to the power E (a fixed integer power)
+% pow10(E) = 10 to the power E, for a fixed integer E
 pow10(E) = P =>
     if E == 0 then
         P = 1
@@ -143,7 +153,15 @@ pow10(E) = P =>
         P = 10 * pow10(E - 1)
     end.
 
-% A number is prime when it is at least 2 and has no divisor from 2 up to its square root.
+% is_prime(P): P is at least 2 and has no divisor from 2 up to its square root
 is_prime(P) =>
     P >= 2,
     not (between(2, floor(sqrt(P)), K), P mod K == 0).
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,24 +1,51 @@
-% Discrete tomography: a matrix of zeroes and ones is "x-rayed" along its rows and columns,
-% giving the number of ones in each row and in each column. Reconstruct a matrix that fits
-% those counts.
+% discrete_tomography: a Picat model from DCP Rosetta.
+%
+% A matrix which contains zeroes and ones gets "x-rayed" vertically and horizontally, giving the total number of
+% ones in each row and column. The problem is to reconstruct the contents of the matrix from this information.
+%
+% Save this file as model.pi. Download `discrete_tomography.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/discrete_tomography.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py discrete_tomography.json
+%   picat model.pi discrete_tomography_1.dat
+%
+% Data.get(row_sums): the number of ones in each row; Data.get(col_sums): the number of ones in each column
+% (both lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    RowSums = Data.get(row_sums),         % number of ones wanted in each row
-    ColSums = Data.get(col_sums),         % number of ones wanted in each column
-    R = len(RowSums),
-    C = len(ColSums),
-    % Matrix[i, j] = the entry in row i, column j: 0 or 1
-    Matrix = new_array(R, C),
-    Matrix :: 0..1,
-    % each row has the stated number of ones
-    foreach (I in 1..R)
-        sum([Matrix[I, J] : J in 1..C]) #= RowSums[I]
+    RowSums = Data.get(row_sums),
+    ColSums = Data.get(col_sums),
+    NR = len(RowSums),                     % the number of rows
+    NC = len(ColSums),                     % the number of columns
+    % Matrix[R,C] = 1 when the cell in row R and column C holds a one, 0 otherwise
+    Matrix = [new_list(NC) : _R in 1..NR],
+    foreach (R in 1..NR, C in 1..NC)
+        Matrix[R,C] :: 0..1
     end,
-    % each column has the stated number of ones
-    foreach (J in 1..C)
-        sum([Matrix[I, J] : I in 1..R]) #= ColSums[J]
+    % each row has as many ones as its x-ray shows
+    foreach (R in 1..NR)
+        sum(Matrix[R]) #= RowSums[R]
+    end,
+    % each column has as many ones as its x-ray shows
+    foreach (C in 1..NC)
+        sum([Matrix[R,C] : R in 1..NR]) #= ColSums[C]
     end,
     Vars = Matrix,
     Outputs = [matrix = Matrix],
+    % a satisfaction problem: no objective
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

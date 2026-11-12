@@ -1,23 +1,52 @@
-% Quasigroup completion: complete a partly filled N x N Latin square, so that
-% each of 1..N occurs exactly once in every row and every column.
+% csplib_067_quasigroup_completion: a Picat model from DCP Rosetta.
+%
+% An order m quasigroup is a Latin square of size m: an m x m multiplication table in which each element
+% from 1 to m occurs exactly once in every row and every column. Complete a partially filled quasigroup,
+% in which 0 marks an empty cell.
+%
+% Save this file as model.pi. Download `csplib_067_quasigroup_completion.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_067_quasigroup_completion.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_067_quasigroup_completion.json
+%   picat model.pi csplib_067_quasigroup_completion_1.dat
+
+% Data.get('N'): the order of the quasigroup; Data.get(start): the partially filled table, a list of rows
+% indexed from 1, with 0 for an empty cell.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get('N'),
-    Start = Data.get(start),     % given entries, 0 where a cell is empty
-    Puzzle = new_array(N, N),
-    Puzzle :: 1..N,
-    % the given entries stay
+    Start = Data.get(start),
+    Q = new_array(N, N),                  % Q[I,J] is the entry in row I, column J
+    Q :: 1..N,
+    % each row holds each element from 1 to N exactly once
+    foreach (I in 1..N)
+        all_different([Q[I, J] : J in 1..N])
+    end,
+    % each column holds each element from 1 to N exactly once
+    foreach (J in 1..N)
+        all_different([Q[I, J] : I in 1..N])
+    end,
+    % each filled cell keeps the element it was given
     foreach (I in 1..N, J in 1..N)
-        if Start[I, J] != 0 then
-            Puzzle[I, J] #= Start[I, J]
+        if Start[I, J] > 0 then
+            Q[I, J] #= Start[I, J]
         end
     end,
-    % every row and every column holds each value once
-    foreach (I in 1..N)
-        all_distinct([Puzzle[I, J] : J in 1..N]),
-        all_distinct([Puzzle[J, I] : J in 1..N])
-    end,
-    Vars = Puzzle,
-    Outputs = [puzzle = Puzzle],
-    Options = [ff].
+    Vars = Q,
+    Outputs = [puzzle = Q],
+    Options = [ff].                       % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

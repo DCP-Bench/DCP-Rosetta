@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-opus-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790719352.6042898,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/picat/picat/CONTRACT.md": "84202cb7387163b69f6023ef9f5658182a3bd8e8b5d15cc07f32426b75c94ebf"
+    },
+    "created_at": 1794501421.3213727,
     "problem_id": "session1_money_change",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20260929T2116Z-picat-0895",
-    "schema": 2,
-    "skill_bundle_hash": "af69b3a1f8f7bef39c3329699413479af027d2d4d554c107d569578acaf82b22",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "6349758252cdf8d0bc71631c157efe55d743038b912f2bc780627c63a8272e69",
+    "run_id": "20261114-picat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "7d7d9ea7c78a9591021b3399025a14f69f372174",
+      "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "d8c844033a146dbc55f9571b6929affc6badcd3bc8fe96c77a521a26987179a4",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:5ea63b9832d8270c8ab826fa631a98480e54b76ff46e38a5ec48e72ce8414e71",
+      "recipe": "sha256:f06a73c33be291578424d0b82082735dcc778ac1de62ed2561dd6d102739f621",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.007121400092728436,
-        "execution_wall_seconds": 5.223914799978957,
+        "checking_seconds": 0.0026720570167526603,
+        "execution_wall_seconds": 0.794050664990209,
         "first_solution": {
           "coin_counts": [
             0,
@@ -49,6 +79,12 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0,
+            9
+          ]
+        ],
         "instance_hash": "932091917ca1ca846ab5870bfd163b2e1692efd2cf43afa929c2c0d41744d48b",
         "is_optimization": true,
         "oom_killed": false,
@@ -57,9 +93,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.0889502000063658,
+        "reference_setup_seconds": 0.3964926169719547,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -69,8 +108,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006226399913430214,
-        "execution_wall_seconds": 4.239326800103299,
+        "checking_seconds": 0.0024879139964468777,
+        "execution_wall_seconds": 0.8932686200132594,
         "first_solution": {
           "coin_counts": [
             2,
@@ -79,6 +118,12 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0,
+            8
+          ]
+        ],
         "instance_hash": "219cdd2936bc845e1057acc4906340cccb6c125f85162a557663da8c29a75694",
         "is_optimization": true,
         "oom_killed": false,
@@ -87,9 +132,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.2245905000017956,
+        "reference_setup_seconds": 0.4299688850296661,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -99,8 +147,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008359999977983534,
-        "execution_wall_seconds": 4.706032200017944,
+        "checking_seconds": 0.007772987009957433,
+        "execution_wall_seconds": 0.8465740259853192,
         "first_solution": {
           "coin_counts": [
             1,
@@ -114,6 +162,12 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0,
+            7
+          ]
+        ],
         "instance_hash": "4038d5efcf5b6569111c1d011e0fdff25e7b7830c2ca3c245a83669e63811ff0",
         "is_optimization": true,
         "oom_killed": false,
@@ -122,9 +176,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.6741984001128003,
+        "reference_setup_seconds": 0.4940959749510512,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -134,8 +191,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.00631190009880811,
-        "execution_wall_seconds": 5.829132699989714,
+        "checking_seconds": 0.0025757740368135273,
+        "execution_wall_seconds": 0.7937695360160433,
         "first_solution": {
           "coin_counts": [
             1,
@@ -145,6 +202,12 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0,
+            6
+          ]
+        ],
         "instance_hash": "c5fa34f4edf7de67ff64af59489da3f260a161bf6557fc7aa7a8dc2d55f0f983",
         "is_optimization": true,
         "oom_killed": false,
@@ -153,9 +216,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.533290700055659,
+        "reference_setup_seconds": 0.4257245269836858,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -165,8 +231,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0060004000551998615,
-        "execution_wall_seconds": 3.312446700059809,
+        "checking_seconds": 0.0030163429910317063,
+        "execution_wall_seconds": 0.6932302200002596,
         "first_solution": {
           "coin_counts": [
             2,
@@ -178,6 +244,12 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.0,
+            7
+          ]
+        ],
         "instance_hash": "40322d3ffe670543b8e28a6da8fb6049763148bfd04710851b590e1b0f675313",
         "is_optimization": true,
         "oom_killed": false,
@@ -186,9 +258,12 @@
           "coin_counts"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.586840200005099,
+        "reference_setup_seconds": 0.45583060098579153,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -200,21 +275,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "dd884af42df7e56ea2234528c66ea6ab0978cdd01807042faa922bb0a225bd9d",
+    "model_hash": "6e429f6c0455c931bd066bfb61cf9f890270ab219651b8cfb4f83515ea5ff808",
     "problem_id": "session1_money_change",
     "reason": "accepted",
-    "reference_hash": "f71435a4a8de69c21fcc34df9e9b0d8147f0c8ec1b928c592b426643d7958805",
+    "reference_hash": "c597696712b18169c90b572f71b840e93661fd08969c755fc134709d134fd95f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -225,11 +300,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "picat",
-    "total_wall_seconds": 43.15049769997131,
+    "total_wall_seconds": 6.647275168041233,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-opus-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pi",

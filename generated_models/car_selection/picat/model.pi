@@ -1,25 +1,52 @@
-% Car selection: assign participants to cars they are interested in, each
-% participant to at most one car and each car to at most one participant, with
-% as many assignments as possible.
+% car_selection: a Picat model from DCP Rosetta.
+%
+% Assign participants to cars so as to maximize the total number of assignments. Each participant may
+% be interested in a subset of the cars, and can be assigned only to a car they are interested in.
+% Each participant is assigned to at most one car, and each car is assigned to at most one participant.
+%
+% Save this file as model.pi. Download `car_selection.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/car_selection.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py car_selection.json
+%   picat model.pi car_selection_1.dat
+%
+% Data.get(possible_assignments): possible_assignments[I][J] is 1 when participant I is interested in
+% car J, and 0 otherwise (a list of lists indexed from 1, one row per participant).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Possible = Data.get(possible_assignments),   % 1 when participant i likes car j
-    NP = len(Possible),
-    NC = len(Possible[1]),
-    A = new_array(NP, NC),
-    A :: 0..1,
-    % only cars the participant is interested in
-    foreach (I in 1..NP, J in 1..NC)
-        A[I, J] #=< Possible[I, J]
+    Possible = Data.get(possible_assignments),
+    N = len(Possible),                     % the number of participants
+    M = len(Possible[1]),                  % the number of cars
+    X = new_array(N, M),
+    X :: 0..1,                             % X[I,J] = 1 when participant I is assigned to car J
+    foreach (I in 1..N, J in 1..M)
+        % a participant is assigned only to a car they are interested in
+        X[I,J] #=< Possible[I,J]
     end,
-    % each participant gets at most one car, and each car at most one participant
-    foreach (I in 1..NP)
-        sum([A[I, J] : J in 1..NC]) #=< 1
+    foreach (I in 1..N)
+        % each participant is assigned to at most one car
+        sum([X[I,J] : J in 1..M]) #=< 1
     end,
-    foreach (J in 1..NC)
-        sum([A[I, J] : I in 1..NP]) #=< 1
+    foreach (J in 1..M)
+        % each car is assigned to at most one participant
+        sum([X[I,J] : I in 1..N]) #=< 1
     end,
-    Vars = A,
-    Outputs = [assignments = A],
-    Options = [$max(sum([A[I, J] : I in 1..NP, J in 1..NC]))].
+    Vars = X,
+    Outputs = [assignments = X],
+    % maximize the total number of assignments
+    Options = [$max(sum([X[I,J] : I in 1..N, J in 1..M]))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

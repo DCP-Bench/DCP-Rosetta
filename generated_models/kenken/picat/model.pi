@@ -1,39 +1,65 @@
-% KenKen: fill an n x n grid with the digits 1..n so that every row and every column holds each
-% digit once, and every cage (a group of cells with a target number) achieves its target.
-% A cage of two cells reaches its target by sum, product, difference or exact quotient; any other
-% cage (one cell, or three and more) by the sum or the product of its cells. Digits may repeat
-% inside a cage.
+% kenken: a Picat model from DCP Rosetta.
+%
+% Fill an N x N grid with the digits 1 to N so that each row and each column contains each digit
+% exactly once, and each cage (a group of cells outlined together) achieves its result by an
+% operation that is not given: a cage of one cell holds its digit; a cage of two cells may use
+% addition, subtraction, multiplication or an exact division; a larger cage uses addition or
+% multiplication. Digits may repeat within a cage.
+%
+% Save this file as model.pi. Download `kenken.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/kenken.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py kenken.json
+%   picat model.pi kenken_1.dat
+%
+% Data.get(n): the grid size N; Data.get(problem): the cages, each a list [Result, Cells] where
+% Cells lists the [row, column] of each of its cells (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),
-    Cages = Data.get(problem),           % each cage: [target, [[row, column], ...]], counted from 1
-    % X[i, j] = the digit in row i, column j
+    N = Data.get(n),                       % the grid size
+    Cages = Data.get(problem),
     X = new_array(N, N),
-    X :: 1..N,
-    % each row holds every digit once
-    foreach (I in 1..N)
-        all_different([X[I, J] : J in 1..N])
+    X :: 1..N,                             % X[R, C] = the digit in row R, column C
+    % each row contains each digit exactly once
+    foreach (R in 1..N)
+        all_different([X[R, C] : C in 1..N])
     end,
-    % each column holds every digit once
-    foreach (J in 1..N)
-        all_different([X[I, J] : I in 1..N])
+    % each column contains each digit exactly once
+    foreach (C in 1..N)
+        all_different([X[R, C] : R in 1..N])
     end,
+    % each cage achieves its result with one of the operations allowed for its size
     foreach (Cage in Cages)
-        Target = Cage[1],
-        Cells = Cage[2],
-        Digits = [X[Cell[1], Cell[2]] : Cell in Cells],
-        if len(Cells) == 2 then
-            % two cells A and B: sum, product, A - B or B - A, or one is the target times the other
+        Result = Cage[1],
+        Digits = [X[Cell[1], Cell[2]] : Cell in Cage[2]],
+        if len(Digits) == 1 then
+            Digits[1] #= Result
+        elseif len(Digits) == 2 then
             A = Digits[1],
             B = Digits[2],
-            A + B #= Target #\/ A * B #= Target #\/ A * Target #= B #\/
-            B * Target #= A #\/ A - B #= Target #\/ B - A #= Target
+            % the sum, the difference, the product, or an exact quotient of the two digits
+            A + B #= Result #\/ A - B #= Result #\/ B - A #= Result #\/
+            A * B #= Result #\/ A * Result #= B #\/ B * Result #= A
         else
-            % any other cage: the digits add up to the target or multiply to it
-            sum(Digits) #= Target #\/ prod(Digits) #= Target
+            % the digits of a larger cage add up to the result or multiply to it
+            sum(Digits) #= Result #\/ prod(Digits) #= Result
         end
     end,
     Vars = X,
     Outputs = [x = X],
-    Options = [ff].
+    Options = [ff].                        % label the most constrained cell first
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.
