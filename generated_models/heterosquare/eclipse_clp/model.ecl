@@ -1,56 +1,88 @@
-% Heterosquare of order n (the instance field n): a n*n square x of distinct
-% integers from 1 to n^2 such that the sums of the rows, the columns and the
-% two diagonals are all different from each other.
+% heterosquare: an ECLiPSe model from DCP Rosetta.
+%
+% A heterosquare of order n is an n by n square whose elements are distinct integers from 1 to n*n,
+% such that the sums of its rows, columns and two diagonals are all different from one another.
+%
+% Save this file as model.ecl. Download `heterosquare.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py heterosquare.json
+%   eclipse -b model.ecl -e "run('heterosquare_1.dat'), halt"
 
-:- lib(ic).
+:- lib(gfd).
 :- lib(listut).
 
-model(Instance, Cells, [x-Rows]) :-
-    memberchk(n-N, Instance),
-    NN is N*N,
-    % A square of order n: n rows of n cells.
-    ( for(_, 1, N), foreach(Row, Rows), param(N) do length(Row, N) ),
+% The data field n is the order of the square: n rows and n columns.
+model(Data, Vars, [x-Rows]) :-
+    memberchk(n-N, Data),
+    Max is N * N,
+    % Rows[I][J] is the element in row I and column J
+    length(Rows, N),
+    ( foreach(Row, Rows), param(N, Max) do
+        length(Row, N),
+        ( foreach(V, Row), param(Max) do V :: 1..Max )
+    ),
     flatten(Rows, Cells),
+    % the elements are distinct integers from 1 to n*n
+    alldifferent(Cells),
+    % the sums of the rows
+    ( for(I, 1, N), foreach(S, RowSums), param(Rows) do
+        nth1(I, Rows, Row),
+        sum(Row) #= S
+    ),
+    % the sums of the columns
+    ( for(J, 1, N), foreach(S, ColSums), param(Rows) do
+        column(Rows, J, Col),
+        sum(Col) #= S
+    ),
+    % the sums of the two diagonals: the main one, and the one from the top right corner
+    ( for(I, 1, N), foreach(V, Diag), param(Rows) do
+        nth1(I, Rows, Row),
+        nth1(I, Row, V)
+    ),
+    ( for(I, 1, N), foreach(V, Anti), param(Rows, N) do
+        nth1(I, Rows, Row),
+        K is N + 1 - I,
+        nth1(K, Row, V)
+    ),
+    sum(Diag) #= D1,
+    sum(Anti) #= D2,
+    % the sums of the rows, columns and diagonals are all different
+    append(RowSums, ColSums, RowColSums),
+    append(RowColSums, [D1, D2], Sums),
+    alldifferent(Sums),
+    append(Cells, Sums, Vars).
 
-    % The elements are distinct integers from 1 to n^2.
-    Cells :: 1..NN,
-    all_different_pairs(Cells),
-
-    % The sums of the rows, the columns and the diagonals are all different.
-    column_lists(Rows, N, Cols),
-    diagonal_lists(Rows, N, Diag1, Diag2),
-    append(Rows, Cols, RowsCols),
-    append(RowsCols, [Diag1, Diag2], Lines),
-    sums_of(Lines, Sums),
-    Sums :: 1..N*NN,
-    all_different_pairs(Sums).
-
-search_goal(Vars) :-
-    search(Vars, 0, input_order, indomain_min, complete, []).
-
-all_different_pairs([]).
-all_different_pairs([X|Xs]) :-
-    ( foreach(Y, Xs), param(X) do X #\= Y ),
-    all_different_pairs(Xs).
-
-sums_of(Lines, Sums) :-
-    ( foreach(L, Lines), foreach(S, Sums) do sum(L) #= S ).
-
-column_lists(Rows, N, Cols) :-
-    ( for(J, 1, N), foreach(C, Cols), param(Rows) do
-        column(Rows, J, C)
+% column(Rows, J, Col): Col holds the elements of column J
+column(Rows, J, Col) :-
+    ( foreach(Row, Rows), foreach(V, Col), param(J) do
+        nth1(J, Row, V)
     ).
 
-column(Rows, J, C) :-
-    ( foreach(R, Rows), foreach(X, C), param(J) do nth1(J, R, X) ).
+:- lib(branch_and_bound).
 
-diagonal_lists(Rows, N, Diag1, Diag2) :-
-    ( for(I, 1, N), foreach(X, Diag1), param(Rows) do cell(Rows, I, I, X) ),
-    ( for(I, 1, N), foreach(Y, Diag2), param(Rows, N) do
-        J is N + 1 - I,
-        cell(Rows, I, J, Y)
-    ).
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
 
-cell(Rows, I, J, X) :-
-    nth1(I, Rows, R),
-    nth1(J, R, X).
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

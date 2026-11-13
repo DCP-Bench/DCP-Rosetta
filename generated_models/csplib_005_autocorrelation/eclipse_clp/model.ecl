@@ -1,33 +1,68 @@
-% CSPLib 005: periodic autocorrelation of a binary sequence.
-% Find a sequence of n bits, each +1 or -1, that minimises the sum of the
-% squares of its periodic autocorrelations C_k for k = 1 .. n-1.
+% csplib_005_autocorrelation: an ECLiPSe model from DCP Rosetta.
+%
+% Binary sequence with minimum autocorrelation: construct a binary sequence of length n whose
+% bits are +1 or -1 and that minimizes the autocorrelations between its bits. With periodic
+% (cyclic) boundary conditions, the k-th autocorrelation is C_k = sum over i from 0 to n-1 of
+% S_i * S_((i+k) mod n). The aim is to minimize the sum of their squares, E = sum over k from 1
+% to n-1 of C_k^2.
+%
+% Save this file as model.ecl. Download `csplib_005_autocorrelation.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_005_autocorrelation.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_005_autocorrelation.json
+%   eclipse -b model.ecl -e "run('csplib_005_autocorrelation_1.dat'), halt"
+
+% Field read from the data: n (the length of the sequence).
 
 :- lib(ic).
+:- lib(listut).
 
-% A binary sequence of length n, each bit takes the value +1 or -1.
-% Bits are coded as 0/1 booleans b_i, with s_i = 2*b_i - 1.
-model(Instance, Bs, [sequence-Xs], min(Cost)) :-
+model(Instance, Vars, ['sequence'-Seq], min(Energy)) :-
     memberchk(n-N, Instance),
-    length(Bs, N),
-    Bs :: 0..1,
-    ( foreach(B, Bs), foreach(X, Xs) do
-        X #= 2*B - 1
-    ),
-
-    % The periodic k-th autocorrelation C_k = sum_{i=0}^{n-1} S_i * S_{(i+k) mod n}.
-    % For +-1 bits, S_i * S_j is 1 when the bits are equal and -1 otherwise,
-    % so each product is 2*[b_i = b_j] - 1 and C_k is linear in the equality booleans.
-    % The rotation of the sequence by k gives the partner S_{(i+k) mod n} at position i.
-    ( for(K, 1, N-1), foreach(Sq, Sqs), param(Bs, N) do
-        length(H, K),
-        append(H, T, Bs),
-        append(T, H, Rot),
-        ( foreach(B1, Bs), foreach(B2, Rot), foreach(E, Es) do
-            E #= (B1 #= B2)
+    length(Seq, N),
+    % each bit of the sequence is +1 or -1
+    Seq :: -1..1,
+    ( foreach(Bit, Seq) do Bit #\= 0 ),
+    % C_k is the k-th periodic autocorrelation, and its square is added to the energy
+    ( for(K, 1, N - 1), foreach(Square, Squares), param(Seq, N) do
+        ( for(I, 1, N), foreach(Product, Products), param(Seq, N, K) do
+            nth1(I, Seq, Bi),
+            J is (I - 1 + K) mod N + 1,
+            nth1(J, Seq, Bj),
+            Product #= Bi * Bj
         ),
-        C #= 2*sum(Es) - N,
-
-        % The objective: minimise the sum of the squares of the C_k.
-        Sq #= C*C
+        sum(Products) #= Ck,
+        Square #= Ck * Ck
     ),
-    Cost #= sum(Sqs).
+    % the energy: the sum of the squares of the autocorrelations, to be minimized
+    Energy #= sum(Squares),
+    Vars = Seq.
+
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

@@ -1,16 +1,26 @@
-% General store puzzle: give each letter of the words C H E S A B O W P L a
-% different decimal digit so that the words above the line add up to ALL WOOL.
-% The output names are the letters of the problem statement.
+% general_store: an ECLiPSe model from DCP Rosetta.
+%
+% The owner of a general store, who is something of a puzzlist, has put up a sign to see if any of his mathematical
+% friends can translate it properly. Each different letter stands for a different digit. The words CHESS, CASH, BOWWOW,
+% CHOPS, ALSOPS, PALEALE, COOL, BASS, HOPS, ALES, HOES, APPLES, COWS, CHEESE, CHSOAP and SHEEP add up to ALLWOOL.
+% Leading zeros are allowed: a word may start with the digit 0.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
 
 :- lib(ic).
 
+% The variables are the digits of the letters C, H, E, S, A, B, O, W, P, L; each word is read as the number its digits
+% spell.
 model(_Instance, Vars, Outputs) :-
     Vars = [C, H, E, S, A, B, O, W, P, L],
     Vars :: 0..9,
-    % Each different letter stands for a different digit.
+
+    % each different letter stands for a different digit
     alldifferent(Vars),
 
-    % The words above the horizontal line, each read as the number its digits spell.
+    % the numbers spelled by the words above the line
     NChess   :: 0..99999,
     NCash    :: 0..9999,
     NBowwow  :: 0..999999,
@@ -46,7 +56,7 @@ model(_Instance, Vars, Outputs) :-
     NSheep   #= 10000*S + 1000*H + 100*E + 10*E + P,
     NAllwool #= 1000000*A + 100000*L + 10000*L + 1000*W + 100*O + 10*O + L,
 
-    % The words above the line add up to the total ALL WOOL.
+    % the words above the line add up to ALL WOOL
     NChess + NCash + NBowwow + NChops + NAlsops + NPaleale + NCool + NBass
         + NHops + NAles + NHoes + NApples + NCows + NCheese + NChsoap + NSheep
         #= NAllwool,
@@ -55,3 +65,29 @@ model(_Instance, Vars, Outputs) :-
 
 search_goal(Vars) :-
     search(Vars, 0, first_fail, indomain_min, complete, []).
+
+% Builds the model, solves it and prints each output.
+run :- solve_model([]).
+
+:- lib(branch_and_bound).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

@@ -1,62 +1,79 @@
-% Warehouse Location (CSPLib 034) in ECLiPSe with lib(ic) and lib(listut).
-% Decide which warehouses to open; every store is supplied by exactly one open
-% warehouse within that warehouse's capacity. Minimise the total cost: the
-% maintenance cost of the opened warehouses plus the supply cost of every store.
-% Instance fields: n_suppliers (warehouses), n_stores, building_cost (maintenance
-% cost per opened warehouse), capacity (stores each warehouse can supply),
-% cost_matrix[store][warehouse] (supply cost).
+% csplib_034_warehouse_location: an ECLiPSe model from DCP Rosetta.
+%
+% A company must decide which warehouses to open from a set of candidate locations to supply a set of stores. Each
+% warehouse has a fixed maintenance cost and a capacity limiting the number of stores it can supply. Each store must be
+% supplied by exactly one open warehouse, and there is a supply cost that varies with the store and the warehouse.
+% Minimise the total cost: the maintenance costs of the opened warehouses plus the supply costs of all stores.
+%
+% Save this file as model.ecl. Download `csplib_034_warehouse_location.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_034_warehouse_location.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_034_warehouse_location.json
+%   eclipse -b model.ecl -e "run('csplib_034_warehouse_location_1.dat'), halt"
+%
+% The instance fields: building_cost (the maintenance cost of an open warehouse), capacity (the number of stores each
+% warehouse can supply, indexed from 0), cost_matrix (cost_matrix[S][W] is the supply cost of store S from warehouse W,
+% both indexed from 0), n_stores (the number of stores), n_suppliers (the number of candidate warehouses).
 
 :- lib(ic).
+:- lib(branch_and_bound).
 :- lib(listut).
 
-model(Instance, Vars, Outputs, min(Total)) :-
-    memberchk(n_suppliers-NS, Instance),
-    memberchk(n_stores-NT, Instance),
-    memberchk(building_cost-BC, Instance),
-    memberchk(capacity-Cap, Instance),
-    memberchk(cost_matrix-CM, Instance),
-    MaxW is NS - 1,
-    % open_warehouses: one 0/1 variable per warehouse
-    length(Open, NS),
+% Outputs: total_cost (the minimised cost), open_warehouses (1 when the warehouse is open, indexed from 0) and
+% supplier_assignment (the warehouse of each store, indexed from 0).
+model(Instance, Vars, [total_cost-Total, open_warehouses-Open, supplier_assignment-Assign], min(Total)) :-
+    memberchk(building_cost-Build, Instance),
+    memberchk(capacity-Caps, Instance),
+    memberchk(cost_matrix-Matrix, Instance),
+    memberchk(n_stores-NS, Instance),
+    memberchk(n_suppliers-NW, Instance),
+    length(Open, NW),
     Open :: 0..1,
-    % supplier_assignment: the warehouse (0-based) serving each store
-    length(Assign, NT),
-    Assign :: 0..MaxW,
-    % supply cost of each store, from the cost of its assigned warehouse
-    length(Costs, NT),
-    (
-        foreach(Row, CM), foreach(Cost, Costs), foreach(A, Assign)
-    do
-        Idx #= A + 1,
-        element(Idx, Row, Cost)
+    length(Assign, NS),
+    Assign :: 0..(NW - 1),
+    % the 1-based warehouse index of each store, for use with element/3
+    ( foreach(A, Assign), foreach(Ind, Inds) do Ind #= A + 1 ),
+
+    % each store is supplied by an open warehouse
+    ( foreach(Ind, Inds), param(Open) do element(Ind, Open, 1) ),
+
+    % each warehouse supplies at most its capacity of stores
+    ( for(W, 1, NW), param(Inds, Caps) do
+        nth1(W, Caps, Cap),
+        ( foreach(Ind, Inds), foreach(Bool, Bools), param(W) do Bool #= (Ind #= W) ),
+        sum(Bools) #=< Cap
     ),
-    % a store can only be supplied by a warehouse that is open
-    (
-        foreach(A, Assign), param(Open)
-    do
-        Idx #= A + 1,
-        element(Idx, Open, 1)
+
+    % the supply cost of each store from its warehouse
+    ( foreach(Ind, Inds), foreach(Row, Matrix), foreach(Cost, Costs) do element(Ind, Row, Cost) ),
+
+    % the total cost: the maintenance cost of the open warehouses plus the supply costs of the stores
+    Total #= Build * sum(Open) + sum(Costs),
+    append(Assign, Open, Vars).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-    % every warehouse serves at most its capacity of stores
-    capacity_limits(Cap, 0, Assign),
-    % total cost: maintenance of the open warehouses plus all supply costs
-    Total #= BC * sum(Open) + sum(Costs),
-    append(Open, Assign, Vars),
-    Outputs = [open_warehouses-Open, supplier_assignment-Assign, total_cost-Total].
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
-
-% at most CapW stores are supplied by warehouse W, for each warehouse in turn
-capacity_limits([], _, _).
-capacity_limits([CapW | Caps], W, Assign) :-
-    store_indicators(Assign, W, Bs),
-    sum(Bs) #=< CapW,
-    W1 is W + 1,
-    capacity_limits(Caps, W1, Assign).
-
-% Bs[s] = 1 exactly when store s is supplied by warehouse W
-store_indicators([], _, []).
-store_indicators([A | As], W, [B | Bs]) :-
-    B #= (A #= W),
-    store_indicators(As, W, Bs).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

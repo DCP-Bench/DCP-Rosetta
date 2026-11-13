@@ -1,12 +1,12 @@
 {
   "attempt": {
     "agent": "claude-code (claude-haiku-5-5)",
-    "attempt_id": "attempt-002",
+    "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/eclipse_clp/CONTRACT.md": "0a79c7a17d3b244f132814712c15a00181e75914afd3c2027f68f49d7de06183"
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/eclipse/prolog/CONTRACT.md": "bd8681cdc92c400eaed7117cc1d9767452aba4a687b7610fcdcb35e8035cc9e1"
     },
-    "created_at": 1792316652.6737823,
+    "created_at": 1794511579.870789,
     "problem_id": "mario",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1752abeb97f393db6abeed5d8072314cb019e53ea6cdba6c28e3a7b9f59b8a7c",
-    "run_id": "20261018-eclipse-clp-models",
+    "readiness_hash": "cfdfb4e580d8d8dfb1111022e28e9d77b76a10a62784db90514048871aa99737",
+    "run_id": "20261115-eclipse-standalone",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+      "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "8f2254ed868f92f072796f1a85e20c99a430b5cc47a199e9b804654539cfcc7d",
-        "source": "solvers/eclipse_clp/skills/eclipse-clp",
+        "bundle_hash": "ad3e03eeb677b4fd2fe741fd2c0684c5aa831478c51aa96c18a3266d4ac134b5",
+        "source": "solvers/eclipse/skills/dcp-eclipse",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "solvers/eclipse_clp/skills/eclipse-clp"
+          "path": "solvers/eclipse/skills/dcp-eclipse"
         }
       }
     ],
@@ -52,36 +52,50 @@
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:cb05be3a8ccfa25074fb0739a6fbaa95e7671afbe485c0e2bd825f148cfc1318",
+      "id": "sha256:21e1098608489d31b38d61fd56da549e69e85203e7d8d972164662d7bd30653d",
+      "recipe": "sha256:cf52576ba60077b18b4ccd6f4f723da5eb9baab7ea2bff593be2f6bfe67cffdc",
       "tag": "dcp-eval/eclipse_clp:v1"
     },
     "instances": [
       {
-        "accepted": true,
-        "checking_seconds": 0.1355074580060318,
-        "execution_wall_seconds": 3.386126289027743,
-        "first_solution": {
-          "s": [
-            10,
-            0,
-            7,
-            1,
-            2,
-            5,
-            3,
-            9,
-            8,
-            6,
-            4,
-            11,
-            12,
-            13,
-            14
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 4.780013114213943e-07,
+        "detail": "The execution budget ran out during optimum",
+        "execution_wall_seconds": 181.3733144979924,
         "id": "example",
+        "incumbents": [
+          [
+            0.000757,
+            0
+          ],
+          [
+            0.001325,
+            14
+          ],
+          [
+            0.003436,
+            86
+          ],
+          [
+            0.005725,
+            120
+          ],
+          [
+            3.193193,
+            139
+          ],
+          [
+            3.241223,
+            167
+          ]
+        ],
         "instance_hash": "45dc45b6301a5f0d057b76338952cda29a9d138792f382a0cb56389e51373d07",
         "is_optimization": true,
         "oom_killed": false,
@@ -89,42 +103,85 @@
         "outputs": [
           "s"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.3028437829343602,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.7742949379608035,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 1.4,
-          "status": "complete",
+          "build_seconds": 0.0504889488220215,
+          "detail": "The execution budget ran out during optimum",
+          "main_seconds": 180.006012916565,
+          "read_seconds": 9.70363616943359e-05,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": ""
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "*** Warning: Singleton local variable N in do-loop (not used in loop body)\nin line 54 in file /input/model.ecl\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 60 in file /input/model.ecl\nFile model.ecl, line 60: Singleton variable I\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 72 in file /input/model.ecl\nFile model.ecl, line 72: Singleton variable I\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.34016158897429705,
-        "execution_wall_seconds": 68.3846135539934,
-        "first_solution": {
-          "s": [
-            4,
-            0,
-            7,
-            8,
-            12,
-            14,
-            13,
-            6,
-            9,
-            2,
-            1,
-            11,
-            5,
-            10,
-            3
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 5.629844963550568e-07,
+        "detail": "The execution budget ran out during optimum",
+        "execution_wall_seconds": 181.35595172498142,
         "id": "json:1",
+        "incumbents": [
+          [
+            0.001419,
+            0
+          ],
+          [
+            0.00179,
+            62
+          ],
+          [
+            0.002435,
+            122
+          ],
+          [
+            0.003124,
+            174
+          ],
+          [
+            0.00565,
+            182
+          ],
+          [
+            0.006308,
+            214
+          ],
+          [
+            0.007534,
+            266
+          ],
+          [
+            0.009845,
+            274
+          ],
+          [
+            0.140389,
+            301
+          ],
+          [
+            0.158488,
+            328
+          ],
+          [
+            0.683515,
+            355
+          ],
+          [
+            27.532303,
+            366
+          ],
+          [
+            38.424089,
+            374
+          ],
+          [
+            65.398384,
+            412
+          ]
+        ],
         "instance_hash": "abca4715ef112d076616ecf2dfdee7a790d755ea6ea389e8a7c4825346023acc",
         "is_optimization": true,
         "oom_killed": false,
@@ -132,42 +189,61 @@
         "outputs": [
           "s"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.6880379189969972,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 1.111346990976017,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 66.33,
-          "status": "complete",
+          "build_seconds": 0.0723390579223633,
+          "detail": "The execution budget ran out during optimum",
+          "main_seconds": 179.995972156525,
+          "read_seconds": 0.000105142593383789,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": ""
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "*** Warning: Singleton local variable N in do-loop (not used in loop body)\nin line 54 in file /input/model.ecl\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 60 in file /input/model.ecl\nFile model.ecl, line 60: Singleton variable I\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 72 in file /input/model.ecl\nFile model.ecl, line 72: Singleton variable I\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.14968040899839252,
-        "execution_wall_seconds": 2.8601400420302525,
-        "first_solution": {
-          "s": [
-            11,
-            0,
-            2,
-            12,
-            4,
-            5,
-            1,
-            7,
-            6,
-            9,
-            14,
-            10,
-            8,
-            13,
-            3
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 5.129841156303883e-07,
+        "detail": "The execution budget ran out during optimum",
+        "execution_wall_seconds": 181.3054571839748,
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0008,
+            0
+          ],
+          [
+            0.001048,
+            81
+          ],
+          [
+            0.003334,
+            163
+          ],
+          [
+            0.006209,
+            173
+          ],
+          [
+            0.012902,
+            243
+          ],
+          [
+            0.018618,
+            248
+          ],
+          [
+            0.023679,
+            262
+          ],
+          [
+            0.121522,
+            323
+          ]
+        ],
         "instance_hash": "ed66b214e3467f217dff313ab714f295d4428c1991f759bba889be517770cc16",
         "is_optimization": true,
         "oom_killed": false,
@@ -175,42 +251,113 @@
         "outputs": [
           "s"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.249562269076705,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.7045059059746563,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 0.66,
-          "status": "complete",
+          "build_seconds": 0.0499410629272461,
+          "detail": "The execution budget ran out during optimum",
+          "main_seconds": 180.005396127701,
+          "read_seconds": 6.19888305664062e-05,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": ""
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "*** Warning: Singleton local variable N in do-loop (not used in loop body)\nin line 54 in file /input/model.ecl\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 60 in file /input/model.ecl\nFile model.ecl, line 60: Singleton variable I\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 72 in file /input/model.ecl\nFile model.ecl, line 72: Singleton variable I\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.3390961119439453,
-        "execution_wall_seconds": 3.305355347925797,
-        "first_solution": {
-          "s": [
-            12,
-            0,
-            6,
-            3,
-            4,
-            1,
-            8,
-            10,
-            7,
-            9,
-            14,
-            11,
-            13,
-            2,
-            5
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 3.2800016924738884e-07,
+        "detail": "The execution budget ran out during optimum",
+        "execution_wall_seconds": 180.81510069599608,
         "id": "json:3",
+        "incumbents": [
+          [
+            0.000699,
+            0
+          ],
+          [
+            0.00089,
+            28
+          ],
+          [
+            0.001113,
+            60
+          ],
+          [
+            0.001496,
+            88
+          ],
+          [
+            0.001849,
+            107
+          ],
+          [
+            0.002288,
+            135
+          ],
+          [
+            0.004003,
+            138
+          ],
+          [
+            0.273096,
+            157
+          ],
+          [
+            0.273668,
+            160
+          ],
+          [
+            2.217639,
+            179
+          ],
+          [
+            2.218062,
+            198
+          ],
+          [
+            2.221867,
+            226
+          ],
+          [
+            2.22796,
+            229
+          ],
+          [
+            2.234043,
+            257
+          ],
+          [
+            2.260743,
+            260
+          ],
+          [
+            3.537528,
+            279
+          ],
+          [
+            3.862314,
+            282
+          ],
+          [
+            30.805788,
+            302
+          ],
+          [
+            31.189119,
+            305
+          ],
+          [
+            31.572025,
+            333
+          ],
+          [
+            34.352136,
+            336
+          ]
+        ],
         "instance_hash": "677fa9161d362e07f860a8b682a49a0a0ddbc2e2091fb5b084d053397d355f5d",
         "is_optimization": true,
         "oom_killed": false,
@@ -218,22 +365,25 @@
         "outputs": [
           "s"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 2.709126701927744,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.4911863509914838,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 1.13,
-          "status": "limit",
+          "build_seconds": 0.0387070178985596,
+          "detail": "The execution budget ran out during optimum",
+          "main_seconds": 180.004788160324,
+          "read_seconds": 6.50882720947266e-05,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
-        "stderr": ""
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "*** Warning: Singleton local variable N in do-loop (not used in loop body)\nin line 54 in file /input/model.ecl\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 60 in file /input/model.ecl\nFile model.ecl, line 60: Singleton variable I\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 72 in file /input/model.ecl\nFile model.ecl, line 72: Singleton variable I\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.13186379801481962,
-        "execution_wall_seconds": 1.8129429299151525,
+        "checking_seconds": 0.030953848036006093,
+        "execution_wall_seconds": 1.2004529000259936,
         "first_solution": {
           "s": [
             1,
@@ -248,6 +398,88 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.000346,
+            0
+          ],
+          [
+            0.000451,
+            93
+          ],
+          [
+            0.000569,
+            121
+          ],
+          [
+            0.00072,
+            124
+          ],
+          [
+            0.000906,
+            152
+          ],
+          [
+            0.001079,
+            178
+          ],
+          [
+            0.001199,
+            206
+          ],
+          [
+            0.001354,
+            209
+          ],
+          [
+            0.001562,
+            237
+          ],
+          [
+            0.002467,
+            243
+          ],
+          [
+            0.002714,
+            269
+          ],
+          [
+            0.003083,
+            297
+          ],
+          [
+            0.003477,
+            300
+          ],
+          [
+            0.005158,
+            328
+          ],
+          [
+            0.005583,
+            343
+          ],
+          [
+            0.007289,
+            371
+          ],
+          [
+            0.009129,
+            374
+          ],
+          [
+            0.0154,
+            402
+          ],
+          [
+            0.023166,
+            404
+          ],
+          [
+            0.070013,
+            432
+          ]
+        ],
         "instance_hash": "3959c05938ca4c0be2078b65643bb7b33264fbce3dce3214ca87f679aa758947",
         "is_optimization": true,
         "oom_killed": false,
@@ -256,20 +488,23 @@
           "s"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5697468880098313,
+        "reference_setup_seconds": 0.40421751397661865,
         "runner_status": {
+          "build_seconds": 0.037182092666626,
           "detail": "",
-          "solve_seconds": 0.18,
+          "main_seconds": 0.360562086105347,
+          "read_seconds": 6.60419464111328e-05,
+          "solve_seconds": 0.36,
           "status": "limit",
           "type": "status"
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": ""
+        "stderr": "*** Warning: Singleton local variable N in do-loop (not used in loop body)\nin line 54 in file /input/model.ecl\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 60 in file /input/model.ecl\nFile model.ecl, line 60: Singleton variable I\n*** Warning: Singleton local variable I in do-loop (not used in loop body)\nin line 72 in file /input/model.ecl\nFile model.ecl, line 72: Singleton variable I\n"
       }
     ],
     "instances_available": 5,
-    "instances_checked": 5,
+    "instances_checked": 1,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -277,15 +512,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "e6836ee9156eada997671c48b60cef5b49482a9ec4246f1e049e5d3d6a19eef6",
+    "model_hash": "2cfb929e2a6909f775899edca76e01119ec29a0e205c40c20e5d337dbae1092e",
     "problem_id": "mario",
     "reason": "accepted",
-    "reference_hash": "2e26918d93ea209b0468e71abd4fc62902f4b80e24ecd8c2e46956fd7a6d1d66",
+    "reference_hash": "8a4950bd55eda5101614e8855d4f29f8aac85877b365be071305c879e4f31eaa",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -293,10 +528,15 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 7,
+    "skipped_instances": [
+      "example",
+      "json:1",
+      "json:2",
+      "json:3"
+    ],
+    "solutions_checked": 2,
     "solver_id": "eclipse_clp",
-    "total_wall_seconds": 90.28878799104132,
+    "total_wall_seconds": 730.1191454019863,
     "unperformed_instances": []
   },
   "generated_by": {

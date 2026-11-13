@@ -4,6 +4,10 @@ Drives the repository evaluator against real containers, prints a JSON object
 mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver eclipse_clp` runs this and keeps
 its output as the readiness evidence.
+
+`standalone_run` and `standalone_run_no_data` are what a reader does: run dcp_convert_ecl.py on a list of
+instances (the dataset file's form), then `eclipse -b model.ecl -e "run('<data file>'), halt"` in the image, once per
+file, with the run block the contract gives, and read the answer it prints. The converter runs in the image too.
 """
 import json
 from pathlib import Path
@@ -13,7 +17,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from evaluation import evaluate, improving_incumbents
-from evaluation.execution import image_identity
+from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
 SOLVER = "eclipse_clp"
@@ -70,7 +74,15 @@ ISOLATED = HEADER + (
     "    open('/proc/self/status', read, S),\n"
     "    read_string(S, \"\", _, Status),\n"
     "    close(S),\n"
-    "    substring(Status, \"Uid:\\t65534\\t65534\\t65534\\t65534\", _),\n"
+    "    open('/proc/self/uid_map', read, M),\n"
+    "    read_string(M, \"\", _, UidMap),\n"
+    "    close(M),\n"
+    "    % unprivileged on the host: Docker runs as nobody; rootless podman without a subuid range can only run as\n"
+    "    % container root, which maps to the invoking user (the uid map is not the identity)\n"
+    "    (   substring(Status, \"Uid:\\t65534\\t65534\\t65534\\t65534\", _)\n"
+    "    ;   substring(Status, \"Uid:\\t0\\t0\\t0\\t0\", _),\n"
+    "        \\+ substring(UidMap, \"0          0 4294967295\", _)\n"
+    "    ),\n"
     "    \\+ exists('/dataset'),\n"
     "    read_directory('/input', \"*\", _, Files),\n"
     "    msort(Files, [First, Second]),\n"
@@ -313,6 +325,73 @@ MAKESPAN = HEADER + (
     "    no_overlap(Rest).\n")
 
 
+RUN_BLOCK = """
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+RUN_ENTRY
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).
+"""
+RUN_DATA = RUN_BLOCK.replace("RUN_ENTRY", """run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).""")
+RUN_NO_DATA = RUN_BLOCK.replace("RUN_ENTRY", "run :- solve_model([]).")
+NO_DATA_MODEL = HEADER + ("model(_, [X, Y], [x-X, y-Y]) :-\n"
+                          "    [X, Y] #:: 0..2,\n"
+                          "    X + Y #= 2.\n")
+STANDALONE_INSTANCES = [{"n": 2, "optimize": False}, {"n": 3, "optimize": True}]
+ECLIPSE = "/opt/eclipse/lib/x86_64_linux/eclipse.exe"
+
+
+def standalone_run(temp, with_data):
+    """The reader's path, in the image: convert a list of instances with dcp_convert_ecl.py, then run the model's
+    `run/1` on each data file (or `run/0` for a model with no data)."""
+    staging = temp / ("standalone_data" if with_data else "standalone_no_data")
+    staging.mkdir()
+    (staging / "model.ecl").write_text((GOOD + RUN_DATA) if with_data else (NO_DATA_MODEL + RUN_NO_DATA),
+                                       encoding="utf-8")
+    goals = ["run"]
+    if with_data:
+        (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+        goals = [f"run('instances_{i}.dat')" for i in range(1, len(STANDALONE_INSTANCES) + 1)]
+    staging.chmod(0o777)
+    for path in staging.iterdir():
+        path.chmod(0o666)
+    script = ("python /opt/runner/dcp_convert_ecl.py instances.json >/dev/null && " if with_data else "") + " && ".join(
+        f"{ECLIPSE} -b model.ecl -e \"{goal}, halt\" </dev/null" for goal in goals)
+    code, out, err = run_process([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+        "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+        "--mount", f"type=bind,source={staging},target=/w",
+        "--workdir=/w", "--env=HOME=/tmp", "--entrypoint", "sh",
+        integration(SOLVER)["image"], "-c", script], 300)
+    if code or out.count("x = ") != len(goals) or out.count("y = ") != len(goals):
+        print((err or out)[-400:], file=sys.stderr)
+        return False
+    return True
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -354,6 +433,10 @@ def main():
                   reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
             and check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "min(X + Y - 10)"),
                       reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
+        # a standalone model carries a run block (run/1, solve_model/1, run_search/2); the driver ignores it
+        check("run_block_ignored", GOOD + RUN_DATA)
+        results["standalone_run"] = standalone_run(temp, True)
+        results["standalone_run_no_data"] = standalone_run(temp, False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

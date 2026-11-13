@@ -1,75 +1,62 @@
-% Ternary Steiner problem (csplib_044_steiner), ECLiPSe with lib(ic).
-% Find a set of n(n-1)/6 triples of distinct elements from 1..n such that any two
-% triples have at most one common element. The output sets[i][j] is 1 when element j
-% is part of triple i. n is read from the instance.
+% csplib_044_steiner: an ECLiPSe model from DCP Rosetta.
+%
+% The ternary Steiner problem of order n consists of finding a set of n(n-1)/6 triples of distinct integer elements in
+% {1, ..., n} such that any two triples have at most one common element.
+%
+% Save this file as model.ecl. Download `csplib_044_steiner.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_044_steiner.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_044_steiner.json
+%   eclipse -b model.ecl -e "run('csplib_044_steiner_1.dat'), halt"
+%
+% The instance field: n (the order of the Steiner system).
 
 :- lib(ic).
-:- lib(listut).
-:- lib(lists).
+:- lib(branch_and_bound).
 
+% Output sets: Rows[T][E] is 1 when element E (counting from 1) is part of triple T.
 model(Instance, Vars, [sets-Rows]) :-
     memberchk(n-N, Instance),
-    T is N*(N-1)//6,
+    T is N * (N - 1) // 6,                 % the number of triples
     length(Rows, T),
-    % Each triple is a row of a 0/1 matrix over the n elements, with exactly three elements.
-    ( foreach(R, Rows), param(N) do
-        length(R, N),
-        R :: 0..1,
-        sum(R) #= 3
-    ),
+    ( foreach(Row, Rows), param(N) do length(Row, N) ),
+    flatten(Rows, Vars),
+    Vars :: 0..1,
+
+    % each triple has three distinct elements
+    ( foreach(Row, Rows) do sum(Row) #= 3 ),
+
     % any two triples have at most one common element
-    share_at_most_one(Rows),
-    % every pair of elements lies in exactly one triple (implied by the counts, stated for propagation)
-    cover_pairs(Rows, N),
-    % every element lies in (n-1)/2 triples (implied by the pair condition, stated for propagation)
-    degrees(Rows, N),
-    % labelling order: element by element
-    columns(Rows, N, Vars).
-
-columns(Rows, N, Vars) :-
-    ( for(K, 1, N), foreach(Col, ColLists), param(Rows) do
-        ( foreach(R, Rows), foreach(X, Col), param(K) do
-            nth1(K, R, X)
-        )
-    ),
-    flatten(ColLists, Vars).
-
-degrees(Rows, N) :-
-    ( for(K, 1, N), param(Rows, N) do
-        ( foreach(R, Rows), foreach(X, Col), param(K) do
-            nth1(K, R, X)
-        ),
-        sum(Col) #= (N-1)//2
-    ).
-
-share_at_most_one([]).
-share_at_most_one([R|Rs]) :-
-    ( foreach(R2, Rs), param(R) do
-        shared_at_most_one(R, R2)
-    ),
-    share_at_most_one(Rs).
-
-shared_at_most_one(R1, R2) :-
-    ( foreach(X, R1), foreach(Y, R2), foreach(P, Ps) do
-        P #= X*Y
-    ),
-    sum(Ps) #=< 1.
-
-cover_pairs(Rows, N) :-
-    ( for(K, 1, N), param(Rows, N) do
-        K1 is K+1,
-        ( for(L, K1, N), param(Rows, K) do
-            pair_once(Rows, K, L)
+    ( fromto(Rows, [RowA|Later], Later, []) do
+        ( foreach(RowB, Later), param(RowA) do
+            ( foreach(XA, RowA), foreach(XB, RowB), foreach(P, Ps) do P #= XA * XB ),
+            sum(Ps) #=< 1
         )
     ).
 
-pair_once(Rows, K, L) :-
-    ( foreach(R, Rows), foreach(P, Ps), param(K, L) do
-        nth1(K, R, XK),
-        nth1(L, R, XL),
-        P #= XK*XL
-    ),
-    sum(Ps) #= 1.
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_max, complete, []).
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

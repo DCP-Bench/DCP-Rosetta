@@ -1,50 +1,67 @@
-% Ages of the sons: an old man has three sons. Find their ages (oldest first)
-% from the puzzle clues. Outputs A1 >= A2 >= A3 are the ages of the sons.
+% ages_of_the_sons: an ECLiPSe model from DCP Rosetta.
+%
+% An old man asked a mathematician to guess the ages of his three sons. The product of their ages is 36. The
+% mathematician needs more information. The sum of their ages equals the number of windows in a building he can
+% see; the mathematician still needs more information. The oldest son has blue eyes, and then the mathematician
+% knows the ages. What are the ages of the three sons, starting from the oldest?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
 
+% This problem has no instance data: the model reads nothing from the instance.
 :- lib(ic).
 
-% All ages triples (oldest first) whose product is 36. This is the search space
-% the first clue leaves open; it is built from the description, not from an answer.
-candidates(Cands) :-
-    findall(t(P, Q, R),
-            ( rng(1, 36, P), rng(1, P, Q), rng(1, Q, R),
-              P * Q * R =:= 36 ),
-            Cands).
+model(_Instance, [A1, A2, A3], ['A1'-A1, 'A2'-A2, 'A3'-A3]) :-
+    % the sums of the ages that more than one set of three ages can give, with product 36
+    ambiguous_sums(Sums),
+    % the ages are whole numbers, at least 1, and listed from the oldest
+    [A1, A2, A3] #:: 1..36,
+    A1 #>= A2, A2 #>= A3,
+    % the product of their ages is 36
+    A1 * A2 * A3 #= 36,
+    % the sum of their ages is one of the ambiguous sums, so the mathematician still needs more information
+    Total #= A1 + A2 + A3,
+    Total #:: Sums,
+    % the oldest son is older than the other two, so there is one oldest son
+    A1 #> A2.
 
-% rng(Lo, Hi, X): X runs over Lo..Hi (between/3 is not in the ECLiPSe image).
-rng(L, H, L) :- L =< H.
-rng(L, H, X) :- L < H, L1 is L + 1, rng(L1, H, X).
+% All sets of three ages (oldest first) with product 36, and then the sums that more than one set gives.
+ambiguous_sums(Sums) :-
+    findall(S, (age_between(1, 36, A), age_between(1, A, B), age_between(1, B, C),
+                A * B * C =:= 36, S is A + B + C), AllSums),
+    sort(AllSums, Distinct),
+    findall(S, (age_member(S, Distinct), findall(S, age_member(S, AllSums), Same), Same = [_, _ | _]), Sums).
 
-model(_Instance, [Idx], ['A1'-X1, 'A2'-X2, 'A3'-X3], none) :-
-    candidates(Cands),
-    length(Cands, K),
-    findall(P, member(t(P, _, _), Cands), Ps),
-    findall(Q, member(t(_, Q, _), Cands), Qs),
-    findall(R, member(t(_, _, R), Cands), Rs),
-    findall(S, ( member(t(P, Q, R), Cands), S is P + Q + R ), Sums),
-    % 1 when that triple has a unique oldest son (P > Q), else 0
-    findall(U, ( member(t(P, Q, _), Cands), ( P > Q -> U = 1 ; U = 0 ) ), Us),
-    findall(I, rng(1, K, I), Is),
-    Idx :: 1..K,
-    element(Idx, Ps, X1),
-    element(Idx, Qs, X2),
-    element(Idx, Rs, X3),
-    element(Idx, Sums, Sum),
-    % The sum of their ages equals the number of windows, which is not given,
-    % so Sum is free apart from the clues below.
+% X ranges over the integers Low..High
+age_between(Low, High, Low) :- Low =< High.
+age_between(Low, High, X) :- Low < High, Low1 is Low + 1, age_between(Low1, High, X).
 
-    % The mathematician said: "I need more information."
-    % The sum does not identify the triple: at least two triples share it.
-    length(Bs, K),
-    ( foreach(Sk, Sums), foreach(Bk, Bs), param(Sum) do
-        Bk #= (Sk #= Sum)
+age_member(X, [X | _]).
+age_member(X, [_ | Xs]) :- age_member(X, Xs).
+
+:- lib(branch_and_bound).
+
+% Reads nothing, builds the model, solves it and prints each output.
+run :- solve_model([]).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-    sum(Bs) #>= 2,
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-    % The oldest son has blue eyes. The mathematician said: "I got it."
-    % The oldest son is unique, and among the triples with this sum and a
-    % unique oldest son, only one is left (the chosen one).
-    element(Idx, Us, 1),
-    ( foreach(Sk, Sums), foreach(Uk, Us), foreach(Ik, Is), param(Sum, Idx) do
-        ( (Uk #= 1) and (Sk #= Sum) ) => (Ik #= Idx)
-    ).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

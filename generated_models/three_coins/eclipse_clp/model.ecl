@@ -1,45 +1,79 @@
-% Three coins: three coins lie on a table in the order tails, heads, tails.
-% In precisely three moves make them face either all heads or all tails.
-% Each move consists of choosing one coin and flipping it over.
-% steps[t][i] is 1 for tails and 0 for heads: row t is the state after t moves.
+% three_coins: an ECLiPSe model from DCP Rosetta.
+%
+% Three coins lie on a table in the order tails, heads, tails. In precisely three moves, make them all face
+% heads or all face tails. Each move consists of choosing one coin and flipping it over.
+%
+% Save this file as model.ecl. Download `three_coins.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py three_coins.json
+%   eclipse -b model.ecl -e "run('three_coins_1.dat'), halt"
+
+% init: the starting faces of the three coins, 1 for tails and 0 for heads.
+% num_moves: the number of moves.
+
 :- lib(ic).
 :- lib(lists).
 
-model(Instance, Vars, [steps-Rows]) :-
+% Steps: the faces of the three coins before the first move and after each move, 1 for tails and 0 for heads.
+model(Instance, Vars, [steps-Steps]) :-
     memberchk(init-Init, Instance),
-    memberchk(num_moves-M, Instance),
-    length(Init, C),
-    T is M + 1,
-    length(Rows, T),
-    ( foreach(Row, Rows), param(C) do
-        length(Row, C),
-        Row :: 0..1
+    memberchk(num_moves-Moves, Instance),
+    NumConfigs is Moves + 1,
+    length(Steps, NumConfigs),
+    Steps = [Init | _],                   % the first configuration is the starting one
+    ( foreach(Config, Steps) do
+        length(Config, 3),
+        Config :: 0..1
     ),
-    % the first state is the initial configuration
-    Rows = [Init | _],
-    % each move consists of choosing one coin and flipping it over
-    moves(Rows),
-    % in precisely three moves make them face either all heads or all tails
-    last_row(Rows, Last),
-    Last = [F | Rest],
-    ( foreach(X, Rest), param(F) do
-        X #= F
+    % each move flips exactly one coin
+    one_coin_per_move(Steps),
+    % at the end all three coins face the same way
+    final_config(Steps, [First | Others]),
+    ( foreach(C, Others), param(First) do
+        C #= First
     ),
-    flatten(Rows, Vars).
+    append(Steps, Vars).
 
-% consecutive states differ by exactly one flipped coin
-moves([_]).
-moves([A, B | Rest]) :-
-    one_flip(A, B),
-    moves([B | Rest]).
+% Last is the last configuration of the list Steps
+final_config([Last], Last).
+final_config([_ | Rest], Last) :-
+    final_config(Rest, Last).
 
-one_flip(A, B) :-
-    ( foreach(X, A), foreach(Y, B), foreach(D, Ds) do
-        D #= abs(X - Y)
+% each move, from one configuration to the next, changes the face of exactly one coin
+one_coin_per_move([_]).
+one_coin_per_move([Before, After | Rest]) :-
+    ( foreach(B, Before), foreach(A, After), foreach(D, Diffs) do
+        D #= (B #\= A)
     ),
-    Ds :: 0..1,
-    sum(Ds) #= 1.
+    sum(Diffs) #= 1,
+    one_coin_per_move([After | Rest]).
 
-last_row([R], R).
-last_row([_ | T], R) :-
-    last_row(T, R).
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

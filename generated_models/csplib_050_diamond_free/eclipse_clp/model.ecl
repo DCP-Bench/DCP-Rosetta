@@ -1,96 +1,96 @@
-% csplib_050_diamond_free: diamond-free graph with a given degree sequence.
+% csplib_050_diamond_free: an ECLiPSe model from DCP Rosetta.
 %
-% Given N, find a simple undirected graph on the vertices 1..N whose degree sequence
-% d_1 >= d_2 >= ... >= d_N has every degree greater than zero and divisible by 3, whose
-% degree sum is divisible by 12, and which has no diamond (no four vertices spanning
-% at least five edges). Output: the adjacency matrix, as 0/1 leaves read as Booleans.
+% Find a simple undirected graph on N vertices (no loops, at most one edge between two vertices) that is diamond-free:
+% no set of four vertices has five or more edges between them. Every vertex has a degree that is greater than zero and
+% divisible by 3, and the sum of the degrees is divisible by 12.
+%
+% Save this file as model.ecl. Download `csplib_050_diamond_free.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_050_diamond_free.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_050_diamond_free.json
+%   eclipse -b model.ecl -e "run('csplib_050_diamond_free_1.dat'), halt"
+%
+% The instance field: N (the number of vertices).
 
 :- lib(ic).
-:- lib(lists).
+:- lib(branch_and_bound).
 :- lib(listut).
 
-model(Instance, Vars, [matrix-Rows], none) :-
+% Output matrix: Rows[I][J] is 1 when vertices I and J (counting from 1) are adjacent.
+model(Instance, Vars, [matrix-Rows]) :-
     memberchk('N'-N, Instance),
     length(Rows, N),
-    % The adjacency matrix holds 0 or 1 in every cell.
-    matrix_domains(Rows, N),
-    % A simple graph has no loop edges, and an edge {u,v} is one entry seen from both ends.
-    simple_undirected(1, N, Rows),
-    flatten(Rows, Vars),
-    % Each degree is greater than zero and divisible by 3, so d_i = 3 * D_i with D_i >= 1.
-    MaxD is (N - 1) // 3,
-    degree_variables(Rows, Ds, MaxD),
-    % The degrees are ordered: d_i >= d_{i+1}.
-    ordered_desc(Ds),
-    % The sum of the degrees is divisible by 12, that is, sum(D_i) is divisible by 4.
-    sum(Ds) #= 4 * Q,
-    MaxSum is N * MaxD,
-    Q :: 0..MaxSum,
-    % A diamond is four vertices with at least five edges between them; a diamond-free
-    % graph has at most four edges among any four vertices.
-    no_diamonds(Rows, N).
+    ( foreach(Row, Rows), param(N) do length(Row, N) ),
 
-matrix_domains([], _).
-matrix_domains([Row|Rows], N) :-
-    length(Row, N),
-    Row :: 0..1,
-    matrix_domains(Rows, N).
+    % the adjacency matrix: no loops, and symmetric; the edge {I, J} is a 0/1 variable
+    ( for(I, 1, N), param(Rows, N) do
+        ( for(J, 1, N), param(Rows, I) do
+            nth1(I, Rows, RowI),
+            nth1(J, RowI, X),
+            (   I =:= J -> X = 0
+            ;   I < J -> X :: 0..1, nth1(J, Rows, RowJ), nth1(I, RowJ, X)
+            ;   true
+            )
+        )
+    ),
+    flatten(Rows, Cells),
+    Vars = Cells,
 
-% Row I has a 0 on the diagonal, and entry (I,J) equals entry (J,I).
-simple_undirected(I, N, _) :- I > N, !.
-simple_undirected(I, N, Rows) :-
-    nth1(I, Rows, RowI),
-    nth1(I, RowI, 0),
-    I1 is I + 1,
-    symmetric_from(I1, I, N, Rows),
-    simple_undirected(I1, N, Rows).
+    % each vertex has a degree that is greater than zero and divisible by 3
+    ( foreach(Row, Rows), foreach(D, Degrees), foreach(Q, Quotients), param(N) do
+        sum(Row) #= D,
+        D #= 3 * Q,
+        Q :: 1..N
+    ),
 
-symmetric_from(J, _, N, _) :- J > N, !.
-symmetric_from(J, I, N, Rows) :-
-    nth1(I, Rows, RowI),
-    nth1(J, Rows, RowJ),
-    nth1(J, RowI, X),
-    nth1(I, RowJ, X),
-    J1 is J + 1,
-    symmetric_from(J1, I, N, Rows).
+    % the sum of the degrees is divisible by 12
+    sum(Degrees) #= 12 * K,
+    K :: 0..N * N,
 
-% Each degree is 3 * D_i, where the row sum is the degree of that vertex.
-degree_variables([], [], _).
-degree_variables([Row|Rows], [D|Ds], MaxD) :-
-    D :: 1..MaxD,
-    sum(Row) #= 3 * D,
-    degree_variables(Rows, Ds, MaxD).
-
-% The degrees are non-increasing.
-ordered_desc([]).
-ordered_desc([_]) :- !.
-ordered_desc([D1, D2|Ds]) :-
-    D1 #>= D2,
-    ordered_desc([D2|Ds]).
-
-% Diamond-free: among any four vertices A < B < C < D at most four of the six edges are present.
-no_diamonds(Rows, N) :-
-    N4 is N - 3,
-    ( for(A, 1, N4), param(Rows, N) do
-        A1 is A + 1,
-        N3 is N - 2,
-        ( for(B, A1, N3), param(Rows, N, A) do
-            B1 is B + 1,
-            N2 is N - 1,
-            ( for(C, B1, N2), param(Rows, N, A, B) do
-                C1 is C + 1,
-                ( for(D, C1, N), param(Rows, A, B, C) do
-                    no_diamond4(Rows, A, B, C, D)
+    % diamond-free: any four vertices have at most four edges between them
+    ( for(A, 1, N), param(Rows, N) do
+        ( for(B, 1, N), param(Rows, A, N) do
+            ( for(C, 1, N), param(Rows, A, B, N) do
+                ( for(D, 1, N), param(Rows, A, B, C) do
+                    (   A < B, B < C, C < D
+                    ->  cell(Rows, A, B, E1), cell(Rows, A, C, E2), cell(Rows, A, D, E3),
+                        cell(Rows, B, C, E4), cell(Rows, B, D, E5), cell(Rows, C, D, E6),
+                        sum([E1, E2, E3, E4, E5, E6]) #=< 4
+                    ;   true
+                    )
                 )
             )
         )
     ).
 
-no_diamond4(Rows, A, B, C, D) :-
-    edge(Rows, A, B, X1), edge(Rows, A, C, X2), edge(Rows, A, D, X3),
-    edge(Rows, B, C, X4), edge(Rows, B, D, X5), edge(Rows, C, D, X6),
-    X1 + X2 + X3 + X4 + X5 + X6 #=< 4.
+% the entry of the matrix in row I and column J
+cell(Rows, I, J, X) :-
+    nth1(I, Rows, Row),
+    nth1(J, Row, X).
 
-edge(Rows, I, J, X) :-
-    nth1(I, Rows, RowI),
-    nth1(J, RowI, X).
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

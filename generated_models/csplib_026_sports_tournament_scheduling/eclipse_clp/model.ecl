@@ -1,89 +1,85 @@
-% Sports tournament scheduling (CSPLib 026).
-% N teams play over N-1 weeks. Each week has N/2 periods of two slots: the first
-% team in a slot plays at home, the second plays away.
-% Every team plays once a week; every team plays at most twice in the same period
-% over the tournament; every team plays every other team.
+% csplib_026_sports_tournament_scheduling: an ECLiPSe model from DCP Rosetta.
+%
+% Schedule a tournament of n teams over n-1 weeks, each week divided into n/2 periods, and each period divided into two
+% slots. The first team in each slot plays at home, whilst the second plays the first team away. Every team plays once
+% a week, every team plays at most twice in the same period over the tournament, and every team plays every other team.
+%
+% Save this file as model.ecl. Download `csplib_026_sports_tournament_scheduling.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_026_sports_tournament_scheduling.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_026_sports_tournament_scheduling.json
+%   eclipse -b model.ecl -e "run('csplib_026_sports_tournament_scheduling_1.dat'), halt"
+%
+% The instance field: n_teams (the number of teams, n).
 
 :- lib(ic).
-:- lib(ic_global).
-:- lib(ic_mdd).
-:- lib(listut).
-:- import alldifferent/1 from ic_global.
+:- lib(branch_and_bound).
 
-model(Instance, Vars, [home-HomeRows, away-AwayRows]) :-
+% Outputs home and away: home[W][P] (away[W][P]) is the team playing at home (away) in week W, period P, counting from 1.
+model(Instance, Vars, [home-Home, away-Away]) :-
     memberchk(n_teams-N, Instance),
-    W is N - 1,
-    P is N // 2,
-    M is N * (N - 1) // 2,
-    make_matrix(W, P, HomeRows),
-    make_matrix(W, P, AwayRows),
-    make_matrix(W, P, PairRows),
-    flatten(HomeRows, HomeFlat),
-    flatten(AwayRows, AwayFlat),
-    flatten(PairRows, PairFlat),
-    HomeFlat :: 1..N,
-    AwayFlat :: 1..N,
-    PairFlat :: 1..M,
+    W is N - 1,                            % the number of weeks
+    P is N // 2,                           % the number of periods in each week
+    length(Home, W),
+    ( foreach(Row, Home), param(P) do length(Row, P) ),
+    length(Away, W),
+    ( foreach(Row, Away), param(P) do length(Row, P) ),
+    flatten(Home, HomeCells),
+    flatten(Away, AwayCells),
+    append(HomeCells, AwayCells, Vars),
+    Vars :: 1..N,
 
-    % every team plays once a week
-    week_alldiff(HomeRows, AwayRows),
+    % the two teams of a slot are different, and the unordered pair of teams of each game gets a code
+    ( foreach(H, HomeCells), foreach(A, AwayCells), foreach(Pid, Pids), param(N) do
+        H #\= A,
+        Lo #= min(H, A),
+        Hi #= max(H, A),
+        Pid #= (Lo - 1) * N + Hi
+    ),
 
-    % every team plays every other team
-    % (each unordered pair of teams gets its own index, and each index is used once)
-    pair_tuples(N, PairTuples),
-    post_cells(HomeFlat, AwayFlat, PairFlat, PairTuples),
-    alldifferent(PairFlat),
+    % every team plays once a week: the 2P slots of each week hold each team exactly once
+    ( foreach(HR, Home), foreach(AR, Away) do
+        append(HR, AR, Week),
+        alldifferent(Week)
+    ),
+
+    % every team plays every other team: each pair of teams occurs in exactly one game
+    alldifferent(Pids),
 
     % every team plays at most twice in the same period over the tournament
-    period_limits(P, N, HomeRows, AwayRows),
-
-    append(HomeFlat, AwayFlat, HA),
-    append(HA, PairFlat, Vars).
-
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
-
-make_matrix(W, P, Rows) :-
-    length(Rows, W),
-    ( foreach(R, Rows), param(P) do length(R, P) ).
-
-week_alldiff([], []).
-week_alldiff([Hr|Hs], [Ar|As]) :-
-    append(Hr, Ar, Week),
-    alldifferent(Week),
-    week_alldiff(Hs, As).
-
-% all unordered pairs I < J, each with an index K, as tuples [home, away, K] in both orders
-pair_tuples(N, Rows) :-
-    interval(1, N, Teams),
-    findall(I-J, (member(I, Teams), I1 is I + 1, interval(I1, N, Js), member(J, Js)), Pairs),
-    number_pairs(Pairs, 1, Rows).
-
-interval(L, H, []) :- L > H, !.
-interval(L, H, [L|Xs]) :- L1 is L + 1, interval(L1, H, Xs).
-
-number_pairs([], _, []).
-number_pairs([I-J|Ps], K, [[I, J, K], [J, I, K]|Rs]) :-
-    K1 is K + 1,
-    number_pairs(Ps, K1, Rs).
-
-% each cell (home, away, pair index) must be one of the allowed tuples
-post_cells([], [], [], _).
-post_cells([H|Hs], [A|As], [Q|Qs], Rows) :-
-    table([[H, A, Q]], Rows),
-    post_cells(Hs, As, Qs, Rows).
-
-column([], _, []).
-column([R|Rs], P, [X|Xs]) :-
-    nth1(P, R, X),
-    column(Rs, P, Xs).
-
-period_limits(P, N, HomeRows, AwayRows) :-
-    ( for(Pc, 1, P), param(N, HomeRows, AwayRows) do
-        column(HomeRows, Pc, HC),
-        column(AwayRows, Pc, AC),
-        append(HC, AC, Col),
-        ( for(T, 1, N), param(Col) do
-            atmost(2, Col, T)
+    ( for(Period, 1, P), param(Home, Away, N) do
+        ( foreach(HR, Home), foreach(X, HCol), param(Period) do element(Period, HR, X) ),
+        ( foreach(AR, Away), foreach(Y, ACol), param(Period) do element(Period, AR, Y) ),
+        append(HCol, ACol, Col),
+        ( for(Team, 1, N), param(Col) do
+            ( foreach(C, Col), foreach(B, Bs), param(Team) do B #= (C #= Team) ),
+            sum(Bs) #=< 2
         )
     ).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

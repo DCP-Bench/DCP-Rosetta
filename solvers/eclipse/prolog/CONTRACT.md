@@ -30,7 +30,8 @@ the default labelling of `Vars`; it is where `search/6` goes, for example
 `search_goal(Vars) :- search(Vars, 0, first_fail, indomain_min, complete, []).` It must be
 a complete search and must not call `bb_min`, `minimize` or any optimisation of its own.
 A `model/3` or `model/4` that fails is reported as `unsat`. Predicates named `dcp_*` belong
-to the driver; do not define them.
+to the driver; do not define them. A standalone model also defines `run/1` (or `run/0`), `solve_model/1` and
+`run_search/2` (see [Standalone run](#standalone-run)); the driver never calls them.
 
 ## Instance
 
@@ -170,6 +171,79 @@ ad hoc run, override the entrypoint: `docker run --rm --network none --entrypoin
 - The driver's own state lives in `user` (`dcp_main/0`, `dcp_*` predicates and the
   `dcp_count`, `dcp_seen` variables); `model/3`, `model/4` and `search_goal/1` are the
   only names it reads from you.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header comment: the problem
+statement, where the data comes from and the commands that run it. The data is converted by
+[dcp_convert_ecl.py](dcp_convert_ecl.py), the same file the runner imports, which the model's page offers beside the
+instances: it writes `<problem>_1.dat`, `<problem>_2.dat`, ... (one ECLiPSe term per instance, the `Instance` of
+`model/3`), and the model ends with a run block that reads one, builds the model, solves it and prints the outputs:
+
+```prolog
+% <problem>: an ECLiPSe model from DCP Rosetta.
+%
+% <the problem statement, as below>
+%
+% Save this file as model.ecl. Download `<problem>.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py <problem>.json
+%   eclipse -b model.ecl -e "run('<problem>_1.dat'), halt"
+```
+
+```prolog
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).
+```
+
+`minimize/2` (branch and bound) leaves the optimal solution and its outputs bound; the driver does the same through
+its own search. **A problem with no instance data** (the instance is `{}`) has a shorter header with no download or
+convert line, `eclipse -b model.ecl -e "run, halt"` to run it, and the same block with `run :- solve_model([]).` in
+place of `run/1`:
+
+```prolog
+% <problem>: an ECLiPSe model from DCP Rosetta.
+%
+% <the problem statement>
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them (never a narrowing: "any
+two landings", not "consecutive landings"), no longer than needed: no instruction about printing and no remark about
+the instance. A comment after the header says what each field the model reads holds (`values-Values`: the value of
+each item, a list indexed from 0), since the instance is a list of pairs, not declared parameters. The run block is
+the same in every model apart from the no-data form. A model that must be quick for a reader as well gives each
+variable a finite domain and uses a global constraint rather than pairwise `#\=`.
 
 ## Example
 

@@ -1,69 +1,70 @@
-% Farmer and cows: a farmer has a number of cows, numbered 1 up to the total
-% number of cows, and cow i gives i units of milk. He has a number of sons and
-% distributes his cows to them according to a given distribution. The total
-% milk of each son must be the same. Output cow_assignments: index = cow
-% (0-based, cow index+1 is the cow number), value = son (0-based).
+% session3_farmer_and_cows: an ECLiPSe model from DCP Rosetta.
+%
+% A farmer has cows numbered from 1 up to the number of cows, and each cow gives a quantity of milk equal to its
+% number. He has several sons, and each son is to get a given number of cows, so that the total milk of the cows
+% of each son is the same. Find how the cows can be distributed to the sons.
+%
+% Save this file as model.ecl. Download `session3_farmer_and_cows.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_farmer_and_cows.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py session3_farmer_and_cows.json
+%   eclipse -b model.ecl -e "run('session3_farmer_and_cows_1.dat'), halt"
+
+% num_cows: the number of cows.
+% num_sons: the number of sons.
+% cows_per_son: the number of cows given to each son, indexed from 0 as in the JSON.
 
 :- lib(ic).
+:- lib(lists).
 :- lib(listut).
 
-model(Instance, Vars, [cow_assignments-Assign], none) :-
-    memberchk(num_cows-N, Instance),
-    memberchk(num_sons-S, Instance),
-    memberchk(cows_per_son-Dist, Instance),
-    S1 is S - 1,
-    Total is N*(N+1)//2,
-    length(Assign, N),
-    Assign :: 0..S1,
-    % Cols[i][j] = 1 when cow i+1 goes to son j (one 0/1 flag per cow and son)
-    ( for(_, 1, N), foreach(Col, Cols), param(S) do
-        length(Col, S),
-        Col :: 0..1
-    ),
-    % every cow goes to exactly one son, and its son number is the flag's index
-    ( foreach(Col, Cols), foreach(X, Assign) do
-        sum(Col) #= 1,
-        cow_son(Col, X)
-    ),
-    % each son receives the number of cows given by the distribution
-    ( for(J, 0, S1), foreach(D, Dist), param(Cols) do
-        son_column(Cols, J, Bs),
-        sum(Bs) #= D
-    ),
-    % all sons receive the same milk: the milk of each son times the number
-    % of sons is the milk of all cows
-    ( for(J, 0, S1), param(Cols, S, Total) do
-        son_column(Cols, J, Bs),
-        milk_of(Bs, M),
-        S * M #= Total
-    ),
-    % the flags are grouped by son, one son after the other, largest cows first
-    ( for(J, 0, S1), foreach(Group, Groups), param(Cols) do
-        son_column(Cols, J, Bs),
-        reverse(Bs, Group)
-    ),
-    flatten(Groups, Vars).
-
-% labelling of the 0/1 flags: the flags of one son are fixed before the next son
-search_goal(Vars) :-
-    search(Vars, 0, input_order, indomain_max, complete, []).
-
-% the son of a cow, as a number, from its 0/1 flags
-cow_son(Col, X) :-
-    ( foreach(B, Col), count(J, 0, _), fromto(0, A0, A1, Sum) do
-        A1 #= A0 + J * B
-    ),
-    X #= Sum.
-
-% the flags of all cows for son J
-son_column(Cols, J, Bs) :-
-    ( foreach(Col, Cols), foreach(B, Bs), param(J) do
-        nth0(J, Col, B)
+% Son: the son (counted from 0) that each cow goes to, one entry per cow, starting with cow 1.
+model(Instance, Son, [cow_assignments-Son]) :-
+    memberchk(num_cows-NC, Instance),
+    memberchk(num_sons-NS, Instance),
+    memberchk(cows_per_son-Counts, Instance),
+    length(Son, NC),
+    MaxSon is NS - 1,
+    Son :: 0..MaxSon,
+    numlist(1, NC, Cows),                 % cow i gives i units of milk
+    % the milk of all the cows is shared out equally between the sons
+    Total is NC * (NC + 1) // 2,
+    0 =:= Total mod NS,
+    Share is Total // NS,
+    % each son gets the number of cows given for him, and his cows give the common share of milk
+    ( for(S, 0, MaxSon), param(Son, Counts, Cows, Share, NC) do
+        nth0(S, Counts, Count),
+        length(Mine, NC),
+        ( foreach(Sc, Son), foreach(F, Mine), param(S) do F #= (Sc #= S) ),
+        sum(Mine) #= Count,
+        Cows * Mine #= Share
     ).
 
-% the milk of a son with cow flags Bs, cow i+1 gives i+1 units
-milk_of(Bs, M) :-
-    ( foreach(B, Bs), count(I, 1, _), fromto(0, A0, A1, Sum) do
-        A1 #= A0 + I * B
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-    M #= Sum.
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

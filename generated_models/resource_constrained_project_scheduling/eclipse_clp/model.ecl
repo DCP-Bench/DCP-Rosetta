@@ -1,133 +1,119 @@
-% Resource-constrained project scheduling (RCPSP).
-% The jobs have durations and a need for each renewable resource. Each resource
-% has a capacity that the jobs running at the same time must not exceed.
-% Precedence arcs [Pred, Succ] say that Succ starts only after Pred has finished.
-% Jobs are 0-based; the first and last jobs are dummy jobs of duration 0.
-% Find the start time of every job that minimises the makespan.
+% resource_constrained_project_scheduling: an ECLiPSe model from DCP Rosetta.
+%
+% The resource-constrained project scheduling problem involves scheduling a set of jobs, each with a specific duration
+% and resource requirement, such that the total project duration (makespan) is minimized. Each job may have precedence
+% constraints, meaning certain jobs must be completed before others can start. Additionally, there are multiple types
+% of resources, each with a limited capacity that must not be exceeded at any time. Given the durations of the jobs,
+% their resource requirements, the capacities of the resources, and the precedence constraints between the jobs,
+% determine the start times of the jobs that minimize the makespan while satisfying all constraints.
+%
+% Save this file as model.ecl. Download `resource_constrained_project_scheduling.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/resource_constrained_project_scheduling.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py resource_constrained_project_scheduling.json
+%   eclipse -b model.ecl -e "run('resource_constrained_project_scheduling_1.dat'), halt"
+%
+% The data fields, lists indexed from 0 as in the JSON: durations_data[J] is the duration of job J;
+% resource_needs_data[J][R] is the amount of resource R that job J needs; resource_capacities_data[R] is the capacity
+% of resource R; successors_link_data holds pairs [I, J] meaning that job I must be completed before job J starts.
 
 :- lib(ic).
-:- lib(ic_edge_finder3).
+:- lib(ic_edge_finder).
 :- lib(branch_and_bound).
-:- lib(listut).
-:- lib(lists).
 
+% Output start_time: the start time of each job, from 0.
 model(Instance, Vars, [start_time-Starts], min(Makespan)) :-
-    memberchk(durations_data-Ds, Instance),
+    memberchk(durations_data-Durations, Instance),
+    memberchk(resource_capacities_data-Capacities, Instance),
     memberchk(resource_needs_data-Needs, Instance),
-    memberchk(resource_capacities_data-Caps, Instance),
-    memberchk(successors_link_data-Arcs, Instance),
-    length(Ds, N),
-    length(Caps, R),
-    ( foreach(D, Ds), fromto(0, A, B, Horizon) do B is A + D ),
-    length(Starts, N),
+    memberchk(successors_link_data-Links, Instance),
+    length(Durations, NumJobs),
+    length(Starts, NumJobs),
+    total_of(Durations, Horizon),
+
+    % a job starts within the horizon, the sum of all durations
     Starts :: 0..Horizon,
     Makespan :: 0..Horizon,
 
-    % every job finishes at its start time plus its duration
-    ( foreach(S, Starts), foreach(D, Ds), foreach(E, Ends) do E #= S + D ),
+    % a job starts only after the jobs that must be completed before it
+    precedences(Links, Starts, Durations),
 
-    % precedence: the successor starts after the predecessor has finished
-    ( foreach([P, Q], Arcs), param(Starts, Ds) do
-        nth0(P, Starts, SP),
-        nth0(P, Ds, DP),
-        nth0(Q, Starts, SQ),
-        SP + DP #=< SQ
+    % at no time does the use of a resource exceed its capacity
+    length(Capacities, NumResources),
+    ( for(R, 1, NumResources), param(Starts, Durations, Needs, Capacities) do
+        column_items(Needs, R, Demands),
+        nth_item(R, Capacities, Capacity),
+        cumulative(Starts, Durations, Demands, Capacity)
     ),
 
-    % resource capacity: at every time, the demand of the running jobs stays within capacity
-    % (jobs with zero duration or zero demand cannot take capacity and are left out)
-    ( for(K, 1, R), param(Starts, Ds, Needs, Caps) do
-        ( foreach(S, Starts), foreach(D, Ds), foreach(Row, Needs), param(K),
-          fromto([], S0, S1, Ss), fromto([], D0, D1, Dd), fromto([], V0, V1, Vv) do
-            nth1(K, Row, V),
-            ( D > 0, V > 0 -> S1 = [S|S0], D1 = [D|D0], V1 = [V|V0]
-            ; S1 = S0, D1 = D0, V1 = V0 )
-        ),
-        nth1(K, Caps, Cap),
-        cumulative(Ss, Dd, Vv, Cap)
+    % the makespan is at least the end of every job
+    ( foreach(S, Starts), foreach(D, Durations), param(Makespan) do
+        S + D #=< Makespan
     ),
 
-    % redundant: jobs that cannot run together form cliques; the jobs of a clique run one after the other
-    ( for(I, 0, N - 1), foreach(Row, Adj), param(N, Ds, Needs, Caps) do
-        nth0(I, Ds, DI), nth0(I, Needs, RI),
-        ( for(J, 0, N - 1), foreach(F, Row), param(I, DI, RI, Ds, Needs, Caps) do
-            nth0(J, Ds, DJ), nth0(J, Needs, RJ),
-            ( I \== J, DI > 0, DJ > 0, conflict(RI, RJ, Caps) -> F = 1 ; F = 0 )
-        )
-    ),
-    % the pairs that conflict are ordered one way or the other
-    ( for(K, 0, N - 1), foreach(K, Idx) do true ),
-    findall(I-J, ( member(I, Idx), member(J, Idx), I < J, nth0(I, Adj, RowI), nth0(J, RowI, 1) ), Edges),
-    ( foreach(I-J, Edges), foreach(Bo, Bs), param(Starts, Ds, Horizon) do
-        nth0(I, Starts, SI), nth0(I, Ds, DI), nth0(J, Starts, SJ), nth0(J, Ds, DJ),
-        Bo :: 0..1,
-        SI + DI #=< SJ + Horizon * (1 - Bo),
-        SJ + DJ #=< SI + Horizon * Bo
-    ),
-    append(Bs, Starts, Vs0),
-    append(Vs0, [Makespan], Vars),
-    clique_cover(Adj, N, Cliques),
-    ( foreach(Cl, Cliques), param(Starts, Ds) do
-        ( foreach(K, Cl), foreach(SK, Sc), foreach(DK, Dc), param(Starts, Ds) do
-            nth0(K, Starts, SK), nth0(K, Ds, DK)
-        ),
-        disjunctive(Sc, Dc)
-    ),
+    app(Starts, [Makespan], Vars).
 
-    % makespan: no job ends after it
-    ( foreach(E, Ends), param(Makespan) do
-        Makespan #>= E
-    ),
+% the jobs I and J of each pair [I, J]: job J starts after job I has finished
+precedences([], _, _).
+precedences([[I, J] | Links], Starts, Durations) :-
+    I1 is I + 1,
+    J1 is J + 1,
+    nth_item(I1, Starts, SI),
+    nth_item(I1, Durations, DI),
+    nth_item(J1, Starts, SJ),
+    SI + DI #=< SJ,
+    precedences(Links, Starts, Durations).
 
-    % makespan: the resource requirements of all jobs, divided by the resource capacity, bound the makespan from below
-    ( for(K, 1, R), param(Ds, Needs, Caps, Makespan) do
-        ( foreach(D, Ds), foreach(Row, Needs), param(K), fromto(0, A, B, Energy) do
-            nth1(K, Row, V),
-            B is A + D * V
-        ),
-        nth1(K, Caps, Cap),
-        LB is (Energy + Cap - 1) // Cap,
-        Makespan #>= LB
-    ).
+% the amount of resource R (counting from 1) that each job needs
+column_items([], _, []).
+column_items([Row | Rows], R, [D | Ds]) :-
+    nth_item(R, Row, D),
+    column_items(Rows, R, Ds).
 
-conflict(RI, RJ, Caps) :-
-    ( foreach(A, RI), foreach(B, RJ), foreach(C, Caps), foreach(F, Flags) do
-        ( A + B > C -> F = 1 ; F = 0 )
-    ),
-    memberchk(1, Flags).
+% the sum of a list of numbers
+total_of([], 0).
+total_of([X | Xs], S) :-
+    total_of(Xs, S0),
+    S is X + S0.
 
+% the I-th item of a list, counting from 1
+nth_item(1, [X | _], X) :- !.
+nth_item(I, [_ | Xs], X) :-
+    I > 1,
+    I1 is I - 1,
+    nth_item(I1, Xs, X).
+
+app([], Ys, Ys).
+app([X | Xs], Ys, [X | Zs]) :-
+    app(Xs, Ys, Zs).
+
+% the search picks the variable with the fewest candidate values first and tries the lowest value first
 search_goal(Vars) :-
     search(Vars, 0, first_fail, indomain_min, complete, []).
 
-% greedy cover of all incompatible pairs by cliques (data-derived)
-clique_cover(Adj, N, Cliques) :-
-    N1 is N - 1,
-    ( for(I, 0, N1), fromto([], C0, C1, Cliques), fromto([], V0, V1, _), param(Adj, N1) do
-        nth0(I, Adj, Row),
-        ( for(J, I + 1, N1), fromto(C0-V0, CV0, CV1, C1-V1), param(I, Row, Adj, N1) do
-            nth0(J, Row, F),
-            CV0 = Cs0-Cov0,
-            ( F =:= 1, \+ memberchk(I-J, Cov0) ->
-                grow([I, J], Adj, N1, Mem0),
-                msort(Mem0, Mem),
-                pairs_of(Mem, Ps),
-                append(Ps, Cov0, Cov1),
-                CV1 = [Mem|Cs0]-Cov1
-            ; CV1 = CV0 )
-        )
-    ).
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
 
-grow(Mem0, Adj, N1, Mem) :-
-    ( for(K, 0, N1), fromto(Mem0, M0, M1, Mem), param(Adj) do
-        ( \+ memberchk(K, M0), all_adjacent(K, M0, Adj) -> M1 = [K|M0] ; M1 = M0 )
-    ).
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-all_adjacent(K, Mem, Adj) :-
-    nth0(K, Adj, Row),
-    ( foreach(M, Mem), param(Row) do nth0(M, Row, 1) ).
-
-pairs_of([], []).
-pairs_of([X|Xs], Ps) :-
-    ( foreach(Y, Xs), foreach(X-Y, Ps0), param(X) do true ),
-    pairs_of(Xs, Ps1),
-    append(Ps0, Ps1, Ps).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

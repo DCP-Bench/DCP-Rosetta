@@ -27,6 +27,7 @@ import time
 
 sys.path.insert(0, "/opt/runner")
 from runtime import emit, finish  # noqa: E402
+from dcp_convert_ecl import term  # noqa: E402
 
 INPUT = Path("/input")
 DRIVER = "/opt/runner/driver.ecl"
@@ -46,58 +47,8 @@ RELAYED = ("solve_seconds", "build_seconds", "read_seconds", "main_seconds")
 POLL_SECONDS = 0.1
 
 
-def quoted(text, quote):
-    """ECLiPSe quoted text: backslash escapes for the quote, backslash and controls."""
-    pieces = [quote]
-    for char in text:
-        if char in (quote, "\\"):
-            pieces.append("\\" + char)
-        elif char == "\n":
-            pieces.append("\\n")
-        elif char == "\t":
-            pieces.append("\\t")
-        elif ord(char) < 32 or ord(char) == 127:
-            pieces.append("\\%03o\\" % ord(char))
-        else:
-            pieces.append(char)
-    pieces.append(quote)
-    return "".join(pieces)
 
 
-def term(value):
-    """The ECLiPSe term for a JSON value.
-
-    Integers (bignums too) and floats are numbers, true/false/null the atoms of
-    those names, strings ECLiPSe strings, arrays lists, and objects lists of
-    Key-Value pairs with atom keys. Pairs are written as -(Key, Value) so no
-    operator declaration is needed to read them.
-    """
-    if value is True:
-        return "true"
-    if value is False:
-        return "false"
-    if value is None:
-        return "null"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ValueError(f"Non-finite number in the instance: {value}")
-        text = repr(value)
-        if "e" in text:
-            mantissa, exponent = text.split("e")
-            if "." not in mantissa:
-                mantissa += ".0"
-            text = f"{mantissa}e{int(exponent)}"
-        return text
-    if isinstance(value, str):
-        return quoted(value, '"')
-    if isinstance(value, list):
-        return "[" + ", ".join(term(item) for item in value) + "]"
-    if isinstance(value, dict):
-        return "[" + ", ".join(f"-({quoted(key, chr(39))}, {term(item)})"
-                               for key, item in value.items()) + "]"
-    raise ValueError(f"Cannot convert {type(value).__name__} to an ECLiPSe term")
 
 
 def read_text(path, limit=2000):

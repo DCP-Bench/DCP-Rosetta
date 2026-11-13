@@ -1,55 +1,76 @@
-% Age changing: find my age m and my husband's age h (both in years).
-% Start with my age and apply the four operations +2, /8, -3, *7 in some order:
-% the final answer is his age h. Start with his age and apply the same four
-% operations in a different order: the final answer is my age m.
+% age_changing: an ECLiPSe model from DCP Rosetta.
+%
+% Start with my age, in years, and apply the four operations +2, /8, -3 and *7 in some order: the final answer is my
+% husband's age. Start with his age and apply the same four operations in a different order: the final answer is my
+% age. Both ages are between 16 and 120, and every intermediate result is a positive integer, so a division by 8 must
+% be exact. What are our two ages?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
 
+% This problem has no instance data: the model reads nothing from the instance.
+% M is my age and H is my husband's age.
 :- lib(ic).
 
-model(_Instance, Vars, [h-H, m-M]) :-
-    % the two ages, whole years
-    M :: 0..100000,
-    H :: 0..100000,
+model(_Instance, [M, H], [m-M, h-H]) :-
+    % both ages are between 16 and 120
+    M #:: 16..120,
+    H #:: 16..120,
+    % the four operations, each used once
+    Ops = [plus2, div8, minus3, times7],
+    % the order in which the operations are applied to my age to get his
+    age_order(Ops, Order1),
+    % a different order of the same operations applied to his age to get mine
+    age_order(Ops, Order2),
+    Order1 \== Order2,
+    age_chain(Order1, M, H),
+    age_chain(Order2, H, M).
 
-    % the order of the operations for my age and for his age
-    % (codes: 1 is +2, 2 is /8, 3 is -3, 4 is *7); each order uses every operation once
-    Oa = [A1, A2, A3, A4],
-    Ob = [B1, B2, B3, B4],
-    Oa :: 1..4,
-    Ob :: 1..4,
-    alldifferent(Oa),
-    alldifferent(Ob),
+% apply the steps of an order, one after the other, from the start value X to the final value Y
+age_chain([], X, X).
+age_chain([Op | Ops], X, Y) :-
+    age_step(Op, X, Z),
+    age_chain(Ops, Z, Y).
 
-    % the second order is a different order from the first
-    ( A1 #\= B1 ) or ( A2 #\= B2 ) or ( A3 #\= B3 ) or ( A4 #\= B4 ),
+% each step gives a positive integer; a division by 8 must be exact
+age_step(plus2, X, Z) :- Z #= X + 2, Z #>= 1.
+age_step(div8, X, Z) :- X #= 8 * Z, Z #>= 1.
+age_step(minus3, X, Z) :- Z #= X - 3, Z #>= 1.
+age_step(times7, X, Z) :- Z #= 7 * X, Z #>= 1.
 
-    % intermediate values of the chain from my age to his age
-    X1 :: -100000..100000,
-    X2 :: -100000..100000,
-    X3 :: -100000..100000,
+% an order of the operations: the list Ys is Xs in some order
+age_order([], []).
+age_order(Xs, [X | Ys]) :-
+    age_pick(X, Xs, Rest),
+    age_order(Rest, Ys).
 
-    % intermediate values of the chain from his age to my age
-    Y1 :: -100000..100000,
-    Y2 :: -100000..100000,
-    Y3 :: -100000..100000,
+age_pick(X, [X | Xs], Xs).
+age_pick(X, [Y | Xs], [Y | Ys]) :-
+    age_pick(X, Xs, Ys).
 
-    % start with my age, apply the four operations in the order Oa, the end is h
-    step(A1, M, X1),
-    step(A2, X1, X2),
-    step(A3, X2, X3),
-    step(A4, X3, H),
+:- lib(branch_and_bound).
 
-    % start with his age, apply the four operations in the order Ob, the end is m
-    step(B1, H, Y1),
-    step(B2, Y1, Y2),
-    step(B3, Y2, Y3),
-    step(B4, Y3, M),
+% Reads nothing, builds the model, solves it and prints each output.
+run :- solve_model([]).
 
-    Vars = [A1, A2, A3, A4, B1, B2, B3, B4, M, H, X1, X2, X3, Y1, Y2, Y3].
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-% one operation: C selects it (1 +2, 2 /8, 3 -3, 4 *7), Y is X after it
-% /8 is exact: X must be 8 times Y, so the division leaves no remainder
-step(C, X, Y) :-
-    (C #= 1) => (Y #= X + 2),
-    (C #= 2) => (X #= 8 * Y),
-    (C #= 3) => (Y #= X - 3),
-    (C #= 4) => (Y #= 7 * X).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

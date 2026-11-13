@@ -3,10 +3,10 @@
     "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/eclipse_clp/CONTRACT.md": "0a79c7a17d3b244f132814712c15a00181e75914afd3c2027f68f49d7de06183"
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/eclipse/prolog/CONTRACT.md": "bd8681cdc92c400eaed7117cc1d9767452aba4a687b7610fcdcb35e8035cc9e1"
     },
-    "created_at": 1792317183.1307054,
+    "created_at": 1794511471.1532226,
     "problem_id": "dudeney_numbers",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1752abeb97f393db6abeed5d8072314cb019e53ea6cdba6c28e3a7b9f59b8a7c",
-    "run_id": "20261018-eclipse-clp-models",
+    "readiness_hash": "cfdfb4e580d8d8dfb1111022e28e9d77b76a10a62784db90514048871aa99737",
+    "run_id": "20261115-eclipse-standalone",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+      "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "8f2254ed868f92f072796f1a85e20c99a430b5cc47a199e9b804654539cfcc7d",
-        "source": "solvers/eclipse_clp/skills/eclipse-clp",
+        "bundle_hash": "ad3e03eeb677b4fd2fe741fd2c0684c5aa831478c51aa96c18a3266d4ac134b5",
+        "source": "solvers/eclipse/skills/dcp-eclipse",
         "version": {
-          "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "solvers/eclipse_clp/skills/eclipse-clp"
+          "path": "solvers/eclipse/skills/dcp-eclipse"
         }
       }
     ],
@@ -52,16 +52,22 @@
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:cb05be3a8ccfa25074fb0739a6fbaa95e7671afbe485c0e2bd825f148cfc1318",
+      "id": "sha256:21e1098608489d31b38d61fd56da549e69e85203e7d8d972164662d7bd30653d",
+      "recipe": "sha256:cf52576ba60077b18b4ccd6f4f723da5eb9baab7ea2bff593be2f6bfe67cffdc",
       "tag": "dcp-eval/eclipse_clp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.02815060899592936,
-        "execution_wall_seconds": 2.423870906000957,
+        "checking_seconds": 0.0034664779668673873,
+        "execution_wall_seconds": 1.6190139090176672,
         "first_solution": {
           "number": 512
         },
@@ -74,10 +80,13 @@
           "number"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2325698600616306,
+        "reference_setup_seconds": 0.8723753200029023,
         "runner_status": {
+          "build_seconds": 0.0555009841918945,
           "detail": "",
-          "solve_seconds": 0.15,
+          "main_seconds": 0.0600888729095459,
+          "read_seconds": 9.39369201660156e-05,
+          "solve_seconds": 0.06,
           "status": "limit",
           "type": "status"
         },
@@ -87,8 +96,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008314090897329152,
-        "execution_wall_seconds": 1.7484041840070859,
+        "checking_seconds": 0.001750082999933511,
+        "execution_wall_seconds": 1.0944355219835415,
         "first_solution": {
           "number": 512
         },
@@ -101,10 +110,13 @@
           "number"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.181228570989333,
+        "reference_setup_seconds": 0.571044932003133,
         "runner_status": {
+          "build_seconds": 0.0512149333953857,
           "detail": "",
-          "solve_seconds": 0.12,
+          "main_seconds": 0.0515730381011963,
+          "read_seconds": 8.82148742675781e-05,
+          "solve_seconds": 0.06,
           "status": "complete",
           "type": "status"
         },
@@ -122,15 +134,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b8a55d9a46a0260ee76c738eccb4342e1fe92996d7c4b991cec2de6c5f4b77b5",
+    "model_hash": "ce7d174bce46d156beeec873a0f04c340e3d1913dd10f4c522f2ed98b2d65673",
     "problem_id": "dudeney_numbers",
     "reason": "accepted",
-    "reference_hash": "00d4f94b6fffa2fefd424c21bb84bbafe05c29f8725b9c0c9b960c5ac29857af",
+    "reference_hash": "dde7e1234367df3738d43daf50a78ff81f95ee862718e4b1306f49602a0092c1",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -141,7 +153,7 @@
     "skipped_instances": [],
     "solutions_checked": 3,
     "solver_id": "eclipse_clp",
-    "total_wall_seconds": 7.1901411740109324,
+    "total_wall_seconds": 4.551987702026963,
     "unperformed_instances": []
   },
   "generated_by": {

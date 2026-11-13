@@ -1,138 +1,106 @@
-% Vessel loading (CSPLib prob008): place the containers on a rectangular deck,
-% without overlapping, and respecting the minimum separations between classes.
-% Containers are cuboid, laid out in a single layer, and may be rotated by 90 degrees
-% so that they stay parallel to the sides of the deck.
-% Outputs: left, right, top, bottom. Container k occupies x in [left, right) and
-% y in [bottom, top), with bottom = top - y_extent (top is the high edge).
-% A redundant cell-owner view (which container covers each deck cell) is posted.
-% When the containers fill the deck exactly, the owner cells are labelled first.
+% csplib_008_vessel_loading: an ECLiPSe model from DCP Rosetta.
+%
+% Vessel loading: supply vessels transport containers. The deck area is rectangular, and the
+% containers are cuboid, laid out in a single layer, parallel to the sides of the deck. A
+% container occupies the area from left to right across the width of the deck, and from bottom
+% to top along its length, with right - left and top - bottom being its width and length, in
+% that order or rotated by 90 degrees. All of these lie between 0 and the deck's size in that
+% direction, and two containers may touch. Containers of some classes must keep a minimum
+% distance, separation[a-1][b-1] for classes a and b, in at least one of the two directions.
+% Decide whether the containers can be positioned on the deck without overlapping and without
+% violating any separation constraint.
+%
+% Save this file as model.ecl. Download `csplib_008_vessel_loading.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_008_vessel_loading.json
+%   eclipse -b model.ecl -e "run('csplib_008_vessel_loading_1.dat'), halt"
+
+% Fields read from the data: deck_width and deck_length (the size of the deck across and along),
+% n_containers (the number of containers), width and length (for each container, indexed from 0,
+% its width and length), classes (for each container, indexed from 0, its class, numbered from 1)
+% and separation (for classes a and b, the minimum distance separation[a-1][b-1]).
 
 :- lib(ic).
 :- lib(listut).
 
-model(Instance, Vars, Outputs) :-
-    memberchk(deck_width-DW, Instance),
-    memberchk(deck_length-DL, Instance),
+model(Instance, Vars, ['left'-Lefts, 'right'-Rights, 'top'-Tops, 'bottom'-Bottoms]) :-
+    memberchk(deck_width-DeckW, Instance),
+    memberchk(deck_length-DeckL, Instance),
     memberchk(n_containers-N, Instance),
-    memberchk(width-Ws, Instance),
-    memberchk(length-Hs, Instance),
-    memberchk(classes-Cs, Instance),
-    memberchk(separation-Sep, Instance),
-    length(Lefts, N), length(Rights, N), length(Tops, N), length(Bottoms, N),
-    length(Rots, N), length(XExt, N), length(YExt, N),
-
-    % Every container lies on the deck.
-    Lefts :: 0..DW, Rights :: 0..DW,
-    Tops :: 0..DL, Bottoms :: 0..DL,
-
-    % Containers are positioned parallel to the sides of the deck, so a container
-    % may be turned by 90 degrees (rotation 1 swaps its width and length).
+    memberchk(width-Widths, Instance),
+    memberchk(length-Lengths, Instance),
+    memberchk(classes-Classes, Instance),
+    memberchk(separation-Separation, Instance),
+    length(Lefts, N),
+    length(Bottoms, N),
+    length(Rots, N),
+    % the left and bottom sides, and the rotation of each container (1 when rotated by 90 degrees)
+    Lefts :: 0..DeckW,
+    Bottoms :: 0..DeckL,
     Rots :: 0..1,
-    ( foreach(W, Ws), foreach(H, Hs), foreach(R, Rots), foreach(XE, XExt), foreach(YE, YExt) do
-        XE #= W + R*(H - W),
-        YE #= H + R*(W - H)
+    % the container lies on the deck: its right side and top side are within the deck, and
+    % its width and length are those of the container in its orientation
+    ( for(I, 1, N), foreach(Right, Rights), foreach(Top, Tops),
+      param(Lefts, Bottoms, Rots, Widths, Lengths, DeckW, DeckL) do
+        nth1(I, Widths, W),
+        nth1(I, Lengths, L),
+        nth1(I, Lefts, Left),
+        nth1(I, Bottoms, Bottom),
+        nth1(I, Rots, Rot),
+        Right #= Left + W + Rot * (L - W),
+        Top #= Bottom + L + Rot * (W - L),
+        Right #=< DeckW,
+        Top #=< DeckL
     ),
-
-    % The containers are cuboid: the far edges follow from the left/top edges and the extents.
-    ( foreach(L, Lefts), foreach(Rt, Rights), foreach(XE2, XExt) do
-        Rt #= L + XE2
+    % any two containers do not overlap, and are at least the separation of their classes
+    % apart in at least one of the two directions
+    ( for(Row, 1, N), param(Lefts, Bottoms, Rights, Tops, Classes, Separation, N) do
+        Row1 is Row + 1,
+        nth1(Row, Classes, ClassI),
+        nth1(Row, Lefts, LeftI), nth1(Row, Bottoms, BottomI),
+        nth1(Row, Rights, RightI), nth1(Row, Tops, TopI),
+        ( for(Col, Row1, N), param(Lefts, Bottoms, Rights, Tops, Classes, Separation,
+                               ClassI, LeftI, BottomI, RightI, TopI) do
+            nth1(Col, Classes, ClassJ),
+            nth1(Col, Lefts, LeftJ), nth1(Col, Bottoms, BottomJ),
+            nth1(Col, Rights, RightJ), nth1(Col, Tops, TopJ),
+            nth1(ClassI, Separation, RowI),
+            nth1(ClassJ, RowI, Gap),
+            Apart1 #= (RightI + Gap #=< LeftJ),
+            Apart2 #= (RightJ + Gap #=< LeftI),
+            Apart3 #= (TopI + Gap #=< BottomJ),
+            Apart4 #= (TopJ + Gap #=< BottomI),
+            Apart1 + Apart2 + Apart3 + Apart4 #>= 1
+        )
     ),
-    ( foreach(T, Tops), foreach(Bt, Bottoms), foreach(YE2, YExt) do
-        Bt #= T - YE2
+    flatten([Lefts, Bottoms, Rots], Vars).
+
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-
-    make_boxes(Lefts, Rights, Tops, Bottoms, Cs, Boxes),
-
-    % Containers must not overlap, and containers of classes constrained to be separated
-    % must keep the minimum distance, either along the deck or across the deck.
-    pairwise(Boxes, Sep),
-
-    % Cell view: every deck cell is owned by at most one container, and the owner
-    % is the container that covers the cell.
-    NC is DW * DL,
-    length(Owners, NC),
-    Owners :: 0..N,
-    cells(Owners, 0, DW, Cells),
-    cell_view(Cells, Boxes),
-
-    % The containers fill the deck exactly when their areas add up to the deck area.
-    area_sum(Ws, Hs, 0, Area),
-    (   Area =:= DW * DL
-    ->  NOwn = NC,
-        ( foreach(O, Owners) do O #\= 0 )
-    ;   NOwn = 0
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
     ),
-    setval(vessel_nown, NOwn),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-    (   NOwn =:= 0
-    ->  box_vars(Lefts, Tops, Rots, BoxVars),
-        append(BoxVars, Owners, Vars)
-    ;   append(Owners, Rots, V1), append(V1, Lefts, V2), append(V2, Tops, Vars)
-    ),
-    Outputs = [left-Lefts, right-Rights, top-Tops, bottom-Bottoms].
-
-% Search: owner cells first (row by row, highest owner first) when the deck is full,
-% then the rotations, the lefts and the tops, box by box.
-search_goal(Vars) :-
-    getval(vessel_nown, NO),
-    length(Own, NO),
-    append(Own, Rest, Vars),
-    search(Own, 0, input_order, indomain_max, complete, []),
-    search(Rest, 0, input_order, indomain_min, complete, []).
-
-area_sum([], [], S, S).
-area_sum([W|Ws], [H|Hs], S0, S) :-
-    S1 is S0 + W * H,
-    area_sum(Ws, Hs, S1, S).
-
-make_boxes([], [], [], [], [], []).
-make_boxes([L|Ls], [R|Rs], [T|Ts], [B|Bs], [C|Cs], [box(L, R, T, B, C, _Rot)|Bx]) :-
-    make_boxes(Ls, Rs, Ts, Bs, Cs, Bx).
-
-box_vars([], [], [], []).
-box_vars([L|Ls], [T|Ts], [R|Rs], [R, L, T|Vs]) :-
-    box_vars(Ls, Ts, Rs, Vs).
-
-% Owner cells: cell(X, Y, Owner) with index I = Y * DW + X.
-cells([], _, _, []).
-cells([O|Os], I, DW, [cell(X, Y, O)|Cs]) :-
-    X is I mod DW,
-    Y is I // DW,
-    I1 is I + 1,
-    cells(Os, I1, DW, Cs).
-
-% For every cell and every container k: the owner is k exactly when the cell lies
-% inside container k. A cell lies inside when left =< x < right and bottom =< y < top.
-cell_view([], _).
-cell_view([cell(X, Y, O)|Cells], Boxes) :-
-    cell_inside_all(Boxes, X, Y, O, 1),
-    cell_view(Cells, Boxes).
-
-cell_inside_all([], _, _, _, _).
-cell_inside_all([box(L, R, T, B, _C, _)|Boxes], X, Y, O, K) :-
-    Cv :: 0..1,
-    Cv #= (O #= K),
-    A1 :: 0..1, A1 #= (L #=< X),
-    A2 :: 0..1, A2 #= (R #> X),
-    A3 :: 0..1, A3 #= (B #=< Y),
-    A4 :: 0..1, A4 #= (T #> Y),
-    Cv #=< A1, Cv #=< A2, Cv #=< A3, Cv #=< A4,
-    Cv #>= A1 + A2 + A3 + A4 - 3,
-    K1 is K + 1,
-    cell_inside_all(Boxes, X, Y, O, K1).
-
-pairwise([], _).
-pairwise([Box|Boxes], Sep) :-
-    each_pair(Box, Boxes, Sep),
-    pairwise(Boxes, Sep).
-
-each_pair(_, [], _).
-each_pair(box(L1, R1, T1, B1, C1, _), [box(L2, R2, T2, B2, C2, _)|Boxes], Sep) :-
-    nth1(C1, Sep, Row1), nth1(C2, Row1, S12),
-    nth1(C2, Sep, Row2), nth1(C1, Row2, S21),
-    P1 :: 0..1, P1 #= (R1 + S12 #=< L2),
-    P2 :: 0..1, P2 #= (R2 + S21 #=< L1),
-    P3 :: 0..1, P3 #= (T1 + S12 #=< B2),
-    P4 :: 0..1, P4 #= (T2 + S21 #=< B1),
-    P1 + P2 + P3 + P4 #>= 1,
-    each_pair(box(L1, R1, T1, B1, C1, _), Boxes, Sep).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

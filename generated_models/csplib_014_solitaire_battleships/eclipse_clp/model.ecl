@@ -1,8 +1,23 @@
-% Solitaire battleships (CSPLib 014).
-% The grid has one variable per square. Each square takes one of the codes read
-% from the instance: water, submarine (CIRCLE), or a ship part (LEFT, RIGHT, TOP,
-% BOTTOM, MIDDLE). The fleet, the row and column counts and the hints come from the
-% instance. The grid is padded with water so every square has four neighbours.
+% csplib_014_solitaire_battleships: an ECLiPSe model from DCP Rosetta.
+%
+% The Battleships puzzle is played on a grid. The fleet consists of battleships (four grid squares in length),
+% cruisers (three), destroyers (two) and submarines (one square each). The ships may be oriented horizontally or
+% vertically, and no two ships occupy adjacent grid squares, not even diagonally. The digits along the right side of
+% and below the grid give the number of squares in each row and each column that are occupied by vessels. Some
+% puzzles start with shots taken: they show water, a complete submarine, or a part of a longer vessel. The goal is to
+% find the grid, where each cell is water, a submarine, or a ship part (left, right, top, bottom or middle).
+%
+% Save this file as model.ecl. Download `csplib_014_solitaire_battleships.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_014_solitaire_battleships.json
+%   eclipse -b model.ecl -e "run('csplib_014_solitaire_battleships_1.dat'), halt"
+
+% Instance fields: rows and cols (the grid size); WATER, CIRCLE, LEFT, RIGHT, TOP, BOTTOM and MIDDLE (the code of each
+% kind of cell); fleet_counts (a [length, count] pair for each kind of ship); rowsum and colsum (the number of ship
+% squares in each row and column); hints (a [row, col, code] triple for each shot, 0-based). Output grid: the code of
+% each cell, row by row.
 
 :- lib(ic).
 :- lib(lists).
@@ -23,25 +38,32 @@ model(Instance, Vars, [grid-Rows]) :-
     memberchk(hints-Hints, Instance),
     K = k(W, CI, LF, RT, TP, BT, MD),
     Codes = [W, CI, LF, RT, TP, BT, MD],
+    % the grid: one variable per square, each one of the codes
     make_rows(R, C, Codes, Rows),
+    % the grid is padded with water all around, so that every square has four neighbours
     C2 is C + 2,
     border(C2, W, Brow),
     pad_rows(Rows, W, PRows),
     append([Brow|PRows], [Brow], P),
     Last is R + 1,
     Cend is C + 1,
+    % the shape rules of every square of the grid
     rules_rows(2, Last, Cend, P, K),
+    % the shots given in the instance
     post_hints(Hints, P),
+    % the number of ship squares in each row and each column
     ship_rows(Rows, W, SRows),
     sum_rows(SRows, RowSum),
     transpose_list(SRows, SCols),
     sum_rows(SCols, ColSum),
+    % the fleet: the number of ships of each length
     post_fleet(Fleet, P, R, C, K),
     flatten(Rows, Vars).
 
 search_goal(Vars) :-
     search(Vars, 0, first_fail, indomain_min, complete, []).
 
+% ---------------------------------------------------------------------------
 % Grid construction
 
 make_rows(0, _, _, []) :- !.
@@ -58,18 +80,20 @@ make_cells(N, Codes, [X|Xs]) :-
     N1 is N - 1,
     make_cells(N1, Codes, Xs).
 
+% a row of N water squares
 border(0, _, []) :- !.
 border(N, W, [W|Xs]) :-
     N > 0,
     N1 is N - 1,
     border(N1, W, Xs).
 
+% each row of the grid, with water on its left and right
 pad_rows([], _, []).
 pad_rows([Row|Rows], W, [PR|PRs]) :-
     append([W|Row], [W], PR),
     pad_rows(Rows, W, PRs).
 
-% cell(+P, +I, +J, -V): padded 1-based access
+% cell(+P, +I, +J, -V): the code of the padded grid at row I, column J (1-based)
 cell(P, I, J, V) :-
     pick(I, P, Row),
     pick(J, Row, V).
@@ -80,8 +104,8 @@ pick(N, [_|T], X) :-
     N1 is N - 1,
     pick(N1, T, X).
 
-% Shape rules: a ship part's neighbours are water, except along its own ship,
-% and no two ships touch, not even diagonally.
+% ---------------------------------------------------------------------------
+% Shape rules: a ship part is continued only along its own ship, and no two ships touch, not even diagonally
 
 rules_rows(I, Last, _, _, _) :- I > Last, !.
 rules_rows(I, Last, Cend, P, K) :-
@@ -127,16 +151,17 @@ cell_rules(I, J, P, k(W, CI, LF, RT, TP, BT, MD)) :-
     (V #= CI) => (D #= W),
     (V #= CI) => (Lf #= W),
     (V #= CI) => (Rt #= W),
-    % a middle part is either horizontal or vertical
+    % a middle part is either in a horizontal ship or in a vertical one
     (V #= MD) => (((Lf #= LF or Lf #= MD) and (Rt #= RT or Rt #= MD) and (U #= W) and (D #= W))
                   or ((U #= TP or U #= MD) and (D #= BT or D #= MD) and (Lf #= W) and (Rt #= W))),
-    % ships do not touch diagonally
+    % ships do not touch diagonally: a ship square has water on both diagonals on each side
     (V #\= W) => (Ul #= W),
     (V #\= W) => (Ur #= W),
     (V #\= W) => (Dl #= W),
     (V #\= W) => (Dr #= W).
 
-% Hints: [Row, Col, Code], 0-based
+% ---------------------------------------------------------------------------
+% Shots: each hint fixes the code of its square (0-based row and column, padded grid is 1-based)
 
 post_hints([], _).
 post_hints([[R, Cc, Code]|Hs], P) :-
@@ -146,6 +171,7 @@ post_hints([[R, Cc, Code]|Hs], P) :-
     V #= Code,
     post_hints(Hs, P).
 
+% ---------------------------------------------------------------------------
 % Row and column counts of ship squares
 
 ship_rows([], _, []).
@@ -153,6 +179,7 @@ ship_rows([Row|Rows], W, [Ss|Sss]) :-
     ship_row(Row, W, Ss),
     ship_rows(Rows, W, Sss).
 
+% S is 1 for a ship square, 0 for water
 ship_row([], _, []).
 ship_row([V|Vs], W, [S|Ss]) :-
     S #= (V #\= W),
@@ -172,9 +199,10 @@ firsts_rests([], [], []).
 firsts_rests([[H|T]|Rs], [H|Hs], [T|Ts]) :-
     firsts_rests(Rs, Hs, Ts).
 
-% Fleet: [Length, Count] pairs. A ship of length L starts at one square (a
-% submarine for L = 1, a left part for a horizontal ship, a top part for a
-% vertical one) and is counted once, through the product of its square codes.
+% ---------------------------------------------------------------------------
+% Fleet: for each [Length, Count] pair, the number of ships of that length is Count. A ship is counted once, at the
+% square where it starts: a submarine for length 1, the left end of a horizontal ship, or the top end of a vertical one.
+% The ship's squares are then checked by the indicator products below.
 
 post_fleet([], _, _, _, _).
 post_fleet([[Len, Cnt]|Fs], P, R, C, K) :-
@@ -196,9 +224,11 @@ fleet_cols(J, I, Last, Cend, Len, P, K, Bs0, Bs) :-
     J1 is J + 1,
     fleet_cols(J1, I, Last, Cend, Len, P, K, Bs1, Bs).
 
+% a submarine starts at (I, J) when that square is a submarine
 start_ind(1, I, J, P, k(_, CI, _, _, _, _, _), _, [B|Bs], Bs) :-
     cell(P, I, J, V),
     B #= (V #= CI).
+% a ship of length Len > 1 starts at (I, J): horizontally when it fits in the row, vertically when it fits in the column
 start_ind(Len, I, J, P, k(_, _, LF, RT, TP, BT, MD), lim(Rend, Cend), Bs0, Bs) :-
     Len > 1,
     (   J + Len - 1 =< Cend
@@ -216,7 +246,7 @@ start_ind(Len, I, J, P, k(_, _, LF, RT, TP, BT, MD), lim(Rend, Cend), Bs0, Bs) :
     ;   Bs1 = Bs
     ).
 
-% codes along a ship of length Len: first, middles, last
+% the codes along a ship of length Len: the first part, middle parts, and the last part
 path_codes(Len, F, M, L, [F|Cs]) :-
     Mids is Len - 2,
     mid_codes(Mids, M, Ms),
@@ -228,7 +258,7 @@ mid_codes(N, M, [M|Ms]) :-
     N1 is N - 1,
     mid_codes(N1, M, Ms).
 
-% one indicator per square of the line, starting at (I,J) and stepping (Di,Dj)
+% one indicator per square of the line starting at (I, J) and stepping by (Di, Dj): 1 when the square has the code
 ind_list(_, _, _, _, _, [], _, []).
 ind_list(I, J, Di, Dj, Off, [Code|Codes], P, [B|Bs]) :-
     I2 is I + Off * Di,
@@ -238,8 +268,36 @@ ind_list(I, J, Di, Dj, Off, [Code|Codes], P, [B|Bs]) :-
     Off1 is Off + 1,
     ind_list(I, J, Di, Dj, Off1, Codes, P, Bs).
 
-% product of 0/1 indicators
+% the product of 0/1 indicators: 1 when all of them are 1
 prod_list([B], B) :- !.
 prod_list([B|Bs], Prod) :-
     prod_list(Bs, Q),
     Prod #= B * Q.
+
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).
