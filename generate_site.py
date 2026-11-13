@@ -680,7 +680,7 @@ def evaluation_html(metrics: dict, flags: list, has_instances: bool = True) -> s
     )
 
 
-def generated_model_html(entry: dict, has_instances: bool = True) -> str:
+def generated_model_html(entry: dict, has_instances: bool = True, has_data_file: bool | None = None) -> str:
     """A generated model: who made it and for what, how it was judged, the code."""
     metrics = entry["metrics"]
     generated_by = metrics.get("generated_by", {})
@@ -699,8 +699,6 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
     chips = paradigm_chips(metrics.get("solver"), "../")
     if chips:
         rows.append(f"<dt>Paradigm</dt><dd>{chips}</dd>")
-    if has_instances and converter_link(metrics.get("solver", "")):
-        rows.append(f"<dt>Data converter</dt><dd>{converter_link(metrics['solver'])}</dd>")
 
     if entry["model_file"]:
         lang, label = model_language(metrics, entry["model_file"])
@@ -710,10 +708,14 @@ def generated_model_html(entry: dict, has_instances: bool = True) -> str:
     else:
         model = '<p class="desc">Code file not found.</p>'
 
+    # The converter prepares the instance file the page offers for download, so say so just above the model.
+    has_data_file = has_instances if has_data_file is None else has_data_file
+    converter = converter_link(metrics.get("solver", "")) if has_data_file else ""
+    note = f'<p class="desc converter-note">Convert the instance data first with {converter}.</p>' if converter else ""
     return (
         f'<div class="model-info"><div class="card-box provenance"><h3>Metadata</h3><dl>{"".join(rows)}</dl></div>'
         f'{evaluation_html(metrics, entry.get("flags"), has_instances)}</div>'
-        f'<h3>Model</h3>{model}'
+        f'<h3>Model</h3>{note}{model}'
     )
 
 
@@ -1452,7 +1454,7 @@ def models_section_html(p: dict, meta: dict, idx: int, generated: dict) -> str:
                            f'data-paradigms="{esc(" ".join(model_paradigms(by_solver[solver][0], p["type"])))}" '
                            f'data-languages="{esc(languages)}">{esc(solver_name(solver))}</button>')
             panes.append(f'<div class="tab-pane" data-pane="{esc(solver)}">'
-                         f'{solver_models_html(by_solver[solver], best, bool(problem_instances(p)))}</div>')
+                         f'{solver_models_html(by_solver[solver], best, bool(problem_instances(p)), bool(p["instances"]))}</div>')
         label = PARADIGM_ABBREVS.get(tag, tag) or "Other"
         rows.append(
             f'<div class="picker-row"><span class="picker-label" title="{esc(PARADIGM_NAMES.get(tag, label))}">'
@@ -1475,11 +1477,11 @@ def native_first(solver: str, bindings: list) -> list:
     return sorted(bindings, key=lambda binding: (order.index(binding) if binding in order else len(order), binding))
 
 
-def solver_models_html(bindings: list, best: dict, has_instances: bool) -> str:
+def solver_models_html(bindings: list, best: dict, has_instances: bool, has_data_file: bool | None = None) -> str:
     """One solver's models of a problem. With models in several of its
     bindings, a tab per language, the native one open."""
     if len(bindings) == 1:
-        return generated_model_html(best[bindings[0]], has_instances)
+        return generated_model_html(best[bindings[0]], has_instances, has_data_file)
     tabs, panes = [], []
     for i, binding in enumerate(bindings):
         state = " active" if i == 0 else ""
@@ -1488,7 +1490,7 @@ def solver_models_html(bindings: list, best: dict, has_instances: bool) -> str:
         tabs.append(f'<button class="tab-btn{state}" type="button" data-tab="{esc(binding)}" '
                     f'data-language="{esc(language)}">{esc(label)}</button>')
         panes.append(f'<div class="tab-pane{state}" data-pane="{esc(binding)}">'
-                     f'{generated_model_html(best[binding], has_instances)}</div>')
+                     f'{generated_model_html(best[binding], has_instances, has_data_file)}</div>')
     return (f'<div class="tab-group binding-group"><div class="tab-bar binding-bar" aria-label="Interface">'
             f'{"".join(tabs)}</div>{"".join(panes)}</div>')
 
