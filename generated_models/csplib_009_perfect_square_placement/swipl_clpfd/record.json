@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5, interactive session, coordinator and modeller",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1789408540.129634,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/swipl/prolog/CONTRACT.md": "b97f7d686889990081e58dab14a6ac8043c8ce98cc6ff4a343336dfd7e1e4eb0"
+    },
+    "created_at": 1794603793.1596339,
     "problem_id": "csplib_009_perfect_square_placement",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "9c12e1459f109fe6652bf69d77840c221c64eb617d50fa48b86c821286400d38",
-    "run_id": "prolog-20260914-clpfd",
-    "schema": 2,
-    "skill_bundle_hash": "3196572c96cd8e8d75028b3a052349f66164202efab5658af1ad7a75af4e9353",
-    "skill_source": "solvers\\swipl_clpfd\\skills\\swipl-clpfd",
+    "readiness_hash": "c216a6700b5b6b565400b685f2e4d7c79c73d4aa3a9f89b672ace727fc405137",
+    "run_id": "20261116-swipl-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "c73229d4f9124db2435b41f404909f06ff245594",
+      "commit": "ff67819ac843d18becffde04c040b763be5254ea",
       "modified": false,
-      "path": "solvers/swipl_clpfd/skills/swipl-clpfd"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "603573da813e9d0eca3be80bee07bc18e2039363c8857ca06373299f8d99a2c4",
+        "source": "solvers/swipl/skills/dcp-swipl",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "solvers/swipl/skills/dcp-swipl"
+        }
+      }
+    ],
     "solver_id": "swipl_clpfd"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:7b0a8b7aba86b8a070408a75727b6c628038f39093476d68c22e3ea94630b6f7",
+      "id": "sha256:c4aecc7be95a0312db6dcd03a6fbbedccbe4179e5907592b652e5e0c35b6daaf",
+      "recipe": "sha256:68cf27681c1d4cc061d05393ab834128f32cbb1ddbdc9de6abffa288dc1ca604",
       "tag": "dcp-eval/swipl_clpfd:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.05109960003755987,
-        "execution_wall_seconds": 1.3686225999845192,
+        "checking_seconds": 0.09649630798958242,
+        "execution_wall_seconds": 3.3298433470190503,
         "first_solution": {
           "x_coords": [
             0,
@@ -65,16 +95,20 @@
         "id": "example",
         "instance_hash": "3e2b330b73926eb89d7ba90cc0372a426999716b771a99dedc380451090fee72",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0080140000209212,
+        "reference_setup_seconds": 0.6908970340155065,
         "runner_status": {
+          "build_seconds": 0.05542445182800293,
           "detail": "",
-          "solve_seconds": 0.13455414772033691,
+          "main_seconds": 0.1804187297821045,
+          "read_seconds": 0.00012731552124023438,
+          "solve_seconds": 0.18027877807617188,
           "status": "limit",
           "type": "status"
         },
@@ -84,8 +118,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.014041999995242804,
-        "execution_wall_seconds": 1.0015732000465505,
+        "checking_seconds": 0.017072957009077072,
+        "execution_wall_seconds": 2.684921709005721,
         "first_solution": {
           "x_coords": [
             0,
@@ -103,16 +137,20 @@
         "id": "json:1",
         "instance_hash": "88faa8e4a09ce60f6e95162dedf80b78b910709216092cb87c860e4b891d0141",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.023952100018505,
+        "reference_setup_seconds": 1.075098839995917,
         "runner_status": {
+          "build_seconds": 0.009610652923583984,
           "detail": "",
-          "solve_seconds": 0.023080110549926758,
+          "main_seconds": 0.021802425384521484,
+          "read_seconds": 0.00012946128845214844,
+          "solve_seconds": 0.021669864654541016,
           "status": "limit",
           "type": "status"
         },
@@ -122,8 +160,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07210570003371686,
-        "execution_wall_seconds": 3.3435212000040337,
+        "checking_seconds": 0.10440695099532604,
+        "execution_wall_seconds": 5.043985552038066,
         "first_solution": {
           "x_coords": [
             7,
@@ -155,16 +193,20 @@
         "id": "json:3",
         "instance_hash": "ece298378c976e7635364b2847cb8a41770820ef6b1665dd9721e465574c25b3",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1294656999525614,
+        "reference_setup_seconds": 0.9148880979628302,
         "runner_status": {
+          "build_seconds": 0.12153410911560059,
           "detail": "",
-          "solve_seconds": 2.329643964767456,
+          "main_seconds": 3.0833303928375244,
+          "read_seconds": 0.00015664100646972656,
+          "solve_seconds": 3.08316969871521,
           "status": "limit",
           "type": "status"
         },
@@ -174,8 +216,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07727139996131882,
-        "execution_wall_seconds": 2.054635199951008,
+        "checking_seconds": 0.17224281100789085,
+        "execution_wall_seconds": 3.146411876019556,
         "first_solution": {
           "x_coords": [
             6,
@@ -209,16 +251,20 @@
         "id": "json:4",
         "instance_hash": "3fd3ad2c7f05a8257940bc2d0554e58f406bc20cacd07816f16dd16c133fb15e",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0677756000077352,
+        "reference_setup_seconds": 1.2092461790307425,
         "runner_status": {
+          "build_seconds": 0.10220670700073242,
           "detail": "",
-          "solve_seconds": 0.9812264442443848,
+          "main_seconds": 1.1748335361480713,
+          "read_seconds": 0.0001494884490966797,
+          "solve_seconds": 1.174680471420288,
           "status": "limit",
           "type": "status"
         },
@@ -228,21 +274,25 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 7.00005330145359e-07,
+        "checking_seconds": 4.309695214033127e-07,
         "detail": "The execution budget ran out during search",
-        "execution_wall_seconds": 180.91866780002601,
+        "execution_wall_seconds": 183.013588929025,
         "id": "json:5",
         "instance_hash": "988e8b92d87bb8d226db938c849aba542909a5bd10575ab78ff4535ed703ec9e",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 2.551081199955661,
+        "reference_setup_seconds": 3.523382743005641,
         "runner_status": {
+          "build_seconds": 0.5919227600097656,
           "detail": "The execution budget ran out during search",
+          "main_seconds": 180.0054543018341,
+          "read_seconds": 0.0001761913299560547,
           "status": "timeout",
           "type": "status"
         },
@@ -253,46 +303,25 @@
       },
       {
         "accepted": false,
-        "checking_seconds": 3.00002284348011e-07,
+        "checking_seconds": 3.789900802075863e-07,
         "detail": "The execution budget ran out during search",
-        "execution_wall_seconds": 180.8201694000163,
+        "execution_wall_seconds": 183.3675973979989,
         "id": "json:6",
         "instance_hash": "da80176b2333d7f0848050075e35ea19ff340d3a21fa1c8495b475887457a439",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x_coords",
           "y_coords"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 12.274055199988652,
+        "reference_setup_seconds": 32.14127846900374,
         "runner_status": {
+          "build_seconds": 0.4384422302246094,
           "detail": "The execution budget ran out during search",
-          "status": "timeout",
-          "type": "status"
-        },
-        "skipped": true,
-        "solutions_checked": 0,
-        "solutions_received": 0,
-        "stderr": ""
-      },
-      {
-        "accepted": false,
-        "checking_seconds": 2.00001522898674e-07,
-        "detail": "The execution budget ran out during search",
-        "execution_wall_seconds": 180.80062569997972,
-        "id": "json:7",
-        "instance_hash": "10066a0c45675abf643b505e4b9de0bbccab29cc432d52cb7f469e88dadfdb47",
-        "is_optimization": false,
-        "optimum": null,
-        "outputs": [
-          "x_coords",
-          "y_coords"
-        ],
-        "reason": "execution_timeout",
-        "reference_setup_seconds": 73.93635219999123,
-        "runner_status": {
-          "detail": "The execution budget ran out during search",
+          "main_seconds": 180.03305292129517,
+          "read_seconds": 0.0001544952392578125,
           "status": "timeout",
           "type": "status"
         },
@@ -302,7 +331,7 @@
         "stderr": ""
       }
     ],
-    "instances_available": 7,
+    "instances_available": 6,
     "instances_checked": 4,
     "limits": {
       "compilation_timeout": 120,
@@ -311,15 +340,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "af646fb3c6f68954cc0a67ed179fb756c62886be7094bf66173f6d988c6e361d",
+    "model_hash": "63c1346324d837d6f64cc5e2e499467a19ad5e72f5b2a54110737026c101f86f",
     "problem_id": "csplib_009_perfect_square_placement",
     "reason": "accepted",
-    "reference_hash": "530ce2e8aab789430dd33f29ddeb083ced92f727d2077188ef1bb7c505b3b0d8",
+    "reference_hash": "0b5586442e26223497404e893e619459fa7866bbaf171df21d200d9dfc93d887",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -329,16 +358,15 @@
     },
     "skipped_instances": [
       "json:5",
-      "json:6",
-      "json:7"
+      "json:6"
     ],
     "solutions_checked": 8,
     "solver_id": "swipl_clpfd",
-    "total_wall_seconds": 645.0859149000025,
+    "total_wall_seconds": 421.61833463801304,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5, interactive session, coordinator and modeller"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.pl",

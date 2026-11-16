@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
-    "attempt_id": "attempt-001",
-    "created_at": 1790693792.6615276,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/swipl/prolog/CONTRACT.md": "b97f7d686889990081e58dab14a6ac8043c8ce98cc6ff4a343336dfd7e1e4eb0"
+    },
+    "created_at": 1794850061.7836852,
     "problem_id": "aircraft_landing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "635c24bfacbdc0db90bff173e1d8728c56808b0f0c2b30c1ee074a259a4ca03e",
-    "run_id": "20260929T1400Z-z3-mzn-swipl-7a2e",
-    "schema": 2,
-    "skill_bundle_hash": "e0e594c9d4f749ceb6497b59d1a6851e2dd796a84100edc1376bc669fb93d17a",
-    "skill_source": "solvers\\swipl_clpfd\\skills\\swipl-clpfd",
+    "readiness_hash": "c216a6700b5b6b565400b685f2e4d7c79c73d4aa3a9f89b672ace727fc405137",
+    "run_id": "20261116-swipl-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "3f7e121301e0ea4565e20d8ee0660e799686c194",
+      "commit": "ff67819ac843d18becffde04c040b763be5254ea",
       "modified": false,
-      "path": "solvers/swipl_clpfd/skills/swipl-clpfd"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "eb8940863dc1369964c2ad29decf01b0235c936a8a0bc186e438b458b788d59a",
+        "source": "solvers/swipl/skills/dcp-swipl",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": true,
+          "path": "solvers/swipl/skills/dcp-swipl"
+        }
+      }
+    ],
     "solver_id": "swipl_clpfd"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:052c9de7b35053fe8e9a16398db20a42756e8fd63c0fcfd9efe4b5d2339d8127",
+      "id": "sha256:c4aecc7be95a0312db6dcd03a6fbbedccbe4179e5907592b652e5e0c35b6daaf",
+      "recipe": "sha256:68cf27681c1d4cc061d05393ab834128f32cbb1ddbdc9de6abffa288dc1ca604",
       "tag": "dcp-eval/swipl_clpfd:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.007449700031429529,
-        "execution_wall_seconds": 2.37271599995438,
+        "checking_seconds": 0.008634089026600122,
+        "execution_wall_seconds": 0.9988643309334293,
         "first_solution": {
           "landing_times": [
             1,
@@ -56,10 +86,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6374858999624848,
+        "reference_setup_seconds": 0.2544509549625218,
         "runner_status": {
+          "build_seconds": 0.0018315315246582031,
           "detail": "",
-          "solve_seconds": 0.04904294013977051,
+          "main_seconds": 0.00464177131652832,
+          "read_seconds": 7.43865966796875e-05,
+          "solve_seconds": 0.0045664310455322266,
           "status": "complete",
           "type": "status"
         },
@@ -68,24 +101,10 @@
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.020614800043404102,
-        "execution_wall_seconds": 2.65746230003424,
-        "first_solution": {
-          "landing_times": [
-            98,
-            106,
-            118,
-            126,
-            134,
-            142,
-            150,
-            165,
-            180,
-            258
-          ],
-          "total_penalty": 700
-        },
+        "accepted": false,
+        "checking_seconds": 3.8207508623600006e-07,
+        "detail": "The driver outlived the execution budget",
+        "execution_wall_seconds": 184.67416611604858,
         "id": "json:1",
         "instance_hash": "3583399054d9539e08fd828b58349277369bd996e5ed71f34d8e7e6c8b8d28d3",
         "is_optimization": true,
@@ -95,42 +114,23 @@
           "landing_times",
           "total_penalty"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.526128500001505,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2592650590231642,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 0.7617580890655518,
-          "status": "complete",
+          "detail": "The driver outlived the execution budget",
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.07929150003474206,
-        "execution_wall_seconds": 4.788337099947967,
-        "first_solution": {
-          "landing_times": [
-            90,
-            98,
-            106,
-            114,
-            122,
-            130,
-            138,
-            151,
-            171,
-            181,
-            196,
-            250,
-            313,
-            339,
-            342
-          ],
-          "total_penalty": 1480
-        },
+        "accepted": false,
+        "checking_seconds": 1.0880175977945328e-06,
+        "detail": "The execution budget ran out during search",
+        "execution_wall_seconds": 183.96431849198416,
         "id": "json:2",
         "instance_hash": "9376fb5d8d4213600d8cb68263a27d829b9c21a2768b3ce61ee5fd228eecd585",
         "is_optimization": true,
@@ -140,47 +140,26 @@
           "landing_times",
           "total_penalty"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.9387744999257848,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2850150070153177,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 2.5079212188720703,
-          "status": "limit",
+          "build_seconds": 0.006470203399658203,
+          "detail": "The execution budget ran out during search",
+          "main_seconds": 183.13350129127502,
+          "read_seconds": 0.0002353191375732422,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.0687663999851793,
-        "execution_wall_seconds": 12.161340499995276,
-        "first_solution": {
-          "landing_times": [
-            82,
-            100,
-            108,
-            116,
-            124,
-            132,
-            140,
-            149,
-            160,
-            169,
-            184,
-            197,
-            229,
-            258,
-            261,
-            287,
-            316,
-            335,
-            338,
-            409
-          ],
-          "total_penalty": 820
-        },
+        "accepted": false,
+        "checking_seconds": 7.860362529754639e-07,
+        "detail": "The driver outlived the execution budget",
+        "execution_wall_seconds": 184.6812795290025,
         "id": "json:3",
         "instance_hash": "7ac82dccd48544bab5a1b7eeec7cc42fc032e829c2433293e324ccc39e5f5cdb",
         "is_optimization": true,
@@ -190,22 +169,22 @@
           "landing_times",
           "total_penalty"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 2.2050757000688463,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.2879426800645888,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 9.865465879440308,
-          "status": "limit",
+          "detail": "The driver outlived the execution budget",
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007886399980634451,
-        "execution_wall_seconds": 1.188192999921739,
+        "checking_seconds": 0.007381431991234422,
+        "execution_wall_seconds": 0.8975810090778396,
         "first_solution": {
           "landing_times": [
             11,
@@ -227,10 +206,13 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2307807999895886,
+        "reference_setup_seconds": 0.28503905003890395,
         "runner_status": {
+          "build_seconds": 0.0024118423461914062,
           "detail": "",
-          "solve_seconds": 0.025408029556274414,
+          "main_seconds": 0.009494543075561523,
+          "read_seconds": 0.00013327598571777344,
+          "solve_seconds": 0.009360074996948242,
           "status": "complete",
           "type": "status"
         },
@@ -240,23 +222,23 @@
       }
     ],
     "instances_available": 5,
-    "instances_checked": 5,
+    "instances_checked": 2,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "9d54784a55c8c071e3ea8b48d9794bc7162a0d5880f715189dee3aaae9f324f4",
+    "model_hash": "fbdb9bef02771c7148d3b501c1f302dd11d039d7b1433d24014604d61c61ac06",
     "problem_id": "aircraft_landing",
     "reason": "accepted",
-    "reference_hash": "132d764d185fc7616ee154307a99c5c1edeae9a97d595cf5527c1e4ede973f1d",
+    "reference_hash": "68debf4c58dfe49fdb3661ca1f20836529beddb6464fd43596645a3da35ddd06",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -264,14 +246,18 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 7,
+    "skipped_instances": [
+      "json:1",
+      "json:2",
+      "json:3"
+    ],
+    "solutions_checked": 2,
     "solver_id": "swipl_clpfd",
-    "total_wall_seconds": 33.93924639991019,
+    "total_wall_seconds": 557.1677104739938,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pl",

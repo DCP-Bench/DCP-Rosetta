@@ -1,124 +1,181 @@
+% csplib_021_crossfigures: a SWI-Prolog model from DCP Rosetta.
+%
+% Crossfigures are the numerical equivalent of crosswords: a grid of numbered cells and clues whose numerical answers
+% are placed on the grid. Each cell marked X holds 0, and every other cell holds a digit of an answer (a digit may be 0).
+% The answers are the across and down numbers read from their cells, and each answer must satisfy its clue.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
+%
+% The grid is the one in the statement, written below with the labels of its numbered cells, b for an empty cell and
+% x for a cell marked X. The clues are written as constraints on the across (A) and down (D) answers, named by their
+% numbers. An answer is read from its cells left to right or top to bottom, and has no leading zero.
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Crossfigure: a crossword whose answers are numbers. Fill a 9 x 9 grid with
-% digits so that every across and down answer satisfies its clue, which ties it
-% to other answers, fixes it, or says it is a square or a prime.
-model(_Instance, Cells, ['M'-Rows]) :-
-    % The grid and the clues belong to the problem (there are no instance
-    % fields). b is a black box, w a cell holding a digit.
-    Layout = [[w, w, w, w, b, w, w, w, w],
-              [w, w, b, w, w, w, b, w, w],
-              [w, b, w, w, b, w, w, b, w],
-              [w, w, w, w, b, w, w, w, w],
-              [b, w, b, b, b, b, b, w, b],
-              [w, w, w, w, b, w, w, w, w],
-              [w, b, w, w, b, w, w, b, w],
-              [w, w, b, w, w, w, b, w, w],
-              [w, w, w, w, b, w, w, w, w]],
-    Max = 9999,                             % every answer has at most 4 digits
+% the grid: numbered cells, b (an empty cell) and x (a cell marked X)
+grid([[1, 2, b, 3, x, 4, b, 5, 6],
+      [7, b, x, 8, b, b, x, 9, b],
+      [b, x, 10, b, x, 11, 12, x, b],
+      [13, 14, b, b, x, 15, b, 16, b],
+      [x, b, x, x, x, x, x, b, x],
+      [17, b, 18, 19, x, 20, 21, b, 22],
+      [b, x, 23, b, x, 24, b, x, b],
+      [25, 26, x, 27, b, b, x, 28, b],
+      [29, b, b, b, x, 30, b, b, b]]).
 
-    % Rows[i][j] is the digit in row i, column j (counted from 1); a black box
-    % holds 0, which is how the answer prints it.
-    maplist(layout_row, Layout, Rows),
-    append(Rows, Cells),
-    transpose(Rows, Columns),
+model(_, Vars, ['M'-Rows]) :-
+    grid(G),
+    maplist(build_row, G, Rows),
+    % the across answers (A) and the down answers (D), each a number read from its cells
+    Acr = [1-A1, 4-A4, 7-A7, 8-A8, 9-A9, 10-A10, 11-A11, 13-A13, 15-A15, 17-A17, 20-A20, 23-A23, 24-A24,
+           25-A25, 27-A27, 28-A28, 29-A29, 30-A30],
+    Dwn = [1-D1, 2-D2, 3-D3, 4-D4, 5-D5, 6-D6, 10-D10, 12-D12, 14-D14, 16-D16, 17-D17, 18-D18, 19-D19,
+           20-D20, 21-D21, 22-D22, 26-D26, 28-D28],
+    maplist(bind_word(G, Rows, across), Acr),
+    maplist(bind_word(G, Rows, down), Dwn),
+    % 1 across: 27 across times two
+    A1 #= 2 * A27,
+    % 4 across: 4 down plus seventy-one
+    A4 #= D4 + 71,
+    % 7 across: 18 down plus four
+    A7 #= D18 + 4,
+    % 8 across: 6 down divided by sixteen
+    D6 #= 16 * A8,
+    % 9 across: 2 down minus eighteen
+    A9 #= D2 - 18,
+    % 10 across: dozen in six gross (six gross is 72 dozen)
+    A10 #= 72,
+    % 11 across: 5 down minus seventy
+    A11 #= D5 - 70,
+    % 13 across: 26 down times 23 across
+    A13 #= D26 * A23,
+    % 15 across: 6 down minus 350
+    A15 #= D6 - 350,
+    % 17 across: 25 across times 23 across
+    A17 #= A25 * A23,
+    % 20 across: a square number
+    square(A20, S20),
+    % 23 across: a prime number
+    prime_dom(PrimeDom),
+    A23 in PrimeDom,
+    % 24 across: a square number
+    square(A24, S24),
+    % 25 across: 20 across divided by seventeen
+    A20 #= 17 * A25,
+    % 27 across: 6 down divided by four
+    D6 #= 4 * A27,
+    % 28 across: four dozen
+    A28 #= 48,
+    % 29 across: seven gross
+    A29 #= 1008,
+    % 30 across: 22 down plus 450
+    A30 #= D22 + 450,
+    % 1 down: 1 across plus twenty-seven
+    D1 #= A1 + 27,
+    % 2 down: five dozen
+    D2 #= 60,
+    % 3 down: 30 across plus 888
+    D3 #= A30 + 888,
+    % 4 down: two times 17 across
+    D4 #= 2 * A17,
+    % 5 down: 29 across divided by twelve
+    A29 #= 12 * D5,
+    % 6 down: 28 across times 23 across
+    D6 #= A28 * A23,
+    % 10 down: 10 across plus four
+    D10 #= A10 + 4,
+    % 12 down: three times 24 across
+    D12 #= 3 * A24,
+    % 14 down: 13 across divided by sixteen
+    A13 #= 16 * D14,
+    % 16 down: 28 down times fifteen
+    D16 #= D28 * 15,
+    % 17 down: 13 across minus 399
+    D17 #= A13 - 399,
+    % 18 down: 29 across divided by eighteen
+    A29 #= 18 * D18,
+    % 19 down: 22 down minus ninety-four
+    D19 #= D22 - 94,
+    % 20 down: 20 across minus nine
+    D20 #= A20 - 9,
+    % 21 down: 25 across minus fifty-two
+    D21 #= A25 - 52,
+    % 22 down: 20 down times six
+    D22 #= D20 * 6,
+    % 26 down: five times 24 across
+    D26 #= 5 * A24,
+    % 28 down: 21 down plus twenty-seven
+    D28 #= D21 + 27,
+    term_variables([Rows, S20, S24], Vars).
 
-    % The answers: A<k> is the across answer numbered k, D<k> the down answer.
-    Numbers = [A1, A4, A7, A8, A9, A10, A11, A13, A15, A17, A20, A23, A24, A25, A27, A28, A29, A30,
-               D1, D2, D3, D4, D5, D6, D10, D12, D14, D16, D17, D18, D19, D20, D21, D22, D26, D28],
-    Numbers ins 0..Max,
+% a cell of an empty or numbered position holds a digit, a blocked cell holds 0
+build_row(Row, Cells) :- maplist(build_cell, Row, Cells).
+build_cell(x, 0) :- !.
+build_cell(_, V) :- V in 0..9.
 
-    % Where each answer is written: its number of digits and the row and column
-    % of its first digit. An answer is the number the digits spell out.
-    across(Rows, A1, 4, 1, 1),   across(Rows, A4, 4, 1, 6),   across(Rows, A7, 2, 2, 1),
-    across(Rows, A8, 3, 2, 4),   across(Rows, A9, 2, 2, 8),   across(Rows, A10, 2, 3, 3),
-    across(Rows, A11, 2, 3, 6),  across(Rows, A13, 4, 4, 1),  across(Rows, A15, 4, 4, 6),
-    across(Rows, A17, 4, 6, 1),  across(Rows, A20, 4, 6, 6),  across(Rows, A23, 2, 7, 3),
-    across(Rows, A24, 2, 7, 6),  across(Rows, A25, 2, 8, 1),  across(Rows, A27, 3, 8, 4),
-    across(Rows, A28, 2, 8, 8),  across(Rows, A29, 4, 9, 1),  across(Rows, A30, 4, 9, 6),
-    down(Columns, D1, 4, 1, 1),  down(Columns, D2, 2, 1, 2),  down(Columns, D3, 4, 1, 4),
-    down(Columns, D4, 4, 1, 6),  down(Columns, D5, 2, 1, 8),  down(Columns, D6, 4, 1, 9),
-    down(Columns, D10, 2, 3, 3), down(Columns, D12, 2, 3, 7), down(Columns, D14, 3, 4, 2),
-    down(Columns, D16, 3, 4, 8), down(Columns, D17, 4, 6, 1), down(Columns, D18, 2, 6, 3),
-    down(Columns, D19, 4, 6, 4), down(Columns, D20, 4, 6, 6), down(Columns, D21, 2, 6, 7),
-    down(Columns, D22, 4, 6, 9), down(Columns, D26, 2, 8, 2), down(Columns, D28, 2, 8, 8),
+% the answer of the word that starts at the cell labelled N and runs across or down, as a number
+bind_word(G, Rows, Dir, N-V) :-
+    dir(Dir, DR, DC),
+    word_cells(G, Rows, N, DR, DC, Cells),
+    length(Cells, L),
+    powers(L, Ps),
+    scalar_product(Ps, Cells, #=, V),
+    Cells = [First|_],
+    First #\= 0.
 
-    % Squares and primes below the largest answer, for the clues that ask for
-    % one. Each division clue is posted as a multiplication.
-    findall(Square, (between(1, 100, Root), Square is Root * Root, Square =< Max), Squares),
-    findall(Prime, (between(2, Max, Prime), is_prime(Prime)), Primes),
-    list_to_domain(Squares, SquareDomain),
-    list_to_domain(Primes, PrimeDomain),
+dir(across, 0, 1).
+dir(down, 1, 0).
 
-    % Across clues
-    A1 #= 2 * A27,                % 1  27 across times two
-    A4 #= D4 + 71,                % 4  4 down plus seventy-one
-    A7 #= D18 + 4,                % 7  18 down plus four
-    16 * A8 #= D6,                % 8  6 down divided by sixteen
-    A9 #= D2 - 18,                % 9  2 down minus eighteen
-    12 * A10 #= 6 * 144,          % 10 dozen in six gross
-    A11 #= D5 - 70,               % 11 5 down minus seventy
-    A13 #= D26 * A23,             % 13 26 down times 23 across
-    A15 #= D6 - 350,              % 15 6 down minus 350
-    A17 #= A25 * A23,             % 17 25 across times 23 across
-    A20 in SquareDomain,          % 20 a square number
-    A23 in PrimeDomain,           % 23 a prime number
-    A24 in SquareDomain,          % 24 a square number
-    17 * A25 #= A20,              % 25 20 across divided by seventeen
-    4 * A27 #= D6,                % 27 6 down divided by four
-    A28 #= 4 * 12,                % 28 four dozen
-    A29 #= 7 * 144,               % 29 seven gross
-    A30 #= D22 + 450,             % 30 22 down plus 450
+powers(L, Ps) :- findall(P, (between(1, L, I), P is 10 ^ (L - I)), Ps).
 
-    % Down clues
-    D1 #= A1 + 27,                % 1  1 across plus twenty-seven
-    D2 #= 5 * 12,                 % 2  five dozen
-    D3 #= A30 + 888,              % 3  30 across plus 888
-    D4 #= 2 * A17,                % 4  two times 17 across
-    12 * D5 #= A29,               % 5  29 across divided by twelve
-    D6 #= A28 * A23,              % 6  28 across times 23 across
-    D10 #= A10 + 4,               % 10 10 across plus four
-    D12 #= A24 * 3,               % 12 three times 24 across
-    16 * D14 #= A13,              % 14 13 across divided by sixteen
-    D16 #= 15 * D28,              % 16 28 down times fifteen
-    D17 #= A13 - 399,             % 17 13 across minus 399
-    18 * D18 #= A29,              % 18 29 across divided by eighteen
-    D19 #= D22 - 94,              % 19 22 down minus ninety-four
-    D20 #= A20 - 9,               % 20 20 across minus nine
-    D21 #= A25 - 52,              % 21 25 across minus fifty-two
-    D22 #= 6 * D20,               % 22 20 down times six
-    D26 #= 5 * A24,               % 26 five times 24 across
-    D28 #= D21 + 27.              % 28 21 down plus twenty-seven
+% the cells of the word from the cell labelled N, up to the first blocked cell
+word_cells(G, Rows, N, DR, DC, Cells) :-
+    cell(G, R, C, N),
+    walk(G, Rows, R, C, DR, DC, Cells).
 
-% layout_row(+Layout, -Row): a black box (b) holds 0, any other cell a digit.
-layout_row(Layout, Row) :-
-    maplist([Spec, Cell]>>(Spec == b -> Cell = 0 ; Cell in 0..9), Layout, Row).
+walk(G, Rows, R, C, DR, DC, Cells) :-
+    (   R >= 1, R =< 9, C >= 1, C =< 9, cell(G, R, C, Gv), Gv \== x
+    ->  cell(Rows, R, C, V),
+        Cells = [V|More],
+        R1 is R + DR,
+        C1 is C + DC,
+        walk(G, Rows, R1, C1, DR, DC, More)
+    ;   Cells = []
+    ).
 
-% across(+Rows, ?Answer, +Length, +Row, +Col): Answer is the number spelled by the
-% Length digits that start in row Row, column Col and run to the right.
-across(Rows, Answer, Length, Row, Col) :-
-    nth1(Row, Rows, Line),
-    Skipped is Col - 1,
-    length(Before, Skipped),
-    append(Before, After, Line),
-    length(Digits, Length),
-    append(Digits, _, After),
-    foldl([Digit, Value0, Value]>>(Value #= 10 * Value0 + Digit), Digits, 0, Answer).
+cell(Grid, R, C, V) :- nth1(R, Grid, Row), nth1(C, Row, V).
 
-% down(+Columns, ?Answer, +Length, +Row, +Col): the same, running downwards. Columns
-% is the grid read column by column, so down is across on the transposed grid.
-down(Columns, Answer, Length, Row, Col) :-
-    across(Columns, Answer, Length, Col, Row).
+% S is a number whose square is X
+square(X, S) :- S in 0..99, X #= S * S.
 
-% is_prime(+N): N is a prime number.
-is_prime(N) :-
-    N >= 2,
-    Limit is floor(sqrt(N)),
-    \+ ( between(2, Limit, Factor), N mod Factor =:= 0 ).
+% the domain of the prime numbers from 11 to 99
+prime_dom(Dom) :-
+    findall(P, (between(11, 99, P), \+ (between(2, 9, D), D < P, P mod D =:= 0)), Ps),
+    union_dom(Ps, Dom).
 
-% list_to_domain(+Ints, -Domain): the finite domain holding exactly Ints.
-list_to_domain([First|Rest], Domain) :-
-    foldl([X, Domain0, Domain1]>>(Domain1 = Domain0 \/ X), Rest, First, Domain).
+union_dom([P], P) :- !.
+union_dom([P|Ps], P \/ D) :- union_dom(Ps, D).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+:- use_module(library(http/json)).
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

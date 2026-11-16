@@ -1,57 +1,79 @@
+% session3_farmer_and_cows: a SWI-Prolog model from DCP Rosetta.
+%
+% A farmer has cows numbered 1 up to the total number of cows, and each cow gives a quantity of milk equal to its
+% number. The farmer has a number of sons and wants to give each son a given number of cows, so that the total
+% quantity of milk is the same for each son. How can he distribute the cows?
+%
+% Save this file as model.pl. Download `session3_farmer_and_cows.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_farmer_and_cows.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('session3_farmer_and_cows.json')" -t halt model.pl
+%
+% Data fields: num_cows (the number of cows), num_sons (the number of sons), cows_per_son (the number of cows each
+% son receives, lists indexed from 0).
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Farmer and cows: split the herd between the sons so that each gets his
-% allotted number of cows and exactly the same amount of milk.
-%
-% The model decides a cow-by-son 0/1 matrix and channels it to the declared
-% assignment variables.  Two details matter for search.
-%
-% The matrix is what gets labelled, heaviest cow first, and the assignments
-% follow it.  Labelling the assignments instead does not work: given
-% sum(Row) #= 1 and sum(k * Row_k) #= Son, fixing Son does not narrow the row
-% by bounds reasoning alone - every row still looks possible - so the per-son
-% head count and milk total stay dormant until the very end of the search.
-% Deciding the booleans updates both column sums immediately.
-%
-% Heaviest first, because the largest yields are what pin the milk balance
-% down; first-fail has nothing to go on when every variable is a Boolean.
-model(Instance, Vars, [cow_assignments-Assignments]) :-
+model(Instance, [Assign, BitLists], [cow_assignments-Assign]) :-
     NumCows = Instance.num_cows,
     NumSons = Instance.num_sons,
-    CowsPerSon = Instance.cows_per_son,
-    length(Assignments, NumCows),
+    Counts = Instance.cows_per_son,
     Top is NumSons - 1,
-    Assignments ins 0..Top,
-    % Cow i yields i + 1 units of milk, as the reference lays the herd out.
-    numlist(1, NumCows, MilkPerCow),
-    sum_list(MilkPerCow, TotalMilk),
-    Share is TotalMilk // NumSons,
-    numlist(0, Top, SonIndices),
+    length(Assign, NumCows),
+    Assign ins 0..Top,                     % the son (0-based) that each cow goes to
+    % each son receives the number of cows given for him
+    numlist(0, Top, Sons),
+    pairs_keys_values(Pairs, Sons, Counts),
+    global_cardinality(Assign, Pairs),
+    % the cows are numbered 1..NumCows, and each son's cows give the same total milk (implied: the whole milk divided by the number of sons)
+    numlist(1, NumCows, Cows),
+    Target is NumCows * (NumCows + 1) // (2 * NumSons),
+    maplist(son_milk(Assign, Cows, Target), Sons, BitLists),
+    % symmetry breaking (not in the statement): sons who receive the same number of cows are interchangeable, so the first cow of the earlier son comes first
+    same_count_order(Counts, BitLists).
 
-    length(Matrix, NumCows),
-    maplist({NumSons}/[Row]>>(length(Row, NumSons), Row ins 0..1), Matrix),
-    maplist({SonIndices}/[Row, Cow]>>channel(Row, SonIndices, Cow),
-            Matrix, Assignments),
+% Bits[C] = 1 when cow C goes to Son; the milk of the son's cows is the target.
+son_milk(Assign, Cows, Target, Son, Bits) :-
+    maplist(in_son(Son), Assign, Bits),
+    scalar_product(Cows, Bits, #=, Target).
 
-    transpose(Matrix, BySon),
-    maplist({MilkPerCow, Share}/[Column, HeadCount]>>
-                fair_share(Column, MilkPerCow, Share, HeadCount),
-            BySon, CowsPerSon),
+in_son(Son, Cow, Bit) :- Bit #<==> (Cow #= Son).
 
-    reverse(Matrix, Heaviest),
-    append(Heaviest, HeaviestVars),
-    append(HeaviestVars, Assignments, Vars).
+same_count_order([C1, C2|Cs], [B1, B2|Bs]) :-
+    (   C1 =:= C2 -> precedes(B1, B2) ; true ),
+    same_count_order([C2|Cs], [B2|Bs]).
+same_count_order([_], [_]).
 
-% Exactly one son per cow, and the assignment variable is that son's index.
-channel(Row, SonIndices, Cow) :-
-    sum(Row, #=, 1),
-    scalar_product(SonIndices, Row, #=, Cow).
+% Seen is 1 once a cow of the earlier son has been passed; a cow of the later son needs one before it.
+precedes(EarlierBits, LaterBits) :-
+    Seen #= 0,
+    precedes(EarlierBits, LaterBits, Seen).
 
-fair_share(Column, MilkPerCow, Share, HeadCount) :-
-    sum(Column, #=, HeadCount),
-    scalar_product(MilkPerCow, Column, #=, Share).
+precedes([], [], _).
+precedes([E|Es], [L|Ls], Seen) :-
+    L #==> Seen,
+    Seen1 #<==> (Seen #\/ E),
+    precedes(Es, Ls, Seen1).
 
-labeling_options([leftmost]).
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).
