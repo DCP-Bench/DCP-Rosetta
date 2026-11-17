@@ -74,7 +74,7 @@ None.
 
 Image `dcp-eval/ortools_cp_sat_python:v1` (`python:3.12.11-slim-bookworm`): Python
 3.12.11 at `/usr/local/bin/python`, OR-Tools 9.15.6755, NumPy 2.5.3, all pinned in
-`runner/requirements.txt`, which also installs CPMpy 1.0.0, pandas 3.0.5, protobuf,
+`runner/requirements.txt`, which also installs CPMpy 1.1.1, pandas 3.0.5, protobuf,
 absl-py, immutabledict, packaging, python-dateutil, six and typing_extensions. JSON is
 the standard library's `json`. No edition or size limits.
 
