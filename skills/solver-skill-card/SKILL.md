@@ -62,6 +62,7 @@ Leave out any item or family the solver does not have. Do not write "none".
 ## Budget
 - Whole card: about 1.5–3 KB and under 60 lines. Hard limits: 200 lines and 5000 characters, since some harnesses truncate.
 - If over budget, cut API forms first (least used), never the example's essential glue.
+- When shrinking, cut forms whose syntax is guessable from the name. Keep a form whose syntax is not obvious, even if it is rare (e.g. a quantifier over two variables, 2-D list indexing, collecting variables into an array type).
 
 ## Who writes it
 Use a strong model, or write it yourself. Card writing takes judgement: what counts as general API versus a recipe, and which forms matter. Small models produce cards with wrong rows, recipes and harness leakage. Modellers that read the card can be small.
