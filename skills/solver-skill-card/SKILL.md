@@ -5,9 +5,9 @@ description: How to write a minimal, verified skill file (card) for a combinator
 
 # Writing a solver skill card
 
-A card gives a model what it cannot reliably guess about one solver: how a model is set up, the exact API names and argument semantics, and the real pitfalls. It contains general solver knowledge only. Harness or benchmark glue (entrypoints, input reading, output registration) belongs in the task prompt, never in the card.
+A card gives a model what it cannot reliably guess about one solver: how a model is set up, the exact API names and argument semantics, the real pitfalls, and how to model so that the solver finishes. It contains general solver knowledge only. Harness or benchmark glue (entrypoints, input reading, output registration) belongs in the task prompt, never in the card.
 
-Evidence (DCP-Bench, 9 unfamiliar solvers, Haiku, single shot): no card 9/180 accepted, example only 56, API list only 81, both ~86–92. The example carries setup and glue (Gecode copy constructor, MaxiCP helpers). The API list carries breadth and argument semantics (Exact `addConstraint` flags). Keep both.
+Evidence (DCP-Bench, 9 unfamiliar solvers, Haiku, single shot): no card 9/180 accepted, example only 56, API list only 81, both ~86–92. The example carries setup and glue (Gecode copy constructor, MaxiCP helpers). The API list carries breadth and argument semantics (Exact `addConstraint` flags). Keep both. A short modelling section then lifted 101 to 112/180 and cut timeouts from 59 to 46. The gain was largest where it pointed to a global constraint or search control the modeller was not using (ECLiPSe +5, IDP-Z3 +4), and about zero for pseudo-Boolean, MaxSAT and SAT solvers.
 
 ## Template
 
@@ -31,6 +31,14 @@ Evidence (DCP-Bench, 9 unfamiliar solvers, Haiku, single shot): no card 9/180 ac
   - scheduling: ...
 - **Objectives and solving:** ...
 
+## Modelling
+- **Domains:** ...
+- **Structure:** ...
+- **Lookups:** ...
+- **Symmetry:** ...
+- **Implied constraints:** ...
+- **Search:** ...
+
 Docs: <official docs URL>
 ````
 
@@ -49,8 +57,17 @@ Leave out any item or family the solver does not have. Do not write "none".
 - Don't repeat what the example already shows (imports, setup).
 - Semantics only as short symbolic notes, e.g. `(h ⇔ Σ ≥ k)`, `(0-based)`, `(int c only)`.
 - Pitfalls only when tested and real: a missing library load, an operator that silently does nothing, a crash, a misleading return value.
-- No encoding recipes or modelling advice (how to linearise an implication, how to build alldifferent from Booleans). That is not API knowledge.
+- No encoding recipes or modelling advice in API rows (how to linearise an implication, how to build alldifferent from Booleans). Modelling advice goes in the Modelling section.
 - No solving or diagnosis tutorial: no statuses beyond what reading a result needs, no time-limit tuning, no UNSAT debugging.
+
+## Modelling section
+- One bullet per technique, in this order: domains, structure, lookups (costs, for linear solvers), symmetry, implied constraints, search. Each bullet names the solver's own construct in `code`, with a one-line example.
+- Domains: tight bounds from the data, and the solver's form for a set of allowed values.
+- Structure: the global constraint that matches a common structure, in its strongest form, and what to avoid instead. For example, a tour is successor variables restricted to allowed neighbours plus `circuit` (a path adds a dummy node), not a position sequence with move tests. Patterns use `regular` or table constraints; resources use cumulative constraints. A solver without the global gets the encoding that replaces it (Boolean arcs between allowed pairs plus order variables through reification).
+- Lookups: index a constant row directly (`element(succ[i], row_i, leg[i])`), never a computed flat index. A product with a small-domain factor is split on its values. Linear solvers weight 0/1 choices directly in sums.
+- Search: only when the model controls it (a branching call, a labelling list, a search goal). Put the deciding variables first and use first-fail. Leave the bullet out when the runner owns search.
+- Generic only: no problem names, no problem-specific bounds. Vague hints are ignored ("count bounds on prefixes" was used 0/4 times); give the construct.
+- About 700–1100 characters. Verify every form like an API row.
 
 ## Verification (mandatory)
 1. Take signatures from the installed library itself: Python `dir()` and docstrings, `javap`, headers, crate source. Don't trust memory or the docs alone.
@@ -71,5 +88,6 @@ Use a strong model, or write it yourself. Card writing takes judgement: what cou
 - [ ] Title line names the solver, language and paradigm
 - [ ] Example: one-line data, one print, recommended style, prints 22 when run
 - [ ] API: names in `code`, one form per concept, empty items omitted, no recipes, no harness glue
+- [ ] Modelling: the solver's own constructs for each technique, generic, search only if the model controls it
 - [ ] Every listed form ran in a scratch program; non-obvious semantics tested
 - [ ] Size within budget
