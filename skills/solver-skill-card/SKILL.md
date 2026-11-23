@@ -7,7 +7,7 @@ description: How to write a minimal, verified skill file (card) for a combinator
 
 A card gives a model what it cannot reliably guess about one solver: how a model is set up, the exact API names and argument semantics, the real pitfalls, and how to model so that the solver finishes. It contains general solver knowledge only. Harness or benchmark glue (entrypoints, input reading, output registration) belongs in the task prompt, never in the card.
 
-Evidence (DCP-Bench, 9 unfamiliar solvers, Haiku, single shot): no card 9/180 accepted, example only 56, API list only 81, both ~86–92. The example carries setup and glue (Gecode copy constructor, MaxiCP helpers). The API list carries breadth and argument semantics (Exact `addConstraint` flags). Keep both. A short modelling section then lifted 101 to 112/180 and cut timeouts from 59 to 46. The gain was largest where it pointed to a global constraint or search control the modeller was not using (ECLiPSe +5, IDP-Z3 +4), and about zero for pseudo-Boolean, MaxSAT and SAT solvers.
+Evidence (DCP-Bench, 9 unfamiliar solvers, Haiku, single shot): no card 9/180 accepted, example only 56, API list only 81, both ~86–92. The example carries setup and glue (Gecode copy constructor, MaxiCP helpers). The API list carries breadth and argument semantics (Exact `addConstraint` flags). Keep both. A short modelling section then lifted 101 to 112/180 and cut timeouts from 59 to 46. The gain was largest where it pointed to a global constraint or search control the modeller was not using (ECLiPSe +5, IDP-Z3 +4), and about zero for pseudo-Boolean, MaxSAT and SAT solvers. Only the structure, symmetry and search bullets changed what modellers wrote. On well-known solvers (CPMpy, MiniZinc, SCIP) the card still helped by removing errors (no card 35/60, card 41), and the modelling section added nothing (40).
 
 ## Template
 
@@ -80,6 +80,10 @@ Leave out any item or family the solver does not have. Do not write "none".
 - Whole card: about 1.5–3 KB and under 60 lines. Hard limits: 200 lines and 5000 characters, since some harnesses truncate.
 - If over budget, cut API forms first (least used), never the example's essential glue.
 - When shrinking, cut forms whose syntax is guessable from the name. Keep a form whose syntax is not obvious, even if it is rare (e.g. a quantifier over two variables, 2-D list indexing, collecting variables into an array type).
+
+## Reference cards
+Verified cards written with this skill (every example and listed form was run in the solver's environment):
+[CPMpy](references/cards/cpmpy_python.md), [ECLiPSe](references/cards/eclipse_clp.md), [Exact](references/cards/exact.md), [Gecode](references/cards/gecode_cpp.md), [Hermax](references/cards/hermax.md), [IDP-Z3](references/cards/idp_z3.md), [MaxiCP](references/cards/maxicp_java.md), [MiniZinc](references/cards/minizinc_gecode.md), [Paramita](references/cards/paramita_python.md), [Picat](references/cards/picat.md), [Pumpkin](references/cards/pumpkin_rust.md), [SCIP](references/cards/scip_python.md).
 
 ## Who writes it
 Use a strong model, or write it yourself. Card writing takes judgement: what counts as general API versus a recipe, and which forms matter. Small models produce cards with wrong rows, recipes and harness leakage. Modellers that read the card can be small.

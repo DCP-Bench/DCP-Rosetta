@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "skill_name": "solver-skill-card",
+  "evals": [
+    {
+      "id": "card-for-one-solver",
+      "prompt": "Use solver-skill-card to write a card for the Choco (Java) solver in the supplied isolated checkout. Verify it in the solver's evaluation image. Do not push.",
+      "prerequisites": [
+        "A clean checkout on a branch the agent may create",
+        "The solver's evaluation image built"
+      ],
+      "expected_output": "One card.md following the template (title, knapsack example, API rows, modelling section, docs URL), with a log of the runs that verified it; or an explicit blocker with evidence.",
+      "assertions": [
+        "The example runs in the solver's image and prints the optimum 22",
+        "Every form named in the API and modelling sections ran in a scratch program",
+        "The card is under 200 lines and 5000 characters",
+        "The card names no harness glue (entrypoint, instance reading, output registration)",
+        "The modelling section has a search bullet only if the model controls search"
+      ]
+    }
+  ]
+}
