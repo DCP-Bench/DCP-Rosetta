@@ -132,8 +132,10 @@ def driver_records(request, started):
     for path in (PROTOCOL, MESSAGES, STDOUT):
         path.unlink(missing_ok=True)
     left = budget - (time.monotonic() - started)
+    # The last argument: whether each incumbent carries its declared outputs (the request's incumbent_values).
+    values = "true" if request.get("incumbent_values") else "false"
     REQUEST.write_text(f"request({term(request['instance'])}, {int(request['solution_limit'])}, "
-                       f"{max(left, 0.001)!r}).\n", encoding="utf-8")
+                       f"{max(left, 0.001)!r}, {values}).\n", encoding="utf-8")
     environment = dict(os.environ, ECLIPSEDIR="/opt/eclipse",
                        LD_LIBRARY_PATH="/opt/eclipse/lib/x86_64_linux")
     with STDOUT.open("w") as printed:

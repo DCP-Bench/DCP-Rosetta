@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate, improving_incumbents
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -348,6 +348,9 @@ def main():
             check("incumbents_maximize", OPTIMAL.replace("OBJECTIVE", "max"), reference=MAXIMIZING), minimize=False)
         # Labelling X downwards from 10 finds 10 first, which branch and bound improves down to the optimum 1.
         results["incumbents"] = improving_incumbents(check("incumbents", STEP, reference=STEP_REF))
+        # Asked for, each of those incumbents carries the outputs bound when report_success ran: its own solution.
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", STEP, reference=STEP_REF, incumbent_values=True))
         # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
         results["objective_values"] = (
             check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "max(3 + X + Y)"),
