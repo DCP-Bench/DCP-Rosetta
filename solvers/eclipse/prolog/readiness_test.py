@@ -16,13 +16,8 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-<<<<<<< HEAD
 from evaluation import evaluate, improving_incumbents, incumbents_with_values
-from evaluation.execution import image_identity
-=======
-from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
->>>>>>> origin/main
 from evaluation.results import EvaluationError
 
 SOLVER = "eclipse_clp"
