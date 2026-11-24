@@ -52,6 +52,9 @@ and is reported as `execution_error`.
 None. cvc5 has no optimiser, so this integration declares no objective: a satisfaction
 problem declares none, and an optimisation problem is out of scope.
 
+No incumbents either: there is no optimisation search whose improving solutions could be
+reported (`optimization` is false), and the runner adds none of its own.
+
 ## Solving
 
 - Solvers: the runner never checks the Solver `create_model` returns. It solves on fresh pythonic
