@@ -80,7 +80,9 @@ State the problem's own objective, in the brief's direction. The runner reports 
   only then is it reported, as the first solution. A model that fails, or an optimum phase
   that finds nothing, is `unsat`. Each improving solution is reported along the way as an
   `incumbent` (its objective, seconds since `bb_min` started) through the `report_success`
-  option, whose default only logs; `run.py` relays these while the driver runs.
+  option, whose default only logs; `run.py` relays these while the driver runs. When the
+  request says `incumbent_values`, each incumbent also carries `values`: the declared outputs
+  as the hook sees them (still bound to that solution), written as a solution's are.
 - Enumeration phase (only when more than one solution is wanted and the optimum phase did
   not already reach the limit): the model is rebuilt, `Expr #= Optimum` is posted, and the
   driver backtracks through the labelling. Outputs equal to one already reported are

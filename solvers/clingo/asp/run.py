@@ -232,8 +232,11 @@ def solve(request):
             # Each strictly better model of the optimisation phase is an incumbent.
             if model.cost and (best is None or model.cost[0] < best):
                 best = model.cost[0]
-                emit({"type": "incumbent", "objective": sign * best,
-                      "seconds": time.monotonic() - search_start})
+                incumbent = {"type": "incumbent", "objective": sign * best,
+                             "seconds": time.monotonic() - search_start}
+                if request.get("incumbent_values"):  # the declared outputs of this model, read as a solution's
+                    incumbent["values"] = outputs_of(model, wanted)
+                emit(incumbent)
             if model.cost and not model.optimality_proven:
                 handle.resume()
                 continue

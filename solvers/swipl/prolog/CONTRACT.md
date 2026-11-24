@@ -62,8 +62,12 @@ propagation (`Z #= X + Y` with `X`, `Y` labelled is fine). Anything else in that
 position is an `error`.
 
 State the problem's own objective, in the brief's direction: that value of `Expr` is what the runner
-reports as each solution's `objective`. No incumbents are reported (clpfd's `labeling/2` returns
-only the optimum).
+reports as each solution's `objective`. No incumbents are reported, because clpfd exposes none:
+`labeling([min(Expr)|Options], Vars)` returns the optimum first. Its branch and bound is internal to
+`library(clpfd)` (SWI-Prolog 9.2.9, `optimise/3`, `store_extremum/4`, `optimise/6`): each improving
+solution is caught by a `throw`/`catch` and kept only with `nb_setarg` in a private `extremum/1`
+term, with no option or hook that reports it to the caller. Reporting them would mean the driver
+running its own bound-tightening loop instead of `labeling/2`'s, which changes the search.
 
 ## Solving
 
