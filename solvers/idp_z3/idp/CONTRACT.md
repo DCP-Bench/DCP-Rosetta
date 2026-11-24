@@ -203,7 +203,9 @@ optimisation, `theory.optimize_solver` (a `z3.Optimize`), with z3 defaults other
 - **Optimisation**: one `Optimize.check()` on the objective term. `unsat` is `unsat`; any
   other non-`sat` answer is `timeout` ("Candidate optimum was not proven"). Each strictly
   better model z3 hands to `set_on_model` during that check is reported as an `incumbent`
-  record, `seconds` from the end of the build. The optimum is
+  record, `seconds` from the end of the build. When the request asks (`incumbent_values`), each
+  carries `values`: the declared outputs read from that model the way a solution's are (domain
+  predicates included; the closing proven-optimum incumbent reads the optimiser's final model). The optimum is
   proven only when the objective's lower and upper bounds are equal finite integers;
   unequal bounds are `timeout`, and non-integer (infinite) bounds are `error` ("The
   objective is unbounded: between L and H"). The optimum is then pinned on the solver
