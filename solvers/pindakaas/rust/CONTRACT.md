@@ -93,6 +93,12 @@ that no constraint has encoded: that one is read and blocked through a binary en
 None. This integration declares no objective: a satisfaction problem declares none, and an
 optimisation problem is out of scope.
 
+Incumbents: none, and none can be had without a new search. Pindakaas 0.6.0 has no optimiser,
+`Out` has no objective, and `run` only enumerates satisfying assignments (one `solve()` per
+solution, blocking clauses over the outputs; `"optimization": false` in `metadata.json`), so no
+search here produces improving solutions. Reporting them would need a bound-tightening loop of
+solves that the driver does not drive today.
+
 ## Solving
 
 The runner forces:
