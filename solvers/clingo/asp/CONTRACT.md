@@ -81,6 +81,8 @@ back (it tells the direction by parsing the program twice, `objective_sign` in
   optimal models are reported. Without one, every answer set is a candidate.
 - Each strictly cheaper model is reported as it is found as an `incumbent` record (`seconds` from
   right after grounding), with the objective in the problem's terms (cost, or -cost for `#maximize`).
+  When the request says `incumbent_values`, each incumbent also carries `values`: the declared outputs
+  read from that model's shown atoms, exactly as a solution's are.
 - Nothing is added to the program between models: clingo enumerates answer sets itself,
   and the runner drops a model whose declared outputs repeat ones already reported
   (other shown atoms and hidden atoms do not count). It stops at `limit` once enough

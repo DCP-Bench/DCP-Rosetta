@@ -20,7 +20,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate, improving_incumbents
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -191,6 +191,11 @@ def main():
         results["incumbents_maximize"] = improving_incumbents(
             check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
             minimize=False)
+        # Asked for, each incumbent carries the declared outputs of its own model; n = 8 makes clingo's first model
+        # not optimal (cost 16, then 8), so more than one incumbent's values are checked.
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", OPTIMAL.replace("DIRECTION", "minimize"), reference=OPTIMIZING,
+                  instances=[{"n": 8, "optimize": True}], instance_count=2, incumbent_values=True))
         # Acceptance implies every reported objective (solutions and incumbents) equalled the reference's optimum.
         results["objective_values"] = (
             check("objective_values", CONSTANT_MAX, reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
