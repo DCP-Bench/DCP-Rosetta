@@ -27,7 +27,7 @@ immediately, tolerated or not.
 
 Solutions are checked before the runner's exit status is consulted, so a
 rejected solution is a rejection even when the run later timed out or crashed.
-`reason` separates model rejection (`invalid_solution`, `suboptimal_solution`,
+`reason` separates model rejection (`invalid_solution`, `invalid_incumbent`, `suboptimal_solution`,
 `objective_mismatch`, `no_solution`) from inconclusive runs (`reference_timeout`,
 `execution_timeout`, `memory_limit`, `execution_error`), protocol violations (`invalid_output`, `output_limit`)
 and infrastructure failure (`infrastructure_error`).
@@ -261,7 +261,20 @@ the optimum, as it finds it (flushed, so a run cut off at its limit keeps them):
 `objective` is the solution's integer objective value in the problem's own terms, as for a solution record,
 `seconds` the time since the search started (after the model was built), nondecreasing. Incumbents come anywhere before the status and are evidence for
 anytime measures, never results: the evaluator checks their shape, keeps them per instance as `incumbents`
-(`[[seconds, objective], ...]`) and otherwise ignores them. They carry no values.
+(`[[seconds, objective], ...]`) and otherwise ignores them.
+
+When the request says `"incumbent_values": true` (`evaluate(..., incumbent_values=True)`, `--incumbent-values`;
+DCP-Runner asks for it on every run), a runner whose solver reports improving solutions gives each incumbent the
+solution's declared outputs as `values`, encoded as in a solution record:
+
+```json
+{"type":"incumbent","objective":12,"seconds":0.31,"values":{"x":[1,2,3]}}
+```
+
+Without the field, incumbents carry no values: reading them costs search time. The evaluator checks the values it is
+given like a solution, except that an improving solution need not be optimal (up to 10 per instance, spread over the
+search); one the reference does not accept is `invalid_incumbent`. `incumbents_with_values` counts those that carried
+values, and the readiness helper `evaluation.incumbents_with_values` checks that every incumbent did.
 
 | Status | Meaning |
 | --- | --- |

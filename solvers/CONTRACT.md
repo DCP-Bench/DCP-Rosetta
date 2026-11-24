@@ -89,7 +89,9 @@ The integration's runner, not the submission, does the solving:
   value), translating the solver's own value where that differs.
 - Where the solver exposes them, it also reports each improving solution's objective while it searches,
   as an `incumbent` record ([evaluation/README.md](../evaluation/README.md)): evidence of how the search
-  progressed, never a result. A submission does nothing for this.
+  progressed, never a result. When the request asks (`incumbent_values`), each carries the solution's
+  declared outputs too, and those must be solutions of the problem (not necessarily optimal). A
+  submission does nothing for this.
 
 So a submission **declares a model and nothing else**: it does not call the solver, print to
 stdout, read or write files, take command-line arguments, or define its own `main`. Only the
