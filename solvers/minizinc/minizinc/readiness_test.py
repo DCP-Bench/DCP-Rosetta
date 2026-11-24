@@ -26,7 +26,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
@@ -201,6 +201,39 @@ def isolation(temp):
     return code == 0 and "isolated" in out
 
 
+# incumbents, incumbents_maximize: a small knapsack on which Gecode's branch and bound (Booleans in order,
+# false first) starts from the empty packing and improves seven times to the optimum: the value left behind,
+# 25 down to 6, minimised, and the packed value, 0 up to 19, maximised. Each incumbent is strictly better
+# and the last the optimum.
+KNAPSACK_REF = """
+# Data
+capacity = 16
+# End of data
+import cpmpy as cp
+import json
+weights = [3, 10, 6, 13]
+values = [2, 7, 12, 4]
+x = cp.boolvar(shape=4, name="x")
+model = cp.Model(cp.sum(x * weights) <= capacity)
+model.DIRECTION(OBJECTIVE)
+model.solve()
+solution = {"x": [bool(v) for v in x.value()]}
+print(json.dumps(solution))
+"""
+KNAPSACK = ("int: capacity;\narray[1..4] of int: weights = [3, 10, 6, 13];\n"
+            "array[1..4] of int: values = [2, 7, 12, 4];\narray[1..4] of var bool: x;\n"
+            "constraint sum(i in 1..4)(weights[i] * x[i]) <= capacity;\n"
+            "var int: objective = OBJECTIVE;\nsolve DIRECTION objective;\n"
+            'output ["{\\"x\\":", show(x), "}"];\n')
+LEFT_BEHIND = ("minimize", "sum(values) - sum(i in 1..4)(values[i] * x[i])", "sum(values) - cp.sum(x * values)")
+PACKED = ("maximize", "sum(i in 1..4)(values[i] * x[i])", "cp.sum(x * values)")
+
+
+def knapsack(source, direction, objective, reference_objective):
+    objective = reference_objective if source is KNAPSACK_REF else objective
+    return source.replace("DIRECTION", direction).replace("OBJECTIVE", objective)
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -230,6 +263,12 @@ def main():
         minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
         results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
                                        and minimised["accepted"])
+        # The optimising solve streams Gecode's intermediate solutions, each an incumbent.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", knapsack(KNAPSACK, *LEFT_BEHIND), reference=knapsack(KNAPSACK_REF, *LEFT_BEHIND)))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", knapsack(KNAPSACK, *PACKED), reference=knapsack(KNAPSACK_REF, *PACKED)),
+            minimize=False)
         # Each instance must have been checked, not merely the first.
         ragged = check("ragged_field", RAGGED, reference=RAGGED_REFERENCE,
                        instances=RAGGED_INSTANCES, instance_count=3)

@@ -148,6 +148,55 @@ class Optimum:
     value = None
 
 
+def reporting_incumbents(solve_instance):
+    """The optimising solve (runtime.py's only Instance.solve) streams its solutions instead, with
+    `intermediate_solutions=True`, which only makes Gecode print each improving solution it finds on its
+    branch-and-bound search (the search is unchanged): each is emitted as an incumbent with its objective
+    (`Result.objective`, the `objective` variable, the problem's own value) as it arrives, strictly improving,
+    and the last solution (the optimum, once the status says so) is returned as `solve` would return it.
+    `seconds` is MiniZinc's own solution time (`time`, from the start of the minizinc process) less its
+    flattening time (`flatTime`), so it counts from the start of the search, after the model is built; where
+    MiniZinc gives no such time it counts from this call. Incumbents carry no values."""
+    def wrapped(instance, *args, **kwargs):
+        import asyncio
+        import time
+        import minizinc
+        if (instance.method == minizinc.Method.SATISFY or kwargs.get("intermediate_solutions") is not False
+                or Optimum.value is not None):
+            return solve_instance(instance, *args, **kwargs)
+        started = time.monotonic()
+        kwargs = {**kwargs, "intermediate_solutions": True}
+
+        async def streamed():
+            status, solution, statistics = minizinc.Status.UNKNOWN, None, {}
+            flattening, last, seconds = None, None, 0.0
+            async for result in instance.solutions(*args, **kwargs):
+                status = result.status
+                statistics.update(result.statistics)
+                if flattening is None and "flatTime" in result.statistics:
+                    flattening = result.statistics["flatTime"].total_seconds()
+                if result.solution is None:
+                    continue
+                solution = result.solution
+                value = result.objective
+                if isinstance(value, bool) or value is None or int(value) != value:
+                    raise ValueError("Use an integer objective")
+                value = int(value)
+                if last is not None and not (value < last if instance.method == minizinc.Method.MINIMIZE
+                                             else value > last):
+                    continue
+                at = result.statistics.get("time")
+                found = (at.total_seconds() - (flattening or 0.0) if at is not None
+                         else time.monotonic() - started)
+                seconds = max(seconds, found, 0.0)
+                runtime.emit({"type": "incumbent", "objective": value, "seconds": seconds})
+                last = value
+            return minizinc.Result(status, solution, statistics)
+
+        return asyncio.run(streamed())
+    return wrapped
+
+
 def remembering_objective(solve_instance):
     def wrapped(instance, *args, **kwargs):
         import minizinc
@@ -180,6 +229,6 @@ runtime.minizinc_solver = minizinc_solver
 
 if __name__ == "__main__":
     import minizinc
-    minizinc.Instance.solve = remembering_objective(minizinc.Instance.solve)
+    minizinc.Instance.solve = remembering_objective(reporting_incumbents(minizinc.Instance.solve))
     runtime.emit = with_objective(runtime.emit)
     runtime.main("minizinc")
