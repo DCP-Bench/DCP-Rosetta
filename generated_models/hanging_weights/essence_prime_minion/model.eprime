@@ -1,23 +1,54 @@
 language ESSENCE' 1.0
-$ Hanging weights puzzle: thirteen weights A to M, each an integer from 1 to 13, hang from a system of bars and must balance as drawn.
-find a, b, c, d, e, f, g, h, i, j, k, l, m : int(1..13)
+$ hanging_weights: an Essence' model from DCP Rosetta.
+$
+$ Weights A to M, with different integer values between 1 and 13, hang from a system of bars. Each
+$ three characters along a bar are one unit of distance. The rules for this kind of puzzle are:
+$ (1) the weights on either side of a given pivot point must be equal, when weighted by the
+$ distance from the pivot, and (2) a bar hanging beneath another contributes its total weight as
+$ though it were a single weight. The bars balance as the diagram shows: the bar on the bottom
+$ right carries C at 5 units from its pivot and D at 1 unit, and the bar above it has G at 3 units
+$ from its pivot and the bottom-right bar at 2 units. Find the weights a to m (the letters A to M
+$ in lower case) that balance the diagram.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [a, b, c, d, e, f, g, h, i, j, k, l, m]
+$ the weights are integers from 1 to this value
+letting max_weight = 13
+
+$ a, ..., m: the weights of A to M, in lower case
+find a : int(1..max_weight)
+find b : int(1..max_weight)
+find c : int(1..max_weight)
+find d : int(1..max_weight)
+find e : int(1..max_weight)
+find f : int(1..max_weight)
+find g : int(1..max_weight)
+find h : int(1..max_weight)
+find i : int(1..max_weight)
+find j : int(1..max_weight)
+find k : int(1..max_weight)
+find l : int(1..max_weight)
+find m : int(1..max_weight)
 
 such that
-$ top bar: the bar on its left (4 units from the pivot) against the bar on its right (3 units), each counted at its total weight
-4 * ((l + m) + (h + i + e + f)) = 3 * ((a + b) + (j + k) + (g + c + d)),
-$ bar carrying L and M: the bar on the left (1 unit) against L (1 unit) and M (4 units) on the right
-(h + i + e + f) = l + 4 * m,
-$ bar carrying H and I: H (3 units) on the left against I (3 units) and the bar carrying E and F (2 units) on the right
-3 * h = 3 * i + 2 * (e + f),
-$ bar carrying E and F: E (3 units) balances F (2 units)
-3 * e = 2 * f,
-$ bar carrying A and B and J and K and the bar carrying G and C and D: A and B (3 units) and J (2 units) on the left against K (1 unit) and the G, C, D bar (2 units) on the right
-3 * (a + b) + 2 * j = k + 2 * (g + c + d),
-$ bar carrying G and the bar carrying C and D: 3*G=2*(C+D)
-3 * g = 2 * (c + d),
-$ the bar on the bottom right must have 5*C=D
+$ the weights are different
+allDiff([a, b, c, d, e, f, g, h, i, j, k, l, m]),
+$ bar A-B: A is 4 units from the pivot and B is 1 unit from it on the other side
+4 * a = b,
+$ bar C-D: C is 5 units from the pivot and D is 1 unit from it on the other side
 5 * c = d,
-$ the bar on the bottom left carries A and B: 4*A=B
-4 * a = b
+$ bar G with the bar C-D hanging from it: G is 3 units from the pivot and the bar C-D is 2 units on the other side
+3 * g = 2 * (c + d),
+$ bar E-F: E is 3 units from the pivot and F is 2 units on the other side
+3 * e = 2 * f,
+$ bar H-I with the bar E-F hanging from it: H and I are 3 units from the pivot on either side, and the bar E-F is 2 units from it
+3 * h = 3 * i + 2 * (e + f),
+$ bar L-M with the bar H-I-E-F hanging from it: the bar H-I-E-F is 1 unit from the pivot, L is 1 unit and M is 4 units on the other side
+h + i + e + f = l + 4 * m,
+$ top bar: the bar L-M-H-I-E-F is 4 units from the pivot and the bar J-K-A-B-C-D-G is 3 units on the other side
+4 * (h + i + e + f + l + m) = 3 * (a + b + j + k + g + c + d),
+$ bar J-K-A-B-G-C-D: the bar A-B is 3 units from its pivot, J is 2 units, K is 1 unit and the bar G-C-D is 2 units on the other side
+3 * (a + b) + 2 * j = k + 2 * (g + c + d)

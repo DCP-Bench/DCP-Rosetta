@@ -1,36 +1,50 @@
+% session3_people_in_a_room: a SWI-Prolog model from DCP Rosetta.
+%
+% There are 13 people, 4 of them male. They enter a room one at a time, in a random order. Find an order of entry, of
+% males and females, so that the ratio of females to males in the room at any one time is no greater than 7/3.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_people_in_a_room.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
 
-% People in a room: 13 people, 4 of them male, enter a room one at a time. Find
-% an order of males and females so that at every moment the ratio of females
-% to males in the room is at most 7/3. The problem has no instance data; the
-% 13 people, the 4 males and the ratio 7/3 are the ones in the statement.
-% Sequence[i] is 0 if the i-th person to enter is male and 1 if female.
-model(_Instance, Vars, [sequence-Sequence]) :-
-    TotalPeople = 13,
-    NumMales = 4,
+model(_Instance, Seq, [sequence-Seq]) :-
+    Total = 13,                            % the number of people
+    Males = 4,
+    length(Seq, Total),
+    Seq ins 0..1,                          % Seq[I] = 1 when the I-th person to enter is female
+    Females #= Total - Males,
+    sum(Seq, #=, Females),
+    numlist(1, Total, Counts),
+    % after every entry, with K people in the room and F of them female, 3F =< 7(K - F); with no male in the room the ratio is undefined, so this requires the first person to be male
+    maplist(ratio_ok(Seq), Counts).
 
-    length(Sequence, TotalPeople),
-    Vars = Sequence,
-    Vars ins 0..1,
+ratio_ok(Seq, K) :-
+    length(Prefix, K),
+    append(Prefix, _, Seq),
+    sum(Prefix, #=, F),
+    3 * F #=< 7 * (K - F).
 
-    % exactly 4 of the 13 are male, so the other 9 are female
-    NumFemales is TotalPeople - NumMales,
-    sum(Sequence, #=, NumFemales),
+:- use_module(library(http/json)).
 
-    % after each of the first 12 people has entered, females : males is at most
-    % 7 : 3, i.e. 3 * females <= 7 * males (as in the reference, the check after
-    % all 13 have entered is left out; the totals 9 and 4 already satisfy it)
-    Checks is TotalPeople - 1,
-    numlist(1, Checks, Prefixes),
-    maplist(ratio_holds(Sequence), Prefixes).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-% ratio_holds(+Sequence, +I): among the first I people to enter, 3 times the
-% number of females is at most 7 times the number of males.
-ratio_holds(Sequence, I) :-
-    length(Prefix, I),
-    append(Prefix, _, Sequence),
-    sum(Prefix, #=, Females),
-    Males #= I - Females,
-    3 * Females #=< 7 * Males.
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

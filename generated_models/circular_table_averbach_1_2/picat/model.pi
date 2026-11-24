@@ -1,22 +1,45 @@
-% Averbach's card-passing riddle: X, Y and Z, of three nationalities (American,
-% English, French), sit round a table, each passing cards to the person on
-% their right. Y passed to the American, and X passed to the person who passed
-% to the Frenchwoman. Seats are 0, 1, 2; seat s + 1 (mod 3) is to the right of s.
+% circular_table_averbach_1_2: a Picat model from DCP Rosetta.
+%
+% Three players (X, Y, Z) of different nationalities (American, English, French) are seated around a
+% circular table playing a game of Hearts. Each passed three cards to the person on their right.
+% Y passed three hearts to the American, and X passed the queen of spades and two diamonds to the
+% person who passed their cards to the Frenchwoman. Determine the nationality of each person.
+% The seats are numbered 0, 1 and 2, with 1 to the right of 0, 2 to the right of 1 and 0 to the right
+% of 2. The same value denotes the matching between a person and their nationality.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/circular_table_averbach_1_2.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The riddle fixes everything; the instance carries no data.
-    Players = [X, Y, Z],
-    Nationalities = [American, English, French],
-    Players :: 0..2,
-    Nationalities :: 0..2,
-    % each player has a seat of their own, and so has each nationality
-    all_different(Players),
-    all_different(Nationalities),
-    % Y passed to the American: the American sits to the right of Y
+    % X, Y and Z are the seats of the three players; the seat of the person and of their nationality
+    % is the same value
+    X :: 0..2,
+    Y :: 0..2,
+    Z :: 0..2,
+    American :: 0..2,
+    English :: 0..2,
+    French :: 0..2,
+    % the three players sit in different seats, and the three nationalities are in different seats
+    all_different([X, Y, Z]),
+    all_different([American, English, French]),
+    % the person on the right of seat S is seat (S + 1) mod 3, and each passes to that person
+    % Y passed three hearts to the American, so the American sits on the right of Y
     American #= (Y + 1) mod 3,
-    % X passed to the person who passed to the Frenchwoman, so X sits to her right
-    X #= (French + 1) mod 3,
-    Vars = Players ++ Nationalities,
+    % X passed to the person P on the right of X, and P passed to the Frenchwoman,
+    % so the Frenchwoman sits on the right of P
+    French #= (X + 2) mod 3,
+    Vars = [X, Y, Z, American, English, French],
     Outputs = [x = X, y = Y, z = Z, american = American, english = English, french = French],
+    % a satisfaction problem: no objective
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

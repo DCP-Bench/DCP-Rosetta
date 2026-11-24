@@ -1,31 +1,45 @@
-// Flip the signs of rows and columns of an integer matrix so that every row and
-// every column sums to a positive value (or zero), minimising the overall sum.
-vocabulary {
-    type Row <: Int                     // row indices, sized from the input matrix
-    type Col <: Int                     // column indices, sized from the input matrix
-    input_matrix: Row * Col -> Int      // the array of positive and negative numbers
-    type Sign := {-1, 1}
-    row_signs: Row -> Sign              // declared output: sign of each row
-    col_signs: Col -> Sign              // declared output: sign of each column
-    rneg: Row -> Bool                   // row r is flipped
-    cneg: Col -> Bool                   // column c is flipped
-    fv: Row * Col -> Int                // entry after the flips
-    minimize: () -> Int
+// flip_rows_cols: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given an array of positive and negative numbers, the sign of entire rows and columns may be flipped, as many of them
+// as wanted. The goal is to make each row and each column sum to a positive number or zero, and then to find the
+// solution with the smallest overall sum of the numbers.
+//
+// Save this file as model.idp. Download `flip_rows_cols.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py flip_rows_cols.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type R <: Int                          // the rows, numbered from 0
+    type C <: Int                          // the columns, numbered from 0
+    input_matrix: R * C -> Int             // input_matrix(r, c): the number in row r and column c of the array
+    flip_row: R -> Bool                    // flip_row(r): the sign of row r is flipped
+    flip_col: C -> Bool                    // flip_col(c): the sign of column c is flipped
+    flipped_value: R * C -> Int            // flipped_value(r, c): the number in row r and column c after the flips
+    row_signs: R -> Int                    // row_signs(r): -1 if row r is flipped, 1 otherwise
+    col_signs: C -> Int                    // col_signs(c): -1 if column c is flipped, 1 otherwise
+    minimize: () -> Int                    // the overall sum of the numbers after the flips
 }
-theory {
-    // the printed signs follow from the flip choices
-    ! r in Row: row_signs(r) = if rneg(r) then -1 else 1.
-    ! c in Col: col_signs(c) = if cneg(c) then -1 else 1.
-
-    // an entry flips sign when exactly one of its row and column is flipped
-    ! r in Row, c in Col: fv(r,c) = if rneg(r) = cneg(c) then input_matrix(r,c) else 0 - input_matrix(r,c).
-
-    // all the rows sum to positive numbers (or zero)
-    ! r in Row: sum{{ fv(r,c) | c in Col }} >= 0.
-
-    // all the columns sum to positive numbers (or zero)
-    ! c in Col: sum{{ fv(r,c) | r in Row }} >= 0.
-
-    // the overall sum of the matrix is the objective to minimise
-    minimize() = sum{{ fv(r,c) | r in Row, c in Col }}.
+theory T:V {
+    // a number keeps its sign when its row and its column are both flipped or both not flipped
+    ! r in R: ! c in C: (flip_row(r) & flip_col(c)) | (~flip_row(r) & ~flip_col(c)) => flipped_value(r, c) = input_matrix(r, c).
+    // a number changes its sign when exactly one of its row and its column is flipped
+    ! r in R: ! c in C: (flip_row(r) & ~flip_col(c)) | (~flip_row(r) & flip_col(c)) => flipped_value(r, c) = -input_matrix(r, c).
+    // the sign of each row is reported as -1 when flipped and 1 otherwise
+    ! r in R: flip_row(r) => row_signs(r) = -1.
+    ! r in R: ~flip_row(r) => row_signs(r) = 1.
+    // the sign of each column is reported as -1 when flipped and 1 otherwise
+    ! c in C: flip_col(c) => col_signs(c) = -1.
+    ! c in C: ~flip_col(c) => col_signs(c) = 1.
+    // each row sums to a positive number or zero after the flips
+    ! r in R: 0 =< sum{{ flipped_value(r, c) | c in C }}.
+    // each column sums to a positive number or zero after the flips
+    ! c in C: 0 =< sum{{ flipped_value(r, c) | r in R }}.
+    // the overall sum of the numbers after the flips is the value to minimize
+    minimize() = sum{{ flipped_value(r, c) | r in R, c in C }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

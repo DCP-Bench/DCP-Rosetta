@@ -1,89 +1,91 @@
+% flowshop_scheduling: a SWI-Prolog model from DCP Rosetta.
+%
+% Jobs must be processed on machines in series, all jobs having the same processing order through machines 1 to M:
+% the first job of the sequence goes to machine 1 while the others wait; when machine 1 has finished it, the job goes
+% on to machine 2, and the next job starts on machine 1; and so on. Each machine works on one job at a time, and job
+% j takes a fixed processing time on machine m. Find the sequence of jobs that minimises the makespan, the time at
+% which all jobs have been processed. Give the optimal makespan as an integer.
+%
+% Save this file as model.pl. Download `flowshop_scheduling.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/flowshop_scheduling.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('flowshop_scheduling.json')" -t halt model.pl
+%
+% Data fields: process_time (one list per job, indexed from 0, giving the processing time of that job on each
+% machine, indexed from 0). The model reads only process_time.
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
 
-% Flow shop scheduling: every job visits the machines in the same order. Find
-% the order of the jobs that minimises the makespan, the time when the last job
-% leaves the last machine.
-model(Instance, Sequence, [makespan-Makespan], min(Makespan)) :-
-    Jobs = Instance.jobs,
-    Machines = Instance.machines,
-    ProcessTime = Instance.process_time,    % ProcessTime[job][machine]
-    length(Jobs, NJobs),
-    length(Machines, NMachines),
+model(Instance, [Starts, Before], [makespan-Makespan], min(Makespan)) :-
+    Times = Instance.process_time,           % Times[J][M]: time job J takes on machine M
+    length(Times, N),
+    Times = [FirstJob|_],
+    length(FirstJob, M),
+    maplist(sum_list, Times, JobTotals),
+    sum_list(JobTotals, Horizon),
+    length(Starts, N),
+    maplist(starts_for(M, Horizon), Starts),  % Starts[J][M]: start time of job J on machine M
+    % a job starts on a machine only after it has finished on the previous machine
+    maplist(job_chain, Starts, Times),
+    % the same order of jobs on every machine: for each pair of jobs, one comes first on all machines
+    order_pairs(Starts, Times, Before),
+    % the makespan is at least the finish time of every job on the last machine
+    maplist(job_finish(Makespan), Starts, Times),
+    Makespan in 0..Horizon.
 
-    % No schedule needs to run longer than all the work done one task after
-    % the other; this is the upper bound on every time variable.
-    append(ProcessTime, AllTimes),
-    sum_list(AllTimes, Horizon),
+starts_for(M, Horizon, Row) :-
+    length(Row, M),
+    Row ins 0..Horizon.
 
-    % Sequence[k] is the job processed k-th (1-based, to index with element/3).
-    length(Sequence, NJobs),
-    Sequence ins 1..NJobs,
-    % every job appears exactly once in the sequence
-    all_distinct(Sequence),
+job_chain([S|Ss], [P|Ps]) :-
+    chain_rest(S, P, Ss, Ps).
 
-    % TimeOn[m] lists the processing time of every job on machine m.
-    transpose(ProcessTime, TimeOn),
-    % Load[m] is the work all jobs bring to machine m, and MinTail[m] the least
-    % work any job still has after machine m. Both are constants of the
-    % instance used only in the implied bound below.
-    maplist(sum_list, TimeOn, Loads),
-    maplist(tails, ProcessTime, TailRows),
-    transpose(TailRows, TailColumns),
-    maplist(min_list, TailColumns, MinTails),
+chain_rest(_, _, [], []).
+chain_rest(S, P, [S2|Ss], [P2|Ps]) :-
+    S + P #=< S2,
+    chain_rest(S2, P2, Ss, Ps).
 
-    % Each job runs on a machine as soon as the machine is free and the job
-    % has left the previous machine. Delaying a job never lowers the makespan,
-    % so fixing starts to the earliest possible time keeps the same optimum
-    % and makes every time follow from the sequence alone.
-    length(NoEnds, NMachines),
-    maplist(=(0), NoEnds),
-    schedule(Sequence, TimeOn, NoEnds, Loads, MinTails, Horizon, Makespan, LastEnds),
+order_pairs([], [], []).
+order_pairs([S|Ss], [P|Ps], Bs) :-
+    maplist(order_with(S, P), Ss, Ps, Bs1),
+    order_pairs(Ss, Ps, Bs2),
+    append(Bs1, Bs2, Bs).
 
-    % The makespan is the completion time of the last job on the last machine
-    % (completion times never decrease along the sequence or the machines, so
-    % it is also the largest completion time of all).
-    last(LastEnds, Makespan),
+% B is 1 when job S goes before job K on every machine, 0 when K goes before S on every machine
+order_with(S, P, K, Q, B) :-
+    B in 0..1,
+    both_orders(S, P, K, Q, B).
 
-    % Implied bound: a machine handles every job one after the other, so the
-    % makespan is at least the total work assigned to that machine.
-    maplist({Makespan}/[Load]>>(Makespan #>= Load), Loads).
+both_orders([], [], [], [], _).
+both_orders([S|Ss], [P|Ps], [K|Ks], [Q|Qs], B) :-
+    B #==> (S + P #=< K),
+    (#\ B) #==> (K + Q #=< S),
+    both_orders(Ss, Ps, Ks, Qs, B).
 
-% Search in the order of the sequence: choose who goes first, then second, ...
-% so the bounds below see a growing prefix of fixed jobs.
-labeling_options([leftmost]).
+job_finish(Makespan, Ss, Ps) :-
+    last(Ss, SLast),
+    last(Ps, PLast),
+    SLast + PLast #=< Makespan.
 
-% tails(+Row, -Tails): Tails[m] is the work a job still has after machine m.
-tails([], []).
-tails([_|Rest], [Tail|Tails]) :-
-    sum_list(Rest, Tail),
-    tails(Rest, Tails).
+:- use_module(library(http/json)).
 
-% schedule(+Sequence, +TimeOn, +EndsAbove, +RemsAbove, +MinTails, +Horizon,
-%          +Makespan, -LastEnds): place the jobs of the sequence one after the
-% other. EndsAbove holds, per machine, the completion time of the job processed
-% just before, and RemsAbove the work on that machine still to be done by the
-% jobs not yet placed.
-schedule([], _, Ends, _, _, _, _, Ends).
-schedule([Job|Jobs], TimeOn, EndsAbove, RemsAbove, MinTails, Horizon, Makespan, LastEnds) :-
-    place(Job, TimeOn, EndsAbove, RemsAbove, MinTails, 0, Horizon, Makespan, Ends, Rems),
-    schedule(Jobs, TimeOn, Ends, Rems, MinTails, Horizon, Makespan, LastEnds).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-% place(+Job, +TimeOn, +EndsAbove, +RemsAbove, +MinTails, +EndLeft, +Horizon,
-%       +Makespan, -Ends, -Rems): run the job on every machine in order. It
-% starts on a machine when it has finished on the machine before (EndLeft) and
-% the previous job of the sequence has finished on this machine (EndAbove).
-place(_, [], [], [], [], _, _, _, [], []).
-place(Job, [Times|TimeOns], [EndAbove|EndsAbove], [RemAbove|RemsAbove], [MinTail|MinTails],
-      EndLeft, Horizon, Makespan, [End|Ends], [Rem|Rems]) :-
-    element(Job, Times, Duration),
-    End in 0..Horizon,
-    End #= max(EndLeft, EndAbove) + Duration,
-    % work still waiting for this machine once this job is placed
-    Rem #= RemAbove - Duration,
-    % Implied bound: the jobs still to come need Rem more time on this machine
-    % after End, and the last of them then still has to cross the machines
-    % behind it, which takes at least MinTail.
-    Makespan #>= End + Rem + MinTail,
-    place(Job, TimeOns, EndsAbove, RemsAbove, MinTails, End, Horizon, Makespan, Ends, Rems).
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

@@ -1,26 +1,49 @@
 language ESSENCE' 1.0
-$ Choose which of the four candidate warehouses to open and how much each open warehouse ships to each region, so that all regional demands are met at minimum total cost (fixed costs plus shipping costs).
-given demands_dim1 : int(1..)
-given demands : matrix indexed by [int(1..demands_dim1)] of int(0..)
-given fixed_costs : matrix indexed by [int(1..4)] of int(0..)
-given max_shipping : int(0..)
-given shipping_costs : matrix indexed by [int(1..4), int(1..demands_dim1)] of int(0..)
-find open_warehouse : matrix indexed by [int(1..4)] of bool
-find ships : matrix indexed by [int(1..4), int(1..demands_dim1)] of int(0..max_shipping)
-find total_cost : int(0..1000000)
+$ facility_location: an Essence' model from DCP Rosetta.
+$
+$ A company is considering opening warehouses in four cities (New York, Los Angeles, Chicago and Atlanta) to meet regional demands at minimal costs. Each open warehouse has a fixed weekly cost and can ship at most max_shipping units per week; a closed one ships nothing. Shipping one unit from a warehouse to a region has a given cost, and each region must receive at least its weekly demand. Decide which warehouses to open so that: if the New York warehouse is opened, then the Los Angeles warehouse must also be opened; no more than three warehouses are operational in any given week; either the Atlanta or the Los Angeles warehouse is opened. The total cost, the fixed costs of the open warehouses plus the shipping costs, is minimised.
+$
+$ Save this file as model.eprime. Download `facility_location.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/facility_location.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `facility_location_1.param.solution`:
+$   python dcp_convert_essence.py facility_location.json
+$   savilerow model.eprime facility_location_1.param -run-solver
+
+$ the four warehouses, in the order New York, Los Angeles, Chicago, Atlanta (indices 1 to 4)
+letting cities be 4
+$ demands_dim1: the number of regions (derived from the data; not a field of the reader's JSON)
+given demands_dim1 : int
+letting regions = demands_dim1
+$ demands[r]: the weekly demand of region r, indices 1-based (the data's index 0 is demands[1])
+given demands : matrix indexed by [int(1..regions)] of int
+$ fixed_costs[w]: the fixed weekly cost of warehouse w if it is open, indices 1-based
+given fixed_costs : matrix indexed by [int(1..cities)] of int
+$ max_shipping: the most units a warehouse can ship per week
+given max_shipping : int
+$ shipping_costs[w, r]: the cost of shipping one unit from warehouse w to region r, indices 1-based
+given shipping_costs : matrix indexed by [int(1..cities), int(1..regions)] of int
+
+$ open_warehouse[w]: warehouse w is open (the output, indices 1-based)
+find open_warehouse : matrix indexed by [int(1..cities)] of bool
+$ ships[w, r]: the units shipped from warehouse w to region r; zero when w is closed (the output, indices 1-based)
+find ships : matrix indexed by [int(1..cities), int(1..regions)] of int(0..max_shipping)
+$ total_cost: the fixed costs of the open warehouses plus the shipping costs (the output)
+find total_cost : int(0..((sum w : int(1..cities) . fixed_costs[w]) + max_shipping * (sum w : int(1..cities) . sum r : int(1..regions) . shipping_costs[w, r])))
 
 minimising total_cost
-
 such that
-$ if the New York warehouse (1) is opened then the Los Angeles warehouse (2) must also be opened
-(open_warehouse[1] -> open_warehouse[2]),
-$ no more than three warehouses can be operational
-(sum i : int(1..4) . toInt(open_warehouse[i])) <= 3,
-$ either the Atlanta (4) or the Los Angeles (2) warehouse must be opened
-(open_warehouse[4] \/ open_warehouse[2]),
-$ each warehouse ships at most max_shipping units, and nothing from a warehouse that is not open
-forAll i : int(1..4) . ((sum j : int(1..demands_dim1) . ships[i,j]) <= (max_shipping * toInt(open_warehouse[i]))),
-$ each region receives exactly its demand from the warehouses
-forAll j : int(1..demands_dim1) . ((sum i : int(1..4) . ships[i,j]) = demands[j]),
-$ the total cost is the fixed costs of the open warehouses plus the shipping costs of the units shipped
-total_cost = ((sum i : int(1..4) . (fixed_costs[i] * toInt(open_warehouse[i]))) + (sum i : int(1..4) . sum j : int(1..demands_dim1) . (shipping_costs[i,j] * ships[i,j])))
+$ the total cost is the fixed costs of the open warehouses plus the cost of all shipments
+total_cost = (sum w : int(1..cities) . fixed_costs[w] * toInt(open_warehouse[w]))
+             + (sum w : int(1..cities) . sum r : int(1..regions) . shipping_costs[w, r] * ships[w, r]),
+$ a warehouse ships at most max_shipping units per week, and a closed warehouse ships nothing
+forAll w : int(1..cities) . (sum r : int(1..regions) . ships[w, r]) <= max_shipping * toInt(open_warehouse[w]),
+$ each region receives at least its weekly demand
+forAll r : int(1..regions) . (sum w : int(1..cities) . ships[w, r]) >= demands[r],
+$ if the New York warehouse is opened, then the Los Angeles warehouse must also be opened
+open_warehouse[1] -> open_warehouse[2],
+$ no more than three warehouses are operational
+(sum w : int(1..cities) . toInt(open_warehouse[w])) <= 3,
+$ either the Atlanta or the Los Angeles warehouse must be opened
+open_warehouse[4] \/ open_warehouse[2]

@@ -1,18 +1,37 @@
 language ESSENCE' 1.0
-$ Order in which Harriet bought four pairs of shoes, and at which of four stores each pair was bought.
-find ecruespadrilles, fuchsiaflats, purplepumps, suedesandals : int(1..4)
-find footfarm, heelsinahandcart, theshoepalace, tootsies : int(1..4)
+$ arch_friends: an Essence' model from DCP Rosetta.
+$
+$ Harriet, upon returning from the mall, is happily describing her four shoe purchases to her friend Aurora. Aurora just loves the four different kinds of shoes that Harriet bought (ecru espadrilles, fuchsia flats, purple pumps, and suede sandals), but Harriet can't recall at which different store (Foot Farm, Heels in a Handcart, The Shoe Palace, or Tootsies) she got each pair. Can you help these two figure out the order in which Harriet bought each pair of shoes, and where she bought each?
+$
+$ 1. Harriet bought fuchsia flats at Heels in a Handcart.
+$ 2. The store she visited just after buying her purple pumps was not Tootsies.
+$ 3. The Foot Farm was Harriet's second stop.
+$ 4. Two stops after leaving The Shoe Palace, Harriet bought her suede sandals.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/arch_friends.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the number of stops (the four purchases, one per stop)
+letting stops = 4
+
+$ the stop (1 to 4) at which each shoe was bought
+$ ecruespadrilles, fuchsiaflats, purplepumps, suedesandals: the stop of each shoe purchase
+find ecruespadrilles, fuchsiaflats, purplepumps, suedesandals : int(1..stops)
+$ footfarm, heelsinahandcart, theshoepalace, tootsies: the stop at which each store was visited
+find footfarm, heelsinahandcart, theshoepalace, tootsies : int(1..stops)
 
 such that
-$ the four shoe purchases occur at four different stops (each stop position holds one shoe)
+$ the four shoes are bought at four different stops, one shoe per stop
 allDiff([ecruespadrilles, fuchsiaflats, purplepumps, suedesandals]),
-$ the four stores are visited at four different stops (each stop position holds one store)
+$ the four stores are visited at four different stops, one store per stop
 allDiff([footfarm, heelsinahandcart, theshoepalace, tootsies]),
-$ Harriet bought fuchsia flats at Heels in a Handcart
+$ clue 1: Harriet bought fuchsia flats at Heels in a Handcart, so both are at the same stop
 fuchsiaflats = heelsinahandcart,
-$ the store she visited just after buying her purple pumps was not Tootsies
+$ clue 2: the store visited just after buying the purple pumps was not Tootsies
 purplepumps + 1 != tootsies,
-$ The Foot Farm was Harriet's second stop
+$ clue 3: the Foot Farm was Harriet's second stop
 footfarm = 2,
-$ two stops after leaving The Shoe Palace, Harriet bought her suede sandals
+$ clue 4: two stops after leaving The Shoe Palace, Harriet bought her suede sandals
 theshoepalace + 2 = suedesandals

@@ -1,22 +1,48 @@
-% Assignment: give each task to one person, no person more than one task, at the
-% least total cost. Not every person needs a task.
+% assignment_costs: a Picat model from DCP Rosetta.
+%
+% Assign people to 4 tasks with different costs, so that the total cost is minimized. Each task must
+% be assigned to exactly one person, but it is not necessary to assign all people to a task.
+%
+% Save this file as model.pi. Download `assignment_costs.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/assignment_costs.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py assignment_costs.json
+%   picat model.pi assignment_costs_1.dat
+%
+% Data.get(cost): the cost of giving each task to each person, a list of lists indexed from 1
+% (row = task, column = person).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Cost = Data.get(cost),     % cost[task][person]
-    Rows = len(Cost),
-    Cols = len(Cost[1]),
-    % x[i, j] = 1 when task i goes to person j
-    X = new_array(Rows, Cols),
+    Cost = Data.get(cost),
+    NTasks = len(Cost),                    % the number of tasks
+    NPeople = len(Cost[1]),                % the number of people
+    % X[I, J] = 1 when task I is assigned to person J
+    X = new_array(NTasks, NPeople),
     X :: 0..1,
-    % every task is assigned exactly once
-    foreach (I in 1..Rows)
-        sum([X[I, J] : J in 1..Cols]) #= 1
+    % each task is assigned to exactly one person
+    foreach (I in 1..NTasks)
+        sum([X[I, J] : J in 1..NPeople]) #= 1
     end,
-    % a person takes at most one task
-    foreach (J in 1..Cols)
-        sum([X[I, J] : I in 1..Rows]) #=< 1
+    % each person is assigned at most one task
+    foreach (J in 1..NPeople)
+        sum([X[I, J] : I in 1..NTasks]) #=< 1
     end,
     Vars = X,
     Outputs = [x = X],
-    Options = [$min(sum([Cost[I, J] * X[I, J] : I in 1..Rows, J in 1..Cols]))].
+    % minimize the total cost of the assignment
+    Options = [$min(sum([Cost[I, J] * X[I, J] : I in 1..NTasks, J in 1..NPeople]))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

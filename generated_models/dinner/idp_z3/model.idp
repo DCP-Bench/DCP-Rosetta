@@ -1,17 +1,27 @@
-// Dinner: how many grandparents, parents and children go to dinner so that 20 people cost $20.
-vocabulary {
-    type GP := {1..6}              // 1-6 grandparents (problem statement)
-    type PA := {1..10}             // 1-10 parents (problem statement)
-    type CH := {1..40}             // 1-40 children (problem statement)
-    grandparents: () -> GP         // declared output
-    parents: () -> PA              // declared output
-    children: () -> CH             // declared output
+// dinner: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// We are going out to dinner taking 1-6 grandparents, 1-10 parents and/or 1-40 children. Grandparents cost $3 for
+// dinner, parents $2 and children $0.50. There must be 20 people in total at dinner and it must cost $20. Find how
+// many grandparents, parents and children are going to dinner.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/dinner.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Gp := {1..6}                  // the number of grandparents going to dinner, 1 to 6
+    type Pa := {1..10}                 // the number of parents going to dinner, 1 to 10
+    type Ch := {1..40}                 // the number of children going to dinner, 1 to 40
+    grandparents: () -> Gp             // the number of grandparents going to dinner (declared output)
+    parents: () -> Pa                  // the number of parents going to dinner (declared output)
+    children: () -> Ch                 // the number of children going to dinner (declared output)
 }
-theory {
-    // there must be 20 total people at dinner
+theory T:V {
+    // there are 20 people in total at dinner
     grandparents() + parents() + children() = 20.
 
-    // grandparents cost $3, parents $2 and children $0.50, and the dinner must cost $20
-    // (costs are written in cents to keep the arithmetic integer)
+    // the dinner costs $20, in cents: grandparents 300 each, parents 200 each and children 50 each
     300 * grandparents() + 200 * parents() + 50 * children() = 2000.
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

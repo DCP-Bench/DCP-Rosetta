@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791952717.1587694,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794648501.9256492,
     "problem_id": "csplib_032_max_density_still_life",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.04442787100560963,
-        "execution_wall_seconds": 8.564249248011038,
+        "checking_seconds": 0.1164668959681876,
+        "execution_wall_seconds": 14.282476969005074,
         "first_solution": {
           "grid": [
             [
@@ -91,6 +121,64 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.09600186347961426,
+            0
+          ],
+          [
+            0.09600186347961426,
+            4
+          ],
+          [
+            0.09600186347961426,
+            6
+          ],
+          [
+            0.09600186347961426,
+            8
+          ],
+          [
+            0.09600186347961426,
+            9
+          ],
+          [
+            0.09600186347961426,
+            10
+          ],
+          [
+            0.09600186347961426,
+            11
+          ],
+          [
+            0.09600186347961426,
+            12
+          ],
+          [
+            0.09600186347961426,
+            13
+          ],
+          [
+            0.09600186347961426,
+            14
+          ],
+          [
+            0.12800240516662598,
+            15
+          ],
+          [
+            0.12800240516662598,
+            16
+          ],
+          [
+            0.18400359153747559,
+            17
+          ],
+          [
+            0.18400359153747559,
+            18
+          ]
+        ],
         "instance_hash": "6ea2976b565844a6e67fad8155e54578906a24b64bf9b5a5f2338057b46f83af",
         "is_optimization": true,
         "oom_killed": false,
@@ -99,9 +187,12 @@
           "grid"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.5352933920221403,
+        "reference_setup_seconds": 4.749679395987187,
         "runner_status": {
+          "build_seconds": 2.6747186183929443,
           "detail": "",
+          "main_seconds": 11.071372948004864,
+          "read_seconds": 0.006205709010828286,
           "status": "limit",
           "type": "status"
         },
@@ -111,8 +202,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04586737899808213,
-        "execution_wall_seconds": 11.555456786009017,
+        "checking_seconds": 0.15265393699519336,
+        "execution_wall_seconds": 23.66169047600124,
         "first_solution": {
           "grid": [
             [
@@ -181,6 +272,96 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.14400267601013184,
+            0
+          ],
+          [
+            0.14800262451171875,
+            4
+          ],
+          [
+            0.14800262451171875,
+            6
+          ],
+          [
+            0.14800262451171875,
+            8
+          ],
+          [
+            0.14800262451171875,
+            10
+          ],
+          [
+            0.14800262451171875,
+            11
+          ],
+          [
+            0.14800262451171875,
+            12
+          ],
+          [
+            0.14800262451171875,
+            13
+          ],
+          [
+            0.14800262451171875,
+            14
+          ],
+          [
+            0.14800262451171875,
+            16
+          ],
+          [
+            0.14800262451171875,
+            17
+          ],
+          [
+            0.16800308227539062,
+            18
+          ],
+          [
+            0.240004301071167,
+            19
+          ],
+          [
+            0.240004301071167,
+            20
+          ],
+          [
+            0.25200462341308594,
+            21
+          ],
+          [
+            0.3800070285797119,
+            22
+          ],
+          [
+            0.9440176486968994,
+            23
+          ],
+          [
+            1.1480214595794678,
+            24
+          ],
+          [
+            1.4200265407562256,
+            25
+          ],
+          [
+            1.7040317058563232,
+            26
+          ],
+          [
+            2.236041784286499,
+            27
+          ],
+          [
+            2.764051675796509,
+            28
+          ]
+        ],
         "instance_hash": "39cc44bdce2147ea10497376b5813d7409a4fcbef110658f9724b0c2e9b48e55",
         "is_optimization": true,
         "oom_killed": false,
@@ -189,9 +370,12 @@
           "grid"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.191592067014426,
+        "reference_setup_seconds": 7.89021738799056,
         "runner_status": {
+          "build_seconds": 3.131319999694824,
           "detail": "",
+          "main_seconds": 20.6020593639696,
+          "read_seconds": 0.004746230959426612,
           "status": "limit",
           "type": "status"
         },
@@ -201,8 +385,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.033203247003257275,
-        "execution_wall_seconds": 59.911323701031506,
+        "checking_seconds": 0.07997566397534683,
+        "execution_wall_seconds": 172.02829207695322,
         "first_solution": {
           "grid": [
             [
@@ -288,6 +472,116 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0800013542175293,
+            0
+          ],
+          [
+            0.0800013542175293,
+            4
+          ],
+          [
+            0.0800013542175293,
+            6
+          ],
+          [
+            0.0800013542175293,
+            8
+          ],
+          [
+            0.0800013542175293,
+            10
+          ],
+          [
+            0.0800013542175293,
+            12
+          ],
+          [
+            0.14000248908996582,
+            13
+          ],
+          [
+            0.14000248908996582,
+            14
+          ],
+          [
+            0.17600321769714355,
+            15
+          ],
+          [
+            0.2120039463043213,
+            16
+          ],
+          [
+            0.2680048942565918,
+            18
+          ],
+          [
+            0.3760068416595459,
+            20
+          ],
+          [
+            0.6960129737854004,
+            21
+          ],
+          [
+            0.7520139217376709,
+            22
+          ],
+          [
+            0.9320173263549805,
+            24
+          ],
+          [
+            2.9240543842315674,
+            25
+          ],
+          [
+            4.112076282501221,
+            26
+          ],
+          [
+            5.156095743179321,
+            27
+          ],
+          [
+            6.548121690750122,
+            28
+          ],
+          [
+            7.680142641067505,
+            29
+          ],
+          [
+            10.424193620681763,
+            30
+          ],
+          [
+            11.432212352752686,
+            31
+          ],
+          [
+            11.444212675094604,
+            32
+          ],
+          [
+            18.96835231781006,
+            33
+          ],
+          [
+            28.048521041870117,
+            34
+          ],
+          [
+            44.996835470199585,
+            35
+          ],
+          [
+            55.30502653121948,
+            36
+          ]
+        ],
         "instance_hash": "006dc4849781097c110e2bdbc2ed7606338303ac6f0e9e950cf1cf948cd29bba",
         "is_optimization": true,
         "oom_killed": false,
@@ -296,9 +590,12 @@
           "grid"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 20.765394420013763,
+        "reference_setup_seconds": 84.69965937401867,
         "runner_status": {
+          "build_seconds": 3.3013315200805664,
           "detail": "",
+          "main_seconds": 169.08225731400307,
+          "read_seconds": 0.00983440998243168,
           "status": "complete",
           "type": "status"
         },
@@ -310,21 +607,21 @@
     "instances_available": 3,
     "instances_checked": 3,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "44248da0addeb80ff137d99f915d7364fffea80ffede6b25298bb8be1f010ac5",
+    "model_hash": "96f26364fa4da12d092987b5485db55b0ec0e75bd3c6c800fc3dd3b5e29292c2",
     "problem_id": "csplib_032_max_density_still_life",
     "reason": "accepted",
-    "reference_hash": "6d54a6899008b3471854afbd4297abdb2221a8109d978a7c05b9f45d92c2dbc7",
+    "reference_hash": "5ccfd8b10ede471a2075f2387170e679c6a12115cc5158f692f7b95b8c22999f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -335,11 +632,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 104.8721843759995,
+    "total_wall_seconds": 309.37955760397017,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.eprime",

@@ -1,31 +1,63 @@
+# csplib_002_template_design: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_002_template_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_002_template_design.py csplib_002_template_design.json
+
 from pycsp3 import *
 
-# Template design: a mother sheet is printed from one of several templates. Each
-# template holds several variations, and it can hold at most n_slots of them.
 
-demand = data.demand
-n_slots = data.n_slots
-n_templates = data.n_templates
-n_var = data.n_var
+def create_model(instance):
+    """A colour printing firm prints several variations of a design from templates, each
+    template an aluminium sheet with a fixed number of slots. Decide which variations, and
+    how many copies of each, to etch on each template, and how many sheets to print from
+    each template. Every slot of a template is filled. Each template prints between 1 sheet
+    and as many sheets as the largest demand. The sheets printed must meet the demand of
+    every variation. Minimise the total number of printed sheets."""
+    n_templates = instance["n_templates"]  # the number of templates
+    n_slots = instance["n_slots"]          # the number of slots on each template
+    n_var = instance["n_var"]              # the number of design variations
+    demand = instance["demand"]            # demand[v] is the number of copies of variation v to print
+    max_sheets = max(demand)               # the most sheets a template prints, the largest demand (the description's bound)
 
-# layout[t][v] is the number of copies of variation v on template t
-layout = VarArray(size=[n_templates, n_var], dom=range(0, n_slots + 1))
-# production[t] is the number of sheets printed from template t
-production = VarArray(size=n_templates, dom=range(0, max(demand) + 1))
+    # layout[t][v] is the number of slots of template t that carry variation v; at most all n_slots.
+    layout = VarArray(size=[n_templates, n_var], dom=range(n_slots + 1))
 
-satisfy(
-    # a template has room for at most n_slots variations
-    [Sum(layout[t]) <= n_slots for t in range(n_templates)],
+    # production[t] is the number of sheets printed from template t, between 1 and max_sheets.
+    production = VarArray(size=n_templates, dom=range(1, max_sheets + 1))
 
-    # the copies printed from all templates cover the demand for each variation
-    [Sum(layout[t][v] * production[t] for t in range(n_templates)) >= demand[v] for v in range(n_var)],
+    # Every slot of template t is filled.
+    satisfy(Sum(layout[t]) == n_slots for t in range(n_templates))
 
-    # each sheet holds at most n_slots copies, so the sheets must cover the total demand
-    Sum(production) * n_slots >= sum(demand),
+    # The sheets printed from the templates meet the demand of each variation.
+    satisfy(
+        Sum(production[t] * layout[t][v] for t in range(n_templates)) >= demand[v]
+        for v in range(n_var)
+    )
 
-    # the templates can be listed in any order, so order them by their rows
-    LexIncreasing([[production[t]] + list(layout[t]) for t in range(n_templates)]),
-)
+    # Redundant bound, implied by the two constraints above: every sheet carries n_slots copies, so the
+    # sheets printed must total at least sum(demand) / n_slots. Derived by us, not stated in the
+    # description; it only tightens the search for the minimum.
+    total_demand = sum(demand)
+    satisfy(Sum(production) * n_slots >= total_demand)
 
-# minimise the total number of printed sheets
-minimize(Sum(production))
+    # Minimise the total number of printed sheets.
+    minimize(Sum(production))
+
+    return {"layout": layout, "production": production}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        print("layout", "=")
+        for row in outputs["layout"]:
+            print(values(row))
+    else:
+        print("No solution:", status())

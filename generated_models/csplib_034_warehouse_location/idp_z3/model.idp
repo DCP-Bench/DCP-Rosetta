@@ -1,36 +1,41 @@
-// Warehouse location: decide which warehouses to open to supply every store, minimizing the total of maintenance and supply costs.
-vocabulary {
-    // one index per store, sized from the first dimension of cost_matrix
-    type Store <: Int
-    // one index per candidate warehouse, sized from capacity
-    type Warehouse <: Int
-
-    // fixed maintenance cost of an open warehouse
-    building_cost: () -> Int
-    // number of stores a warehouse can supply
-    capacity: Warehouse -> Int
-    // supply cost of a store from a warehouse, indexed [store][warehouse]
-    cost_matrix: Store * Warehouse -> Int
-
-    // declared output: which warehouses are open
-    open_warehouses: Warehouse -> Bool
-    // declared output: the warehouse supplying each store
-    supplier_assignment: Store -> Warehouse
-    // declared output: the minimized total cost
-    total_cost: () -> Int
-
-    minimize: () -> Int
+// csplib_034_warehouse_location: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A company must decide which warehouses to open from a set of candidate locations to supply a set of stores. Each
+// warehouse has a fixed maintenance cost and a capacity limiting the number of stores it can supply. Each store must be
+// supplied by exactly one open warehouse, and supplying a store costs an amount that depends on the store and the
+// warehouse. Minimize the total cost: the maintenance costs of the opened warehouses plus the supply costs of all stores.
+//
+// Save this file as model.idp. Download `csplib_034_warehouse_location.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_034_warehouse_location.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_034_warehouse_location.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Store <: Int                        // the stores, numbered from 0, sized from the rows of cost_matrix
+    type Warehouse <: Int                    // the candidate warehouse locations, numbered from 0, sized from the columns of cost_matrix
+    building_cost: () -> Int                 // the fixed maintenance cost of each open warehouse
+    capacity: Warehouse -> Int               // capacity(w): the number of stores warehouse w can supply
+    cost_matrix: Store * Warehouse -> Int    // cost_matrix(s, w): the cost of supplying store s from warehouse w
+    open_warehouses: Warehouse -> Bool       // open_warehouses(w): warehouse w is open
+    supplier_assignment: Store -> Warehouse  // supplier_assignment(s): the warehouse supplying store s
+    total_cost: () -> Int                    // the maintenance costs of the open warehouses plus the supply costs of all stores
+    minimize: () -> Int                      // the total cost to minimize
 }
-theory {
-    // each store is supplied by exactly one open warehouse
+theory T:V {
+    // each store is supplied by a warehouse that is open
     ! s in Store: open_warehouses(supplier_assignment(s)).
 
-    // a warehouse supplies no more stores than its capacity
+    // each warehouse supplies no more stores than its capacity
     ! w in Warehouse: #{ s in Store: supplier_assignment(s) = w } =< capacity(w).
 
-    // the total cost is the maintenance cost of all opened warehouses plus the supply costs of all stores
-    total_cost() = sum{{ building_cost() | w in Warehouse: open_warehouses(w) }} + sum{{ cost_matrix(s, supplier_assignment(s)) | s in Store }}.
+    // the total cost is the maintenance cost of each open warehouse plus the cost of supplying each store
+    total_cost() = building_cost() * #{ w in Warehouse: open_warehouses(w) } + sum{{ cost_matrix(s, supplier_assignment(s)) | s in Store }}.
 
-    // the objective is the minimized total cost
+    // the total cost is the value to minimize
     minimize() = total_cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

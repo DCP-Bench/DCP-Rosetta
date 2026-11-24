@@ -1,29 +1,61 @@
-% Futoshiki: fill an n x n grid with 1..n so that every row and every column
-% holds each number once, the given numbers stay, and each listed pair of cells
-% satisfies its "less than" sign.
+% futoshiki: a Picat model from DCP Rosetta.
+%
+% The futoshiki puzzle is played on a square grid, such as 5 x 5. The objective is to place the numbers 1
+% to 5 (or whatever the dimensions are) such that each row, and column contains each of the digits 1 to 5.
+% Some digits may be given at the start. In addition, inequality constraints are also initially specified
+% between some of the squares, such that one must be higher or lower than its neighbour. These constraints
+% must be honoured as the grid is filled out.
+%
+% Save this file as model.pi. Download `futoshiki.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/futoshiki.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py futoshiki.json
+%   picat model.pi futoshiki_1.dat
+%
+% Data.get(values): the grid, each row a list of numbers (lists indexed from 1), 0 where the square is
+% empty; Data.get(lt): the inequality signs, each [I1, J1, I2, J2] meaning that the square in row I1,
+% column J1 holds a smaller number than the square in row I2, column J2.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Values = Data.get(values),   % given numbers, 0 where a cell is empty
-    Lt = Data.get(lt),           % [i1, j1, i2, j2]: cell (i1, j1) < cell (i2, j2), 1-based
-    N = len(Values),
+    Values = Data.get(values),
+    N = len(Values),                       % the size of the grid
+    Lt = Data.get(lt),
+    % Grid[I,J] = the number in row I, column J
     Grid = new_array(N, N),
     Grid :: 1..N,
-    % the given numbers stay
+    % the numbers given at the start stay
     foreach (I in 1..N, J in 1..N)
-        if Values[I, J] > 0 then
-            Grid[I, J] #= Values[I, J]
+        if Values[I,J] > 0 then
+            Grid[I,J] #= Values[I,J]
         end
     end,
-    % each row and each column holds different numbers
+    % each row holds the numbers 1 to N, each once
     foreach (I in 1..N)
-        all_distinct([Grid[I, J] : J in 1..N]),
-        all_distinct([Grid[J, I] : J in 1..N])
+        all_distinct([Grid[I,J] : J in 1..N])
     end,
-    % every inequality sign holds
-    foreach (Sign in Lt)
-        Grid[Sign[1], Sign[2]] #< Grid[Sign[3], Sign[4]]
+    % each column holds the numbers 1 to N, each once
+    foreach (J in 1..N)
+        all_distinct([Grid[I,J] : I in 1..N])
+    end,
+    % every inequality sign is honoured: the first square holds the smaller number
+    foreach ([I1, J1, I2, J2] in Lt)
+        Grid[I1,J1] #< Grid[I2,J2]
     end,
     Vars = Grid,
     Outputs = [grid = Grid],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,15 +1,34 @@
 language ESSENCE' 1.0
-$ Insert a plus or a minus before each number of the array so that the signed sum equals the total.
-given arr_dim1 : int(1..)
-given arr : matrix indexed by [int(1..arr_dim1)] of int(0..)
+$ devils_word: an Essence' model from DCP Rosetta.
+$
+$ Given an array of integers, insert '+' or '-' operators before each integer in the array so that summing them up will result in a given total (666 for the devil's word).
+$
+$ Save this file as model.eprime. Download `devils_word.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `devils_word_1.param.solution`:
+$   python dcp_convert_essence.py devils_word.json
+$   savilerow model.eprime devils_word_1.param -run-solver
+
+$ arr_dim1: the number of integers (derived from the data; not a field of the reader's JSON)
+given arr_dim1 : int
+letting n = arr_dim1
+$ arr[i]: the i-th integer of the array, indices 1-based (the data's index 0 is arr[1])
+given arr : matrix indexed by [int(1..n)] of int
+$ the total that the signed sum must reach
 given total : int
-find plus : matrix indexed by [int(1..arr_dim1)] of bool
-find result : matrix indexed by [int(1..arr_dim1)] of int(-sum(arr)..sum(arr))
+
+$ plus[i]: true when the i-th integer gets a '+' sign, false when it gets a '-' sign
+find plus : matrix indexed by [int(1..n)] of bool
+$ result[i]: the i-th integer with its sign applied (the output, indices 1-based)
+$ a value is +-arr[i], so it is at most the sum of the absolute values of arr in size
+letting bound = sum i : int(1..n) . |arr[i]|
+find result : matrix indexed by [int(1..n)] of int(-bound..bound)
 
 branching on [plus]
-
 such that
-$ each number is taken with a plus or a minus sign: the result holds the number itself when plus, its negation otherwise
-forAll i : int(1..arr_dim1) . ((plus[i] -> (result[i] = arr[i])) /\ (!plus[i] -> (result[i] = -arr[i]))),
-$ the signed numbers sum to the total
-(sum i : int(1..arr_dim1) . result[i]) = total
+$ each integer is signed: with a '+' it keeps its value, with a '-' it is negated
+forAll i : int(1..n) . (plus[i] -> result[i] = arr[i]) /\ (!plus[i] -> result[i] = -arr[i]),
+$ the signed integers sum to the given total
+(sum i : int(1..n) . result[i]) = total

@@ -1,18 +1,26 @@
-// Five statements: exactly k of the five statements are false, for k = 1..5.
-// Decide which of the statements are true.
-vocabulary {
-    type S := {1..5}
-    statements: S -> Bool
+// five_statements: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Determine which of the following statements is true.
+//   - Exactly one of these statements is false.
+//   - Exactly two of these statements are false.
+//   - Exactly three of these statements are false.
+//   - Exactly four of these statements are false.
+//   - Exactly five of these statements are false.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/five_statements.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+
+vocabulary V {
+    type Stmt := {1..5}                // the five statements, numbered 1 to 5; statement i says that exactly i statements are false
+    statements: Stmt -> Bool           // statements(i): statement i is true
 }
-theory {
-    // statement 1 is true exactly when exactly one of these statements is false
-    statements(1) <=> #{ v in S: ~statements(v) } = 1.
-    // statement 2 is true exactly when exactly two of these statements are false
-    statements(2) <=> #{ v in S: ~statements(v) } = 2.
-    // statement 3 is true exactly when exactly three of these statements are false
-    statements(3) <=> #{ v in S: ~statements(v) } = 3.
-    // statement 4 is true exactly when exactly four of these statements are false
-    statements(4) <=> #{ v in S: ~statements(v) } = 4.
-    // statement 5 is true exactly when exactly five of these statements are false
-    statements(5) <=> #{ v in S: ~statements(v) } = 5.
+
+theory T:V {
+    // statement i is true exactly when exactly i of the five statements are false
+    ! i in Stmt: statements(i) <=> #{ j in Stmt: ~statements(j) } = i.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

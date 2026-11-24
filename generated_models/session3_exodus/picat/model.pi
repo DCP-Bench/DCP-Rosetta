@@ -1,51 +1,74 @@
-% Exodus: five children (Bernice, Carl, Debby, Sammy, Ted) each tell one part of the Exodus
-% story, are a different age (3, 5, 7, 8, 10) and come from a different country (Ethiopia,
-% Kazakhstan, Lithuania, Morocco, Yemen). Every variable below holds the number 1..5 of the
-% child it names, so equal numbers across the four lists mean the same child.
+% session3_exodus: a Picat model from DCP Rosetta.
+%
+% In preparation for Passover, five children at Hebrew school (Bernice, Carl, Debby, Sammy, and Ted) have been chosen
+% to present different parts of the story of the Exodus from Egypt (burning bush, captivity, Moses's youth, Passover,
+% or the Ten Commandments). Each child is a different age (three, five, seven, eight, or ten), and the family of each
+% child has recently made its own exodus to America from a different country (Ethiopia, Kazakhstan, Lithuania,
+% Morocco, or Yemen). Find the age of each child, his or her family's country of origin, and the part of the Exodus
+% story each related, given these clues:
+% 1. Debby's family is from Lithuania.
+% 2. The child who told the story of the Passover is two years older than Bernice.
+% 3. The child whose family is from Yemen is younger than the child from the Ethiopian family.
+% 4. The child from the Moroccan family is three years older than Ted.
+% 5. Sammy is three years older than the child who told the story of Moses's youth in the house of the Pharaoh.
+%
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_exodus.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    AgeValues = [3, 5, 7, 8, 10],    % the five ages, in the order of the statement
-    % Ages[k] = the child who is AgeValues[k] years old
+model(_Data, Vars, Outputs, Options) =>
+    % the five values of each category are numbered 1 to 5 in the order of the statement:
+    % children: Bernice 1, Carl 2, Debby 3, Sammy 4, Ted 5; ages: 3, 5, 7, 8, 10;
+    % countries: Ethiopia 1, Kazakhstan 2, Lithuania 3, Morocco 4, Yemen 5;
+    % stories: burning bush 1, captivity 2, Moses's youth 3, Passover 4, Ten Commandments 5
+    AgeValues = [3, 5, 7, 8, 10],
+    % Ages[A] = the child (numbered 1 to 5) who is the age AgeValues[A]; the same number names the same child
     Ages = new_list(5),
+    Kids = new_list(5),
+    Ctry = new_list(5),
+    Story = new_list(5),
     Ages :: 1..5,
-    % the five children, in the order of the statement
-    Children = [Bernice, Carl, Debby, Sammy, Ted],
-    Children :: 1..5,
-    Countries = [Ethiopia, Kazakhstan, Lithuania, Morocco, Yemen],
-    Countries :: 1..5,
-    Stories = [BurningBush, Captivity, MosesYouth, Passover, TenCommandments],
-    Stories :: 1..5,
-    % each age, child, country and story belongs to exactly one child
+    Kids :: 1..5,
+    Ctry :: 1..5,
+    Story :: 1..5,
     all_different(Ages),
-    all_different(Children),
-    all_different(Countries),
-    all_different(Stories),
-    % AgeOf[c] = the age in years of child c; it reads the age out of Ages (the child holding
-    % the k-th age is Ages[k], so that child's age is AgeValues[k])
+    all_different(Kids),
+    all_different(Ctry),
+    all_different(Story),
+    % AgeOf[C] = the age of child C (children numbered 1 to 5 as above)
     AgeOf = new_list(5),
     AgeOf :: AgeValues,
-    foreach (K in 1..5)
-        element(Ages[K], AgeOf, AgeValues[K])
+    foreach (A in 1..5)
+        element(Ages[A], AgeOf, AgeValues[A])
     end,
-    % 1. Debby's family is from Lithuania.
-    Debby #= Lithuania,
-    % 2. The child who told the story of the Passover is two years older than Bernice.
-    element(Passover, AgeOf, AgePassover),
-    element(Bernice, AgeOf, AgeBernice),
-    AgePassover #= AgeBernice + 2,
-    % 3. The child whose family is from Yemen is younger than the child from the Ethiopian family.
-    element(Yemen, AgeOf, AgeYemen),
-    element(Ethiopia, AgeOf, AgeEthiopia),
-    AgeYemen #< AgeEthiopia,
-    % 4. The child from the Moroccan family is three years older than Ted.
-    element(Morocco, AgeOf, AgeMorocco),
-    element(Ted, AgeOf, AgeTed),
-    AgeMorocco #= AgeTed + 3,
-    % 5. Sammy is three years older than the child who told the story of Moses's youth.
-    element(Sammy, AgeOf, AgeSammy),
-    element(MosesYouth, AgeOf, AgeMosesYouth),
-    AgeSammy #= AgeMosesYouth + 3,
-    Vars = Ages ++ Children ++ Countries ++ Stories ++ AgeOf,
-    Outputs = [ages = Ages, children = Children, countries = Countries, stories = Stories],
+    % clue 1: Debby (child 3) is from the Lithuanian family (country 3)
+    Kids[3] #= Ctry[3],
+    % clue 2: the Passover child (story 4) is two years older than Bernice (child 1)
+    element(Story[4], AgeOf, PassoverAge),
+    element(Kids[1], AgeOf, BernAge),
+    PassoverAge #= BernAge + 2,
+    % clue 3: the Yemeni child (country 5) is younger than the Ethiopian child (country 1)
+    element(Ctry[5], AgeOf, YemenAge),
+    element(Ctry[1], AgeOf, EthiopiaAge),
+    YemenAge #< EthiopiaAge,
+    % clue 4: the Moroccan child (country 4) is three years older than Ted (child 5)
+    element(Ctry[4], AgeOf, MoroccoAge),
+    element(Kids[5], AgeOf, TedAge),
+    MoroccoAge #= TedAge + 3,
+    % clue 5: Sammy (child 4) is three years older than the Moses's youth child (story 3)
+    element(Kids[4], AgeOf, SammyAge),
+    element(Story[3], AgeOf, MosesAge),
+    SammyAge #= MosesAge + 3,
+    Vars = Ages ++ Kids ++ Ctry ++ Story,
+    Outputs = [ages = Ages, children = Kids, countries = Ctry, stories = Story],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

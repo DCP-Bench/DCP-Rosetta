@@ -1,31 +1,43 @@
-vocabulary {
-    n: () -> Int
-    m: () -> Int
-    type Node <: Int                   // the n graph nodes, numbered 1..n
-    Node_size: () -> Int
-    type Edge <: Int                   // the m edges, sized from graph
-    type End <: Int                    // the two endpoints of an edge, 0-based
-    graph: Edge * End -> Int           // endpoints of each edge, 0-based node ids
-    nodes: Node -> Int                 // node labels f(v)
-    edges: Edge -> Int                 // edge labels |f(x) - f(y)|
+// csplib_053_graceful_graphs: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A labelling f of the nodes of a graph with q edges is graceful if f assigns each node a unique label from {0, 1, ..., q}
+// and, when each edge xy is labelled with |f(x) - f(y)|, the edge labels are all different. Find a graceful labelling of
+// the graph, whose edges are given by their two endpoints.
+//
+// Save this file as model.idp. Download `csplib_053_graceful_graphs.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_053_graceful_graphs.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_053_graceful_graphs.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Node <: Int                      // the n nodes, numbered 1..n, sized by Node_size; node v is node v - 1 of the graph
+    Node_size: () -> Int                  // the number of nodes, n
+    n: () -> Int                          // the number of nodes
+    m: () -> Int                          // the number of edges, q
+    type Edge <: Int                      // the m edges, numbered 0..m-1 in the order of the graph, sized from graph
+    type End <: Int                       // the two endpoints of an edge, numbered 0 and 1, sized from graph
+    graph: Edge * End -> Int              // graph(e, k): the k-th endpoint of edge e, a 0-based node id
+    nodes: Node -> Int                    // nodes(v): the label of node v
+    edges: Edge -> Int                    // edges(e): the label of edge e
 }
-
-theory {
+theory T:V {
     // the graph has n nodes
     Node_size() = n().
 
-    // each node gets a label from {0, ..., q} where q is the number of edges
+    // each node is labelled with a number from 0 to q, the number of edges
     ! v in Node: 0 =< nodes(v) & nodes(v) =< m().
 
-    // node labels are unique
+    // the nodes have different labels
     ! v1, v2 in Node: v1 ~= v2 => nodes(v1) ~= nodes(v2).
 
-    // each edge xy is labelled with |f(x) - f(y)|, endpoints shifted from 0-based ids
+    // the label of an edge is the absolute difference of the labels of its two endpoints (node ids are 0-based, so shift by one)
     ! e in Edge: ! x, y in Node: (graph(e, 0) + 1 = x & graph(e, 1) + 1 = y) => edges(e) = abs(nodes(x) - nodes(y)).
 
-    // edge labels lie in {1, ..., q}
-    ! e in Edge: 1 =< edges(e) & edges(e) =< m().
-
-    // all edge labels are different
+    // the edges have different labels
     ! e1, e2 in Edge: e1 ~= e2 => edges(e1) ~= edges(e2).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1, timeout_seconds=300))
 }

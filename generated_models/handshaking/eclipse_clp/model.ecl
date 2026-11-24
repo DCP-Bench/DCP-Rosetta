@@ -1,61 +1,89 @@
-% Handshaking problem (Hilary and Jocelyn): Hilary and Jocelyn are married and invite
-% num_couples couples. Persons 1..P, P = 2*(num_couples+1); persons 2k-1 and 2k are a
-% married couple. Hilary is person 1, Jocelyn is person 2. Output: hands Hilary shook.
-:- lib(ic).
-:- lib(ic_global_gac).
+% handshaking: an ECLiPSe model from DCP Rosetta.
+%
+% Hilary and Jocelyn are married. They invite a number of couples who are friends. After some handshaking, in which nobody shakes hands with
+% themselves or with their spouse,
+% Jocelyn then asks how many hands each person has shaken, and all the answers are different.
+% The model finds the number of hands Hilary has shaken.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+% Save this file as model.ecl. Download `handshaking.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/handshaking.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py handshaking.json
+%   eclipse -b model.ecl -e "run('handshaking_1.dat'), halt"
 
-model(Instance, [Hil|Rest], [hil-Hil]) :-
-    memberchk(num_couples-N, Instance),
-    P is 2*N + 2,
-    Max is P - 2,
-    dim(H, [P, P]),
-    % Shaking hands is mutual (one 0/1 variable per unordered pair); nobody shakes
-    % hands with him or herself.
-    ( for(I, 1, P), param(H, P) do
-        ( for(J, 1, P), param(H, I) do
-            ( J > I -> arg([I,J], H, C), C :: 0..1, arg([J,I], H, C)
-            ; J =:= I -> arg([I,J], H, 0)
-            ; true )
+:- lib(gfd).
+:- lib(listut).
+
+% The data field num_couples is the number of couples invited besides Hilary and Jocelyn.
+% People are numbered from 1: 1 is Hilary, 2 is Jocelyn, and each invited couple takes the next two numbers.
+model(Data, Vars, [hil-Hil]) :-
+    memberchk(num_couples-C, Data),
+    M is C + 1,                            % couples in all, Hilary and Jocelyn's included
+    N is 2 * M,                            % people in all
+    Max is N - 2,                          % a person can shake hands with everyone except self and spouse
+    % Rows[I][J] is 1 when person I shakes hands with person J
+    length(Rows, N),
+    ( foreach(Row, Rows), param(N) do
+        length(Row, N),
+        ( foreach(V, Row) do V :: 0..1 )
+    ),
+    % nobody shakes hands with him or herself
+    ( for(I, 1, N), param(Rows) do cell(Rows, I, I, 0) ),
+    % nobody shakes hands with his or her spouse: the couples are the pairs (1,2), (3,4), ...
+    ( for(K, 1, M), param(Rows) do
+        I1 is 2 * K - 1,
+        I2 is 2 * K,
+        cell(Rows, I1, I2, 0)
+    ),
+    % a handshake is the same from both sides
+    ( for(I, 1, N), param(Rows, N) do
+        ( for(J, I + 1, N), param(Rows, I) do
+            cell(Rows, I, J, V),
+            cell(Rows, J, I, V)
         )
     ),
-    % Nobody shakes hands with his or her spouse.
-    ( for(K, 1, N+1), param(H) do
-        A is 2*K - 1, B is 2*K,
-        arg([A,B], H, 0)
+    % the number of hands each person has shaken is the sum of his or her row
+    length(Ds, N),
+    ( foreach(Row, Rows), foreach(D, Ds), param(Max) do
+        sum(Row) #= D,
+        D :: 0..Max
     ),
-    % Hands[I] is the number of hands person I has shaken: the sum of row I.
-    ( for(I, 1, P), foreach(Hd, Hands), param(H, P, Max) do
-        Hd :: 0..Max,
-        collection_to_list(H[I,1..P], Row),
-        Hd #= sum(Row)
-    ),
-    % Jocelyn asks everyone else how many hands they shook, and all the answers are
-    % different.
-    Hands = [Hil, Joc | Guests],
-    ic_global_gac:alldifferent([Hil|Guests]),
-    % Implied constraint derived from the description: the P-1 = 2n+1 different answers
-    % lie in 0..2n, so they are exactly 0..2n. The person with 2n shook hands with all but
-    % his or her spouse, so only the spouse can have shaken 0. Remove that couple and
-    % repeat: the two members of each invited couple have answers summing to 2n.
-    couple_sums(Guests, Max),
-    flatten_array(H, Cells0),
-    term_variables(Cells0, Cells),
-    append(Guests, [Joc|Cells], Rest).
+    % all the answers are different: Jocelyn's count is not one of the answers she asks for
+    Ds = [Hil, _Jocelyn | Others],
+    alldifferent([Hil | Others]),
+    flatten(Rows, Hands),
+    append(Hands, Ds, Vars).
 
-% The answers of the two members of a couple add up to Max and differ (domain-consistent
-% table, so Hilary's value removes its complement from the other couples).
-couple_sums([], _).
-couple_sums([X,Y|T], Max) :-
-    ( for(A, 0, Max), fromto([], R0, R1, Rows), param(Max) do
-        B is Max - A,
-        ( A =\= B -> R1 = [[A,B]|R0] ; R1 = R0 )
-    ),
-    ic_mdd:table([[X,Y]], Rows),
-    couple_sums(T, Max).
+% cell(Rows, I, J, V): V is the entry in row I, column J
+cell(Rows, I, J, V) :-
+    nth1(I, Rows, Row),
+    nth1(J, Row, V).
 
-% Hilary's count is labelled first, outside once/1, so every value of it is tried and the
-% driver sees each output. The remaining variables (guests' counts, Jocelyn, cells) cannot
-% change the declared output hil, so once/1 keeps one witness for each value of hil.
-search_goal([Hil|Rest]) :-
-    indomain(Hil),
-    once(search(Rest, 0, input_order, indomain_min, complete, [])).
+:- lib(branch_and_bound).
+
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

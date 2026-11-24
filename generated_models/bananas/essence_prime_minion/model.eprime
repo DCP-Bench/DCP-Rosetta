@@ -1,13 +1,26 @@
 language ESSENCE' 1.0
-$ Fruit purchase: buy exactly 100 fruits for 100 dollars, using all four kinds, and minimise the quantity of bananas and apples.
+$ bananas: an Essence' model from DCP Rosetta.
+$
+$ Five bananas cost three dollars, seven oranges cost five dollars, nine mangoes cost seven dollars, and three apples cost nine dollars. I need to purchase 100 fruits for 100 dollars. All types of fruits need to be purchased, but I do not like bananas and apples, so the number of bananas and apples together should be as small as possible.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/bananas.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ bananas: the number of bananas bought (at least one)
 find bananas : int(1..100)
+$ oranges: the number of oranges bought (at least one)
 find oranges : int(1..100)
+$ mangoes: the number of mangoes bought (at least one)
 find mangoes : int(1..100)
+$ apples: the number of apples bought (at least one)
 find apples : int(1..100)
+
 minimising bananas + apples
 such that
 $ exactly 100 fruits are bought
 bananas + oranges + mangoes + apples = 100,
-$ the total cost is 100 dollars; prices scaled by 315 (the lcm of 5, 7 and 9) to stay in integers:
-$ 5 bananas cost 3 dollars, 7 oranges cost 5 dollars, 9 mangoes cost 7 dollars, 3 apples cost 9 dollars
+$ the total cost is 100 dollars; each price is scaled by 315 (the lcm of 5, 7 and 9) so that it stays an integer:
+$ a banana costs 3/5 dollar, so 189; an orange 5/7, so 225; a mango 7/9, so 245; an apple 9/3, so 945; 100 dollars is 31500
 189 * bananas + 225 * oranges + 245 * mangoes + 945 * apples = 31500

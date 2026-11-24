@@ -1,29 +1,26 @@
-% Twelve-pack problem: buy packs of several sizes so that the number of items reaches the target
-% and is as close to it as possible (the smallest total that is at least the target).
-% Instance facts: target(T); packs(I,P): pack size I holds P items.
-pack(I) :- packs(I,_).
+% twelve_pack: a clingo model from DCP Rosetta.
+%
+% Given a target number of items, find the combination of packs of different sizes whose total number of items is at
+% least the target and as close to it as possible.
+%
+% Save this file as model.lp. Download `twelve_pack.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/twelve_pack.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py twelve_pack.json
+%   python -m clingo model.lp twelve_pack_1.lp
+%
+% Input: target(T) holds the target number T of items; packs(I, P) holds the number P of items in pack size I
+% (0-based, as in the data).
 
-% Bound on the total. Buying only the smallest pack, as many as needed, gives a total below
-% target + smallest pack size, so the best total is below that too. Totals above it can never be
-% best, and neither can any count that would lead to one, so they are left out of the search; this
-% never removes a best answer. It also keeps every count within the reference's range 0..2*target.
-limit(T + Q - 1) :- target(T), Q = #min { P : packs(_,P) }.
+% counts(I, V): V packs of size I are bought. No optimal solution buys more packs of one size than needed to
+% reach the target, so V is bounded by T / P + 1.
+1 { counts(I, V) : V = 0..T / P + 1 } 1 :- packs(I, P), target(T).
 
-% counts(I,V): V packs of size I are bought.
-1 { counts(I,V) : V = 0..L/P } 1 :- packs(I,P), limit(L).
+% the total number of items bought is at least the target
+:- target(T), #sum { P * V, I : counts(I, V), packs(I, P) } < T.
 
-% The items are counted pack size by pack size: partial(I,Z) says that the packs of sizes
-% 0..I-1 hold Z items together. A single "#sum" for the total would not let the solver see
-% that no total below the target is possible.
-partial(0,0).
-partial(I+1,Z+P*V) :- partial(I,Z), counts(I,V), packs(I,P), Z + P*V <= L, limit(L).
-total(Z) :- partial(N,Z), N = #count { I : pack(I) }.
-:- not total(_).
-
-% The total must reach the target.
-:- total(Z), target(T), Z < T.
-
-% The total is to be as small as possible, so it is as close to the target as the pack sizes allow.
-#minimize { Z : total(Z) }.
+% the total number of items is as close to the target as possible, that is as small as possible
+#minimize { P * V, I : counts(I, V), packs(I, P) }.
 
 #show counts/2.

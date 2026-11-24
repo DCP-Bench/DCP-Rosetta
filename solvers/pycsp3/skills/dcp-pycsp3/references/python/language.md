@@ -115,6 +115,9 @@ if solve() is SAT:
 
 - `imply(x[0] == 3, x[1] == 0)`.
 - `If(x[2] == 1, Then=x[0] == 3, Else=x[0] == 0)`. `Then=[c1, c2]` takes a list.
+- `If` takes constraints, not numbers: `e == If(t < 4, Then=4 - t, Else=0)` is accepted but ACE returns wrong values
+  (`t = 0` with `e = 1`, where 4 is required). A value that is a clipped difference is `e == Maximum(0, 4 - t)`
+  (tested: `t = 0` gives `e = 4`).
 - `(b == 1) == (Sum(x) > 4)`: reification through a Boolean variable.
 - `Or(c1, c2)`, `And(c1, c2)`, `Xor(c1, c2)`, `Iff(c1, c2)` take constraints as arguments.
 

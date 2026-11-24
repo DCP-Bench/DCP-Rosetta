@@ -1,32 +1,38 @@
-// Aircraft assignment: assign aircraft of several types to routes to meet passenger demand at minimum cost.
-vocabulary {
-    // the aircraft types, sized from the availability list
-    type AircraftType <: Int
-    // the routes, sized from the demand list
-    type Route <: Int
-    // the number of aircraft of each type available
-    availability: AircraftType -> Int
-    // the passenger demand of each route
-    demand: Route -> Int
-    // the passenger capacity of one aircraft of a type on a route
-    capabilities: AircraftType * Route -> Int
-    // the operational cost of one aircraft of a type on a route
-    costs: AircraftType * Route -> Int
-    // the number of aircraft of type i assigned to route j
-    allocation: AircraftType * Route -> Int
-    // the total operational cost
-    minimize: () -> Int
+// aircraft_assignment: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Assign multiple types of aircraft to a set of routes to minimize the total operational cost. Each aircraft type has a
+// limited number of available units. Each route has a specific passenger demand that must be satisfied. For each
+// aircraft type and route, the passenger capacity and the operational cost are given. Determine how many aircraft of
+// each type to assign to each route so as to meet all passenger demands, stay within the availability limits for each
+// aircraft type, and minimize the overall cost.
+//
+// Save this file as model.idp. Download `aircraft_assignment.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_assignment.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py aircraft_assignment.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Type <: Int                   // the aircraft types, numbered from 0
+    type Route <: Int                  // the routes, numbered from 0
+    availability: Type -> Int          // availability(t): the number of aircraft of type t available
+    capabilities: Type * Route -> Int  // capabilities(t, r): the passenger capacity of an aircraft of type t on route r
+    costs: Type * Route -> Int         // costs(t, r): the operational cost of an aircraft of type t on route r
+    demand: Route -> Int               // demand(r): the number of passengers that must be carried on route r
+    allocation: Type * Route -> Int    // allocation(t, r): the number of aircraft of type t assigned to route r
+    minimize: () -> Int                // the total operational cost of the allocation
 }
-theory {
-    // The number of aircraft assigned is never negative.
-    ! t in AircraftType, r in Route: allocation(t, r) >= 0.
-
-    // The aircraft of each type assigned to all routes stay within its availability.
-    ! t in AircraftType: sum{{ allocation(t, r) | r in Route }} =< availability(t).
-
-    // The passenger capacity assigned to each route meets its demand.
-    ! r in Route: sum{{ (capabilities(t, r) * allocation(t, r)) | t in AircraftType }} >= demand(r).
-
-    // The objective is the total operational cost of all assignments.
-    minimize() = sum{{ (costs(t, r) * allocation(t, r)) | t in AircraftType, r in Route }}.
+theory T:V {
+    // the number of aircraft assigned is not negative
+    ! t in Type, r in Route: allocation(t, r) >= 0.
+    // the aircraft of each type assigned to all routes do not exceed the number available of that type
+    ! t in Type: sum{{ allocation(t, r) | r in Route }} =< availability(t).
+    // the passengers carried on each route meet its demand
+    ! r in Route: sum{{ (capabilities(t, r) * allocation(t, r)) | t in Type }} >= demand(r).
+    // the total operational cost is the cost of all aircraft assigned
+    minimize() = sum{{ (costs(t, r) * allocation(t, r)) | t in Type, r in Route }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

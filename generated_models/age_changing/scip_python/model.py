@@ -1,76 +1,99 @@
-# Age changing: find my age m and my husband's age h. Four operations (+2, /8, -3, *7)
-# applied once each, in some order, take my age to his age. Applied in a different
-# order, they take his age to mine.
-from pyscipopt import Model, quicksum
+# age_changing: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python age_changing.py
 
-# the four operations, by position in OPS
-OPS = ["+2", "/8", "-3", "*7"]
-# bounds on ages (years), and on intermediate results of the operations
-MAX_AGE = 150
-MAX_STATE = 2000
-# number of operations applied in each sequence
-STEPS = 4
+from pyscipopt import Model
 
-
-def add_sequence(model, states, sel, tag):
-    """Chain states[0] -> states[STEPS] through the operations selected by sel[p, o]."""
-    # each position applies exactly one operation, and each operation is applied once
-    for p in range(STEPS):
-        model.addCons(quicksum(sel[p, o] for o in range(len(OPS))) == 1, name=f"{tag}_pos{p}")
-    for o in range(len(OPS)):
-        model.addCons(quicksum(sel[p, o] for p in range(STEPS)) == 1, name=f"{tag}_op{o}")
-
-    for p in range(STEPS):
-        x = states[p]
-        z = states[p + 1]
-        # +2: the result is the age plus 2
-        model.addConsIndicator(z - x <= 2, binvar=sel[p, 0], name=f"{tag}_add2_le_{p}")
-        model.addConsIndicator(z - x >= 2, binvar=sel[p, 0], name=f"{tag}_add2_ge_{p}")
-        # /8: the age is divided by 8 exactly, so 8 times the result equals the age
-        model.addConsIndicator(8 * z - x <= 0, binvar=sel[p, 1], name=f"{tag}_div8_le_{p}")
-        model.addConsIndicator(8 * z - x >= 0, binvar=sel[p, 1], name=f"{tag}_div8_ge_{p}")
-        # -3: the result is the age minus 3 (non-negative, through the domain of z)
-        model.addConsIndicator(z - x <= -3, binvar=sel[p, 2], name=f"{tag}_sub3_le_{p}")
-        model.addConsIndicator(z - x >= -3, binvar=sel[p, 2], name=f"{tag}_sub3_ge_{p}")
-        # *7: the result is seven times the age
-        model.addConsIndicator(z - 7 * x <= 0, binvar=sel[p, 3], name=f"{tag}_mul7_le_{p}")
-        model.addConsIndicator(z - 7 * x >= 0, binvar=sel[p, 3], name=f"{tag}_mul7_ge_{p}")
+# The four operations, each as a linear relation  a * next == b * current + c
+# between the age before the step (current) and after it (next):
+#   +2: next = current + 2   (a=1, b=1, c=2)
+#   /8: 8 * next = current   (a=8, b=1, c=0): the division is exact, so the
+#       age before it must be a multiple of 8 (an assumption: the statement
+#       does not say what a fraction of a year would be)
+#   -3: next = current - 3   (a=1, b=1, c=-3)
+#   *7: next = 7 * current   (a=1, b=7, c=0)
+STEPS = [(1, 1, 2), (8, 1, 0), (1, 1, -3), (1, 7, 0)]
 
 
-def build(instance):
-    model = Model()
+def create_model(instance):
+    """Two ages, my age m and my husband's age h, linked by four operations.
 
-    # my age m and my husband's age h, in years
-    m = model.addVar(name="m", vtype="I", lb=0, ub=MAX_AGE)
-    h = model.addVar(name="h", vtype="I", lb=0, ub=MAX_AGE)
+    Starting from my age and applying +2, /8, -3 and *7, each once and in some
+    order, gives his age. Starting from his age and applying the same four
+    operations in a different order gives mine. Find both ages.
 
-    # first sequence: start from my age m and end at his age h
-    a = [m] + [model.addVar(name=f"a{p}", vtype="I", lb=0, ub=MAX_STATE)
-               for p in range(1, STEPS)] + [h]
-    # second sequence: start from his age h and end at my age m
-    b = [h] + [model.addVar(name=f"b{p}", vtype="I", lb=0, ub=MAX_STATE)
-               for p in range(1, STEPS)] + [m]
+    The instance file is empty ([]): the statement fixes all the data, so the
+    instance argument is not read.
+    """
+    model = Model("age_changing")
 
-    # sel1[p, o] = 1 if operation o is the one applied at position p of the first sequence
-    sel1 = {(p, o): model.addVar(name=f"s1_{p}_{o}", vtype="B")
-            for p in range(STEPS) for o in range(len(OPS))}
-    # sel2[p, o] = 1 if operation o is the one applied at position p of the second sequence
-    sel2 = {(p, o): model.addVar(name=f"s2_{p}_{o}", vtype="B")
-            for p in range(STEPS) for o in range(len(OPS))}
+    # m is my age and h is his, in whole years. The statement does not bound
+    # them: 0 to 200 is an assumption (a human age), and it cuts no answer,
+    # since the answers are below 100.
+    m = model.addVar(name="m", vtype="I", lb=0, ub=200)
+    h = model.addVar(name="h", vtype="I", lb=0, ub=200)
 
-    # the first sequence turns my age into his age, using each operation once
-    add_sequence(model, a, sel1, "fwd")
-    # the second sequence turns his age into mine, using each operation once
-    add_sequence(model, b, sel2, "bwd")
+    def chain(first, last, label):
+        # values[k] is the age after k steps: values[0] is the start and
+        # values[4] the end. The bounds -21 and 1414 are derived from the steps:
+        # the largest value from an age of at most 200 is (200 + 2) * 7 = 1414,
+        # since +2 and *7 are the only increasing steps and each is used once;
+        # the smallest from an age of 0 is -21 = (0 - 3) * 7, the lowest reached
+        # from an age of 0 over all 24 orders of the steps.
+        values = [first]
+        for k in (1, 2, 3):
+            values.append(model.addVar(name=f"{label}_{k}", vtype="I", lb=-21, ub=1414))
+        values.append(last)
 
-    # the second sequence is in a different order: the two sequences do not
-    # apply the same operation at every position
-    same = {}
-    for p in range(STEPS):
-        for o in range(len(OPS)):
-            same[p, o] = model.addVar(name=f"same_{p}_{o}", vtype="B")
-            model.addConsAnd([sel1[p, o], sel2[p, o]], same[p, o])
-    model.addCons(quicksum(same.values()) <= STEPS - 1, name="different_order")
+        # step[o, p] is 1 when operation o (a row, in the order of STEPS) is the
+        # p-th step (a column) of this chain.
+        step = model.addMatrixVar((4, 4), vtype="B", name=f"{label}_step")
 
-    # outputs: my age m and my husband's age h (satisfaction problem, no objective)
+        # Each operation is used exactly once (rows) and each step position holds
+        # exactly one operation (columns).
+        model.addMatrixCons(step.sum(axis=1) == 1)
+        model.addMatrixCons(step.sum(axis=0) == 1)
+
+        # If operation o is the p-th step, the age after it follows from the age
+        # before it. SCIP's indicator takes only <= or >=, so each equality is
+        # two indicators on the same binary.
+        for p in range(4):
+            for o, (a, b, c) in enumerate(STEPS):
+                model.addConsIndicator(a * values[p + 1] - b * values[p] <= c, binvar=step[o, p])
+                model.addConsIndicator(a * values[p + 1] - b * values[p] >= c, binvar=step[o, p])
+        return step
+
+    # My age m, through the steps in one order, gives his age h.
+    mine_order = chain(m, h, "mine_to_his")
+    # His age h, through the steps in another order, gives my age m.
+    his_order = chain(h, m, "his_to_mine")
+
+    # The two orders must differ, so they cannot agree at all four steps. same[o, p]
+    # is 1 when both orders have operation o at step p; addConsAnd sets it in both
+    # directions, so it is 1 exactly when they agree there.
+    same = model.addMatrixVar((4, 4), vtype="B", name="same_operation")
+    for o in range(4):
+        for p in range(4):
+            model.addConsAnd([mine_order[o, p], his_order[o, p]], same[o, p])
+    # The agreements at the four steps add up to at most 3: a different order
+    # disagrees at some step.
+    model.addCons(same.sum() <= 3)
+
+    # No objective: the problem asks for the two ages, not for an optimum.
     return model, {"h": h, "m": m}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

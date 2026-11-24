@@ -1,12 +1,28 @@
 language ESSENCE' 1.0
-$ Knock down a set of dummies, each numbered, so that the numbers on the knocked-down dummies add up to exactly the target sum.
+$ fifty_puzzle: an Essence' model from DCP Rosetta.
+$
+$ A side show has a number of numbered dummies. Each dummy has a number on it. Choose a set of dummies to knock over so that the numbers on the dummies knocked over add up to exactly a given target sum, neither more nor less.
+$
+$ Save this file as model.eprime. Download `fifty_puzzle.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/fifty_puzzle.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `fifty_puzzle_1.param.solution`:
+$   python dcp_convert_essence.py fifty_puzzle.json
+$   savilerow model.eprime fifty_puzzle_1.param -run-solver
+
+$ values_dim1: the number of dummies (derived from the data; the length of values)
 given values_dim1 : int(1..)
-given values : matrix indexed by [int(1..values_dim1)] of int(0..1000000)
-given target_sum : int(0..1000000)
+$ values[i]: the number on dummy i, indices 1-based
+given values : matrix indexed by [int(1..values_dim1)] of int
+$ the target sum the knocked-over numbers must add up to exactly
+given target_sum : int
+
+$ dummies[i]: dummy i is knocked over
 find dummies : matrix indexed by [int(1..values_dim1)] of bool
 
 branching on [dummies]
 
 such that
-$ the numbers on the dummies knocked over add up to exactly the target sum, neither more nor less
+$ the numbers on the dummies knocked over add up to exactly the target sum
 (sum i : int(1..values_dim1) . toInt(dummies[i]) * values[i]) = target_sum

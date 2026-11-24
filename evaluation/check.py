@@ -22,6 +22,34 @@ def _shown(path):
         return str(path)
 
 
+# Incumbents whose values are checked at most per instance, spread over the search: each costs a reference solve.
+INCUMBENTS_CHECKED = 10
+
+
+def check_incumbent_values(records, session, reported=()):
+    """Check the values of the incumbents that carry them (not those also reported as solutions: `reported`,
+    canonical): each must extend to a reference solution, optimal or not. Up to INCUMBENTS_CHECKED, spread over
+    the search, the last included. Returns how many incumbents carried values."""
+    values, keys, carried = [], set(reported), 0
+    for record in records:
+        if isinstance(record, dict) and record.get("type") == "incumbent" and isinstance(record.get("values"), dict):
+            carried += 1
+            key = canonical(record["values"])
+            if key not in keys:
+                keys.add(key)
+                values.append(record["values"])
+    if len(values) > INCUMBENTS_CHECKED:
+        values = [values[round(i * (len(values) - 1) / (INCUMBENTS_CHECKED - 1))] for i in range(INCUMBENTS_CHECKED)]
+    for solution in values:
+        try:
+            session.check(solution)
+        except EvaluationError as e:
+            if e.reason == "suboptimal_solution":  # a solution, not the optimum: what an improving solution may be
+                continue
+            raise EvaluationError("invalid_incumbent" if e.reason == "invalid_solution" else e.reason, e.detail) from e
+    return carried
+
+
 # Reasons that say "we could not tell", as opposed to "this model is wrong".
 INCONCLUSIVE = ("reference_timeout", "execution_timeout", "memory_limit")
 
@@ -30,19 +58,24 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
              solution_limit=1, execution_timeout=60, reference_timeout=60,
              compilation_timeout=120, memory_mb=2048, cpus=1, dataset_dir=None,
              legacy=False, reference_source=None, instances=None,
-             tolerate_inconclusive=False):
+             tolerate_inconclusive=False, incumbent_values=False):
     """Return a JSON-compatible result. Optional reference_source is trusted dataset code.
 
     With tolerate_inconclusive, an instance that only times out is recorded and
     skipped so the remaining instances are still checked, and acceptance needs at
     least one instance verified. A solution the reference rejects still fails the
     whole evaluation immediately: this relaxes coverage, never soundness.
+
+    With incumbent_values, the request asks the runner to give each incumbent its values,
+    and each one given is checked like a solution, except that it need not be optimal: one
+    the reference does not accept is `invalid_incumbent` (see check_incumbent_values).
     """
     started = time.perf_counter()
     result = {"accepted": False, "reason": "not_evaluated", "problem_id": problem_id, "solver_id": solver_id,
               "requested": {"instance_count": instance_count, "instance_ids": instance_ids,
                             "solution_limit": solution_limit,
-                            "tolerate_inconclusive": tolerate_inconclusive},
+                            "tolerate_inconclusive": tolerate_inconclusive,
+                            **({"incumbent_values": True} if incumbent_values else {})},
               "limits": {"execution_timeout": execution_timeout, "reference_timeout": reference_timeout,
                          "compilation_timeout": compilation_timeout, "memory_mb": memory_mb, "cpus": cpus},
               "instances": [], "instances_checked": 0, "solutions_checked": 0,
@@ -113,7 +146,7 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
                                           solution_limit=solution_limit, execution_timeout=execution_timeout,
                                           compilation_timeout=compilation_timeout, memory_mb=memory_mb,
                                           cpus=cpus, legacy=legacy, model_bytes=model_bytes,
-                                          outputs=session.metadata["outputs"])
+                                          outputs=session.metadata["outputs"], incumbent_values=incumbent_values)
                 item.update(timing)
                 solutions, status = validate_records(records)
                 item["runner_status"] = status
@@ -143,6 +176,9 @@ def evaluate(model_path, problem_id, solver_id, *, instance_count=1, instance_id
                     result["solutions_checked"] += 1
                     if len(seen) == solution_limit:
                         break
+                if incumbent_values:
+                    item["incumbents_with_values"] = check_incumbent_values(
+                        records, session, {canonical(s) for s in solutions if isinstance(s, dict)})
                 item["checking_seconds"] = time.perf_counter() - checking
                 failure = {"timeout": "execution_timeout", "unsat": "no_solution", "error": "execution_error",
                            "unsupported": "unsupported_capability", "compilation_error": "compilation_error"}
@@ -213,6 +249,8 @@ def main():
     parser.add_argument("--memory-mb", type=int, default=2048)
     parser.add_argument("--cpus", type=float, default=1)
     parser.add_argument("--legacy", action="store_true")
+    parser.add_argument("--incumbent-values", action="store_true",
+                        help="ask the runner for each incumbent's values, and check them (they need not be optimal)")
     args = vars(parser.parse_args())
     args["problem_id"] = args.pop("problem")
     args["solver_id"] = args.pop("solver")

@@ -1,13 +1,37 @@
-// Finding celebrities: among the guests of a party, find those whom every other guest knows.
-vocabulary {
-    // Guests, sized from the rows of the knowledge graph.
-    type Guest <: Int
-    // graph(i, j) = 1 when guest i knows guest j.
-    graph: Guest * Guest -> Int
-    // celebrities(c): guest c is a celebrity.
-    celebrities: Guest -> Bool
+// finding_celebrities: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given a list of people at a party and for each person the list of people they know at the party, find the celebrities
+// at the party. A celebrity is a person that everybody at the party knows but that only knows other celebrities. At
+// least one celebrity is present at the party.
+//
+// Save this file as model.idp. Download `finding_celebrities.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/finding_celebrities.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py finding_celebrities.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type P <: Int                      // the people at the party, numbered from 0, sized from graph
+    graph: P * P -> Int                // graph(p, q): 1 if person p knows person q, 0 otherwise
+    celebrities: P -> Bool             // celebrities(p): person p is a celebrity
 }
-theory {
-    // A guest is a celebrity exactly when every other guest knows that guest.
-    ! c in Guest: celebrities(c) <=> (! i in Guest: i ~= c => graph(i, c) = 1).
+
+theory T:V {
+    // a celebrity is known by everybody else at the party
+    ! c in P: celebrities(c) => ! p in P: p ~= c => graph(p, c) = 1.
+
+    // a celebrity only knows other celebrities
+    ! c in P: celebrities(c) => ! p in P: (p ~= c & graph(c, p) = 1) => celebrities(p).
+
+    // a person who is known by everybody else and knows only celebrities is a celebrity
+    ! c in P: (! p in P: p ~= c => graph(p, c) = 1) & (! p in P: (p ~= c & graph(c, p) = 1) => celebrities(p)) => celebrities(c).
+
+    // at least one celebrity is present at the party
+    ?p in P: celebrities(p).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

@@ -1,24 +1,36 @@
-% Quasigroup completion: fill the empty cells of a partially filled N x N grid
-% so that every row and every column contains each of 1..N exactly once (a
-% Latin square).
+% csplib_067_quasigroup_completion: a MiniZinc model from DCP Rosetta.
+%
+% An order m quasigroup is a Latin square of size m: an m x m multiplication table in which each element
+% from 1 to m occurs exactly once in every row and every column. Complete a partially filled quasigroup,
+% given as a grid in which 0 marks an empty cell.
+%
+% Save this file as model.mzn. Download `csplib_067_quasigroup_completion.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_067_quasigroup_completion.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_067_quasigroup_completion.json
+%   minizinc model.mzn csplib_067_quasigroup_completion_1.json
+
 include "globals.mzn";
 
-int: N;  % size of the square
-array[1..N, 1..N] of int: start;  % given cells; 0 marks an empty cell
+int: N;                                          % the order m of the quasigroup
+array[int, int] of int: start;                   % start[i,j]: the given value of cell (i,j), 0 if empty
 
-% puzzle[i, j] = the number in cell (i, j), from 1 to N
-array[1..N, 1..N] of var 1..N: puzzle;
+set of int: Rows = 1..N;                         % the rows
+set of int: Cols = 1..N;                         % the columns
+set of int: Values = 1..N;                       % the values 1 to m
 
-% the given cells keep their value
-constraint forall(i, j in 1..N where start[i, j] != 0) (puzzle[i, j] = start[i, j]);
+% puzzle[i,j]: the value of cell (i,j)
+array[Rows, Cols] of var Values: puzzle;
 
-% each row holds different numbers
-constraint forall(i in 1..N) (all_different([puzzle[i, j] | j in 1..N]));
-% each column holds different numbers
-constraint forall(j in 1..N) (all_different([puzzle[i, j] | i in 1..N]));
+% the given cells keep their values
+constraint forall(i in Rows, j in Cols where start[i, j] != 0)(puzzle[i, j] = start[i, j]);
+
+% each row contains each value exactly once
+constraint forall(i in Rows)(all_different([puzzle[i, j] | j in Cols]));
+
+% each column contains each value exactly once
+constraint forall(j in Cols)(all_different([puzzle[i, j] | i in Rows]));
 
 solve satisfy;
-
-output ["{\"puzzle\": [",
-        join(", ", ["[" ++ join(", ", [show(puzzle[i, j]) | j in 1..N]) ++ "]" | i in 1..N]),
-        "]}"];
+output ["{\"puzzle\": ", showJSON(puzzle), "}"];

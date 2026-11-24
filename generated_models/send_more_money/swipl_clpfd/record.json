@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5, interactive session, coordinator and modeller",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1789409362.2346263,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/swipl/prolog/CONTRACT.md": "b97f7d686889990081e58dab14a6ac8043c8ce98cc6ff4a343336dfd7e1e4eb0"
+    },
+    "created_at": 1794604561.7159662,
     "problem_id": "send_more_money",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "9c12e1459f109fe6652bf69d77840c221c64eb617d50fa48b86c821286400d38",
-    "run_id": "prolog-20260914-clpfd",
-    "schema": 2,
-    "skill_bundle_hash": "3196572c96cd8e8d75028b3a052349f66164202efab5658af1ad7a75af4e9353",
-    "skill_source": "solvers\\swipl_clpfd\\skills\\swipl-clpfd",
+    "readiness_hash": "c216a6700b5b6b565400b685f2e4d7c79c73d4aa3a9f89b672ace727fc405137",
+    "run_id": "20261116-swipl-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "5493b7e84542cac999b713b47ca8832eefc047b6",
+      "commit": "ff67819ac843d18becffde04c040b763be5254ea",
       "modified": false,
-      "path": "solvers/swipl_clpfd/skills/swipl-clpfd"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "603573da813e9d0eca3be80bee07bc18e2039363c8857ca06373299f8d99a2c4",
+        "source": "solvers/swipl/skills/dcp-swipl",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "solvers/swipl/skills/dcp-swipl"
+        }
+      }
+    ],
     "solver_id": "swipl_clpfd"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:7b0a8b7aba86b8a070408a75727b6c628038f39093476d68c22e3ea94630b6f7",
+      "id": "sha256:c4aecc7be95a0312db6dcd03a6fbbedccbe4179e5907592b652e5e0c35b6daaf",
+      "recipe": "sha256:68cf27681c1d4cc061d05393ab834128f32cbb1ddbdc9de6abffa288dc1ca604",
       "tag": "dcp-eval/swipl_clpfd:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.00264030002290383,
-        "execution_wall_seconds": 0.9980259999865666,
+        "checking_seconds": 0.006030938995536417,
+        "execution_wall_seconds": 3.127326958987396,
         "first_solution": {
           "d": 7,
           "e": 5,
@@ -51,6 +81,7 @@
         "id": "example",
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "s",
@@ -63,10 +94,13 @@
           "y"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6965782000334002,
+        "reference_setup_seconds": 1.1127466729958542,
         "runner_status": {
+          "build_seconds": 0.004926919937133789,
           "detail": "",
-          "solve_seconds": 0.01672077178955078,
+          "main_seconds": 0.011057376861572266,
+          "read_seconds": 0.00013875961303710938,
+          "solve_seconds": 0.01091456413269043,
           "status": "complete",
           "type": "status"
         },
@@ -84,15 +118,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "97e5e0e5787b8b687b20003dacfebc338fdda6708294652c495b9cb9974c57fd",
+    "model_hash": "5027c5b9a5912be23dc43c2653d0eb3568281e4ec67c5d6d515b6f7cf58eeccf",
     "problem_id": "send_more_money",
     "reason": "accepted",
-    "reference_hash": "3bea9b397cfefb1bcb9f588340d9d0aa9ad35ad09c05b63eb8a51918b629f13b",
+    "reference_hash": "b4e5a774d2c2e800dbbf0f70a18bd203d54af4877a0ff7fae1ce1cdcc96e926c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -103,11 +137,11 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "swipl_clpfd",
-    "total_wall_seconds": 2.0920121999806724,
+    "total_wall_seconds": 5.807689665991347,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5, interactive session, coordinator and modeller"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.pl",

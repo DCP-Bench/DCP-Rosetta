@@ -1,56 +1,47 @@
-% Kidney exchange: choose donations along a directed compatibility graph so
-% that as many people as possible receive a kidney, where anyone who gives a
-% kidney must receive one and nobody gives or receives more than one.
-include "globals.mzn";
+% session3_kidney_exchange: a MiniZinc model from DCP Rosetta.
+%
+% At the hospital n people are on a waiting list for a kidney transplant. The compatibility between these
+% people is a directed graph: compatible[i] is the set of people to which i can donate. Maximize the number of
+% people that receive a new kidney: anyone who gives a kidney must receive one, and no person receives more
+% than one kidney.
+%
+% Save this file as model.mzn. Download `session3_kidney_exchange.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py session3_kidney_exchange.json
+%   minizinc model.mzn session3_kidney_exchange_1.json
 
-int: num_people;
-% compatible[i] lists the people (1-based) to whom i can donate; the rows are
-% ragged, so the runner pads them with 0 to the longest row and
-% compatible_len[i] says how many entries of row i are real
-array[int,int] of int: compatible;
+int: num_people;                                  % the number of people on the waiting list
+% compatible[i, k]: the k-th person to whom person i can donate (rows padded with 0 to the longest row)
+array[int, int] of int: compatible;
+% compatible_len[i]: the number of real entries in row i of compatible (the reader's JSON has no such field)
 array[int] of int: compatible_len;
 
-set of int: Person = 1..num_people;
-% the real entries of compatible[i], without the padding
+set of int: Person = 1..num_people;               % one index per person
+% can_donate_to[i]: the people to whom person i can donate, without the padding
 array[Person] of set of int: can_donate_to =
   [{compatible[i, k] | k in 1..compatible_len[i]} | i in Person];
 
-% transplants[i, j] is true if person i donates to person j
+% transplants[i, j]: person i donates a kidney to person j
 array[Person, Person] of var bool: transplants;
 
-% i can donate to j only if j is among the real entries of compatible[i]
+% a person can donate only to a person compatible with them
 constraint forall(i, j in Person where not (j in can_donate_to[i]))(not transplants[i, j]);
 
-% each person donates to at most one person and receives from at most one person
+% no person donates more than one kidney
 constraint forall(i in Person)(sum(j in Person)(bool2int(transplants[i, j])) <= 1);
-constraint forall(i in Person)(sum(j in Person)(bool2int(transplants[j, i])) <= 1);
+
+% no person receives more than one kidney
+constraint forall(j in Person)(sum(i in Person)(bool2int(transplants[i, j])) <= 1);
 
 % anyone who gives a kidney must receive one
 constraint forall(i in Person)(
   exists(j in Person)(transplants[i, j]) -> exists(j in Person)(transplants[j, i])
 );
 
-% Implied view, added because Gecode times out on a dense 20-person instance
-% with the Boolean matrix alone. The three groups above force the donations to
-% form disjoint cycles: every donor receives, each person gives and receives at
-% most once, so the number of donors equals the number of receivers and the two
-% sets coincide. Such a set of cycles is a permutation of the people, with
-% succ[i] the person i donates to and succ[i] = i when i takes no part.
-% succ is a function of transplants (one value per assignment of the outputs),
-% so it adds no solution and removes none.
-array[Person] of var Person: succ;
-constraint forall(i in Person)(succ[i] in can_donate_to[i] union {i});
-constraint all_different(succ);
-% i donates to another person j exactly when succ[i] = j; a donation to oneself,
-% if compatible[i] ever allowed it, also leaves succ[i] = i
-constraint forall(i, j in Person where i != j)(transplants[i, j] <-> succ[i] = j);
-constraint forall(i in Person)(transplants[i, i] -> succ[i] = i);
-
-% maximise the number of transplants; at most one per person, so the
-% objective is bounded by num_people
+% the number of people who receive a new kidney
 var 0..num_people: objective = sum(i, j in Person)(bool2int(transplants[i, j]));
-solve maximize objective;
 
-output ["{\"transplants\": [",
-        join(", ", ["[" ++ join(", ", [show(transplants[i, j]) | j in Person]) ++ "]" | i in Person]),
-        "]}"];
+solve maximize objective;
+output ["{\"transplants\": ", showJSON(transplants), "}"];

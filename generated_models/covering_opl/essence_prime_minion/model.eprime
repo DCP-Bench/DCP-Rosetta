@@ -1,16 +1,33 @@
 language ESSENCE' 1.0
-$ Select a set of workers so that every task is performed by at least one selected worker who is qualified for it, minimising the total hiring cost of the selected workers.
+$ covering_opl: an Essence' model from DCP Rosetta.
+$
+$ Select a set of workers to perform all the tasks, while minimizing the cost. Each worker can perform certain tasks and has a hiring cost. Ensure that all tasks are performed.
+$
+$ Save this file as model.eprime. Download `covering_opl.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/covering_opl.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `covering_opl_1.param.solution`:
+$   python dcp_convert_essence.py covering_opl.json
+$   savilerow model.eprime covering_opl_1.param -run-solver
+
+$ nb_workers: the number of workers (indices 1-based)
 given nb_workers : int(1..)
+$ Cost[w]: hiring cost of worker w, indices 1-based
 given Cost : matrix indexed by [int(1..nb_workers)] of int(0..)
-$ Qualified[t,p] is the p-th worker (1-based) qualified for task t; rows are padded with 0 beyond their length
+$ Qualified_dim1: the number of tasks (derived from the data); Qualified_dim2: the longest qualification list (derived)
+$ Qualified[t,p]: the p-th worker (1-based) qualified for task t; rows are padded with 0 beyond their length
 given Qualified_dim1, Qualified_dim2 : int(1..)
 given Qualified : matrix indexed by [int(1..Qualified_dim1), int(1..Qualified_dim2)] of int(0..)
+
+$ total_cost: the total hiring cost of the selected workers
 find total_cost : int(0..sum(Cost))
+$ workers[w]: worker w is hired
 find workers : matrix indexed by [int(1..nb_workers)] of bool
 
 minimising total_cost
 such that
-$ the total cost is the sum of the hiring costs of the selected workers
+$ the total cost is the sum of the hiring costs of the hired workers
 total_cost = (sum w : int(1..nb_workers) . toInt(workers[w]) * Cost[w]),
-$ every task is performed by at least one selected worker who is qualified for it
-forAll t : int(1..Qualified_dim1) . (exists p : int(1..Qualified_dim2) . (Qualified[t,p] != 0) /\ workers[Qualified[t,p]])
+$ every task is performed by at least one hired worker who is qualified for it
+forAll t : int(1..Qualified_dim1) . (exists w : int(1..nb_workers) . workers[w] /\ (exists p : int(1..Qualified_dim2) . Qualified[t,p] = w))

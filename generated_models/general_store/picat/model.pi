@@ -1,32 +1,56 @@
-% General store: each letter of the sign stands for a different digit, and the
-% sixteen words above the line add up to ALL WOOL.
+% general_store: a Picat model from DCP Rosetta.
+%
+% The owner of a general store, who is something of a puzzlist, has put up this sign to see if any of
+% his mathematical friends can translate it properly. Each different letter stands for a different digit.
+% The words above the horizontal line represent numbers that add to the total of 'ALL WOOL'. The problem
+% is to change all the letters to the correct digits. The sum is:
+%
+%   CHESS + CASH + BOWWOW + CHOPS + ALSOPS + PALEALE + COOL + BASS + HOPS + ALES + HOES + APPLES + COWS
+%   + CHEESE + CHSOAP + SHEEP = ALLWOOL
+%
+% Leading zeros are allowed: a word may start with the digit 0.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The model reads no data: the letters are the decision variables, each a digit from 0 to 9.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    Words = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
-             "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"],
-    Total = "ALLWOOL",
-    Letters = sort_remove_dups(flatten(Words ++ [Total])),
-    Index = new_map([Letters[I] = I : I in 1..len(Letters)]),
-    % d[i] = the digit of the i-th letter; every letter stands for a different digit
-    D = new_list(len(Letters)),
-    D :: 0..9,
-    all_different(D),
-    % The addition is done column by column, from the units up. carry[k] is what
-    % comes into column k; at most 15, as a column adds sixteen digits.
-    Width = len(Total),
-    Carry = new_list(Width + 1),
-    Carry :: 0..15,
-    Carry[1] #= 0,
-    Carry[Width + 1] #= 0,
-    foreach (K in 1..Width)
-        Column = [D[Index.get(Word[len(Word) - K + 1])] : Word in Words, len(Word) >= K],
-        Sum = D[Index.get(Total[Width - K + 1])],
-        % the digits of column k plus the carry in = the digit of the total plus 10 * the carry out
-        sum(Column) + Carry[K] #= Sum + 10 * Carry[K + 1]
+    % one digit variable per letter
+    Letters = [C, H, E, S, A, B, O, W, P, L],
+    Letters :: 0..9,
+    % each different letter stands for a different digit
+    all_different(Letters),
+    Val = new_map([c = C, h = H, e = E, s = S, a = A, b = B, o = O, w = W, p = P, l = L]),
+    Addends = [[c,h,e,s,s], [c,a,s,h], [b,o,w,w,o,w], [c,h,o,p,s], [a,l,s,o,p,s], [p,a,l,e,a,l,e],
+               [c,o,o,l], [b,a,s,s], [h,o,p,s], [a,l,e,s], [h,o,e,s], [a,p,p,l,e,s], [c,o,w,s],
+               [c,h,e,e,s,e], [c,h,s,o,a,p], [s,h,e,e,p]],
+    SumWord = [a,l,l,w,o,o,l],
+    NA = len(Addends),
+    % AddVal[I] = the number that the I-th word stands for
+    AddVal = new_list(NA),
+    foreach (I in 1..NA)
+        wordvalue(Addends[I], Val, AddVal[I])
     end,
-    Vars = D ++ Carry,
-    % one output per letter, named by the letter itself
-    Outputs = [Letters[I] = D[I] : I in 1..len(Letters)],
-    Options = [ff].
+    wordvalue(SumWord, Val, SumVal),
+    % the words above the line add up to the word below it
+    sum(AddVal) #= SumVal,
+    Vars = Letters,
+    Outputs = ['A' = A, 'B' = B, 'C' = C, 'E' = E, 'H' = H, 'L' = L, 'O' = O, 'P' = P, 'S' = S, 'W' = W],
+    Options = [].
+
+% Word is a list of letters, Val maps each letter to its digit; the number of the word, with its
+% first letter the most significant digit, is E
+wordvalue(Word, Val, E) =>
+    N = len(Word),
+    E #= sum([Val.get(Word[I]) * 10 ** (N - I) : I in 1..N]).
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

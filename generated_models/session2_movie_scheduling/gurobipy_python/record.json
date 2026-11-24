@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-opus-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790604477.8771846,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/gurobi/python/CONTRACT.md": "64ac711159447f95a9300997cf286bacb9d20abdbf2ed49172a8ab84285a66a0"
+    },
+    "created_at": 1793803068.8438993,
     "problem_id": "session2_movie_scheduling",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1402c8e3902b3c3b86e46b423febede5526140d30e18581dd6e0faf3de62c6f8",
-    "run_id": "20260928T1148Z-gurobi-ffc0",
-    "schema": 2,
-    "skill_bundle_hash": "6a6e6df924a2c1bb358ef1a4722cbb1b4daa36e88d3a708fd8fa2645937e75ef",
-    "skill_source": "solvers\\gurobipy_python\\skills\\gurobipy",
+    "readiness_hash": "d008139638dcc84bf1d6ac4523bb6d9fcb8b5f607d6fd9b854817faf3599b60d",
+    "run_id": "gurobi-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "a7887115b4a4a2a43dbdb732e882ab1275292640",
+      "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
       "modified": false,
-      "path": "solvers/gurobipy_python/skills/gurobipy"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "37208b292bca196eb56cf0f6cee09df988466d9bcdbcf076c9e8a2e4a4e9a540",
+        "source": "solvers/gurobi/skills/dcp-gurobi",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "solvers/gurobi/skills/dcp-gurobi"
+        }
+      }
+    ],
     "solver_id": "gurobipy_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:527fdcaef6c25d5c6452fd59bc01ebc79b913567ccf80bffbff88f9ce67ff9f0",
+      "id": "sha256:51e206b961fb980499155c874c9f1e30688aa3f972a09ea75203eb085a3f9972",
+      "recipe": "sha256:6339c09b15707929271e2c18a8c036813535fc3cbaebe2f69e403825b50f918e",
       "tag": "dcp-eval/gurobipy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.018255500006489456,
-        "execution_wall_seconds": 1.87569960008841,
+        "checking_seconds": 0.004333893011789769,
+        "execution_wall_seconds": 0.43011154598207213,
         "first_solution": {
           "selected_movies": [
             false,
@@ -60,7 +85,7 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3990482999943197,
+        "reference_setup_seconds": 0.3060895279922988,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -72,8 +97,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007301400066353381,
-        "execution_wall_seconds": 1.4756744999904186,
+        "checking_seconds": 0.001926111988723278,
+        "execution_wall_seconds": 0.43013435101602226,
         "first_solution": {
           "selected_movies": [
             true,
@@ -94,7 +119,7 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6994494999526069,
+        "reference_setup_seconds": 0.30212533398298547,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -106,8 +131,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.009300899924710393,
-        "execution_wall_seconds": 1.5020227000350133,
+        "checking_seconds": 0.0019959659839514643,
+        "execution_wall_seconds": 0.5308041250100359,
         "first_solution": {
           "selected_movies": [
             false,
@@ -128,7 +153,7 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.690629200078547,
+        "reference_setup_seconds": 0.299093976005679,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -140,8 +165,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.026869299937970936,
-        "execution_wall_seconds": 1.7449435000307858,
+        "checking_seconds": 0.004977072007022798,
+        "execution_wall_seconds": 0.42856059802579693,
         "first_solution": {
           "selected_movies": [
             false,
@@ -167,7 +192,7 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9720802999800071,
+        "reference_setup_seconds": 0.26583012999617495,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -179,8 +204,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02716079994570464,
-        "execution_wall_seconds": 1.4663463999750093,
+        "checking_seconds": 0.00884618898271583,
+        "execution_wall_seconds": 0.5330155109986663,
         "first_solution": {
           "selected_movies": [
             false,
@@ -210,7 +235,7 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1049972999608144,
+        "reference_setup_seconds": 0.3352682380063925,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -224,21 +249,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "29f8a69b43a654801d0705f9132e449d020d0b4a06e66630e7b8380e5f29ff02",
+    "model_hash": "8d3633297f5de81cc4b414f947a3f5cd825c70054639dbf3cd4afb27aceced3e",
     "problem_id": "session2_movie_scheduling",
     "reason": "accepted",
     "reference_hash": "eb02bc105582c59cb4f25137b0b809721e386cbaab2b7b27be60dbe019e7022f",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -249,11 +274,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "gurobipy_python",
-    "total_wall_seconds": 19.30988079996314,
+    "total_wall_seconds": 5.2096507379901595,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

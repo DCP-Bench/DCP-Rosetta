@@ -94,6 +94,10 @@ The protocol is in `evaluation/README.md`. In short:
   stderr. Reuse `runner/runtime.py`.
 - Report improving solutions as `incumbent` records while the solver optimises, where it
   exposes them (a solution callback, a log line, an incremental loop the runner drives).
+  When the request says `"incumbent_values": true`, give each one its declared outputs as
+  `values`, read the way the final solution's are; never read them otherwise (it costs search
+  time). Only a solver that reports nothing before its proof (core-guided MaxSAT, a labelling
+  that returns the optimum first) has no incumbents; say so in `CONTRACT.md`.
 - Return explicit `unsupported`, `error` and `compilation_error` statuses.
 - Never invent solutions, alter the submission or emit more solutions than requested;
   fewer only with `complete` (search exhausted).
@@ -286,6 +290,7 @@ bugs real models hit:
 | `auxiliary_free_distinct` | it enumerates | duplicate outputs from free auxiliaries | a free auxiliary variable outside the outputs, `solution_limit=3`: accepted with 3 distinct solutions |
 | `objective_values` | it optimises | the solver's internal objective reported instead of the problem's | a maximisation whose objective has a constant term (`3 + x + y`) and a minimisation with a negative optimum: accepted, with every solution's `objective` the reference's optimum |
 | `incumbents`, `incumbents_maximize` | it reports incumbents | incumbents on the solver's scale, in the wrong direction or missing the optimum | a minimisation and a maximisation, each with a first solution that is not optimal: `improving_incumbents(result)` (strictly better each time, the last the optimum) |
+| `incumbent_values` | it reports incumbents | incumbents without their values when asked, or values that are not the solution found (read from the wrong solution, the wrong names) | the minimisation of `incumbents` evaluated with `incumbent_values=True`: `incumbents_with_values(result)` (every incumbent carried values, and the evaluator accepted each as a solution) |
 | `optimum_enumeration` | it optimises and enumerates | a re-posted objective parsed or pinned wrongly | a compound objective (a sum) with ten optima, `solution_limit=3`: accepted with 3 solutions checked |
 
 **Licensed integrations** (any level) also need `licence_missing`: run a valid model with

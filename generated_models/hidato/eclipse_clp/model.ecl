@@ -1,96 +1,92 @@
-% Hidato (Hidato puzzles): fill an R x C grid so that the numbers 1..R*C
-% appear exactly once each, consecutive numbers touch horizontally,
-% vertically or diagonally, and the given numbered tiles stay in place.
-% The instance gives the puzzle as a grid, 0 marks an empty cell.
-% Output x is the completed grid.
+% hidato: an ECLiPSe model from DCP Rosetta.
 %
-% Model: P[k] is the cell (1-based flat index) holding number k. The cell
-% is given by its row R[k] and column C[k]. Number k+1 must touch number k.
+% A Hidato puzzle is a grid partly filled with numbers, the other cells being empty. Fill in the
+% empty cells so that the grid holds each number from 1 to the number of cells exactly once, and
+% consecutive numbers touch horizontally, vertically or diagonally.
+%
+% Save this file as model.ecl. Download `hidato.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py hidato.json
+%   eclipse -b model.ecl -e "run('hidato_1.dat'), halt"
 
-:- lib(ic).
+:- lib(gfd).
 :- lib(listut).
 
-model(Instance, Vars, [x-Grid]) :-
-    memberchk(puzzle-Rows, Instance),
-    length(Rows, NR),
-    Rows = [Row1 | _],
-    length(Row1, NC),
-    M is NR * NC,
-    flatten(Rows, Flat0),
-    clue_pairs(Flat0, 1, Clues),
-
-    % Every number 1..M has a cell, and every cell gets a different number.
-    length(Ps, M), Ps :: 1..M,
-    length(Rs, M), Rs :: 1..NR,
-    length(Cs, M), Cs :: 1..NC,
-    link_cells(Ps, Rs, Cs, NC),
-    alldifferent(Ps),
-
-    % The numbered tiles of the puzzle keep their cells.
-    fix_clues(Clues, Ps),
-
-    % The grid itself: cell Flat[p] holds the number k with P[k] = p.
-    length(Flat, M), Flat :: 1..M,
-    alldifferent(Flat),
-    channel(Ps, 1, Flat),
-
-    % Consecutive numbers must touch horizontally, vertically or diagonally.
-    adjacency(Rs, Cs),
-
-    chunk(Flat, NC, Grid),
-    append(Ps, Rs, PsRs),
-    append(PsRs, Cs, Vars).
-
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
-
-% Pairs Pos-Value for every numbered tile (non-zero entry).
-clue_pairs([], _, []).
-clue_pairs([V | Vs], Pos, Clues) :-
-    Pos1 is Pos + 1,
-    (   V =:= 0
-    ->  Clues = Clues1
-    ;   Clues = [Pos-V | Clues1]
+% The data field puzzle is the grid as a list of rows, with 0 for each empty cell.
+model(Data, Vars, [x-Rows]) :-
+    memberchk(puzzle-Puzzle, Data),
+    length(Puzzle, NRows),
+    Puzzle = [FirstRow | _],
+    length(FirstRow, NCols),
+    N is NRows * NCols,                    % the number of cells, which is the largest number
+    % the grid, with every cell a number from 1 to N
+    length(Rows, NRows),
+    ( foreach(Row, Rows), param(NCols, N) do
+        length(Row, NCols),
+        ( foreach(X, Row), param(N) do X :: 1..N )
     ),
-    clue_pairs(Vs, Pos1, Clues1).
+    flatten(Rows, Flat),
+    % the numbers already in the puzzle stay where they are
+    flatten(Puzzle, Givens),
+    ( foreach(X, Flat), foreach(G, Givens) do
+        ( G =:= 0 -> true ; X = G )
+    ),
+    % each number from 1 to N is in the grid exactly once
+    alldifferent(Flat),
+    % Ls[K] is the position of the number K in the grid, counted from 1 along the rows
+    length(Ls, N),
+    ( foreach(L, Ls), param(N) do L :: 1..N ),
+    ( for(K, 1, N), foreach(L, Ls), param(Flat) do
+        element(L, Flat, K)
+    ),
+    % the row and column of each position: position L is row R, column C
+    length(Rs, N),
+    length(Cs, N),
+    ( foreach(L, Ls), foreach(R, Rs), foreach(C, Cs), param(NRows, NCols) do
+        R :: 1..NRows,
+        C :: 1..NCols,
+        L #= (R - 1) * NCols + C
+    ),
+    % each number touches the next one horizontally, vertically or diagonally
+    adjacent(Rs, Cs),
+    append(Ls, Rs, LsRs),
+    append(LsRs, Cs, LsRsCs),
+    append(LsRsCs, Flat, Vars).
 
-% A numbered tile with value V sits at position Pos: P[V] = Pos.
-fix_clues([], _).
-fix_clues([Pos-V | Clues], Ps) :-
-    nth1(V, Ps, PV),
-    PV #= Pos,
-    fix_clues(Clues, Ps).
-
-% Cell index of row R and column C (1-based) is (R-1)*NC + C.
-link_cells([], [], [], _).
-link_cells([P | Ps], [R | Rs], [C | Cs], NC) :-
-    P #= (R - 1) * NC + C,
-    link_cells(Ps, Rs, Cs, NC).
-
-% Number K is in cell P[K], so Flat at that cell is K.
-channel([], _, _).
-channel([P | Ps], K, Flat) :-
-    element(P, Flat, K),
-    K1 is K + 1,
-    channel(Ps, K1, Flat).
-
-% Consecutive numbers touch: rows and columns differ by at most 1.
-% The cells differ because the numbers are in different cells.
-adjacency([R1 | Rs], [C1 | Cs]) :-
-    adjacency_(Rs, Cs, R1, C1).
-
-adjacency_([], [], _, _).
-adjacency_([R2 | Rs], [C2 | Cs], R1, C1) :-
+% consecutive positions differ by at most one row and at most one column
+adjacent([_], [_]).
+adjacent([R1, R2 | Rs], [C1, C2 | Cs]) :-
     R1 - R2 #=< 1,
     R2 - R1 #=< 1,
     C1 - C2 #=< 1,
     C2 - C1 #=< 1,
-    adjacency_(Rs, Cs, R2, C2).
+    adjacent([R2 | Rs], [C2 | Cs]).
 
-% Split the flat list into rows of NC cells.
-chunk([], _, []).
-chunk(L, NC, [Row | Rows]) :-
-    L = [_ | _],
-    length(Row, NC),
-    append(Row, Rest, L),
-    chunk(Rest, NC, Rows).
+:- lib(branch_and_bound).
+
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

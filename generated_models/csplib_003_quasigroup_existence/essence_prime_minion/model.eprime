@@ -1,12 +1,26 @@
 language ESSENCE' 1.0
-$ Find an order m quasigroup (a Latin square on the values 0 to m-1) such that (a*b)*(b*a) = a for all a and b.
+$ csplib_003_quasigroup_existence: an Essence' model from DCP Rosetta.
+$
+$ An order m quasigroup is a Latin square of size m: an m-by-m multiplication table in which each element occurs once in every row and column, with the elements 0 to m-1. Find an order m quasigroup (the operation a * b) such that (a*b)*(b*a) = a for every a and b. This is the QG3.m quasigroup existence problem.
+$
+$ Save this file as model.eprime. Download `csplib_003_quasigroup_existence.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_003_quasigroup_existence.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_003_quasigroup_existence_1.param.solution`:
+$   python dcp_convert_essence.py csplib_003_quasigroup_existence.json
+$   savilerow model.eprime csplib_003_quasigroup_existence_1.param -run-solver
+
+$ m: the order of the quasigroup (the size of its table)
 given m : int(1..)
+
+$ quasigroup[i,j]: the value of i-1 * j-1 (table indices 1-based, values 0 to m-1, so the value v is at table index v+1)
 find quasigroup : matrix indexed by [int(1..m), int(1..m)] of int(0..m-1)
 
 such that
-$ every element occurs once in every row
-forAll i : int(1..m) . allDiff(quasigroup[i, ..]),
-$ every element occurs once in every column
-forAll j : int(1..m) . allDiff(quasigroup[.., j]),
-$ the QG3 property: (a*b)*(b*a) = a for all a and b, where the values are 0-based and the matrix is 1-based
-forAll a : int(0..m-1) . forAll b : int(0..m-1) . quasigroup[quasigroup[a+1, b+1] + 1, quasigroup[b+1, a+1] + 1] = a
+$ every row of the table has each element exactly once
+forAll i : int(1..m) . allDiff(quasigroup[i,..]),
+$ every column of the table has each element exactly once
+forAll j : int(1..m) . allDiff(quasigroup[..,j]),
+$ for every a and b, (a*b)*(b*a) = a
+forAll a : int(0..m-1) . forAll b : int(0..m-1) . quasigroup[quasigroup[a+1,b+1]+1, quasigroup[b+1,a+1]+1] = a

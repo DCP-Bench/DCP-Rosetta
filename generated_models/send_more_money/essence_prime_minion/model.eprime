@@ -1,12 +1,36 @@
 language ESSENCE' 1.0
-$ SEND + MORE = MONEY: each letter stands for a distinct digit, and the leading letters S and M are nonzero.
-find s, e, n, d, m, o, r, y : int(0..9)
+$ send_more_money: an Essence' model from DCP Rosetta.
+$
+$ The SEND + MORE = MONEY puzzle: each letter stands for a different digit from 0 to 9, the first letter of
+$ each word is not zero, and the letters are the digits of the sum SEND + MORE = MONEY.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/send_more_money.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ s: the digit of S (first letter of SEND)
+find s : int(0..9)
+$ e: the digit of E
+find e : int(0..9)
+$ n: the digit of N
+find n : int(0..9)
+$ d: the digit of D
+find d : int(0..9)
+$ m: the digit of M (first letter of MORE and MONEY)
+find m : int(0..9)
+$ o: the digit of O
+find o : int(0..9)
+$ r: the digit of R
+find r : int(0..9)
+$ y: the digit of Y
+find y : int(0..9)
 
 such that
-$ each letter is a different digit
+$ each letter stands for a different digit
 allDiff([s, e, n, d, m, o, r, y]),
-$ the first letter of each word cannot be zero
+$ the first letter of each word is not zero
 s != 0,
 m != 0,
-$ SEND + MORE = MONEY, read as the numbers they spell
-1000 * s + 100 * e + 10 * n + d + 1000 * m + 100 * o + 10 * r + e = 10000 * m + 1000 * o + 100 * n + 10 * e + y
+$ SEND + MORE = MONEY
+1000*s + 100*e + 10*n + d + 1000*m + 100*o + 10*r + e = 10000*m + 1000*o + 100*n + 10*e + y

@@ -1,25 +1,52 @@
-% Heterosquare: an n x n square of the different numbers 1..n^2 whose row sums,
-% column sums and two diagonal sums are all different.
+% heterosquare: a Picat model from DCP Rosetta.
+%
+% A heterosquare of order n is an n by n square whose elements are the distinct integers 1 to n*n, such that
+% the sums of its rows, its columns and its two diagonals are all different from one another.
+%
+% Save this file as model.pi. Download `heterosquare.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py heterosquare.json
+%   picat model.pi heterosquare_1.dat
+%
+% Data.get(n): the order of the square.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),
-    X = new_array(N, N),
+    N = Data.get(n),                          % the order of the square
+    X = new_array(N, N),                      % X[I, J] is the element in row I and column J
+    % the elements are distinct integers from 1 to n*n
     X :: 1..N * N,
     all_distinct([X[I, J] : I in 1..N, J in 1..N]),
+    % the sums of the rows, the columns and the two diagonals
     RowSums = new_list(N),
     ColSums = new_list(N),
+    Diag1 :: 1..N ** 3,                       % a sum of N elements, each at most n*n
+    Diag2 :: 1..N ** 3,
     RowSums :: 1..N ** 3,
     ColSums :: 1..N ** 3,
-    [Diag1, Diag2] :: 1..N ** 3,
     foreach (I in 1..N)
         RowSums[I] #= sum([X[I, J] : J in 1..N]),
         ColSums[I] #= sum([X[J, I] : J in 1..N])
     end,
-    Diag1 #= sum([X[I, I] : I in 1..N]),
-    Diag2 #= sum([X[I, N + 1 - I] : I in 1..N]),
-    % all the sums are different
+    Diag1 #= sum([X[I, I] : I in 1..N]),          % the main diagonal
+    Diag2 #= sum([X[I, N + 1 - I] : I in 1..N]),  % the other diagonal
+    % all the row, column and diagonal sums are different from one another
     all_different(RowSums ++ ColSums ++ [Diag1, Diag2]),
     Vars = X,
     Outputs = [x = X],
     Options = [ff].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -44,8 +44,9 @@ solution record carries it as `objective`. CP-SAT stores an objective as integer
 plus an offset and a scaling factor, and a maximisation with its terms and offset negated
 and a factor of -1; the runner computes `scaling_factor * (terms + offset)` exactly from
 the solution's values, which is the expression given to `minimize`/`maximize`, constant
-included. Solutions enumerated at the optimum carry the same value. No improving
-solutions are reported.
+included. Solutions enumerated at the optimum carry the same value. The optimising solve
+reports each improving solution as an `incumbent`, from a CP-SAT solution callback that
+computes the same exact objective on the callback's solution; incumbents carry no values.
 
 ## Solving
 

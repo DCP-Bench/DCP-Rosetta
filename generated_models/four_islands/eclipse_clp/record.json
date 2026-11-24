@@ -3,10 +3,10 @@
     "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/eclipse_clp/CONTRACT.md": "0a79c7a17d3b244f132814712c15a00181e75914afd3c2027f68f49d7de06183"
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/eclipse/prolog/CONTRACT.md": "bd8681cdc92c400eaed7117cc1d9767452aba4a687b7610fcdcb35e8035cc9e1"
     },
-    "created_at": 1792317842.976905,
+    "created_at": 1794511473.8829412,
     "problem_id": "four_islands",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1752abeb97f393db6abeed5d8072314cb019e53ea6cdba6c28e3a7b9f59b8a7c",
-    "run_id": "20261018-eclipse-clp-models",
+    "readiness_hash": "cfdfb4e580d8d8dfb1111022e28e9d77b76a10a62784db90514048871aa99737",
+    "run_id": "20261115-eclipse-standalone",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+      "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "8f2254ed868f92f072796f1a85e20c99a430b5cc47a199e9b804654539cfcc7d",
-        "source": "solvers/eclipse_clp/skills/eclipse-clp",
+        "bundle_hash": "ad3e03eeb677b4fd2fe741fd2c0684c5aa831478c51aa96c18a3266d4ac134b5",
+        "source": "solvers/eclipse/skills/dcp-eclipse",
         "version": {
-          "commit": "2f96190da68ff99925d2b5f3084e544c0a501acb",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "solvers/eclipse_clp/skills/eclipse-clp"
+          "path": "solvers/eclipse/skills/dcp-eclipse"
         }
       }
     ],
@@ -52,16 +52,22 @@
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:cb05be3a8ccfa25074fb0739a6fbaa95e7671afbe485c0e2bd825f148cfc1318",
+      "id": "sha256:21e1098608489d31b38d61fd56da549e69e85203e7d8d972164662d7bd30653d",
+      "recipe": "sha256:cf52576ba60077b18b4ccd6f4f723da5eb9baab7ea2bff593be2f6bfe67cffdc",
       "tag": "dcp-eval/eclipse_clp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.030207735020667315,
-        "execution_wall_seconds": 4.051880424958654,
+        "checking_seconds": 0.013743578980211169,
+        "execution_wall_seconds": 1.2569997980026528,
         "first_solution": {
           "attraction": [
             1,
@@ -93,10 +99,13 @@
           "attraction"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9322617090074345,
+        "reference_setup_seconds": 0.5840752270305529,
         "runner_status": {
+          "build_seconds": 0.0326690673828125,
           "detail": "",
-          "solve_seconds": 0.19,
+          "main_seconds": 0.0328950881958008,
+          "read_seconds": 4.00543212890625e-05,
+          "solve_seconds": 0.03,
           "status": "complete",
           "type": "status"
         },
@@ -114,15 +123,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "74f18aa5e59d25e7baf5c7ae6f9a9cab3f99c3b14b56d485d19a98ae74b66d6b",
+    "model_hash": "386d2d13d4a4e3b89477e96775443f27bd1e8b3572590308da7757723f440efb",
     "problem_id": "four_islands",
     "reason": "accepted",
-    "reference_hash": "bbb2d83add92d381e3376bc4ac34f95615450c924099a72693a0efa3b055c14b",
+    "reference_hash": "aefc2dd2de794f16e62617a91132c087f66d6ee7a276ded64db44311ee05b91b",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -133,7 +142,7 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "eclipse_clp",
-    "total_wall_seconds": 6.461503503960557,
+    "total_wall_seconds": 2.4266520079690963,
     "unperformed_instances": []
   },
   "generated_by": {

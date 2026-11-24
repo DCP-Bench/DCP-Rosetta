@@ -1,19 +1,44 @@
-% Fancy dress: Mr Greenguest owns a green shirt and can buy a green tie ($10), a
-% green hat ($2) and green socks ($12). A guest who breaks a dress rule pays an
-% $11 entrance fee. Find the cheapest way in.
+% fancy_dress: a Picat model from DCP Rosetta.
+%
+% Mr. Greenfan wants to give a dress party where the male guests must wear green dresses. The following rules are
+% given: 1. if someone wears a green tie he has to wear a green shirt; 2. a guest who wears green socks or a green
+% shirt must also wear a green tie or a green hat; 3. a guest wearing a green shirt or a green hat or who does not
+% wear green socks must wear a green tie; 4. a guest who is not dressed according to rules 1-3 must pay a $11
+% entrance fee. Mr Greenguest wants to participate but owns only a green shirt (otherwise he would have to pay one
+% for $9). He could buy a green tie for $10, a green hat (used) for $2 and green socks for $12. What is the cheapest
+% solution for Mr Greenguest to participate?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/fancy_dress.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
-    % t tie, h hat, r shirt, s socks, n entrance fee; 1 when chosen
-    [T, H, R, S, N] :: 0..1,
-    % 1. a green tie needs a green shirt
-    (T #=> R) #\/ N,
-    % 2. green socks or a green shirt need a green tie or a green hat
-    ((S #\/ R) #=> (T #\/ H)) #\/ N,
-    % 3. a green shirt, a green hat or no green socks need a green tie
-    (R #\/ H #\/ #~ S) #=> (T #\/ N),
-    Cost #= 10 * T + 2 * H + 12 * S + 11 * N,
-    Vars = [T, H, R, S, N],
-    Outputs = [t = T, h = H, r = R, s = S, n = N],
+    % each choice is 1 when the guest wears that item, 0 otherwise
+    T :: 0..1,                             % green tie, bought for $10
+    H :: 0..1,                             % green hat, bought for $2
+    R :: 0..1,                             % green shirt, already owned: costs nothing
+    S :: 0..1,                             % green socks, bought for $12
+    F :: 0..1,                             % entrance fee of $11
+    % rule 1 holds: a guest who wears a green tie wears a green shirt
+    B1 #<=> (T #=< R),
+    % rule 2 holds: a guest wearing green socks or a green shirt wears a green tie or a green hat
+    B2 #<=> ((S + R #= 0) #\/ (T + H #>= 1)),
+    % rule 3 holds: a guest wearing a green shirt or a green hat, or not wearing green socks, wears a green tie
+    B3 #<=> (((R + H #= 0) #/\ (S #= 1)) #\/ (T #= 1)),
+    % rule 4: the entrance fee is paid when one of rules 1-3 does not hold
+    Dressed #<=> (B1 #/\ B2 #/\ B3),
+    F #= 1 - Dressed,
+    Cost #= 10 * T + 2 * H + 11 * F + 12 * S,
+    Vars = [T, H, R, S, F],
+    Outputs = [t = T, h = H, r = R, s = S, n = F],
+    % the cheapest way to take part
     Options = [$min(Cost)].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

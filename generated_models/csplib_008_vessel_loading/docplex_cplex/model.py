@@ -1,16 +1,20 @@
-"""Vessel loading: position rectangular containers on a rectangular deck, in a single layer.
+# csplib_008_vessel_loading: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_008_vessel_loading.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_008_vessel_loading.py csplib_008_vessel_loading.json
 
-Containers are parallel to the sides of the deck and may be turned a quarter turn. They
-must not overlap, and containers of certain classes must be a minimum distance apart.
-The model finds positions (left, right, top, bottom) for every container.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
-    deck_width = instance["deck_width"]
-    deck_length = instance["deck_length"]
-    n = instance["n_containers"]
+def create_model(instance):
+    """Vessel loading: can the given containers be positioned in a single layer on a rectangular
+    deck, parallel to its sides (a container may be turned a quarter turn), without overlapping
+    and without violating the minimum separations between certain classes of containers?"""
+    deck_width = instance["deck_width"]    # the size of the deck across
+    deck_length = instance["deck_length"]  # the size of the deck along
+    n = instance["n_containers"]           # number of containers
     width = instance["width"]            # width of each container
     length = instance["length"]          # length of each container
     classes = instance["classes"]        # class of each container, counted from 1
@@ -32,9 +36,8 @@ def build(instance):
     top = [bottom[i] + length[i] - (length[i] - width[i]) * turned[i] for i in range(n)]
 
     # Every container lies on the deck.
-    for i in range(n):
-        model.add_constraint(right[i] <= deck_width)
-        model.add_constraint(top[i] <= deck_length)
+    model.add_constraints(right[i] <= deck_width for i in range(n))
+    model.add_constraints(top[i] <= deck_length for i in range(n))
 
     # No two containers overlap, and they keep the separation of their classes: container x is
     # at least `sep` to the left of y, to the right of y, below y or above y. Two binaries p, q
@@ -57,3 +60,25 @@ def build(instance):
             model.add_constraint(top[y] + sep - bottom[x] <= along * (2 - p - q))
 
     return model, {"left": left, "right": right, "top": top, "bottom": bottom}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

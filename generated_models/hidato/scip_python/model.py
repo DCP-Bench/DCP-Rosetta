@@ -1,42 +1,84 @@
-# Hidato: fill an R x C grid with the numbers 1 to R*C, each used once, keeping the given
-# numbers, so that each number touches the next one horizontally, vertically or diagonally.
-from pyscipopt import Model, quicksum
+# hidato: a SCIP (Python) model from DCP Rosetta.
+# Download the `hidato.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python hidato.py hidato.json
+
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    puzzle = instance["puzzle"]
-    R = len(puzzle)
-    C = len(puzzle[0])
-    N = R * C
-    values = range(1, N + 1)
-    cells = [(i, j) for i in range(R) for j in range(C)]
-    m = Model("hidato")
+def create_model(instance):
+    """Hidato: fill every empty cell of a grid with a number so that the numbers
+    1 to the number of cells each appear once, and each number touches the next
+    one (number k and number k + 1) horizontally, vertically or diagonally.
+    Some cells already hold a number, which must stay where it is."""
+    # puzzle[r, c]: the number given in cell (r, c), or 0 for an empty cell
+    puzzle = np.array(instance["puzzle"])
+    rows, cols = puzzle.shape
+    # the cell count, from the grid's size. Hidato numbers the cells 1 to this count,
+    # every cell getting one number and every number used once.
+    cells = rows * cols
+    # numbers[k] = k + 1: index k of place below stands for the number k + 1
+    numbers = np.arange(1, cells + 1)
+    # row_index[r, c] = r and col_index[r, c] = c: the position of each cell
+    row_index, col_index = np.indices((rows, cols))
 
-    # b[i, j, v] = 1 if the cell in row i, column j holds the number v
-    b = {(i, j, v): m.addVar(name=f"b_{i}_{j}_{v}", vtype="B") for (i, j) in cells for v in values}
+    model = Model("hidato")
 
-    # each cell holds exactly one number
-    for (i, j) in cells:
-        m.addCons(quicksum(b[i, j, v] for v in values) == 1)
+    # place[k, r, c] is 1 when the number numbers[k] is in cell (r, c), and 0 when not.
+    # SCIP has no all-different constraint, so the numbers are placed with one-hot
+    # binaries instead: each cell holds one number and each number sits in one cell.
+    # The bounds fix the given numbers: a given number is forced to 1 in its own cell
+    # (lower bound), and forced to 0 in each cell that holds a different given number
+    # (upper bound).
+    given = puzzle[None, :, :] == numbers[:, None, None]
+    empty = puzzle[None, :, :] == 0
+    place = model.addMatrixVar((cells, rows, cols), vtype="B", name="place",
+                               lb=given.astype(int).tolist(),
+                               ub=(given | empty).astype(int).tolist())
 
-    # each number from 1 to R*C is placed exactly once
-    for v in values:
-        m.addCons(quicksum(b[i, j, v] for (i, j) in cells) == 1)
+    # Each cell holds exactly one number.
+    model.addMatrixCons(place.sum(axis=0) == 1)
+    # Each number sits in exactly one cell, so the numbers are all different.
+    model.addMatrixCons(place.sum(axis=2).sum(axis=1) == 1)
 
-    # the given numbers of the puzzle stay where they are
-    for (i, j) in cells:
-        if puzzle[i][j] > 0:
-            m.addCons(b[i, j, puzzle[i][j]] == 1)
+    # row[k] and col[k]: the row and the column of number numbers[k]. Each is linear
+    # in place, because exactly one cell holds that number.
+    row = (place * row_index).sum(axis=2).sum(axis=1)
+    col = (place * col_index).sum(axis=2).sum(axis=1)
 
-    # consecutive numbers touch: if v is in a cell, v+1 is in one of its 8 neighbours
-    def neighbours(i, j):
-        return [(i + di, j + dj) for di in (-1, 0, 1) for dj in (-1, 0, 1)
-                if (di, dj) != (0, 0) and 0 <= i + di < R and 0 <= j + dj < C]
+    # Consecutive numbers touch. Two cells touch horizontally, vertically or diagonally
+    # exactly when their rows differ by at most 1 and their columns differ by at most 1,
+    # so each pair of consecutive numbers gets these four linear constraints.
+    row_step = row[1:] - row[:-1]
+    col_step = col[1:] - col[:-1]
+    model.addMatrixCons(row_step <= 1)
+    model.addMatrixCons(row_step >= -1)
+    model.addMatrixCons(col_step <= 1)
+    model.addMatrixCons(col_step >= -1)
 
-    for v in range(1, N):
-        for (i, j) in cells:
-            m.addCons(quicksum(b[q, r, v + 1] for (q, r) in neighbours(i, j)) >= b[i, j, v])
+    # x[r, c]: the number in cell (r, c), the number times its placement, summed over numbers
+    x = (place * numbers[:, None, None]).sum(axis=0)
 
-    # the grid as a list of lists of the number in each cell
-    grid = [[quicksum(v * b[i, j, v] for v in values) for j in range(C)] for i in range(R)]
-    return m, {"x": grid}
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

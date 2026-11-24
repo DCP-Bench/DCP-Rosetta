@@ -1,19 +1,36 @@
 language ESSENCE' 1.0
-$ A heterosquare of order n: the n by n square holds the distinct integers 1 to n*n, and its row, column and diagonal sums are all different.
-given n : int
-find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n*n)
-find sums : matrix indexed by [int(1..2*n+2)] of int(0..n*n*n)
+$ heterosquare: an Essence' model from DCP Rosetta.
+$
+$ A heterosquare of order n is an n by n square whose elements are distinct integers from 1 to n^2
+$ such that the sums of the rows, columns and diagonals are all different.
+$
+$ Save this file as model.eprime. Download `heterosquare.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `heterosquare_1.param.solution`:
+$   python dcp_convert_essence.py heterosquare.json
+$   savilerow model.eprime heterosquare_1.param -run-solver
 
-branching on [x]
+$ n: the order of the square (the number of rows and of columns)
+given n : int
+$ nn: the number of cells, n*n; the entries are the integers 1 to nn
+letting nn = n * n
+$ x[r,c]: the entry in row r, column c (1-based)
+find x : matrix indexed by [int(1..n), int(1..n)] of int(1..nn)
+$ sums[1..n]: the row sums; sums[n+1..2n]: the column sums; sums[2n+1]: the main diagonal sum; sums[2n+2]: the other diagonal sum
+find sums : matrix indexed by [int(1..2*n+2)] of int(0..n*nn)
 
 such that
-$ the square holds the distinct integers 1 to n*n
-allDiff(flatten(x)),
-$ the first 2n entries of sums are the row sums and the column sums
-forAll i : int(1..n) . sums[i] = (sum j : int(1..n) . x[i,j]),
-forAll j : int(1..n) . sums[n+j] = (sum i : int(1..n) . x[i,j]),
-$ the next two entries of sums are the two diagonal sums
+$ the entries are distinct integers from 1 to n^2
+allDiff([x[r,c] | r : int(1..n), c : int(1..n)]),
+$ the sums of the rows
+forAll r : int(1..n) . sums[r] = (sum c : int(1..n) . x[r,c]),
+$ the sums of the columns
+forAll c : int(1..n) . sums[n+c] = (sum r : int(1..n) . x[r,c]),
+$ the sum of the main diagonal
 sums[2*n+1] = (sum i : int(1..n) . x[i,i]),
+$ the sum of the other diagonal
 sums[2*n+2] = (sum i : int(1..n) . x[i,n+1-i]),
-$ the row, column and diagonal sums must all be different
+$ the sums of the rows, columns and diagonals are all different
 allDiff(sums)

@@ -1,54 +1,71 @@
-# Initials queue: find the initials of the first ten people in a Maths lecture queue, where
-# each person's initials are an alphabetically ordered pair of distinct letters from A-E.
-from itertools import combinations
+# initials_queue: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/initials_queue.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python initials_queue.py
 
-from pyscipopt import Model, quicksum
-
-# The problem fixes the letters A to E as 0 to 4 and says each initial pair is an ordered
-# pair of distinct letters from them, so the 10 possible pairs are all 2-subsets of {0..4}.
-LETTERS = range(5)
-PAIRS = list(combinations(LETTERS, 2))
-QUEUE_LENGTH = 10
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    m = Model()
-    P = range(len(PAIRS))
-    N = range(QUEUE_LENGTH)
+def create_model(instance):
+    """Ten people stand in a queue, and each has initials that are an alphabetically
+    ordered pair of distinct letters from the first five letters A to E (A=0 ... E=4).
+    No two people have the same initials, and no two people next to each other in the
+    queue share a letter. BE is at the front, CD is second, and BD is at the back.
+    Find the initials of the ten people, starting from the front.
 
-    # x[i, p] = 1 if the person at position i (from the front) has the initials PAIRS[p]
-    x = {(i, p): m.addVar(name=f"x_{i}_{p}", vtype="B") for i in N for p in P}
+    The instance file is empty ([]), so the instance argument holds no data and is not
+    read: the statement fixes everything.
+    """
+    letters = 5  # the first five letters of the alphabet, A to E, coded 0 to 4
 
-    # each queue position holds exactly one pair of initials
-    for i in N:
-        m.addCons(quicksum(x[i, p] for p in P) == 1)
+    # Every alphabetical pair (a, b) with a < b, from the five letters: C(5, 2) = 10 pairs.
+    pairs = [(a, b) for a in range(letters) for b in range(a + 1, letters)]
+    # The statement has ten people. Their initials are all different and there are exactly
+    # ten pairs, so the ten people use every pair once.
+    people = len(pairs)
 
-    # no two people share the same initials: each of the 10 pairs is used exactly once
-    for p in P:
-        m.addCons(quicksum(x[i, p] for i in N) == 1)
+    # incidence[k, c] = 1 when letter c is in pairs[k], so incidence[k] lists the letters of a pair.
+    incidence = np.array([[c in pair for c in range(letters)] for pair in pairs], dtype=int)
 
-    # no-one shares a letter with the person in front of them:
-    # for each letter v, the person at position i and the person at position i+1 together
-    # hold v at most once
-    for i in range(QUEUE_LENGTH - 1):
-        for v in LETTERS:
-            m.addCons(
-                quicksum(x[i, p] + x[i + 1, p] for p in P if v in PAIRS[p]) <= 1
-            )
+    model = Model("initials_queue")
 
-    # Mathematician BE is at the front of the queue
-    m.addCons(x[0, PAIRS.index((1, 4))] == 1)
-    # with CD right behind
-    m.addCons(x[1, PAIRS.index((2, 3))] == 1)
-    # and BD right at the end of the queue
-    m.addCons(x[QUEUE_LENGTH - 1, PAIRS.index((1, 3))] == 1)
+    # at[p, k] = 1 when the person at queue position p (0 = front) has the initials pairs[k].
+    at = model.addMatrixVar((people, people), vtype="B", name="at")
+    model.addMatrixCons(at.sum(axis=1) == 1)  # each position holds exactly one pair
+    model.addMatrixCons(at.sum(axis=0) == 1)  # each pair is held by exactly one position
 
-    # the output gives the initials of each position from the front, as letter numbers 0 to 4
-    queue = [
-        [
-            quicksum(PAIRS[p][0] * x[i, p] for p in P),
-            quicksum(PAIRS[p][1] * x[i, p] for p in P),
-        ]
-        for i in N
-    ]
-    return m, {"queue": queue}
+    # letter_in[p, c] = 1 when the person at position p has letter c in their initials.
+    # This is a linear expression, not a variable: it is the sum of at over the pairs with c.
+    letter_in = at @ incidence
+
+    # Neighbours in the queue share no letter: for each letter, the counts at positions p and p+1
+    # add to at most 1, so the letter is not in both people's initials.
+    model.addMatrixCons(letter_in[:-1] + letter_in[1:] <= 1)
+
+    # The fixed front of the queue: BE at position 0, CD at position 1, and BD at the last position.
+    # Letters B, C, D, E are coded 1, 2, 3, 4.
+    model.addCons(at[0, pairs.index((1, 4))] == 1)  # BE at the front
+    model.addCons(at[1, pairs.index((2, 3))] == 1)  # CD right behind
+    model.addCons(at[people - 1, pairs.index((1, 3))] == 1)  # BD at the end of the queue
+
+    # Output: the initials of each position, as its two letter codes. The pair at a position
+    # is the sum over the pairs of at times that pair's letters.
+    queue = at @ np.array(pairs)
+
+    return model, {"queue": queue}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

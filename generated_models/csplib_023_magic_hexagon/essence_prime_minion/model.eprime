@@ -1,28 +1,62 @@
 language ESSENCE' 1.0
-$ Magic hexagon: arrange the numbers 1 to NUM_CELLS in the hexagon cells A to S so that the numbers in each of the 15 lines (rows and diagonals) add up to the magic constant.
+$ csplib_023_magic_hexagon: an Essence' model from DCP Rosetta.
+$
+$ A magic hexagon arranges the numbers 1 to 19 in a hexagonal pattern so that the numbers in each of the 15 lines (rows and diagonals) add up to the magic constant, which is 38. The cells are labelled A to S in this layout:
+$       A, B, C
+$      D, E, F, G
+$     H, I, J, K, L
+$      M, N, O, P
+$       Q, R, S
+$ Find an assignment of the numbers to the cells A to S that satisfies all the sum constraints.
+$
+$ Save this file as model.eprime. Download `csplib_023_magic_hexagon.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_023_magic_hexagon_1.param.solution`:
+$   python dcp_convert_essence.py csplib_023_magic_hexagon.json
+$   savilerow model.eprime csplib_023_magic_hexagon_1.param -run-solver
+
+$ NUM_CELLS: the number of cells, which holds the numbers 1 to NUM_CELLS (19)
 given NUM_CELLS : int
+$ MAGIC_SUM: the magic constant that every line adds up to (38)
 given MAGIC_SUM : int
+
+$ LD[i]: the number in cell i, where cells 1 to 19 are A to S in order (indices 1-based)
 find LD : matrix indexed by [int(1..NUM_CELLS)] of int(1..NUM_CELLS)
 
 branching on [LD]
+
 such that
 $ every cell holds a different number
 allDiff(LD),
-$ the five horizontal lines ABC, DEFG, HIJKL, MNOP and QRS each sum to the magic constant
+$ the horizontal line ABC sums to the magic constant
 LD[1] + LD[2] + LD[3] = MAGIC_SUM,
+$ the horizontal line DEFG sums to the magic constant
 LD[4] + LD[5] + LD[6] + LD[7] = MAGIC_SUM,
+$ the horizontal line HIJKL sums to the magic constant
 LD[8] + LD[9] + LD[10] + LD[11] + LD[12] = MAGIC_SUM,
+$ the horizontal line MNOP sums to the magic constant
 LD[13] + LD[14] + LD[15] + LD[16] = MAGIC_SUM,
+$ the horizontal line QRS sums to the magic constant
 LD[17] + LD[18] + LD[19] = MAGIC_SUM,
-$ the lines running down and to the right, AEJOS, BFKP, CGL, DINR and HMQ, each sum to the magic constant
+$ the line AEJOS, running down and to the right, sums to the magic constant
 LD[1] + LD[5] + LD[10] + LD[15] + LD[19] = MAGIC_SUM,
+$ the line BFKP, running down and to the right, sums to the magic constant
 LD[2] + LD[6] + LD[11] + LD[16] = MAGIC_SUM,
+$ the line CGL, running down and to the right, sums to the magic constant
 LD[3] + LD[7] + LD[12] = MAGIC_SUM,
+$ the line DINR, running down and to the right, sums to the magic constant
 LD[4] + LD[9] + LD[14] + LD[18] = MAGIC_SUM,
+$ the line HMQ, running down and to the right, sums to the magic constant
 LD[8] + LD[13] + LD[17] = MAGIC_SUM,
-$ the lines running down and to the left, ADH, BEIM, CFJNQ, GKOR and LPS, each sum to the magic constant
+$ the line ADH, running down and to the left, sums to the magic constant
 LD[1] + LD[4] + LD[8] = MAGIC_SUM,
+$ the line BEIM, running down and to the left, sums to the magic constant
 LD[2] + LD[5] + LD[9] + LD[13] = MAGIC_SUM,
+$ the line CFJNQ, running down and to the left, sums to the magic constant
 LD[3] + LD[6] + LD[10] + LD[14] + LD[17] = MAGIC_SUM,
+$ the line GKOR, running down and to the left, sums to the magic constant
 LD[7] + LD[11] + LD[15] + LD[18] = MAGIC_SUM,
+$ the line LPS, running down and to the left, sums to the magic constant
 LD[12] + LD[16] + LD[19] = MAGIC_SUM

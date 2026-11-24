@@ -1,25 +1,48 @@
-% Cabling: put devices one above another in a rack (one device per slot) so
-% that the total cable length is as small as possible. A cable joining two
-% devices, or several identical cables between them, costs the distance between
-% their slots times the number of cables.
-% devices(I, "Name"): device I; cable_struct(K, 0, "A"), cable_struct(K, 1, "B") and
-% cable_struct(K, 2, C): cable group K joins A and B with C cables.
-device(I) :- devices(I,_).
+% cabling: a clingo model from DCP Rosetta.
+%
+% A rack cabinet holds 1U devices, such as servers and routers, which must be connected by cables. Some
+% devices must be connected by several cables. Each device takes one position in the rack, and neighbouring
+% positions are one unit apart. A cable between two devices is as long as the distance between their
+% positions, so connecting them by k cables costs k times that distance. Place the devices in such an order
+% that the sum of all cable lengths is as short as possible.
+%
+% Save this file as model.lp. Download `cabling.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/cabling.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py cabling.json
+%   python -m clingo model.lp cabling_1.lp
+
+% Input: n(N) gives the number N of devices, which is also the number of rack positions; devices(I, D)
+% holds the name D of device I; cable_struct(K, 0, A), cable_struct(K, 1, B) and cable_struct(K, 2, C)
+% say that cable group K joins devices A and B with C cables (indices are 0-based, as in the data).
+
+device(I) :- devices(I, _).
 slot(0..N-1) :- n(N).
 
-% x(I, P): device I is in slot P; every device gets its own slot.
-1 { x(I,P) : slot(P) } 1 :- device(I).
-:- x(I1,P), x(I2,P), I1 < I2.
+% the gaps between neighbouring positions: gap G lies between positions G and G+1
+gap(0..N-2) :- n(N).
 
-% cable(K, I1, I2, C): cable group K joins the devices numbered I1 and I2 with C cables.
-cable(K,I1,I2,C) :- cable_struct(K,0,A), cable_struct(K,1,B), cable_struct(K,2,C),
-                    devices(I1,A), devices(I2,B).
+% each device takes exactly one rack position, and each position holds exactly one device
+1 { pos(I, P) : slot(P) } 1 :- device(I).
+1 { pos(I, P) : device(I) } 1 :- slot(P).
 
-% The distance between the slots of the two devices of a cable group.
-distance(K,|P1 - P2|) :- cable(K,I1,I2,_), x(I1,P1), x(I2,P2).
+% the devices joined by a cable group, by their indices
+cable(K, I1, I2, C) :- cable_struct(K, 0, A), cable_struct(K, 1, B), cable_struct(K, 2, C),
+                       devices(I1, A), devices(I2, B).
 
-% The total cable length is what is minimised.
-final_sum(S) :- S = #sum { C * D,K : cable(K,_,_,C), distance(K,D) }.
+% a device lies below gap G when its position is G or less
+low(I, G) :- pos(I, P), gap(G), P <= G.
+
+% a cable group crosses gap G when exactly one of its two devices lies below the gap
+crosses(K, G) :- cable(K, I1, I2, _), gap(G), low(I1, G), not low(I2, G).
+crosses(K, G) :- cable(K, I1, I2, _), gap(G), low(I2, G), not low(I1, G).
+
+% a cable spans as many gaps as its length, so the total cable length is the number of cables
+% crossing each gap, summed over the gaps and the cable groups
+final_sum(S) :- S = #sum { C,K,G : cable(K, _, _, C), crosses(K, G) }.
+
+% the total cable length is as short as possible
 #minimize { S : final_sum(S) }.
 
 #show final_sum/1.

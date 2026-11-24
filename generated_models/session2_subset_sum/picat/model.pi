@@ -1,14 +1,41 @@
-% Subset sum: how many bags of each kind were stolen, given the coins per bag of
-% each kind and the total number of coins lost.
+% session2_subset_sum: a Picat model from DCP Rosetta.
+%
+% A bank van had several bags of coins, each containing a number of coins from a given list (there are multiple
+% bags of the same kind). While the van was parked on the street, thieves stole some bags. A total of a given number
+% of coins were lost. It is required to find how many bags were stolen for each type of coin bag.
+%
+% Save this file as model.pi. Download `session2_subset_sum.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_subset_sum.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session2_subset_sum.json
+%   picat model.pi session2_subset_sum_1.dat
+%
+% Data.get(coin_numbers): the number of coins in a bag of each type (a list indexed from 1);
+% Data.get(total_coins_lost): the total number of coins lost.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Total = Data.get(total_coins_lost),
     Coins = Data.get(coin_numbers),
-    N = len(Coins),
+    Total = Data.get(total_coins_lost),
+    N = len(Coins),                        % the number of types of coin bag
     Bags = new_list(N),
-    Bags :: 0..Total,
+    Bags :: 0..Total,                      % Bags[I] = the number of stolen bags of type I
+    % the stolen bags hold exactly the total number of coins lost
     sum([Bags[I] * Coins[I] : I in 1..N]) #= Total,
     Vars = Bags,
     Outputs = [bags = Bags],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,39 +1,24 @@
-// birthday_coins: Tommy was given 15 coins (half-crowns, shillings and sixpence) for his
-// birthday. Altogether he had 1 pound 5 shillings and 6 pence. How many half-crowns was he given?
-//
-// The instance carries no fields: the description fixes every value below.
-// Units: a pound is 240 pence, a half-crown 30 pence, a shilling 12 pence, a sixpence 6 pence.
-
+// Birthday coins: Tommy was given 15 coins, each a half-crown (30 pence), a shilling (12 pence)
+// or a sixpence (6 pence), though not necessarily coins of all three kinds. Together they are
+// worth £1 5s 6d. How many half-crowns could he have been given?
 fn build(_inst: &Instance, s: &mut Cadical) -> Res<Out> {
-    // he was given 15 coins for his birthday
-    let coins = 15;
-    // he found that he had 1 pound 5 shillings and 6 pence, that is 240 + 60 + 6 = 306 pence
-    let total_pence = 306;
+    // The instance has no fields: every number below is from the problem statement.
+    // How many coins of each kind he was given: a kind may be absent (0), and no kind can
+    // number more than the 15 coins.
+    let half_crowns = IntVar::new(0..=15);
+    let shillings = IntVar::new(0..=15);
+    let sixpences = IntVar::new(0..=15);
 
-    // number of half-crowns, shillings and sixpences, each at most the number of coins
-    let half_crowns = IntVar::new(0..=coins);
-    let shillings = IntVar::new(0..=coins);
-    let sixpences = IntVar::new(0..=coins);
+    // He was given 15 coins.
+    post(s, iv(&half_crowns) + iv(&shillings) + iv(&sixpences), Comparator::Equal, 15)?;
 
-    // the coins given are half-crowns, shillings and sixpence, so each kind occurs at least once
-    post(s, iv(&half_crowns), Comparator::GreaterEq, 1)?;
-    post(s, iv(&shillings), Comparator::GreaterEq, 1)?;
-    post(s, iv(&sixpences), Comparator::GreaterEq, 1)?;
-
-    // the 15 coins are half-crowns, shillings and sixpence together
-    post(
-        s,
-        iv(&half_crowns) + iv(&shillings) + iv(&sixpences),
-        Comparator::Equal,
-        coins,
-    )?;
-
-    // the coins add up to 1 pound 5 shillings and 6 pence (306 pence)
+    // They add up to £1 5s 6d = 240 + 5 * 12 + 6 = 306 pence; a half-crown is 30 pence, a
+    // shilling 12 and a sixpence 6.
     post(
         s,
         scaled(&half_crowns, 30) + scaled(&shillings, 12) + scaled(&sixpences, 6),
         Comparator::Equal,
-        total_pence,
+        306,
     )?;
 
     let mut out = Out::new();

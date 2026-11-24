@@ -4,6 +4,10 @@ Drives the repository evaluator against real containers, prints a JSON object
 mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver swipl_clpfd` runs this and keeps
 its output as the readiness evidence.
+
+`standalone_run` and `standalone_run_no_data` are what a reader does: `swipl -g "solve_file('<file>')" -t halt model.pl`
+(or `solve_model(_{})` for a model with no data) in the image, with the run block the contract gives, on a list of
+instances (the dataset file's form), and read the answer it prints.
 """
 import json
 from pathlib import Path
@@ -13,7 +17,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from evaluation import evaluate
-from evaluation.execution import image_identity
+from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
 SOLVER = "swipl_clpfd"
@@ -69,7 +73,13 @@ ISOLATED = HEADER + (
     "model(Instance, [X, Y], [x-X, y-Y]) :-\n"
     "    read_file_to_string('/proc/self/status', Status, []),\n"
     "    split_string(Status, '\\n', '', Lines),\n"
-    "    memberchk(\"Uid:\\t65534\\t65534\\t65534\\t65534\", Lines),\n"
+    "    read_file_to_string('/proc/self/uid_map', UidMap, []),\n"
+    "    % unprivileged on the host: Docker runs as nobody; rootless podman without a subuid range can only run as\n"
+    "    % container root, which maps to the invoking user (the uid map is not the identity)\n"
+    "    (   memberchk(\"Uid:\\t65534\\t65534\\t65534\\t65534\", Lines)\n"
+    "    ;   memberchk(\"Uid:\\t0\\t0\\t0\\t0\", Lines),\n"
+    "        \\+ sub_string(UidMap, _, _, _, \"0          0 4294967295\")\n"
+    "    ),\n"
     "    \\+ exists_directory('/dataset'),\n"
     "    directory_files('/input', Files),\n"
     "    msort(Files, ['.', '..', 'model.pl', 'request.json']),\n"
@@ -78,6 +88,64 @@ ISOLATED = HEADER + (
     "    N = Instance.n,\n"
     "    [X, Y] ins 0..N,\n"
     "    X + Y #= N.\n")
+
+
+RUN_BLOCK = """
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).
+"""
+NO_DATA_MODEL = HEADER + ("model(_, [X, Y], [x-X, y-Y]) :-\n"
+                          "    [X, Y] ins 0..2,\n"
+                          "    X + Y #= 2.\n")
+STANDALONE_INSTANCES = [{"n": 2, "optimize": False}, {"n": 3, "optimize": True}]
+
+
+def standalone_run(temp, with_data):
+    """The reader's path, in the image: `swipl -g "solve_file('<file>')" -t halt model.pl` on the dataset file's
+    form (a list of instances), the second instance too; `solve_model(_{})` for a model with no data."""
+    staging = temp / ("standalone_data" if with_data else "standalone_no_data")
+    staging.mkdir()
+    (staging / "model.pl").write_text((GOOD + RUN_BLOCK) if with_data else (NO_DATA_MODEL + RUN_BLOCK), encoding="utf-8")
+    goals = ["solve_model(_{})"]
+    if with_data:
+        (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+        goals = ["solve_file('instances.json')", "solve_file('instances.json', 2)"]
+    staging.chmod(0o777)
+    for path in staging.iterdir():
+        path.chmod(0o666)
+    script = " && ".join(f"swipl --no-tty -g \"{goal}\" -t halt model.pl" for goal in goals)
+    code, out, err = run_process([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+        "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+        "--mount", f"type=bind,source={staging},target=/w",
+        "--workdir=/w", "--env=HOME=/tmp", "--entrypoint", "sh",
+        integration(SOLVER)["image"], "-c", script], 300)
+    if code or out.count("x = ") != len(goals) or out.count("y = ") != len(goals):
+        print((err or out)[-400:], file=sys.stderr)
+        return False
+    return True
 
 
 def main():
@@ -115,6 +183,10 @@ def main():
                   reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
             and check("objective_values", OPTIMAL.replace("OBJECTIVE(X + Y)", "min(X + Y - 10)"),
                       reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
+        # a standalone model carries a run block (solve_file/1,2, solve_model/1); the driver ignores it
+        check("run_block_ignored", GOOD + RUN_BLOCK)
+        results["standalone_run"] = standalone_run(temp, True)
+        results["standalone_run_no_data"] = standalone_run(temp, False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

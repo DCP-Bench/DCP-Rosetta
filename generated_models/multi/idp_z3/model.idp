@@ -1,27 +1,43 @@
-// Multi-commodity transportation: ship every product from the origins to the destinations at the lowest total shipping cost.
-vocabulary {
-    type Origin <: Int
-    type Dest <: Int
-    type Product <: Int
-    supply: Origin * Product -> Int        // Supply_{i,p}: units of product p available at origin i
-    demand: Dest * Product -> Int          // Demand_{j,p}: units of product p needed at destination j
-    limit: Origin * Dest -> Int            // total units (all products) that may travel from origin i to destination j
-    cost: Origin * Dest * Product -> Int   // ShippingCost_{i,j,p}: cost of one unit of product p from i to j
-    ship: Origin * Dest * Product -> Int   // units of product p shipped from origin i to destination j
-    total_cost: () -> Int                  // declared output: total shipping cost
-    minimize: () -> Int
+// multi: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// This is a multi-commodity transportation problem. Given a set of origins, a set of destinations, and a set of
+// products. Each origin i has a certain supply of each product p, and each destination j has a certain demand for each
+// product p. The cost of shipping one unit of product p from origin i to destination j is ShippingCost(i, j, p). The
+// problem aims to minimize the total cost of shipping all products from the origins to the destinations.
+//
+// Save this file as model.idp. Download `multi.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/multi.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py multi.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Origin <: Int                 // the origins, numbered from 0, sized from supply
+    type Dest <: Int                   // the destinations, numbered from 0, sized from demand
+    type Product <: Int                // the products, numbered from 0, sized from supply
+    supply: Origin * Product -> Int    // supply(i, p): units of product p available at origin i
+    demand: Dest * Product -> Int      // demand(j, p): units of product p needed at destination j
+    limit: Origin * Dest -> Int        // limit(i, j): the most units, of all products together, shipped from origin i to destination j
+    cost: Origin * Dest * Product -> Int   // cost(i, j, p): the cost of shipping one unit of product p from origin i to destination j
+    ship: Origin * Dest * Product -> Int   // ship(i, j, p): the units of product p shipped from origin i to destination j
+    total_cost: () -> Int              // the total cost of all the shipments
+    minimize: () -> Int                // the total cost of all the shipments, to minimize
 }
-theory {
-    // Every shipment is a non-negative whole number of units, and no more than the lane limit.
-    ! i in Origin, j in Dest, p in Product: 0 =< ship(i, j, p) & ship(i, j, p) =< limit(i, j).
-    // The units of a product shipped out of an origin do not exceed its supply.
+theory T:V {
+    // every shipment is a whole number of units, not negative
+    ! i in Origin, j in Dest, p in Product: ship(i, j, p) >= 0.
+    // the units of a product shipped out of an origin do not exceed its supply
     ! i in Origin, p in Product: sum{{ ship(i, j, p) | j in Dest }} =< supply(i, p).
-    // Each destination receives exactly its demand of each product.
+    // each destination receives exactly its demand of each product
     ! j in Dest, p in Product: sum{{ ship(i, j, p) | i in Origin }} = demand(j, p).
-    // The lane limit applies to the total of all products sent from an origin to a destination.
+    // the units of all products shipped from an origin to a destination do not exceed the limit of that lane
     ! i in Origin, j in Dest: sum{{ ship(i, j, p) | p in Product }} =< limit(i, j).
-    // The total cost of shipping all products from the origins to the destinations.
+    // the total cost is the cost of all the shipments
     total_cost() = sum{{ (cost(i, j, p) * ship(i, j, p)) | i in Origin, j in Dest, p in Product }}.
-    // The objective is to minimize the total cost.
+    // the total shipping cost is minimized
     minimize() = total_cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

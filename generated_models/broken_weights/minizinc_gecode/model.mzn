@@ -1,33 +1,37 @@
-% Broken weights: a measuring weight of total m pounds broke into n pieces of
-% whole-pound weight. Find piece weights such that every whole weight from 1 to
-% m can be weighed on a balance scale, where pieces may go on either pan.
-include "globals.mzn";
+% broken_weights: a MiniZinc model from DCP Rosetta.
+%
+% A merchant had a measuring weight that broke into a number of pieces as the result of a fall. When the
+% pieces were subsequently weighed, the weight of each piece was a whole number of pounds, and the pieces
+% could be used to weigh every integral weight between 1 and the total weight. Find the weights of the
+% pieces. The merchant weighs on a balance scale: a piece may go on the object's pan, on the other pan,
+% or be left off, so for example a 1-pound and a 4-pound piece weigh a 3-pound object.
+%
+% Save this file as model.mzn. Download `broken_weights.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py broken_weights.json
+%   minizinc model.mzn broken_weights_1.json
 
-int: m;  % total weight of the original weight
-int: n;  % number of pieces
+int: m;                                          % the total weight, in pounds
+int: n;                                          % the number of pieces
 
-% weights[j] = weight of piece j
-array[1..n] of var 1..m: weights;
+set of int: Pieces = 1..n;                       % the pieces
+set of int: Pounds = 1..m;                       % the whole weights to be weighed
+set of int: Placements = 0..pow(3, n) - 1;       % a placement sets each piece to object's pan (-1), off (0) or other pan (1), by base-3 digits
 
-% the pieces together weigh the original weight
+array[Pieces] of var Pounds: weights;            % weights[j]: the weight of piece j, in pounds
+
+% the pieces together weigh the total weight
 constraint sum(weights) = m;
 
-% Every way of using the pieces: each piece is put on the object's pan (-1),
-% left off (0) or put on the other pan (1). A placement is numbered by reading
-% its n choices as the digits of a base-3 number, so there are 3^n of them.
-% balance[p] = (weight on the other pan) - (weight on the object's pan) for
-% placement p, i.e. the object weight that this placement weighs.
-% Choosing a placement for each object weight with its own variables would
-% leave many equivalent choices for the same piece weights, and only the piece
-% weights are the answer; listing the placements once keeps the search to the weights.
-int: placements = pow(3, n);
-array[0..placements - 1] of var -m..m: balance;
-constraint forall(p in 0..placements - 1)
-    (balance[p] = sum(j in 1..n) (((p div pow(3, j - 1)) mod 3 - 1) * weights[j]));
+% balance[p]: weight on the other pan minus weight on the object's pan in placement p
+array[Placements] of var -m..m: balance;
+constraint forall(p in Placements)
+    (balance[p] = sum(j in Pieces)(((p div pow(3, j-1)) mod 3 - 1) * weights[j]));
 
-% every weight from 1 to m can be weighed: some placement balances it
-constraint forall(i in 1..m) (exists(p in 0..placements - 1) (balance[p] = i));
+% every whole weight from 1 to the total can be weighed by some placement
+constraint forall(i in Pounds)(exists(p in Placements)(balance[p] = i));
 
 solve satisfy;
-
-output ["{\"weights\": [", join(", ", [show(weights[j]) | j in 1..n]), "]}"];
+output ["{\"weights\": ", showJSON(weights), "}"];

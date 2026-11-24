@@ -7,31 +7,24 @@ from hermax.model import Model
 
 
 def create_model(instance):
-    """Tommy was given 15 coins for his birthday: half-crowns, shillings and sixpences,
-    worth 1 pound 5 shillings 6 pence in all. Find how many half-crowns he was given."""
-    # The puzzle is fixed by its statement, so the instance carries no data to read.
-
-    # Values in pence: a half-crown is 2 shillings and sixpence (30 pence), a shilling is
-    # 12 pence, a sixpence is 6 pence. The money he had is 1 pound (240 pence),
-    # 5 shillings (60 pence) and 6 pence.
-    half_crown_pence = 30
-    shilling_pence = 12
-    sixpence_pence = 6
-    total_pence = 240 + 5 * 12 + 6
-    total_coins = 15
-
+    """Tommy was given 15 coins, each a half-crown (30 pence), a shilling (12 pence) or a
+    sixpence (6 pence), though not necessarily coins of all three kinds. Together they are
+    worth £1 5s 6d. How many half-crowns could he have been given?"""
+    # The instance has no fields: every number below is from the problem statement.
     m = Model()
 
-    # half_crowns, shillings, sixpences: how many coins of each kind Tommy was given.
-    # Each kind is given at least once (the puzzle lists all three kinds of coin).
-    half_crowns = m.int("half_crowns", 1, total_coins)
-    shillings = m.int("shillings", 1, total_coins)
-    sixpences = m.int("sixpences", 1, total_coins)
+    # How many coins of each kind he was given: a kind may be absent (0), and no kind can
+    # number more than the 15 coins.
+    half_crowns = m.int("half_crowns", 0, 15)
+    shillings = m.int("shillings", 0, 15)
+    sixpences = m.int("sixpences", 0, 15)
 
-    # He was given 15 coins in all.
-    m &= (half_crowns + shillings + sixpences == total_coins)
-    # Together the coins are worth 1 pound 5 shillings 6 pence.
-    m &= (half_crown_pence * half_crowns + shilling_pence * shillings + sixpence_pence * sixpences == total_pence)
+    # He was given 15 coins.
+    m &= (half_crowns + shillings + sixpences == 15)
+
+    # They add up to £1 5s 6d = 240 + 5 * 12 + 6 = 306 pence; a half-crown is 30 pence, a
+    # shilling 12 and a sixpence 6.
+    m &= (30 * half_crowns + 12 * shillings + 6 * sixpences == 306)
 
     return m, {"half_crowns": half_crowns}
 

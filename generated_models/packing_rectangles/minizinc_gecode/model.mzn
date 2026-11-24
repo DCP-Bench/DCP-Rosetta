@@ -1,31 +1,43 @@
-% Rectangle packing: place rectangles of given widths and heights, without
-% overlap and without rotation, inside the smallest possible enclosing rectangle
-% (smallest area). Positions start at 0.
+% packing_rectangles: a MiniZinc model from DCP Rosetta.
+%
+% The rectangular packing problem involves placing a set of rectangular items into a larger rectangular
+% area such that no items overlap and all items are within the boundaries of the larger area. The
+% objective is to minimize the total area of the larger rectangle required to pack all the items. Given
+% the widths and heights of the items, determine their positions within the larger rectangle while
+% ensuring no overlap and minimizing the total area.
+%
+% Save this file as model.mzn. Download `packing_rectangles.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/packing_rectangles.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py packing_rectangles.json
+%   minizinc model.mzn packing_rectangles_1.json
+
 include "globals.mzn";
 
-array[int] of int: widths;
-array[int] of int: heights;
+array[int] of int: widths;               % widths[i]: width of item i
+array[int] of int: heights;              % heights[i]: height of item i
+
 set of int: Items = index_set(widths);
 
-% The enclosing rectangle is at least as wide / high as the widest / tallest
-% item and never needs to exceed placing all items side by side / on top of each other.
+% total_x, total_y: width and height of the enclosing rectangle
 var max(widths)..sum(widths): total_x;
 var max(heights)..sum(heights): total_y;
 
-% pos_x[i], pos_y[i] = lower-left corner of item i
+% pos_x[i], pos_y[i]: lower-left corner of item i, counted from 0
 array[Items] of var 0..sum(widths): pos_x;
 array[Items] of var 0..sum(heights): pos_y;
 
+% the total area of the enclosing rectangle, to be minimized
+var int: objective = total_x * total_y;
+
 % every item lies completely inside the enclosing rectangle
-constraint forall(i in Items) (pos_x[i] + widths[i] <= total_x /\ pos_y[i] + heights[i] <= total_y);
+constraint forall(i in Items)(pos_x[i] + widths[i] <= total_x /\ pos_y[i] + heights[i] <= total_y);
 
 % no two items overlap
 constraint diffn(pos_x, pos_y, widths, heights);
 
-% minimise the area of the enclosing rectangle
-var int: objective = total_x * total_y;
 solve minimize objective;
 
-output ["{\"pos_x\": [", join(", ", [show(pos_x[i]) | i in Items]),
-        "], \"pos_y\": [", join(", ", [show(pos_y[i]) | i in Items]),
-        "], \"total_x\": ", show(total_x), ", \"total_y\": ", show(total_y), "}"];
+output ["{\"pos_x\": ", showJSON(pos_x), ", \"pos_y\": ", showJSON(pos_y),
+        ", \"total_x\": ", showJSON(total_x), ", \"total_y\": ", showJSON(total_y), "}"];

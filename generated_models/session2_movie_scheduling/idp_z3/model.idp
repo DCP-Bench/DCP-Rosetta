@@ -1,20 +1,33 @@
-// Session 2 movie scheduling: choose as many movies as possible whose filming intervals do not overlap.
-vocabulary {
-    // one index per movie in the input list
-    type I <: Int
-    // first day of filming of movie i (instance column 2, bound from the instance)
-    movies_2: I -> Int
-    // last day of filming of movie i (instance column 3, bound from the instance)
-    movies_3: I -> Int
-    // movie i is accepted
-    selected_movies: I -> Bool
-    // number of accepted movies
-    maximize: () -> Int
+// session2_movie_scheduling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Consider the following scheduling problem. Imagine you are a highly-in-demand actor, who has been presented with
+// offers to star in n different movie projects under development. Each offer comes specified with the first and last
+// day of filming. To take the job, you must commit to being available throughout this entire period. Thus, you cannot
+// simultaneously accept two jobs whose intervals overlap. For an artist such as yourself, the criteria for job
+// acceptance is clear: you want to make as much money as possible. Because each of these films pays the same fee per
+// film, this implies you seek the largest possible set of jobs (intervals) such that no two of them conflict with each
+// other.
+//
+// Save this file as model.idp. Download `session2_movie_scheduling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_movie_scheduling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session2_movie_scheduling.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Movie <: Int                  // the movies, numbered from 0 in the order of the input list
+    movies_2: Movie -> Int             // movies_2(m): the first day of filming of movie m (column 2 of the movies, created by the conversion)
+    movies_3: Movie -> Int             // movies_3(m): the last day of filming of movie m (column 3 of the movies, created by the conversion)
+    selected_movies: Movie -> Bool     // selected_movies(m): movie m is accepted
+    maximize: () -> Int                // the number of movies accepted
 }
-theory {
-    // you cannot accept two jobs whose intervals overlap
-    ! i, j in I: (i < j & selected_movies(i) & selected_movies(j)) => ~(movies_2(i) =< movies_3(j) & movies_2(j) =< movies_3(i)).
-
-    // you want to make as much money as possible: every film pays the same fee, so maximise the number of films
-    maximize() = #{ i in I: selected_movies(i) }.
+theory T:V {
+    // two accepted movies do not overlap: one ends before the other starts
+    ! m1 in Movie: ! m2 in Movie: (selected_movies(m1) & selected_movies(m2) & m1 ~= m2) => (movies_3(m1) < movies_2(m2) | movies_3(m2) < movies_2(m1)).
+    // the number of movies accepted is to be maximized
+    maximize() = #{ m in Movie: selected_movies(m) }.
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

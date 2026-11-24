@@ -1,25 +1,54 @@
-# Discrete tomography: find a 0/1 matrix whose row sums and column sums match the
-# given counts of ones (the "x-ray" totals in each row and each column).
-from pyscipopt import Model, quicksum
+# discrete_tomography: a SCIP (Python) model from DCP Rosetta.
+# Download the `discrete_tomography.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/discrete_tomography.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python discrete_tomography.py discrete_tomography.json
+
+from pyscipopt import Model
 
 
-def build(instance):
-    row_sums = instance["row_sums"]
-    col_sums = instance["col_sums"]
-    nrows = len(row_sums)
-    ncols = len(col_sums)
+def create_model(instance):
+    """Discrete tomography: reconstruct a matrix of zeroes and ones from its
+    X-rays. The matrix is X-rayed vertically and horizontally, which gives the
+    number of ones in each row and in each column; find a matrix with those
+    totals."""
+    row_sums = instance["row_sums"]  # row_sums[i]: the number of ones in row i
+    col_sums = instance["col_sums"]  # col_sums[j]: the number of ones in column j
+    rows = len(row_sums)  # the matrix has one row per row sum
+    cols = len(col_sums)  # and one column per column sum
 
-    m = Model()
-    # x[i, j] = 1 if cell (row i, column j) contains a one
-    x = {(i, j): m.addVar(name=f"x_{i}_{j}", vtype="B") for i in range(nrows) for j in range(ncols)}
+    model = Model("discrete_tomography")
 
-    # each row contains as many ones as its row total says
-    for i in range(nrows):
-        m.addCons(quicksum(x[i, j] for j in range(ncols)) == row_sums[i])
-    # each column contains as many ones as its column total says
-    for j in range(ncols):
-        m.addCons(quicksum(x[i, j] for i in range(nrows)) == col_sums[j])
+    # x[i, j] is 1 when cell (i, j) of the matrix holds a one, and 0 when it holds a zero
+    # (the matrix holds only zeroes and ones, so each cell is binary)
+    x = model.addMatrixVar((rows, cols), vtype="B", name="x")
 
-    # the output is the 0/1 matrix, one list per row
-    matrix = [[x[i, j] for j in range(ncols)] for i in range(nrows)]
-    return m, {"matrix": matrix}
+    # Each row contains exactly as many ones as its row sum.
+    model.addMatrixCons(x.sum(axis=1) == row_sums)
+
+    # Each column contains exactly as many ones as its column sum.
+    model.addMatrixCons(x.sum(axis=0) == col_sums)
+
+    # The problem has no objective: any matrix that meets all the row and column
+    # sums is a solution.
+    return model, {"matrix": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

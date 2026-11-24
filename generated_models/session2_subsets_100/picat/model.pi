@@ -1,23 +1,48 @@
-% Two subsets with equal sums: find disjoint non-empty subsets S and T of A with
-% the same sum.
+% session2_subsets_100: a Picat model from DCP Rosetta.
+%
+% Out of a set of integers, you are given a list of different integers. From this set A of integers you can always
+% find two disjoint non-empty subsets, S and T, such that the sum of elements in S equals the sum of elements in T.
+% Note: S union T does not need to be all the elements of A. Find sets S and T for the given set A.
+%
+% Save this file as model.pi. Download `session2_subsets_100.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_subsets_100.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session2_subsets_100.json
+%   picat model.pi session2_subsets_100_1.dat
+%
+% Data.get(A): the list of different integers (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     A = Data.get('A'),
-    N = len(A),
+    N = len(A),                            % the number of integers in the set
     InS = new_list(N),
-    InS :: 0..1,
     InT = new_list(N),
-    InT :: 0..1,
-    % the sums are equal
-    sum([A[I] * InS[I] : I in 1..N]) #= sum([A[I] * InT[I] : I in 1..N]),
+    InS :: 0..1,                           % InS[I] = 1 when element I is in the subset S
+    InT :: 0..1,                           % InT[I] = 1 when element I is in the subset T
     % S and T are disjoint
     foreach (I in 1..N)
         InS[I] + InT[I] #=< 1
     end,
-    % S and T are not empty
-    sum(InS) #> 0,
-    sum(InT) #> 0,
+    % S and T are non-empty
+    sum(InS) #>= 1,
+    sum(InT) #>= 1,
+    % the elements of S and the elements of T have the same sum
+    sum([A[I] * InS[I] : I in 1..N]) #= sum([A[I] * InT[I] : I in 1..N]),
     Vars = InS ++ InT,
     Outputs = [in_S = InS, in_T = InT],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

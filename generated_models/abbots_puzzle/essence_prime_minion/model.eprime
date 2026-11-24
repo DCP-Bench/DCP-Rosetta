@@ -1,7 +1,18 @@
 language ESSENCE' 1.0
-$ Distribute 100 bushels of corn among 100 people (men, women, children) so that each man gets 3 bushels, each woman 2, each child half a bushel, with five times as many women as men.
+$ abbots_puzzle: an Essence' model from DCP Rosetta.
+$
+$ If 100 bushels of corn were distributed among 100 people such that each man received three bushels, each woman two, and each child half a bushel, and there are five times as many women as men, find the number of men, women, and children.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ men: the number of men
 find men : int(0..100)
+$ women: the number of women
 find women : int(0..100)
+$ children: the number of children
 find children : int(0..100)
 
 branching on [men, women, children]
@@ -11,5 +22,5 @@ $ the 100 people are men, women and children
 men + women + children = 100,
 $ there are five times as many women as men
 women = 5 * men,
-$ the 100 bushels: each man gets 3, each woman 2 and each child half a bushel (doubled to stay in integers)
+$ the 100 bushels: each man gets 3, each woman 2 and each child half a bushel (the whole equation is doubled to stay in integers)
 6 * men + 4 * women + children = 200

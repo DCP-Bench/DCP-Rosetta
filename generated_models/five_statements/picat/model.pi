@@ -1,15 +1,35 @@
-% Five statements: statement i says "exactly i of these statements are false".
-% Which are true?
+% five_statements: a Picat model from DCP Rosetta.
+%
+% Determine which of the following statements is true.
+%   1. Exactly one of these statements is false.
+%   2. Exactly two of these statements are false.
+%   3. Exactly three of these statements are false.
+%   4. Exactly four of these statements are false.
+%   5. Exactly five of these statements are false.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/five_statements.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The model reads no data: S[I] is 1 when statement I is true and 0 when it is false.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
-    Statements = new_list(5),
-    Statements :: 0..1,
-    False #= sum([S #= 0 : S in Statements]),
+    S = new_list(5),
+    S :: 0..1,
+    Vars = S,
+    % statement I is true exactly when exactly I of the five statements are false,
+    % that is, when exactly 5 - I of them are true
     foreach (I in 1..5)
-        Statements[I] #<=> (False #= I)
+        (S[I] #= 1) #<=> (sum(S) #= 5 - I)
     end,
-    Vars = Statements,
-    Outputs = [statements = Statements],
+    Outputs = [statements = S],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

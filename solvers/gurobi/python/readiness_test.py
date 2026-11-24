@@ -5,6 +5,9 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver gurobipy_python` runs this and
 keeps its output as the readiness evidence.
 
+Candidates are gurobipy modules with `build(instance)`, the entrypoint of models
+retained before the standalone form; `standalone_block` checks `create_model`.
+
 The checks hold with or without a Gurobi token-server licence on this machine: the two
 about the wheel's own licence run with it switched off (DCP_LICENCE_GUROBI=none).
 """
@@ -80,6 +83,17 @@ GOOD = HEADER + BOUNDED + ("    model.addConstr(x + y == n)\n"
 OPTIMAL = HEADER + BOUNDED + ("    model.addConstr(x + y >= n)\n"
                               "    model.setObjective(x + y, GRB.SENSE)\n"
                               "    return model, {'x': x, 'y': y}\n")
+# standalone_block: the entrypoint named create_model, and a standalone run block at the
+# end that would fail if the runner executed it (it reads a file named on the command line).
+STANDALONE = GOOD.replace("def build(", "def create_model(") + (
+    "\n\nif __name__ == '__main__':\n"
+    "    import json\n"
+    "    import sys\n"
+    "    instances = json.load(open(sys.argv[1]))\n"
+    "    model, outputs = create_model(instances[0])\n"
+    "    model.optimize()\n"
+    "    print(outputs)\n")
+assert STANDALONE != GOOD
 # Integer outputs with no upper bound, so the no-good cannot lean on one.
 UNBOUNDED = HEADER + ("    x = model.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='x')\n"
                       "    y = model.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='y')\n"
@@ -144,8 +158,15 @@ UNPROVEN = HEADER + BOUNDED + (
 OVERSIZED = HEADER + BOUNDED + ("    extra = model.addVars(1999, vtype=GRB.BINARY)\n"
                                 "    model.addConstr(x + y + extra.sum() == n)\n"
                                 "    return model, {'x': x, 'y': y}\n")
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
 ISOLATED = HEADER + ("    import os, socket\n"
-                     "    assert os.getuid() != 0, 'container runs as root'\n"
+                     "    def host_uid(uid):\n"
+                     "        for line in open('/proc/self/uid_map'):\n"
+                     "            inside, outside, count = map(int, line.split())\n"
+                     "            if inside <= uid < inside + count:\n"
+                     "                return outside + uid - inside\n"
+                     "    assert os.getuid() != 0 or host_uid(0) != 0, 'container runs as root on the host'\n"
                      "    assert sorted(os.listdir('/input')) == ['model.py', 'request.json'], 'unexpected /input'\n"
                      "    assert not os.path.exists('/dataset'), 'dataset is visible to the candidate'\n"
                      "    probe = socket.socket()\n"
@@ -207,6 +228,7 @@ def main():
         check("expression_output", EXPRESSION, solution_limit=2)
         check("matrix_output", MATRIX, solution_limit=3)
         check("library_stdout", NOISY)
+        check("standalone_block", STANDALONE)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

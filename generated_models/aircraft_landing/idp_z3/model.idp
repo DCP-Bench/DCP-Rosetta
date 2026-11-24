@@ -1,34 +1,45 @@
-// Aircraft landing: fix the landing time of each aircraft on one runway, minimizing the total penalty
-// for landing before or after the target time, with the separation times between landings respected.
-vocabulary {
-    // the aircraft, in the fixed landing sequence, sized from the data
-    type Plane <: Int
-    // the time window of each aircraft
-    earliest_landing: Plane -> Int
-    latest_landing: Plane -> Int
-    // the target landing time of each aircraft
-    target_landing: Plane -> Int
-    // the penalty per unit of time for landing before or after the target
-    penalty_before: Plane -> Int
-    penalty_after: Plane -> Int
-    // the minimum separation between the landing of plane i and the later plane j
-    separation_time: Plane * Plane -> Int
-    // the landing time of each aircraft
-    landing_times: Plane -> Int
-    // the total penalty of all aircraft
-    total_penalty: () -> Int
-    minimize: () -> Int
+// aircraft_landing: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Schedule the landing of a set of aircraft on a single runway. Each aircraft has a specified time window (earliest and
+// latest possible landing time) and a target landing time. Penalties are incurred for landing earlier or later than the
+// target time. Additionally, a minimum separation time between the landings of any two aircraft must be respected. The
+// landing sequence of the aircraft is fixed. Determine the exact landing time for each aircraft so as to minimize the
+// total penalty, while respecting all time windows and separation constraints.
+//
+// Save this file as model.idp. Download `aircraft_landing.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_landing.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py aircraft_landing.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Plane <: Int                  // the aircraft, numbered from 0 in their fixed landing sequence
+    earliest_landing: Plane -> Int     // earliest_landing(p): the earliest time aircraft p can land
+    latest_landing: Plane -> Int       // latest_landing(p): the latest time aircraft p can land
+    target_landing: Plane -> Int       // target_landing(p): the time aircraft p should land
+    penalty_before: Plane -> Int       // penalty_before(p): the penalty per unit of time aircraft p lands before its target
+    penalty_after: Plane -> Int        // penalty_after(p): the penalty per unit of time aircraft p lands after its target
+    separation_time: Plane * Plane -> Int // separation_time(p, q): the minimum time between the landings of p and a later q
+    landing_times: Plane -> Int        // landing_times(p): the time at which aircraft p lands
+    penalty: Plane -> Int              // penalty(p): the penalty of aircraft p for its landing time
+    total_penalty: () -> Int           // the sum of the penalties of all aircraft
+    minimize: () -> Int                // the total penalty to minimize
 }
-theory {
-    // Each aircraft lands within its time window.
-    ! p in Plane: landing_times(p) >= earliest_landing(p) & landing_times(p) =< latest_landing(p).
-
-    // Every pair of aircraft in the fixed sequence respects the minimum separation time between them.
-    ! i, j in Plane: i < j => landing_times(j) >= landing_times(i) + separation_time(i, j).
-
-    // The penalty of each aircraft is the cost of landing before or after its target time.
-    total_penalty() = sum{{ (if landing_times(p) < target_landing(p) then penalty_before(p) * (target_landing(p) - landing_times(p)) else penalty_after(p) * (landing_times(p) - target_landing(p))) | p in Plane }}.
-
-    // The objective is the total penalty.
+theory T:V {
+    // each aircraft lands within its time window
+    ! p in Plane: earliest_landing(p) =< landing_times(p) & landing_times(p) =< latest_landing(p).
+    // the landings follow the fixed sequence, and an aircraft that lands after an earlier one lands at least the
+    // separation time after it
+    ! p, q in Plane: p < q => landing_times(q) >= landing_times(p) + separation_time(p, q).
+    // an aircraft landing before its target time is penalised per unit of time early
+    ! p in Plane: landing_times(p) =< target_landing(p) => penalty(p) = penalty_before(p) * (target_landing(p) - landing_times(p)).
+    // an aircraft landing after its target time is penalised per unit of time late
+    ! p in Plane: landing_times(p) > target_landing(p) => penalty(p) = penalty_after(p) * (landing_times(p) - target_landing(p)).
+    // the total penalty is the sum of the penalties of the aircraft
+    total_penalty() = sum{{ penalty(p) | p in Plane }}.
     minimize() = total_penalty().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

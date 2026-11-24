@@ -1,31 +1,58 @@
-% ISBN-13: fill in the unknown digits (-1) so that the number starts with 978 or
-% 979 and its last digit is the check digit (10 - (s mod 10)) mod 10, where s
-% weights the first twelve digits alternately by 1 and 3.
+% isbn: a Picat model from DCP Rosetta.
+%
+% An ISBN-13 is a 13-digit number whose last digit is a check digit. Multiply the first 12 digits alternately
+% by 1 and 3, starting with 1, and sum the products; the check digit is (10 - (sum % 10)) % 10. Some digits of
+% an ISBN-13 are unknown. Find the unknown digits so that the number is a valid ISBN-13, which must start with
+% 978 or 979.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/isbn.html
+% Save this file as model.pi. Download `isbn.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/isbn.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py isbn.json
+%   picat model.pi isbn_1.dat
+%
+% Data.get(isbn_init): the 13 digits of the ISBN as a list indexed from 1; -1 marks an unknown digit.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Init = Data.get(isbn_init),
-    N = 13,
-    ISBN = new_list(N),
+    N = 13,                                   % the digits of an ISBN-13
+    ISBN = new_list(N),                       % ISBN[I] is the I-th digit
     ISBN :: 0..9,
-    % the known digits stay
+    % each known digit keeps its value
     foreach (I in 1..N)
         if Init[I] != -1 then
             ISBN[I] #= Init[I]
         end
     end,
-    % the prefix is 978 or 979
+    % the number starts with 978 or 979
     ISBN[1] #= 9,
     ISBN[2] #= 7,
     ISBN[3] #= 8 #\/ ISBN[3] #= 9,
-    % the check digit
-    Weights = [cond_weight(I) : I in 1..N-1],
-    CheckSum #= sum([Weights[I] * ISBN[I] : I in 1..N-1]),
-    ISBN[N] #= (10 - CheckSum mod 10) mod 10,
+    % the last digit is the check digit: the first 12 digits weighted 1, 3, 1, 3, ... sum to S,
+    % and the check digit is (10 - S mod 10) mod 10
+    Weights = [weight(I) : I in 1..N-1],
+    S #= sum([Weights[I] * ISBN[I] : I in 1..N-1]),
+    ISBN[N] #= (10 - S mod 10) mod 10,
     Vars = ISBN,
     Outputs = [isbn = ISBN],
     Options = [].
 
-% the weight of the i-th digit (1-based): 1 for odd positions, 3 for even ones
-cond_weight(I) = W, I mod 2 == 1 => W = 1.
-cond_weight(_) = W => W = 3.
+% the weight of the I-th digit: 1 for an odd position, 3 for an even one
+weight(I) = W, I mod 2 == 1 => W = 1.
+weight(_) = W => W = 3.
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

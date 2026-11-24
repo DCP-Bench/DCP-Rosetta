@@ -1,75 +1,110 @@
+% csplib_018_water_bucket: a SWI-Prolog model from DCP Rosetta.
+%
+% You are given an 8 pint bucket full of water, and two empty buckets which hold 5 and 3 pints. Divide the water into
+% two by pouring water between the buckets, so that the 8 pint bucket and the 5 pint bucket each end up with 4 pints. A
+% transfer pours water from one bucket into another until the first is empty or the second is full. Find the minimum
+% number of transfers that reach the goal state.
+%
+% Save this file as model.pl. Download `csplib_018_water_bucket.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('csplib_018_water_bucket.json')" -t halt model.pl
+%
+% Data fields: capacities (the capacity of each bucket), initial_state (the water in each bucket at the start),
+% goal_state (the water in each bucket at the goal), MAX_STEPS (the number of states in the sequence) and
+% PADDING_VALUE (the value of each entry of a padded state).
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Water bucket: three buckets with given capacities start in the initial state
-% and water is poured from one bucket into another (until the source is empty
-% or the target full). Reach the goal state with as few pourings as possible.
-% The states are listed one per step in a fixed-length sequence, padded after the goal.
-model(Instance, Vars, [cost-Cost, sequence-Sequence], min(Cost)) :-
-    Capacities = Instance.capacities,
-    Initial = Instance.initial_state,
+model(Instance, Vars, [cost-Cost, sequence-Seq], min(Cost)) :-
+    Caps = Instance.capacities,
+    Init = Instance.initial_state,
     Goal = Instance.goal_state,
-    MaxSteps = Instance.'MAX_STEPS',        % length of the output sequence
-    Pad = Instance.'PADDING_VALUE',         % marks the unused steps after the goal
-    sum_list(Initial, TotalWater),          % the water is only moved around, never lost
-    length(Capacities, NBuckets),
+    get_dict('MAX_STEPS', Instance, Steps),
+    get_dict('PADDING_VALUE', Instance, PadV),
+    Pad = [PadV, PadV, PadV],
+    sum_list(Init, Total),
+    max_list(Caps, Max),
+    % the states the buckets can be in, and the transitions allowed between them
+    all_states(Caps, Total, States),
+    transitions(States, Caps, Goal, Pad, Table),
+    % Seq[0] is the initial state, and Seq[K] is the state after K transfers, padded after the goal is reached
+    Steps1 is Steps - 1,
+    length(Rest, Steps1),
+    maplist(state_vars(PadV, Max), Rest),
+    Seq = [Init|Rest],
+    % each state follows from the one before it by a transfer, or is padding once the goal has been reached
+    Seq = [_|Tail],
+    append(Front, [_], Seq),
+    maplist(step(Table), Front, Tail),
+    % the cost is the number of transfers: the states after the initial one that are not padding
+    maplist(active_flag(PadV), Tail, Acts),
+    sum(Acts, #=, Cost),
+    % the goal state is reached
+    maplist(goal_flag(Goal), Seq, Gs),
+    sum(Gs, #>=, 1),
+    term_variables([Seq, Acts, Gs, Cost], Vars).
 
-    % every state within the capacities that holds all the water, and every legal
-    % pouring as a (state before, state after) row, all ground data
-    Capacities = [Cap1, Cap2, Cap3],
-    findall(State, (between(0, Cap1, A), between(0, Cap2, B), C is TotalWater - A - B,
-                    C >= 0, C =< Cap3, State = [A, B, C]), States),
-    findall(Row, (member(State, States), between(1, 3, Source), between(1, 3, Target), Source =\= Target,
-                  pour(State, Capacities, Source, Target, After), Row = [State, After]),
-            PouringList),
-    % one step is a pouring from a state that is not the goal, a move from the goal
-    % into the padding, or padding after padding
-    length(PadRow, NBuckets), maplist(=(Pad), PadRow),
-    findall(Flat, (member([Before, After], PouringList), Before \== Goal, append(Before, After, Flat)), Pourings),
-    append(Goal, PadRow, GoalToPad),
-    append(PadRow, PadRow, PadToPad),
-    sort([GoalToPad, PadToPad|Pourings], Transitions),
+% the states with the given total water, in buckets of the given capacities
+all_states([C1, C2, C3], Total, States) :-
+    findall([A, B, C], (between(0, C1, A), between(0, C2, B), between(0, C3, C), A + B + C =:= Total), States).
 
-    % Sequence[t] = the amounts in the buckets after t pourings, or padding
-    length(Sequence, MaxSteps),
-    maplist({NBuckets, Pad, TotalWater}/[Step]>>(length(Step, NBuckets), Step ins Pad..TotalWater), Sequence),
+% the table of allowed steps: a transfer from a state, then padding after the goal, and padding stays padding
+transitions(States, Caps, Goal, Pad, Table) :-
+    findall(Row, (member(S, States), S \== Goal, transfer(Caps, S, T), append(S, T, Row)), Rows),
+    append(Goal, Pad, GoalRow),
+    append(Pad, Pad, PadRow),
+    append(Rows, [GoalRow, PadRow], Table).
 
-    % the sequence starts with the initial state
-    Sequence = [Initial|_],
-
-    % each step follows from the one before by a legal pouring; the goal is
-    % followed by padding, and once padding starts it goes on
-    successive(Sequence, Transitions),
-    % the last step is the goal or padding, so the goal has been reached at some point
-    last(Sequence, LastStep),
-    tuples_in([LastStep], [Goal, PadRow]),
-
-    % cost = number of pourings = number of states before the padding starts, minus one
-    maplist({Pad}/[[First|_], Used]>>(Used #<==> (First #\= Pad)), Sequence, Uses),
-    sum(Uses, #=, Used),
-    Cost #= Used - 1,
-    Cost in 0..MaxSteps,
-    append(Sequence, Cells),
-    append(Cells, [Cost|Uses], Vars).
-
-% pour(+State, +Capacities, +Source, +Target, -After): pour bucket Source into
-% bucket Target until the source is empty or the target full (only when water moves)
-pour(State, Capacities, Source, Target, After) :-
-    nth1(Source, State, InSource),
-    nth1(Target, State, InTarget),
-    nth1(Target, Capacities, TargetCapacity),
-    Amount is min(InSource, TargetCapacity - InTarget),
+% a transfer pours from bucket I into bucket J until I is empty or J is full
+transfer(Caps, S, T) :-
+    between(1, 3, I),
+    between(1, 3, J),
+    I =\= J,
+    nth1(I, S, SI),
+    nth1(J, S, SJ),
+    nth1(J, Caps, CJ),
+    Amount is min(SI, CJ - SJ),
     Amount > 0,
-    findall(Value, (nth1(Bucket, State, Old),
-                    ( Bucket =:= Source -> Value is Old - Amount
-                    ; Bucket =:= Target -> Value is Old + Amount
-                    ; Value = Old )), After).
+    findall(V,
+            ( nth1(K, S, V0),
+              ( K =:= I -> V is V0 - Amount ; K =:= J -> V is V0 + Amount ; V = V0 ) ),
+            T).
 
-% every step is followed by one that makes an allowed transition
-successive([_], _).
-successive([Before, After|Rest], Transitions) :-
-    append(Before, After, Both),
-    tuples_in([Both], Transitions),
-    successive([After|Rest], Transitions).
+state_vars(PadV, Max, S) :-
+    length(S, 3),
+    S ins 0..Max \/ PadV.
+
+step(Table, A, B) :-
+    append(A, B, Row),
+    tuples_in([Row], Table).
+
+active_flag(PadV, [X|_], B) :-
+    B #<==> (X #\= PadV).
+
+goal_flag(Goal, S, B) :-
+    S = [A1, A2, A3],
+    Goal = [G1, G2, G3],
+    B #<==> (A1 #= G1 #/\ A2 #= G2 #/\ A3 #= G3).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+:- use_module(library(http/json)).
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

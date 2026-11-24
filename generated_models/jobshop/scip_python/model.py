@@ -1,53 +1,96 @@
-# Job shop scheduling: schedule the tasks of each job on their machines so that the makespan is minimal.
-from pyscipopt import Model, quicksum
+# jobshop: a SCIP (Python) model from DCP Rosetta.
+# Download the `jobshop.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python jobshop.py jobshop.json
+
+from pyscipopt import Model
 
 
-def build(instance):
-    jobs = instance["jobs_data"]  # jobs[j] is the list of [machine, duration] tasks of job j, in order
-    m = Model()
+def create_model(instance):
+    """Job shop scheduling. Each job is a sequence of tasks that must run in
+    order, and each task runs for a fixed time on one given machine. A machine
+    works on one task at a time, and a task, once started, runs to completion.
+    Schedule all jobs so that the makespan, the time at which the last task
+    finishes, is as small as possible."""
+    # jobs[j][k] = [machine, duration] of task k of job j; machines are numbered from 0
+    jobs = instance["jobs_data"]
 
-    # the horizon is the total duration of all tasks: a schedule that runs the tasks one after another fits in it
-    horizon = sum(d for job in jobs for _, d in job)
+    model = Model("jobshop")
 
-    # start[j, t] is the start time of task t of job j
-    start = {}
+    # Running every task one after another, back to back, takes the sum of all
+    # durations, so the optimal makespan is at most this horizon. It is computed
+    # from the instance's durations and bounds the makespan and every start time.
+    horizon = sum(duration for job in jobs for _, duration in job)
+
+    # start[j][k] is the time at which task k of job j starts. Times are integers
+    # because the durations are: a left-justified schedule starts each task at a
+    # sum of durations. Jobs can have different numbers of tasks, so the starts are
+    # nested lists, not a matrix. A task finishes by the makespan, which is at most
+    # the horizon, so it starts no later than horizon minus its duration.
+    start = [
+        [
+            model.addVar(f"start_{j}_{k}", vtype="I", lb=0, ub=horizon - duration)
+            for k, (_, duration) in enumerate(job)
+        ]
+        for j, job in enumerate(jobs)
+    ]
+
+    # makespan is the time at which the last task finishes, the objective. The
+    # horizon bounds it, since the optimal makespan is at most the horizon.
+    makespan = model.addVar("makespan", vtype="I", lb=0, ub=horizon)
+
+    # The tasks of a job run in their order: each task starts only after the
+    # previous task of the same job has finished.
     for j, job in enumerate(jobs):
-        for t, (_, d) in enumerate(job):
-            start[j, t] = m.addVar(name=f"start[{j},{t}]", vtype="I", lb=0, ub=horizon - d)
+        for k in range(len(job) - 1):
+            model.addCons(start[j][k] + job[k][1] <= start[j][k + 1])
 
-    # the makespan is the time at which the last task finishes
-    makespan = m.addVar(name="makespan", vtype="I", lb=0, ub=horizon)
+    # A machine works on one task at a time. SCIP has no no-overlap constraint, so
+    # for each machine its tasks form a cumulative constraint: every task needs 1
+    # unit of a resource with capacity 1, so no two of them run at the same time.
+    machines = sorted({task_machine for job in jobs for task_machine, _ in job})
+    for machine in machines:
+        on_machine = [
+            (start[j][k], duration)
+            for j, job in enumerate(jobs)
+            for k, (task_machine, duration) in enumerate(job)
+            if task_machine == machine
+        ]
+        model.addConsCumulative(
+            [s for s, _ in on_machine],
+            [d for _, d in on_machine],
+            [1] * len(on_machine),
+            1,
+        )
 
-    # no task for a job can be started until the previous task for that job is completed
-    # (each task starts after its predecessor in the same job has finished)
+    # The makespan is at least the finish time of the last task of every job. With
+    # the order constraints above, that is the latest finish of any task.
     for j, job in enumerate(jobs):
-        for t in range(len(job) - 1):
-            d = job[t][1]
-            m.addCons(start[j, t] + d <= start[j, t + 1])
+        last = len(job) - 1
+        model.addCons(makespan >= start[j][last] + job[last][1])
 
-    # the makespan is at least the completion time of the last task of every job
-    for j, job in enumerate(jobs):
-        t = len(job) - 1
-        m.addCons(start[j, t] + job[t][1] <= makespan)
+    # Objective: minimise the makespan.
+    model.setObjective(makespan, "minimize")
 
-    # a machine can only work on one task at a time, and a task, once started, runs to completion:
-    # for every pair of tasks on the same machine, one of the two must finish before the other starts
-    tasks = [(j, t) for j, job in enumerate(jobs) for t in range(len(job))]
-    for a in range(len(tasks)):
-        for b in range(a + 1, len(tasks)):
-            ja, ta = tasks[a]
-            jb, tb = tasks[b]
-            machine_a, da = jobs[ja][ta]
-            machine_b, db = jobs[jb][tb]
-            if machine_a != machine_b:
-                continue
-            # order[a, b] = 1 if task a runs before task b on the shared machine, 0 otherwise
-            order = m.addVar(name=f"order[{ja},{ta},{jb},{tb}]", vtype="B")
-            m.addConsIndicator(start[ja, ta] + da <= start[jb, tb], binvar=order)
-            m.addConsIndicator(start[jb, tb] + db <= start[ja, ta], binvar=order, activeone=False)
+    return model, {"makespan": makespan}
 
-    # the objective is the optimal makespan
-    m.setObjective(makespan, "minimize")
 
-    # outputs: the optimal makespan
-    return m, {"makespan": makespan}
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

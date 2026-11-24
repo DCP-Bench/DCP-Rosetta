@@ -1,19 +1,25 @@
-% Magic hexagon: place the numbers 1..19 in the 19 cells of a hexagon (rows of
-% 3, 4, 5, 4, 3 cells) so that the numbers along each of the 15 lines add up to
-% the same magic sum.
-% The instance fields NUM_CELLS and MAGIC_SUM arrive with their first letter lowered:
-% nUM_CELLS(19) and mAGIC_SUM(38).
+% csplib_023_magic_hexagon: a clingo model from DCP Rosetta.
+%
+% A magic hexagon problem involves arranging the numbers 1 to 19 in a hexagonal pattern such that the sum of the numbers in each of the 15 lines (rows and diagonals) is equal to a magic constant, which is 38. The hexagonal grid is structured as a hexagon of rows of 3, 4, 5, 4 and 3 cells, with the cells lettered A to S from the top row downwards. The goal is to find an assignment of numbers to the variables A through S that satisfies all the sum constraints.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+% Save this file as model.lp. Download `csplib_023_magic_hexagon.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_023_magic_hexagon.json
+%   python -m clingo model.lp csplib_023_magic_hexagon_1.lp
+
+% Input: nUM_CELLS(N): the number N of cells (19); mAGIC_SUM(S): the magic sum S of each line (38).
+% The first letter of each field name is lowered, as the converter does.
+
 cell(0..N-1) :- nUM_CELLS(N).
 number(1..N) :- nUM_CELLS(N).
 
-% The geometry is fixed by the problem. Cells are numbered row by row from 0:
-%       0  1  2
-%     3  4  5  6
-%   7  8  9 10 11
-%    12 13 14 15
-%      16 17 18
-% line(L, C): cell C lies on line L. Lines 0-4 are the horizontal rows, 5-9 the
-% diagonals from top left to bottom right, 10-14 those from top right to bottom left.
+% The cells are numbered 0 to 18 from A to S: the top row is 0 1 2, then 3 4 5 6, 7 8 9 10 11,
+% 12 13 14 15, and the bottom row is 16 17 18.
+% line(L, C): cell C lies on line L. Lines 0 to 4 are the five rows; lines 5 to 9 run down and to the
+% right; lines 10 to 14 run down and to the left.
 line(0,(0;1;2)).
 line(1,(3;4;5;6)).
 line(2,(7;8;9;10;11)).
@@ -30,11 +36,13 @@ line(12,(0;4;9;14;18)).
 line(13,(3;8;13;17)).
 line(14,(7;12;16)).
 
-% Every cell holds exactly one number, and no number is used twice.
+% each cell holds exactly one number
 1 { lD(C,V) : number(V) } 1 :- cell(C).
+
+% each number is used in one cell only
 :- lD(C1,V), lD(C2,V), C1 < C2.
 
-% Every line adds up to the magic sum.
+% every line adds up to the magic sum
 :- mAGIC_SUM(S), line(L,_), S != #sum { V,C : line(L,C), lD(C,V) }.
 
 #show lD/2.

@@ -1,79 +1,95 @@
+% equal_sized_groups: a SWI-Prolog model from DCP Rosetta.
+%
+% I have a sorted list of N elements, and I want to divide them into K groups, by choosing K-1 split points between
+% them. There may be elements with the same value, and it is necessary to have items with same value in the same
+% group. Find K groups as close in size to round(N/K) as possible. Each group holds at least one element. Choose the
+% K-1 break points, where a break point is the number of elements before it, so that the total error is minimized.
+% The error of a group is the difference between its size and round(N/K), and the total error is the sum of these.
+%
+% Save this file as model.pl. Download `equal_sized_groups.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/equal_sized_groups.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('equal_sized_groups.json')" -t halt model.pl
+%
+% Data fields: a (the sorted elements, lists indexed from 0), k (the number of groups).
 :- use_module(library(clpfd)).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 :- use_module(library(yall)).
 
-% Equal sized groups: cut a sorted list of N elements into K consecutive
-% groups by choosing K-1 break points, so that equal elements stay in the same
-% group and the group sizes are as close as possible to round(N/K). The error is
-% the sum of the differences between each group size and that ideal size.
 model(Instance, Vars, [x-Breaks], min(Error)) :-
-    A = Instance.a,    % the sorted elements
-    K = Instance.k,    % number of groups
-
+    A = Instance.a,                    % the sorted elements
+    K = Instance.k,                    % the number of groups
     length(A, N),
-    % ideal group size round(N/K); the reference rounds with Python's round,
-    % which sends an exact half to the even neighbour
+    Last is N - 1,
+    ideal_size(N, K, Ideal),           % round(N/K)
+    % the K-1 break points: Breaks[B] is the number of elements before break B
+    NumBreaks is K - 1,
+    length(Breaks, NumBreaks),
+    Breaks ins 1..Last,
+    chain(Breaks, #<),                 % breaks are in increasing order, so every group holds an element
+    % a break may not fall between two equal elements
+    same_neighbours(A, 1, Forbidden),
+    maplist(no_break_at(Forbidden), Breaks),
+    % the groups are the gaps between the edges 0, the breaks and N
+    append([[0], Breaks, [N]], Edges),
+    edge_sizes(Edges, Sizes),
+    % the error of each group is its distance from the ideal size, and the total error is minimized
+    maplist(deviation(Ideal), Sizes, Deviations),
+    sum(Deviations, #=, Error),
+    Vars = [Breaks, Error].
+
+% the ideal group size round(N/K), with an exact half going to the even neighbour as Python's round does
+ideal_size(N, K, Ideal) :-
     Quotient is N // K,
     Remainder is N mod K,
-    (   2 * Remainder < K
-    ->  GroupSize = Quotient
-    ;   2 * Remainder > K
-    ->  GroupSize is Quotient + 1
-    ;   Quotient mod 2 =:= 0
-    ->  GroupSize = Quotient
-    ;   GroupSize is Quotient + 1
-    ),
+    (   2*Remainder < K -> Ideal = Quotient
+    ;   2*Remainder > K -> Ideal is Quotient + 1
+    ;   Quotient mod 2 =:= 0 -> Ideal = Quotient
+    ;   Ideal is Quotient + 1
+    ).
 
-    % Sizes[g] = number of elements of group g; Breaks[g] = number of elements
-    % before the break that ends group g (break points are 1-based indexes)
-    NumBreaks is K - 1,
-    length(Sizes, K),
-    Sizes ins 1..N,
-    length(Breaks, NumBreaks),
-    Breaks ins 1..N,
+% Forbidden lists the positions J such that A[J] and A[J+1] are equal, where a break after J elements would split them.
+same_neighbours([X, Y|Rest], J, Forbidden) :- !,
+    Next is J + 1,
+    (   X =:= Y -> Forbidden = [J|Others] ; Forbidden = Others ),
+    same_neighbours([Y|Rest], Next, Others).
+same_neighbours(_, _, []).
 
-    % the first group ends at the first break, each middle group is the gap
-    % between two breaks, and the last group is what remains after the last break
-    Sizes = [First|Rest],
-    Breaks = [FirstBreak|_],
-    First #= FirstBreak,
-    sizes_between_breaks(Breaks, Rest, N),
+no_break_at(Forbidden, Break) :-
+    maplist({Break}/[J]>>(Break #\= J), Forbidden).
 
-    % elements with the same value stay together: no break may fall between two
-    % equal neighbours, so a break after the first j elements is forbidden
-    % when element j equals element j + 1
-    equal_neighbours(A, 1, NoBreakAt),
-    maplist({NoBreakAt}/[Break]>>maplist({Break}/[J]>>(Break #\= J), NoBreakAt), Breaks),
+% the size of each group is the gap between two consecutive edges
+edge_sizes([E1, E2|Rest], [Size|Sizes]) :-
+    Size #= E2 - E1,
+    edge_sizes([E2|Rest], Sizes).
+edge_sizes([_], []).
 
-    % error: how far the group sizes are from the ideal size in total
-    MaxError = N,
-    Error in 0..MaxError,
-    maplist({GroupSize}/[Size, Deviation]>>(Deviation #= abs(Size - GroupSize)), Sizes, Deviations),
-    sum(Deviations, #=, Error),
-    % Search order: the error first, smallest value first, then the breaks from
-    % left to right. The best error is small compared with the number of
-    % elements, so trying error values in turn with the breaks narrowed to
-    % them finds the optimum far sooner than improving a first arbitrary
-    % split step by step.
-    append([[Error], Breaks, Sizes], Vars).
-
-% Sizes of the groups after the first: the gap to the previous break, and the
-% rest of the N elements after the final break.
-sizes_between_breaks([Previous], [Last], N) :- !,
-    Last #= N - Previous.
-sizes_between_breaks([Previous, Next|Breaks], [Size|Sizes], N) :-
-    Size #= Next - Previous,
-    sizes_between_breaks([Next|Breaks], Sizes, N).
-
-% Positions I such that the I-th element of the list equals the next one.
-equal_neighbours([X, Y|Rest], I, Positions) :- !,
-    Next is I + 1,
-    (   X =:= Y
-    ->  Positions = [I|Others]
-    ;   Positions = Others
-    ),
-    equal_neighbours([Y|Rest], Next, Others).
-equal_neighbours(_, _, []).
+deviation(Ideal, Size, Deviation) :-
+    Deviation #= abs(Size - Ideal).
 
 labeling_options([leftmost]).
+
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

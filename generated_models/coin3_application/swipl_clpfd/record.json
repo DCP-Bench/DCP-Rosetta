@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-002",
-    "created_at": 1790883192.9904993,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/swipl/prolog/CONTRACT.md": "b97f7d686889990081e58dab14a6ac8043c8ce98cc6ff4a343336dfd7e1e4eb0"
+    },
+    "created_at": 1794603790.6442533,
     "problem_id": "coin3_application",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,40 +18,57 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "635c24bfacbdc0db90bff173e1d8728c56808b0f0c2b30c1ee074a259a4ca03e",
-    "run_id": "20261001T1218Z-swipl-ff16",
-    "schema": 2,
-    "skill_bundle_hash": "e0e594c9d4f749ceb6497b59d1a6851e2dd796a84100edc1376bc669fb93d17a",
-    "skill_source": "solvers\\swipl_clpfd\\skills\\swipl-clpfd",
+    "readiness_hash": "c216a6700b5b6b565400b685f2e4d7c79c73d4aa3a9f89b672ace727fc405137",
+    "run_id": "20261116-swipl-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "b30eb322b3e67b62041f41b9271ff63304281b9a",
+      "commit": "ff67819ac843d18becffde04c040b763be5254ea",
       "modified": false,
-      "path": "solvers/swipl_clpfd/skills/swipl-clpfd"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "603573da813e9d0eca3be80bee07bc18e2039363c8857ca06373299f8d99a2c4",
+        "source": "solvers/swipl/skills/dcp-swipl",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "solvers/swipl/skills/dcp-swipl"
+        }
+      }
+    ],
     "solver_id": "swipl_clpfd"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:052c9de7b35053fe8e9a16398db20a42756e8fd63c0fcfd9efe4b5d2339d8127",
+      "id": "sha256:c4aecc7be95a0312db6dcd03a6fbbedccbe4179e5907592b652e5e0c35b6daaf",
+      "recipe": "sha256:68cf27681c1d4cc061d05393ab834128f32cbb1ddbdc9de6abffa288dc1ca604",
       "tag": "dcp-eval/swipl_clpfd:v1"
     },
     "instances": [
       {
-        "accepted": true,
-        "checking_seconds": 0.14751100004650652,
-        "execution_wall_seconds": 3.055253400001675,
-        "first_solution": {
-          "x": [
-            1,
-            2,
-            1,
-            1,
-            2,
-            1
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 5.170004442334175e-07,
+        "detail": "The execution budget ran out during search",
+        "execution_wall_seconds": 184.70370570704108,
         "id": "example",
         "instance_hash": "5cb973b5daf1922e43a94b58c7984ff7fa4a6d1ba236933058e9d076acc4e936",
         "is_optimization": true,
@@ -56,32 +77,26 @@
         "outputs": [
           "x"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.5601792999077588,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 1.3923661530134268,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 1.814269781112671,
-          "status": "limit",
+          "build_seconds": 0.08838677406311035,
+          "detail": "The execution budget ran out during search",
+          "main_seconds": 181.74237251281738,
+          "read_seconds": 0.00012969970703125,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.18878279998898506,
-        "execution_wall_seconds": 3.3925665002316236,
-        "first_solution": {
-          "x": [
-            1,
-            2,
-            1,
-            2,
-            1,
-            1
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 4.050089046359062e-07,
+        "detail": "The execution budget ran out during search",
+        "execution_wall_seconds": 183.49011885200161,
         "id": "json:1",
         "instance_hash": "a9e9ad5336c324532f502fa8fb7fa7f035c324e4ed1c00c692a79f952b76fd0e",
         "is_optimization": true,
@@ -90,32 +105,26 @@
         "outputs": [
           "x"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.3511304000858217,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.93187680299161,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 2.0001959800720215,
-          "status": "limit",
+          "build_seconds": 0.041823625564575195,
+          "detail": "The execution budget ran out during search",
+          "main_seconds": 180.95340776443481,
+          "read_seconds": 0.0002665519714355469,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.15305710001848638,
-        "execution_wall_seconds": 2.9274111001286656,
-        "first_solution": {
-          "x": [
-            4,
-            1,
-            2,
-            1,
-            1,
-            0
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 4.500034265220165e-07,
+        "detail": "The execution budget ran out during search",
+        "execution_wall_seconds": 184.33964510203805,
         "id": "json:2",
         "instance_hash": "2aac62f9dd386c97185fae6952b01ef282da3a3ffb6ce4b60ee204d8342d1114",
         "is_optimization": true,
@@ -124,33 +133,26 @@
         "outputs": [
           "x"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.6858363999053836,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 1.4620234399917535,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 1.37794828414917,
-          "status": "limit",
+          "build_seconds": 0.12482833862304688,
+          "detail": "The execution budget ran out during search",
+          "main_seconds": 180.88192129135132,
+          "read_seconds": 0.00015974044799804688,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.08681049989536405,
-        "execution_wall_seconds": 5.4078666002023965,
-        "first_solution": {
-          "x": [
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 4.309695214033127e-07,
+        "detail": "The driver outlived the execution budget",
+        "execution_wall_seconds": 186.75781573500717,
         "id": "json:3",
         "instance_hash": "5d7d6dedad1b3dc726f01ee7a9590b0584d2f1e1a1c43dafc497da0c6f571f04",
         "is_optimization": true,
@@ -159,22 +161,22 @@
         "outputs": [
           "x"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 1.965598599985242,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 1.2620215009665117,
         "runner_status": {
-          "detail": "",
-          "solve_seconds": 4.059023380279541,
-          "status": "complete",
+          "detail": "The driver outlived the execution budget",
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
         "stderr": ""
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013569599948823452,
-        "execution_wall_seconds": 1.5832676000427455,
+        "checking_seconds": 0.02770817099371925,
+        "execution_wall_seconds": 6.712660030985717,
         "first_solution": {
           "x": [
             2,
@@ -191,10 +193,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1316547999158502,
+        "reference_setup_seconds": 1.139302848954685,
         "runner_status": {
+          "build_seconds": 0.009086847305297852,
           "detail": "",
-          "solve_seconds": 0.353330135345459,
+          "main_seconds": 4.533543586730957,
+          "read_seconds": 0.00015997886657714844,
+          "solve_seconds": 4.5333781242370605,
           "status": "complete",
           "type": "status"
         },
@@ -204,23 +209,23 @@
       }
     ],
     "instances_available": 5,
-    "instances_checked": 5,
+    "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "d067bfd934dc47f6190eb3ed55ce1da446309ff6cd061c5f5dd8644371a36662",
+    "model_hash": "48201f50fb4ed64ce3b0d235418fd3f0fc28c44c8609232df8eeb381ec9bc07f",
     "problem_id": "coin3_application",
     "reason": "accepted",
-    "reference_hash": "142d617d33b17b5a349111ff67d7ffce12f06a28f42bff4de981b3fec5ab363a",
+    "reference_hash": "da686db1b91d97d9155948885b4818f78a5bf72c845d428bc470d9d4d2450bda",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -228,14 +233,19 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 8,
+    "skipped_instances": [
+      "example",
+      "json:1",
+      "json:2",
+      "json:3"
+    ],
+    "solutions_checked": 1,
     "solver_id": "swipl_clpfd",
-    "total_wall_seconds": 26.461878299945965,
+    "total_wall_seconds": 753.269472298969,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pl",

@@ -1,17 +1,21 @@
-"""Quasigroup completion: fill the empty cells of a partly filled N-by-N grid with 1..N so that
-it becomes a Latin square, every row and every column holding each number once.
+# csplib_067_quasigroup_completion: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_067_quasigroup_completion.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_067_quasigroup_completion.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_067_quasigroup_completion.py csplib_067_quasigroup_completion.json
 
-The model reports the completed grid.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Quasigroup completion: fill the empty cells of a partly filled N-by-N grid with 1..N so that
+    it becomes a Latin square, every row and every column holding each number once."""
     N = instance["N"]          # size of the quasigroup (Latin square)
     start = instance["start"]  # initial board; 0 marks an empty cell
 
-    cells = range(N)
-    values = range(1, N + 1)
+    cells = range(N)         # the row and column indices
+    values = range(1, N + 1)  # the numbers a cell can hold
 
     model = Model("quasigroup_completion")
 
@@ -45,3 +49,25 @@ def build(instance):
             model.add_constraint(model.sum(has[i, j, v] for i in cells if (i, j, v) in has) == 1)
 
     return model, {"puzzle": puzzle}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

@@ -1,28 +1,46 @@
-vocabulary {
-    type Range_max_val <: Int
-    max_val: () -> Int
-    min_a: () -> Int
-    a: () -> Int
-    b: () -> Int
-    n: () -> Int
-    p: () -> Int
-    t: () -> Int
-    minimize: () -> Int
+// cmo_2012: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given two positive integers a and b, where a - b is a prime number p and a × b is a perfect square n^2, find the
+// smallest value of a no less than a given minimum min_a. Also, b should be larger than 0, and none of the four values
+// may exceed max_val.
+//
+// Save this file as model.idp. Download `cmo_2012.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/cmo_2012.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py cmo_2012.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_max_val <: Int          // the integers from 1 to max_val
+    max_val: () -> Int                 // the largest value that any of the four values may take
+    min_a: () -> Int                   // the minimum value of a
+    a: () -> Int                       // the first positive integer
+    b: () -> Int                       // the second positive integer
+    n: () -> Int                       // the integer whose square is a × b
+    p: () -> Int                       // the prime number a - b
+    quot: Range_max_val -> Int         // quot(d): the quotient of p divided by d, when d × d is at most p (auxiliary)
+    rest: Range_max_val -> Int         // rest(d): the remainder of p divided by d, when d × d is at most p (auxiliary)
+    minimize: () -> Int                // the value of a, to minimize
 }
-theory {
-    // a and b are positive integers (b larger than 0); values stay within max_val
-    1 =< t() & t() =< max_val().
-    // a - b is a prime number and a * b is a perfect square n^2 forces b = t^2, a = (t+1)^2
-    b() = t() * t().
-    a() = b() + p().
-    p() = 2 * t() + 1.
-    n() = t() * (t() + 1).
-    a() =< max_val().
-    // a - b is a prime number
-    p() >= 2.
-    ! d in Range_max_val: d >= 2 & d < p() => p() % d ~= 0.
-    // a is no less than the given minimum
-    a() >= min_a().
-    // find the smallest value of a
+theory T:V {
+    // a, b, n and p are positive integers, and none of them exceeds max_val
+    1 =< a() & a() =< max_val().
+    1 =< b() & b() =< max_val().
+    1 =< n() & n() =< max_val().
+    2 =< p() & p() =< max_val().
+    // a is no less than the minimum min_a
+    min_a() =< a().
+    // a - b is the prime number p
+    a() - b() = p().
+    // p is prime: for every d from 2 whose square is at most p, the remainder of p divided by d is not 0, so d does not
+    // divide p (a number with a divisor between 2 and its square root is not prime)
+    ! d in Range_max_val: 2 =< d & d * d =< p() => (p() = d * quot(d) + rest(d) & 1 =< rest(d) & rest(d) =< d - 1).
+    // a × b is the perfect square n^2
+    a() * b() = n() * n().
+    // the value to minimize is a
     minimize() = a().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

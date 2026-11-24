@@ -1,39 +1,52 @@
-"""Project Euler 9: the Pythagorean triplet a^2 + b^2 = c^2 with a + b + c = 1000."""
+# pythagorean_triplet: a Gurobi (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/pythagorean_triplet.html
+# Run it (after `pip install gurobipy numpy`; the licence that comes with pip allows models
+# up to 2000 variables and constraints) with:
+#   python pythagorean_triplet.py
+
 import gurobipy as gp
 from gurobipy import GRB
 
-# The problem has no instance data. The sum 1000 is from the statement; each
-# number lies in 1..500 as in the reference.
+# The statement says the three numbers sum to 1000.
 TOTAL = 1000
+# Not in the statement: each number is at most 500. a + b > c (as in any triangle), so with
+# a + b + c = 1000 the largest number c is below 500, and so are the others; the bound cuts off no solution.
 UPPER = 500
 
 
-def build(instance):
+def create_model(instance):
+    """Pythagorean triplet: three whole numbers a, b, c with a^2 + b^2 = c^2 and a + b + c = 1000."""
     model = gp.Model("pythagorean_triplet")
-    # The squares reach 250,000; a tight integrality tolerance keeps a near-0
-    # binary from shifting them.
-    model.Params.IntFeasTol = 1e-9
 
-    values = range(1, UPPER + 1)
+    # The three numbers a, b, c.
+    a, b, c = (model.addVar(lb=1, ub=UPPER, vtype=GRB.INTEGER, name=v) for v in "abc")
 
-    # For each of a, b and c, is_[v] = 1 when it equals v. The number and its
-    # square are then both linear in these binaries, so a^2 + b^2 = c^2 needs
-    # no product of two variables.
-    def number(name):
-        is_ = model.addVars(values, vtype=GRB.BINARY, name=f"{name}_is")
-        model.addConstr(is_.sum() == 1, name=f"{name}_one_value")
-        var = model.addVar(lb=1, ub=UPPER, vtype=GRB.INTEGER, name=name)
-        model.addConstr(var == gp.quicksum(v * is_[v] for v in values), name=f"{name}_read")
-        return var, gp.quicksum(v * v * is_[v] for v in values)
+    # The statement orders the numbers: a < b < c.
+    model.addConstr(a + 1 <= b, name="a_below_b")
+    model.addConstr(b + 1 <= c, name="b_below_c")
 
-    a, a_sq = number("a")
-    b, b_sq = number("b")
-    c, c_sq = number("c")
-
-    # a + b + c = 1000.
+    # The three numbers sum to 1000.
     model.addConstr(a + b + c == TOTAL, name="sum")
 
-    # a^2 + b^2 = c^2.
-    model.addConstr(a_sq + b_sq == c_sq, name="pythagoras")
+    # Pythagoras: a^2 + b^2 = c^2 (a quadratic constraint, which Gurobi handles directly).
+    model.addConstr(a * a + b * b == c * c, name="pythagoras")
+
+    # No objective: any assignment satisfying the constraints is a solution.
 
     return model, {"a": a, "b": b, "c": c}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.Params.OutputFlag = 0  # no solver log
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a solution
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

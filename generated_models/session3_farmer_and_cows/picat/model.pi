@@ -1,21 +1,51 @@
-% Farmer and cows: cow i gives i units of milk. Share the cows among the sons so
-% that every son gets his number of cows and all sons get the same milk.
-import sat.
+% session3_farmer_and_cows: a Picat model from DCP Rosetta.
+%
+% A farmer has a number of cows, with each cow numbered from 1 up to the total number of cows. Each cow gives a
+% quantity of milk equal to its number. The farmer has a number of sons and wants to distribute his cows to them
+% according to a given distribution. The total quantity of milk produced should be the same for each son. How can he
+% distribute the cows?
+%
+% Save this file as model.pi. Download `session3_farmer_and_cows.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_farmer_and_cows.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session3_farmer_and_cows.json
+%   picat model.pi session3_farmer_and_cows_1.dat
+%
+% Data.get(num_cows): the total number of cows; Data.get(num_sons): the number of sons;
+% Data.get(cows_per_son): the number of cows that each son receives (a list indexed from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NumCows = Data.get(num_cows),
     NumSons = Data.get(num_sons),
     CowsPerSon = Data.get(cows_per_son),
-    MilkPerSon = (NumCows * (NumCows + 1) // 2) // NumSons,
-    % assignment[i] = the son, 0-based, who gets cow i
-    Assignment = new_list(NumCows),
-    Assignment :: 0..NumSons-1,
-    foreach (Son in 0..NumSons-1)
-        % the son gets his number of cows ...
-        sum([Assignment[I] #= Son : I in 1..NumCows]) #= CowsPerSon[Son + 1],
-        % ... and his share of the milk
-        sum([I * (Assignment[I] #= Son) : I in 1..NumCows]) #= MilkPerSon
+    % the cows are numbered 1 to NumCows, and cow I gives I units of milk
+    % Son[I] = the son, numbered from 0, that cow I goes to
+    Son = new_list(NumCows),
+    Son :: 0..NumSons - 1,
+    % each son receives the number of cows given by the distribution
+    foreach (S in 0..NumSons - 1)
+        sum([Son[I] #= S : I in 1..NumCows]) #= CowsPerSon[S + 1]
     end,
-    Vars = Assignment,
-    Outputs = [cow_assignments = Assignment],
+    % the total milk is the same for each son
+    TotalMilk = NumCows * (NumCows + 1) div 2,
+    foreach (S in 0..NumSons - 1)
+        sum([I * (Son[I] #= S) : I in 1..NumCows]) #= TotalMilk div NumSons
+    end,
+    Vars = Son,
+    Outputs = [cow_assignments = Son],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

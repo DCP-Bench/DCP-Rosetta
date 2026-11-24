@@ -7,45 +7,41 @@ from hermax.model import Model
 
 
 def create_model(instance):
-    """Mr Greenguest wants to attend a green dress party. Choose which green items to wear
-    (a tie, a hat, the shirt he already owns, green socks), or pay the $11 entrance fee if
-    he breaks the dress rules, so that the total cost is as small as possible."""
-    # The rules and prices are fixed by the problem statement; the instance carries no data.
-    tie_price = 10     # buying a green tie costs $10
-    hat_price = 2      # a green hat (used) costs $2
-    socks_price = 12   # green socks cost $12
-    fee = 11           # the entrance fee for a guest not dressed by the rules
-
+    """Mr Greenguest chooses which green items to wear to Mr Greenfan's party, and pays the
+    $11 entrance fee if he is not dressed according to rules 1-3, at the lowest total cost.
+    He owns a green shirt; a green tie costs $10, a used green hat $2, green socks $12."""
+    # The instance has no fields: every number below is from the problem statement.
     m = Model()
-    # t is true when he wears a green tie
-    t = m.bool("t")
-    # h is true when he wears a green hat
-    h = m.bool("h")
-    # r is true when he wears the green shirt he owns (it costs nothing)
-    r = m.bool("r")
-    # s is true when he wears green socks
-    s = m.bool("s")
-    # n is true when he pays the entrance fee instead of following the rules
-    n = m.bool("n")
 
-    # Rule 1: a guest wearing a green tie has to wear a green shirt (unless he pays the fee).
+    t = m.bool("t")  # he wears a green tie
+    h = m.bool("h")  # he wears a green hat
+    r = m.bool("r")  # he wears a green shirt
+    s = m.bool("s")  # he wears green socks
+    n = m.bool("n")  # he pays the entrance fee
+
+    # Rule 4: a guest who is not dressed according to rules 1-3 must pay the fee, so every
+    # clause of rules 1-3 below also holds when he pays (n).
+
+    # Rule 1: if someone wears a green tie he has to wear a green shirt.
     m &= (~t | r | n)
-    # Rule 2: green socks and a green shirt together need a green tie or a green hat (unless he pays the fee).
-    m &= (~s | ~r | t | h | n)
-    # Rule 3: a green shirt, or a green hat, or no green socks, requires a green tie (unless he pays the fee).
+
+    # Rule 2: a guest who wears green socks or a green shirt must also wear a green tie or
+    # a green hat: the socks need a tie or a hat, and so does the shirt.
+    m &= (~s | t | h | n)
+    m &= (~r | t | h | n)
+
+    # Rule 3: a guest wearing a green shirt or a green hat or who does not wear green socks
+    # must wear a green tie: the shirt, the hat and bare feet each need the tie.
     m &= (~r | t | n)
     m &= (~h | t | n)
     m &= (s | t | n)
 
-    # Minimise the cost: the tie, hat, socks and fee are paid when worn or paid (the shirt is owned).
-    m.obj += tie_price * t
-    m.obj += hat_price * h
-    m.obj += socks_price * s
-    m.obj += fee * n
+    # Minimise the total cost: the tie, the hat, the socks and the fee (the shirt he owns).
+    cost = 10 * t + 2 * h + 12 * s + 11 * n
+    m.obj += cost
 
-    # The objective in the problem's terms: the total cost paid, the sum of the four terms minimised above.
-    total_cost = tie_price * t + hat_price * h + socks_price * s + fee * n
-    return m, {"t": t, "h": h, "r": r, "s": s, "n": n}, total_cost
+    # The objective in the problem's terms: the total cost, the cost minimised above.
+    return m, {"t": t, "h": h, "r": r, "s": s, "n": n}, cost
 
 
 if __name__ == "__main__":

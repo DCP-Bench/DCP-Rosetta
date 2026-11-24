@@ -1,28 +1,63 @@
-% SONET ring design: nodes communicate over rings, a node being put on a ring with an add-drop
-% multiplexer (ADM). Two nodes with traffic between them must share at least one ring, a ring
-% holds at most its capacity of nodes, and the total number of ADMs (node-on-ring pairs) is
-% to be as small as possible.
+% csplib_056_sonet: a Picat model from DCP Rosetta.
+%
+% In the SONET problem, a set of nodes with a traffic demand between pairs of nodes is to be connected by
+% a set of rings. A node is installed on a ring by an add-drop multiplexer (ADM). Two nodes can communicate
+% only when they are on at least one common ring. Each ring has a capacity, limiting the number of nodes it
+% can host. Satisfy all communication demands while minimising the total number of ADMs used.
+%
+% Save this file as model.pi. Download `csplib_056_sonet.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_056_sonet.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_056_sonet.json
+%   picat model.pi csplib_056_sonet_1.dat
+
+% Data.get(n): the number of nodes; Data.get(r): the number of rings; Data.get(capacity_nodes): the most
+% nodes each ring can host (a list indexed from 1); Data.get(demand): the traffic demand between each pair
+% of nodes (a list of rows indexed from 1, demand[I,J] + demand[J,I] > 0 when nodes I and J must communicate).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    NumRings = Data.get(r),               % number of rings available
-    N = Data.get(n),                      % number of nodes
-    Demand = Data.get(demand),            % Demand[i][j] > 0 if nodes i and j have traffic
-    Capacity = Data.get(capacity_nodes),  % the most nodes ring k can host
-    % RingConfig[k, i] = 1 if node i is on ring k
-    RingConfig = new_array(NumRings, N),
-    RingConfig :: 0..1,
-    % nodes with traffic between them (each pair once, as in the upper triangle of the demand
-    % matrix) are both on at least one common ring
-    foreach (I in 1..N - 1, J in I + 1..N, Demand[I, J] > 0)
-        sum([RingConfig[K, I] #/\ RingConfig[K, J] : K in 1..NumRings]) #>= 1
+    N = Data.get(n),
+    R = Data.get(r),
+    Capacity = Data.get(capacity_nodes),
+    Demand = Data.get(demand),
+    Ring = [new_list(N) : _K in 1..R],
+    foreach(Row in Ring)
+        Row :: 0..1                        % Ring[K,I] = 1 when node I is on ring K
     end,
-    % a ring hosts at most as many nodes as its capacity
-    foreach (K in 1..NumRings)
-        sum([RingConfig[K, I] : I in 1..N]) #=< Capacity[K]
+    % each ring hosts no more nodes than its capacity
+    foreach(K in 1..R)
+        sum([Ring[K,I] : I in 1..N]) #=< Capacity[K]
     end,
-    % one ADM for every node placed on a ring
-    TotalAdms #= sum([RingConfig[K, I] : K in 1..NumRings, I in 1..N]),
-    Vars = RingConfig,
-    Outputs = [ring_config = RingConfig, total_adms = TotalAdms],
-    Options = [$min(TotalAdms)].
+    % every pair of nodes with a demand between them shares at least one ring
+    foreach(I in 1..N, J in I+1..N)
+        if Demand[I,J] + Demand[J,I] > 0 then
+            Shared = new_list(R),
+            Shared :: 0..1,
+            foreach(K in 1..R)
+                Shared[K] #=< Ring[K,I],
+                Shared[K] #=< Ring[K,J]
+            end,
+            sum(Shared) #>= 1
+        end
+    end,
+    % the total number of ADMs used: one for each node installed on a ring
+    Total #= sum([Ring[K,I] : K in 1..R, I in 1..N]),
+    Vars = Ring,
+    Outputs = [total_adms = Total, ring_config = Ring],
+    % minimise the total number of ADMs used
+    Options = [$min(Total)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

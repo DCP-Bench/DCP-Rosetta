@@ -1,18 +1,35 @@
-% Chess set: a joinery makes small and large boxwood chess sets. Decide how many
-% of each to make in a week so that the boxwood and the lathe hours suffice and
-% the profit is as large as possible.
+% chess_set: a Picat model from DCP Rosetta.
+%
+% A small joinery makes two sizes of boxwood chess sets each week. A small set requires 3 hours of
+% lathe machining and 1 kg of boxwood, and a large set requires 2 hours of lathe machining and 3 kg of
+% boxwood. There are 160 lathe-hours per week and 200 kg of boxwood per week. A small set yields a
+% profit of $5 and a large set a profit of $20. Decide how many sets of each kind to make each week so
+% as to maximize the profit.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/chess_set.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The problem statement fixes all the numbers; the instance carries no data.
-    [SmallSet, LargeSet] :: 0..100,
-    MaxProfit :: 0..10000,
-    % boxwood: 1 kg per small set, 3 kg per large set, 200 kg available
-    SmallSet + 3 * LargeSet #=< 200,
-    % lathe hours: 3 per small set, 2 per large set, 160 available
-    3 * SmallSet + 2 * LargeSet #=< 160,
-    % profit: $5 per small set and $20 per large set
-    MaxProfit #= 5 * SmallSet + 20 * LargeSet,
-    Vars = [SmallSet, LargeSet],
-    Outputs = [small_set = SmallSet, large_set = LargeSet, max_profit = MaxProfit],
-    Options = [$max(MaxProfit)].
+    % SmallSets and LargeSets are the numbers of small and large sets made each week
+    SmallSets :: 0..200,
+    LargeSets :: 0..200,
+    % the lathe-hours used do not exceed the 160 lathe-hours available each week
+    3 * SmallSets + 2 * LargeSets #=< 160,
+    % the boxwood used does not exceed the 200 kg available each week
+    SmallSets + 3 * LargeSets #=< 200,
+    Profit #= 5 * SmallSets + 20 * LargeSets, % the total profit of the week
+    Vars = [SmallSets, LargeSets],
+    Outputs = [small_set = SmallSets, large_set = LargeSets, max_profit = Profit],
+    % maximize the profit
+    Options = [$max(Profit)].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,20 +1,47 @@
-% Just forgotten: Joe's account number uses each digit 0 to n-1 once. In each of
-% several tried sequences exactly a given number of digits are in their right place.
+% just_forgotten: a Picat model from DCP Rosetta.
+%
+% Joe forgot one of his bank account numbers. It has all the digits from 0 to n-1 in some order, and he tried
+% several sets of digits without success. For each tried set, only a specific number of its digits were in their
+% correct position in the account number. Find the account number, a list of n digits.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/just_forgotten.html
+% Save this file as model.pi. Download `just_forgotten.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/just_forgotten.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py just_forgotten.json
+%   picat model.pi just_forgotten_1.dat
+%
+% Data.get(sets): the tried sets, each a list of digits indexed from 1 (Sets[S, I] is digit I of set S).
+% Data.get(num_correct_digits): the number of digits of each tried set that are in their correct position.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Sets = Data.get(sets),                      % the digit sequences Joe tried
-    NumCorrect = Data.get(num_correct_digits),  % digits in the right place in each
-    N = len(Sets[1]),
-    % x[i] = the digit at position i of the account number
+    Sets = Data.get(sets),
+    NumCorrect = Data.get(num_correct_digits),
+    N = len(Sets[1]),                         % the number of digits in the account number
+    % X[I] is the digit at position I of the account number
     X = new_list(N),
     X :: 0..N-1,
-    % each digit is used once
+    % the account number uses each digit from 0 to n-1 exactly once
     all_distinct(X),
-    % every tried sequence has exactly num_correct digits where the number has them
+    % for each tried set, exactly NumCorrect of its digits are in the same position as in the account number
     foreach (Tried in Sets)
         sum([X[I] #= Tried[I] : I in 1..N]) #= NumCorrect
     end,
     Vars = X,
     Outputs = [x = X],
     Options = [ff].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

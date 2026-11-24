@@ -1,33 +1,68 @@
-vocabulary {
-    type I <: Int                      // positions of the sorted list, sized from a
-    type Range_k <: Int                // groups 1..k
-    a: I -> Int
-    k: () -> Int
-    gap: Range_k -> Bool
-    x: Range_k -> I (domain: gap)      // declared output: break points
-    ok: I -> Bool
-    sz: Range_k -> Int
-    err: Range_k -> Int
-    minimize: () -> Int
+// equal_sized_groups: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A sorted list of N elements is to be divided into K groups by choosing K-1 split points between the elements. Elements
+// with the same value must stay in the same group, and each group holds at least one element. Find K groups as close in
+// size to round(N/K) as possible, that is, minimize the total over the groups of the absolute difference between the
+// size of the group and round(N/K). The answer is the list of the K-1 split points, each given as the number of elements
+// before it.
+//
+// Save this file as model.idp. Download `equal_sized_groups.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/equal_sized_groups.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py equal_sized_groups.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type I <: Int                      // the elements of the sorted list, numbered from 0, sized from a
+    type Range_k <: Int                // the groups, numbered 1 to k
+    a: I -> Int                        // a(j): the value of element j of the sorted list
+    k: () -> Int                       // the number of groups
+    total: () -> Int                   // the number of elements N
+    target: () -> Int                  // round(N / k): the size each group should have
+    stop: Range_k -> Int               // stop(i): the number of elements up to the end of group i (the split point after group i)
+    start: Range_k -> Int              // start(i): the number of elements before group i
+    dev: Range_k -> Int                // dev(i): the absolute difference between the size of group i and the target size
+    cut: I -> Bool                     // cut(j): a split point lies just before element j
+    gap: Range_k -> Bool               // gap(i): i is one of the split points, which exist for groups 1 to k - 1
+    x: Range_k -> Int (domain: gap)    // x(i): the split point after group i, the number of elements before it
+    minimize: () -> Int                // the total difference between the group sizes and the target size
 }
-theory {
+
+theory T:V {
+    // the number of elements is the length of the list
+    total() = #{ j in I }.
+
+    // round(N / k) rounds half up: it is the whole part of N / k + 1 / 2
+    target() = (2 * total() + k()) / (2 * k()).
+
+    // the split point after group i is the number of elements before it, and the last group ends at the last element
+    stop(k()) = total().
+
+    // the first group starts at the first element, and each other group starts where the group before it ends
+    start(1) = 0.
+    ! i in Range_k: i ~= 1 => start(i) = stop(i - 1).
+
+    // each group holds at least one element
+    ! i in Range_k: stop(i) > start(i).
+
+    // a split point never separates two elements of the same value: no split point lies just before element j
+    // when element j - 1 has the same value as element j
+    ! j in I: cut(j) <=> ?i in Range_k: i < k() & stop(i) = j.
+    ! j in I: j ~= 0 & cut(j) => a(j - 1) ~= a(j).
+
+    // the difference of each group is the absolute difference between its size and the target size
+    ! i in Range_k: dev(i) = abs(stop(i) - start(i) - target()).
+
+    // the total of the differences is to be minimized
+    minimize() = sum{{ dev(i) | i in Range_k }}.
+
+    // the split points are the groups 1 to k - 1
     { ! i in Range_k: gap(i) <- i < k(). }
+    ! i in Range_k: gap(i) => x(i) = stop(i).
+}
 
-    // elements with the same value must be in the same group: a break after position p
-    // separates a(p-1) from a(p), which must differ
-    { ! p in I: ok(p) <- p >= 1 & ? q in I: q + 1 = p & a(q) ~= a(p). }
-    ! i in Range_k: gap(i) => ok(x(i)).
-
-    // break points are increasing
-    ! i in Range_k: i > 1 & gap(i) & gap(i - 1) => x(i - 1) < x(i).
-
-    // group sizes from the break points
-    ! i in Range_k: i = 1 & gap(i) => sz(i) = x(i).
-    ! i in Range_k: i > 1 & gap(i) & gap(i - 1) => sz(i) = x(i) - x(i - 1).
-    ! i in Range_k: i = k() & i > 1 & gap(i - 1) => sz(i) = #{ p in I: p = p } - x(i - 1).
-    ! i in Range_k: i = k() & i = 1 => sz(i) = #{ p in I: p = p }.
-
-    // each group should be close to round(N/K) elements; minimize the total error
-    ! i in Range_k: err(i) = abs((2 * #{ p in I: p = p } + k()) / (2 * k()) - sz(i)).
-    minimize() = sum{{ err(i) | i in Range_k }}.
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

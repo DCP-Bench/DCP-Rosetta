@@ -1,24 +1,39 @@
 language ESSENCE' 1.0
-$ Football squad: choose players within a budget of GBP 30 million (30000 in thousands) so that the total price is as large as possible, with position limits and a minimum squad size.
-$ prices in GBP thousands of the players in order: goalkeepers g1-g3, defenders d1-d8, midfielders m1-m10, strikers s1-s5
-letting price = [730, 1280, 3880, 920, 1310, 1620, 2410, 2790, 3280, 3910, 4570, 1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130, 4460, 6470, 7780, 8390, 9500]
-find buy : matrix indexed by [int(1..26)] of bool
-find z : int(0..30000)
+$ football: an Essence' model from DCP Rosetta.
+$
+$ Statistics show that, in the Premiership, there is a strong correlation between the value of a team's players and their final position in that league, so you want to spend as much money as you can. The chairman gives an upper limit of GBP 30 million, so the purchases should add up to as close to that figure as possible without going over. Players are in groups, with their prices in GBP millions: goalkeepers g1 0.73, g2 1.28, g3 3.88 (must buy exactly 1); defenders d1 0.92, d2 1.31, d3 1.62, d4 2.41, d5 2.79, d6 3.28, d7 3.91, d8 4.57 (must buy 2 or more); midfielders m1 1.8, m2 2.63, m3 3.17, m4 3.769, m5 4.14, m6 4.75, m7 5.38, m8 5.93, m9 6.78, m10 7.13 (must buy 3 or more); strikers s1 4.46, s2 6.47, s3 7.78, s4 8.39, s5 9.5 (must buy 2 or more). Also, at least eleven players must be bought in total. The total price of the players selected is z, in GBP thousands.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/football.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [buy]
+$ the number of players available
+letting n_players = 26
+$ price[i]: the price of player i in GBP thousands; players 1 to 3 are goalkeepers, 4 to 11 defenders, 12 to 21 midfielders and 22 to 26 strikers
+letting price = [730, 1280, 3880, 920, 1310, 1620, 2410, 2790, 3280, 3910, 4570, 1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130, 4460, 6470, 7780, 8390, 9500]
+$ the spending limit in GBP thousands
+letting limit = 30000
+
+$ buy[i]: player i is bought
+find buy : matrix indexed by [int(1..n_players)] of bool
+$ z: the total price of the players bought, in GBP thousands
+find z : int(0..limit)
+
 maximising z
+
 such that
-$ the total price of the chosen players is z, in GBP thousands
-z = (sum i : int(1..26) . buy[i] * price[i]),
-$ the chosen players must add up to no more than the upper limit of GBP 30 million
-z <= 30000,
-$ exactly one goalkeeper must be bought (players 1 to 3)
-(sum i : int(1..3) . buy[i]) = 1,
-$ at least two defenders must be bought (players 4 to 11)
-(sum i : int(4..11) . buy[i]) >= 2,
-$ at least three midfielders must be bought (players 12 to 21)
-(sum i : int(12..21) . buy[i]) >= 3,
-$ at least two strikers must be bought (players 22 to 26)
-(sum i : int(22..26) . buy[i]) >= 2,
-$ at least eleven players must be bought in total
-(sum i : int(1..26) . buy[i]) >= 11
+$ z is the total price of the players bought
+z = (sum i : int(1..n_players) . price[i] * toInt(buy[i])),
+$ the total price does not go over the limit
+z <= limit,
+$ exactly one goalkeeper is bought
+(sum i : int(1..3) . toInt(buy[i])) = 1,
+$ at least two defenders are bought
+(sum i : int(4..11) . toInt(buy[i])) >= 2,
+$ at least three midfielders are bought
+(sum i : int(12..21) . toInt(buy[i])) >= 3,
+$ at least two strikers are bought
+(sum i : int(22..26) . toInt(buy[i])) >= 2,
+$ at least eleven players are bought in total
+(sum i : int(1..n_players) . toInt(buy[i])) >= 11

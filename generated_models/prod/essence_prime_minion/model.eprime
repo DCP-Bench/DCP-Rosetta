@@ -1,18 +1,42 @@
 language ESSENCE' 1.0
-$ Production planning: choose the production quantity x[j] of each product j, up to its limit u[j], so that the time used, the sum of x[j] divided by a[j], is at most b, and the total profit, the sum of c[j] times x[j], is maximal.
-given a_dim1 : int(1..)
-given a, c : matrix indexed by [int(1..a_dim1)] of int(1..)
+$ prod: an Essence' model from DCP Rosetta.
+$
+$ Consider a set of products j. Each product has a coefficient a[j], a profit c[j] per unit and an upper
+$ bound u[j] on its quantity. A shared limit b applies to the sum of the quantities divided by their coefficients a[j].
+$ Choose the quantity of each product, within its bound, so that the total profit is as large as possible.
+$
+$ Save this file as model.eprime. Download `prod.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/prod.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `prod_1.param.solution`:
+$   python dcp_convert_essence.py prod.json
+$   savilerow model.eprime prod_1.param -run-solver
+
+$ a_dim1: the number of products (derived from the data)
+given a_dim1 : int
+$ a[j]: the (positive) coefficient of product j; product j uses 1/a[j] of the shared limit per unit (indices from 1)
+given a : matrix indexed by [int(1..a_dim1)] of int(1..)
+$ c[j]: the profit per unit of product j
+given c : matrix indexed by [int(1..a_dim1)] of int
+$ u[j]: the largest quantity of product j
 given u : matrix indexed by [int(1..a_dim1)] of int(0..)
-given b : int(0..)
-$ the product of all time rates; multiplying the time constraint by it keeps every term whole
-letting P = product(a)
-find x : matrix indexed by [int(1..a_dim1)] of int(0..sum(u))
-find total_profit : int(0..sum(c)*sum(u))
+$ b: the shared limit on the sum of the quantities divided by their coefficients
+given b : int
+
+$ the largest possible total profit in absolute value: a bound for total_profit
+letting max_profit = sum j : int(1..a_dim1) . |c[j]| * u[j]
+
+$ x[j]: the quantity of product j to produce (indices from 1)
+find x : matrix indexed by [int(1..a_dim1)] of int(0..max(u))
+$ total_profit: the total profit of the quantities produced
+find total_profit : int(-max_profit..max_profit)
+
 maximising total_profit
 such that
-$ the quantity of each product is at most its limit
+$ the quantity of each product is at most its bound
 forAll j : int(1..a_dim1) . x[j] <= u[j],
-$ the time needed for the production, the sum of x[j] divided by a[j], is at most b (multiplied through by P)
-(sum j : int(1..a_dim1) . x[j] * (P / a[j])) <= b * P,
-$ the total profit is the sum of the profit per unit times the quantity of each product
+$ the sum of x[j]/a[j] is at most b; multiplying through by product(a) makes every coefficient a whole number
+(sum j : int(1..a_dim1) . x[j] * (product(a) / a[j])) <= b * product(a),
+$ the total profit is the sum of c[j] times x[j]
 total_profit = (sum j : int(1..a_dim1) . c[j] * x[j])

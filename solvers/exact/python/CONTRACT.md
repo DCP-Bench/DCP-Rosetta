@@ -51,11 +51,22 @@ enumerating.
 The objective reported with each solution is the problem's value, computed from the solution:
 `offset + sum(coefficient * value)` over `terms`. Exact's own value from `toOptimum` is not
 used for it: Exact minimises internally, so for a maximisation it returns `-(terms +
-offset)`. The runner reports no incumbents.
+offset)`.
+
+Incumbents: `toOptimum` runs its optimisation loop in C++ with no callback, so the runner
+reads them from Exact's own log. Its subclass sets `verbosity` 1 (which only adds the log;
+the search is unchanged), and the model runs in a worker process whose stdout the runner
+reads as it comes: each line `c     bounds UB >= LB @ SECONDS, ...` that `toOptimum` writes
+carries the best solution's value on Exact's internal scale, the minimised objective (the
+problem's value, negated for a maximisation) plus the weight `1 + sum(|c| * (ub - lb))` of
+the flag variable `toOptimum` adds. Each strictly better value within the objective's range
+over the variables' bounds is an `incumbent` record, `seconds` Exact's own (since
+`toOptimum` started); the proven optimum ends them if the log did not. They carry no values.
 
 ## Solving
 
-- The runner sets no solver option; it passes the seconds left of `execution_timeout`
+- The runner sets one solver option, `verbosity` 1 (replacing any the submission set), for
+  the incumbents above; Exact's log goes to stderr. It passes the seconds left of `execution_timeout`
   (measured from the start of the run, `create_model` included) as the timeout of each
   `toOptimum` and `runFull` call.
 - Optimisation: `toOptimum` returning `"SAT"` is the proven optimum, `"UNSAT"` gives

@@ -1,35 +1,68 @@
-% Flow shop: every job goes through the machines in the same order. Choose the
-% order of the jobs so that all of them are finished as early as possible.
+% flowshop_scheduling: a Picat model from DCP Rosetta.
+%
+% A set of jobs need to be processed on a set of machines in series. All jobs have the same processing
+% order through all the machines, from machine 1 to machine M. The first job of the sequence goes to the
+% first machine; meanwhile, the other jobs wait. When the first machine has processed the first job, the
+% first job goes to the second machine and the second job of the sequence starts on the first machine, and
+% so on. The time required to process job j on machine m is ProcessTime(j, m). Find a sequence of the
+% jobs that minimizes the makespan: the time when all jobs have been processed.
+%
+% Save this file as model.pi. Download `flowshop_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/flowshop_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py flowshop_scheduling.json
+%   picat model.pi flowshop_scheduling_1.dat
+%
+% Data.get(jobs): the jobs; Data.get(machines): the machines; Data.get(process_time): the processing
+% time of each job on each machine, Data.get(process_time)[J,M] for job J on machine M (lists indexed
+% from 1); Data.get(schedules): the job numbers as listed (not needed by the model).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Time = Data.get(process_time),   % time[j][m] = time of job j on machine m
-    NJ = len(Data.get(jobs)),
-    NM = len(Data.get(machines)),
-    Horizon = sum([sum(Row) : Row in Time]),
-    % sequence[k] = the job processed k-th
+    ProcessTime = Data.get(process_time),
+    NJ = len(Data.get(jobs)),              % the number of jobs
+    NM = len(Data.get(machines)),          % the number of machines
+    % Horizon: the jobs done one after another take at most this long
+    Horizon = sum([sum(Row) : Row in ProcessTime]),
+    % Sequence[K] = the job in position K of the sequence
     Sequence = new_list(NJ),
     Sequence :: 1..NJ,
     all_distinct(Sequence),
-    % start and end of the k-th job on machine m
+    % Start[K,M] and End[K,M] = when the job in position K starts and ends on machine M
     Start = new_array(NJ, NM),
     Start :: 0..Horizon,
     End = new_array(NJ, NM),
     End :: 0..Horizon,
     foreach (K in 1..NJ, M in 1..NM)
-        % the time of the k-th job on machine m depends on which job it is
-        element(Sequence[K], [Time[J, M] : J in 1..NJ], Duration),
-        End[K, M] #= Start[K, M] + Duration,
-        % a job moves to the next machine only when it is done on this one
+        % the job in position K takes as long on machine M as its processing time there
+        element(Sequence[K], [ProcessTime[J,M] : J in 1..NJ], Duration),
+        End[K,M] #= Start[K,M] + Duration,
+        % the job moves to machine M only when it is done on the machine before
         if M > 1 then
-            Start[K, M] #>= End[K, M - 1]
+            Start[K,M] #>= End[K,M-1]
         end,
-        % a machine takes the next job only when the previous one is done
+        % machine M takes the next job only when it has finished the job before
         if K > 1 then
-            Start[K, M] #>= End[K - 1, M]
+            Start[K,M] #>= End[K-1,M]
         end
     end,
-    Makespan #= End[NJ, NM],
-    Vars = Sequence ++ vars(Start),
+    % the makespan: the time when the last job is done on the last machine
+    Makespan #= End[NJ,NM],
+    Vars = Sequence ++ [Start[K,M] : K in 1..NJ, M in 1..NM],
     Outputs = [makespan = Makespan],
+    % minimize the makespan
     Options = [$min(Makespan)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

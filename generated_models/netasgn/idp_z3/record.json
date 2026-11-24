@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791975126.2274444,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/idp_z3/idp/CONTRACT.md": "ebca9737305e27cb9d7617977058286ddcb46fd7453879246cc10f18731df610"
+    },
+    "created_at": 1794651817.813141,
     "problem_id": "netasgn",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "f8f6b4480eb3613e732ea77a1211e9e6a2ad1c535562db19627d8de783d86616",
-    "run_id": "20261015-idp-models",
-    "schema": 2,
-    "skill_bundle_hash": "a98b9e8d022824fe211f3df9a17bf591be9f12ae662aa358ec2c8c6ccfebeea9",
-    "skill_source": "solvers/idp_z3/skills/idp-z3",
+    "readiness_hash": "00846fea2c70a03214f2d787c544bf7a6205d6046d5954fc9b92e8c1a92d58ee",
+    "run_id": "20261117-idp-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "8e64b731216ebb15b0ec9876708589d056cd4e99",
+      "commit": "d76c79276168233b43e54738a0c5130728074fc8",
       "modified": false,
-      "path": "solvers/idp_z3/skills/idp-z3"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "d76c79276168233b43e54738a0c5130728074fc8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "75df9d068ca98ec4a85a0f47208875c79742b269fb4498d41b4900604c97f3b1",
+        "source": "solvers/idp_z3/skills/dcp-idp-z3",
+        "version": {
+          "commit": "d76c79276168233b43e54738a0c5130728074fc8",
+          "modified": true,
+          "path": "solvers/idp_z3/skills/dcp-idp-z3"
+        }
+      }
+    ],
     "solver_id": "idp_z3"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:edd2eb4c8a168330f0505db24a263ed45bd60bbee99b1e4c280c394b76756244",
+      "id": "sha256:15a32724eb382f5e1fd09a13d0525214d110fab52591ff52bac933ac3b353db9",
+      "recipe": "sha256:80d584eef6435812873ebea1413da34b1d897a79271004ee650230622fd7b487",
       "tag": "dcp-eval/idp_z3:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.008908617019187659,
-        "execution_wall_seconds": 0.8518629979807884,
+        "checking_seconds": 0.011635703966021538,
+        "execution_wall_seconds": 5.223857851990033,
         "first_solution": {
           "assign": [
             [
@@ -52,6 +82,12 @@
           "total_cost": 285
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.010834919987246394,
+            285
+          ]
+        ],
         "instance_hash": "8d11eeb473a102cb22a6d1e1d3586d4f346ad7ac4dc89cb4a7be0d597b81be3f",
         "is_optimization": true,
         "oom_killed": false,
@@ -61,9 +97,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7400285319890827,
+        "reference_setup_seconds": 2.384100764989853,
         "runner_status": {
+          "build_seconds": 0.3423619389650412,
           "detail": "",
+          "main_seconds": 0.39261412201449275,
+          "read_seconds": 0.00020679400768131018,
           "status": "limit",
           "type": "status"
         },
@@ -73,8 +112,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007190131000243127,
-        "execution_wall_seconds": 1.3519016350037418,
+        "checking_seconds": 0.008331322984304279,
+        "execution_wall_seconds": 6.48646785604069,
         "first_solution": {
           "assign": [
             [
@@ -99,6 +138,16 @@
           "total_cost": 314
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.01826116704614833,
+            320
+          ],
+          [
+            0.07784466003067791,
+            314
+          ]
+        ],
         "instance_hash": "b2c94acde66d08f32957698b0f7a3e686d413a64b226b9504406acb78f7c7169",
         "is_optimization": true,
         "oom_killed": false,
@@ -108,9 +157,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7671807419974357,
+        "reference_setup_seconds": 1.5277432760340162,
         "runner_status": {
+          "build_seconds": 0.8683145340182818,
           "detail": "",
+          "main_seconds": 0.9902844749740325,
+          "read_seconds": 0.00018544099293649197,
           "status": "complete",
           "type": "status"
         },
@@ -120,8 +172,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007000732002779841,
-        "execution_wall_seconds": 1.083824671979528,
+        "checking_seconds": 0.006835345993749797,
+        "execution_wall_seconds": 5.722671644005459,
         "first_solution": {
           "assign": [
             [
@@ -148,6 +200,16 @@
           "total_cost": 617
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.013392450986430049,
+            634
+          ],
+          [
+            0.024778956023510545,
+            617
+          ]
+        ],
         "instance_hash": "dfa523d93c7332f6f7fddd1aad87d0736dbbd7d5a25397037195251c54e35928",
         "is_optimization": true,
         "oom_killed": false,
@@ -157,9 +219,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7869352140114643,
+        "reference_setup_seconds": 0.8585097609902732,
         "runner_status": {
+          "build_seconds": 0.6979398659896106,
           "detail": "",
+          "main_seconds": 0.7771865989780053,
+          "read_seconds": 0.00019106100080534816,
           "status": "complete",
           "type": "status"
         },
@@ -169,8 +234,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007884311024099588,
-        "execution_wall_seconds": 1.00094870000612,
+        "checking_seconds": 0.019630809023510665,
+        "execution_wall_seconds": 5.131066648988053,
         "first_solution": {
           "assign": [
             [
@@ -205,6 +270,20 @@
           "total_cost": 925
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.04098114196676761,
+            1115
+          ],
+          [
+            0.2459262419724837,
+            959
+          ],
+          [
+            0.24800468498142436,
+            925
+          ]
+        ],
         "instance_hash": "b4ea8f7e95dbc986eb7c037d093cb619120c5e249c7b872740e93a160f5352c3",
         "is_optimization": true,
         "oom_killed": false,
@@ -214,9 +293,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7771955619682558,
+        "reference_setup_seconds": 1.7950679760542698,
         "runner_status": {
+          "build_seconds": 0.7609928160090931,
           "detail": "",
+          "main_seconds": 1.079477648017928,
+          "read_seconds": 0.0002022100379690528,
           "status": "complete",
           "type": "status"
         },
@@ -226,8 +308,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.018396774015855044,
-        "execution_wall_seconds": 0.9530882539693266,
+        "checking_seconds": 0.01176324998959899,
+        "execution_wall_seconds": 4.686605835042428,
         "first_solution": {
           "assign": [
             [
@@ -248,6 +330,16 @@
           "total_cost": 518
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.01149083103518933,
+            548
+          ],
+          [
+            0.01656678901053965,
+            518
+          ]
+        ],
         "instance_hash": "a42484528ca145f764435e90e42ede9818b8b0ee8e66c9c6f0aef019ed5d2d13",
         "is_optimization": true,
         "oom_killed": false,
@@ -257,9 +349,12 @@
           "total_cost"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6033195600030012,
+        "reference_setup_seconds": 1.450607256963849,
         "runner_status": {
+          "build_seconds": 0.5699723330326378,
           "detail": "",
+          "main_seconds": 0.6287630050210282,
+          "read_seconds": 0.00019495002925395966,
           "status": "complete",
           "type": "status"
         },
@@ -277,15 +372,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "2b2c156d1337561d96d1fc372bdcc5b5950641263f37c36f7ebc690727f4d621",
+    "model_hash": "7cac584f7411e0068ddfbc0b38e69e0d3e06818cc4e2903f09fd56f68358679e",
     "problem_id": "netasgn",
     "reason": "accepted",
-    "reference_hash": "b5b1eb4c6c482ea5edd3e8b7b66e2b55d198f101b3ed0eab2f9456f6c707c0e6",
+    "reference_hash": "750ce8208183d835c72ad450e3d0656941b4a5cc8836063d336af61a764decea",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -296,11 +391,11 @@
     "skipped_instances": [],
     "solutions_checked": 6,
     "solver_id": "idp_z3",
-    "total_wall_seconds": 9.397236977994908,
+    "total_wall_seconds": 37.283022721007,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.idp",

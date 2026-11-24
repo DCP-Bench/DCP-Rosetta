@@ -1,28 +1,66 @@
-% Magic hexagon: place the numbers 1..19 in the 19 cells of a hexagon (rows of
-% 3, 4, 5, 4 and 3 cells) so that each of the 15 lines adds up to the magic sum.
+% csplib_023_magic_hexagon: a Picat model from DCP Rosetta.
+%
+% A magic hexagon arranges the numbers 1 to 19 in a hexagon of cells, in rows of 3, 4, 5, 4 and 3
+% cells, so that the numbers in each of the 15 lines (the five rows and the ten diagonals) add up to
+% the same magic constant.
+%
+%       A B C
+%      D E F G
+%     H I J K L
+%      M N O P
+%       Q R S
+%
+% Save this file as model.pi. Download `csplib_023_magic_hexagon.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_023_magic_hexagon.json
+%   picat model.pi csplib_023_magic_hexagon_1.dat
+%
+% Data.get('MAGIC_SUM'): the magic constant that each line adds up to; Data.get('NUM_CELLS'): the
+% number of cells, which hold the numbers 1 to NUM_CELLS.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    NCells = Data.get('NUM_CELLS'),
     MagicSum = Data.get('MAGIC_SUM'),
-    % Cells are numbered row by row from 1:
-    %        1  2  3
-    %      4  5  6  7
-    %    8  9 10 11 12
-    %     13 14 15 16
-    %       17 18 19
-    % The lines are the five rows and the five lines in each diagonal direction.
-    Lines = [[1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19],
-             [1, 4, 8], [2, 5, 9, 13], [3, 6, 10, 14, 17], [7, 11, 15, 18], [12, 16, 19],
-             [3, 7, 12], [2, 6, 11, 16], [1, 5, 10, 15, 19], [4, 9, 14, 18], [8, 13, 17]],
-    LD = new_list(NCells),
-    LD :: 1..NCells,
-    % every number is used once
-    all_distinct(LD),
-    % every line adds up to the magic sum
-    foreach (Line in Lines)
-        sum([LD[C] : C in Line]) #= MagicSum
-    end,
+    NumCells = Data.get('NUM_CELLS'),
+    % LD[I] = the number in the cell with label number I, the cells numbered row by row:
+    % A = 1, B = 2, ..., S = 19
+    LD = new_list(NumCells),
+    LD :: 1..NumCells,
+    % the numbers 1 to 19 are each used exactly once
+    all_different(LD),
+    % the five rows add up to the magic constant
+    sum([LD[I] : I in [1, 2, 3]]) #= MagicSum,           % A B C
+    sum([LD[I] : I in [4, 5, 6, 7]]) #= MagicSum,        % D E F G
+    sum([LD[I] : I in [8, 9, 10, 11, 12]]) #= MagicSum,  % H I J K L
+    sum([LD[I] : I in [13, 14, 15, 16]]) #= MagicSum,    % M N O P
+    sum([LD[I] : I in [17, 18, 19]]) #= MagicSum,        % Q R S
+    % the five diagonals running down and to the left add up to the magic constant
+    sum([LD[I] : I in [1, 4, 8]]) #= MagicSum,           % A D H
+    sum([LD[I] : I in [2, 5, 9, 13]]) #= MagicSum,       % B E I M
+    sum([LD[I] : I in [3, 6, 10, 14, 17]]) #= MagicSum,  % C F J N Q
+    sum([LD[I] : I in [7, 11, 15, 18]]) #= MagicSum,     % G K O R
+    sum([LD[I] : I in [12, 16, 19]]) #= MagicSum,        % L P S
+    % the five diagonals running down and to the right add up to the magic constant
+    sum([LD[I] : I in [1, 5, 10, 15, 19]]) #= MagicSum,  % A E J O S
+    sum([LD[I] : I in [2, 6, 11, 16]]) #= MagicSum,      % B F K P
+    sum([LD[I] : I in [3, 7, 12]]) #= MagicSum,          % C G L
+    sum([LD[I] : I in [4, 9, 14, 18]]) #= MagicSum,      % D I N R
+    sum([LD[I] : I in [8, 13, 17]]) #= MagicSum,         % H M Q
     Vars = LD,
     Outputs = ['LD' = LD],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,15 +1,34 @@
 language ESSENCE' 1.0
-$ Select bus driver shifts so that every piece of work is covered by exactly one selected shift, minimising the number of selected shifts.
+$ csplib_022_bus_driver_scheduling: an Essence' model from DCP Rosetta.
+$
+$ This problem requires finding an optimal schedule for bus drivers. Given a set of tasks (pieces of work) to cover and a large set of possible shifts, where each shift covers a subset of the tasks, select a subset of shifts that covers each piece of work exactly once. The goal is to cover all tasks while minimising the total number of shifts used. The cost of each shift is considered equal.
+$
+$ Save this file as model.eprime. Download `csplib_022_bus_driver_scheduling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_022_bus_driver_scheduling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_022_bus_driver_scheduling_1.param.solution`:
+$   python dcp_convert_essence.py csplib_022_bus_driver_scheduling.json
+$   savilerow model.eprime csplib_022_bus_driver_scheduling_1.param -run-solver
+
+$ num_work: number of pieces of work (tasks), numbered 0 to num_work-1 in the data
 given num_work : int(1..)
+$ shifts_dim1: the number of shifts (derived from the data)
+$ shifts_dim2: the largest number of pieces of work in a shift (derived from the data)
 given shifts_dim1, shifts_dim2 : int(1..)
-$ shifts[k,p] is the p-th piece of work (0-based) of shift k, for p up to shifts_len[k]; the rest is padding
+$ shifts[k,p]: the p-th piece of work of shift k (0-based, as in the data), for p up to shifts_len[k]; the rest is padding
 given shifts : matrix indexed by [int(1..shifts_dim1), int(1..shifts_dim2)] of int(0..)
+$ shifts_len[k]: the number of pieces of work in shift k (the length of its row, derived from the data)
 given shifts_len : matrix indexed by [int(1..shifts_dim1)] of int(1..)
+
+$ x[k]: shift k is selected
 find x : matrix indexed by [int(1..shifts_dim1)] of bool
 
+$ search hint
 branching on [x]
 
 minimising (sum k : int(1..shifts_dim1) . toInt(x[k]))
+
 such that
 $ every piece of work is covered by exactly one selected shift: the selected shifts that contain the piece add up to one
-forAll t : int(0..num_work-1) . (sum k : int(1..shifts_dim1) . toInt(x[k]) * (sum p : int(1..shifts_dim2) . toInt((shifts[k,p] = t) /\ (p <= shifts_len[k])))) = 1
+forAll t : int(0..num_work-1) . ((sum k : int(1..shifts_dim1) . toInt(x[k]) * (sum p : int(1..shifts_dim2) . toInt((shifts[k,p] = t) /\ (p <= shifts_len[k])))) = 1)

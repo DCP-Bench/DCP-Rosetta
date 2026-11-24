@@ -1,136 +1,69 @@
-// Fancy dress party: Mr Greenguest chooses which items to wear so that he follows the dress code
-// (or pays the 11 dollar fee) at the least cost. He owns a green shirt already, and can buy a
-// green tie for 10, a green hat for 2 and green socks for 12. Choices are 0/1 for tie (t),
-// hat (h), shirt (r), socks (s) and entrance fee (n).
 #include "dcp.h"
 
+// Fancy dress: Mr Greenguest chooses which green items to wear to Mr Greenfan's party, and
+// pays the $11 entrance fee if he is not dressed according to rules 1-3, at the lowest total
+// cost. He owns a green shirt; a green tie costs $10, a used green hat $2, green socks $12.
+
+// Posts one clause: at least one literal of `pos` is true or one of `neg` is false.
+// Chuffed has no Boolean expressions, so every rule is written as its clauses.
+static void clause(std::initializer_list<BoolView> pos, std::initializer_list<BoolView> neg) {
+  vec<BoolView> p, q;
+  for (BoolView b : pos) p.push(b);
+  for (BoolView b : neg) q.push(b);
+  bool_clause(p, q);
+}
+
 void Build(const json& instance, json& outputs) {
-  // the five choices as Booleans: t tie, h hat, r shirt, s socks, n pays the entrance fee
-  vec<BoolView> choice;
-  createVars(choice, 5);
-  BoolView t = choice[0];
-  BoolView h = choice[1];
-  BoolView r = choice[2];
-  BoolView s = choice[3];
-  BoolView n = choice[4];
+  (void)instance;  // no fields: every number below is from the problem statement
 
-  // rule 1: a green tie requires a green shirt (t -> r)
-  {
-    vec<BoolView> pos, neg;
-    pos.push(r);
-    neg.push(t);
-    bool_clause(pos, neg);
-  }
+  BoolView t = newBoolVar();  // he wears a green tie
+  BoolView h = newBoolVar();  // he wears a green hat
+  BoolView r = newBoolVar();  // he wears a green shirt
+  BoolView s = newBoolVar();  // he wears green socks
+  BoolView n = newBoolVar();  // he pays the entrance fee
 
-  // rule 2: green socks and a green shirt only if a green tie or a green hat (s and r -> t or h)
-  {
-    vec<BoolView> pos, neg;
-    pos.push(t);
-    pos.push(h);
-    neg.push(s);
-    neg.push(r);
-    bool_clause(pos, neg);
-  }
+  // Rule 4: a guest who is not dressed according to rules 1-3 must pay the fee, so every
+  // clause of rules 1-3 below also holds when he pays (n).
 
-  // rule 3: a green shirt, or a green hat, or no green socks requires a green tie
-  // ((r or h or not s) -> t) is the three clauses (t or not r), (t or not h), (t or s)
-  {
-    vec<BoolView> pos, neg;
-    pos.push(t);
-    neg.push(r);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(t);
-    neg.push(h);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(t);
-    pos.push(s);
-    bool_clause(pos, neg);
-  }
+  // Rule 1: if someone wears a green tie he has to wear a green shirt.
+  clause({r, n}, {t});
+  // Rule 2: a guest who wears green socks or a green shirt must also wear a green tie or a
+  // green hat: socks need a tie or a hat, and so does the shirt.
+  clause({t, h, n}, {s});
+  clause({t, h, n}, {r});
+  // Rule 3: a guest wearing a green shirt or a green hat or who does not wear green socks
+  // must wear a green tie: the shirt, the hat and bare feet each need the tie.
+  clause({t, n}, {r});
+  clause({t, n}, {h});
+  clause({t, s, n}, {});
 
-  // rule 4: a guest who breaks rules 1 to 3 pays the fee, so n is true whenever a rule is broken.
-  // Each clause of rules 1 to 3 is kept unless n is true: (n or clause) for every clause.
-  {
-    vec<BoolView> pos, neg;
-    pos.push(n);
-    pos.push(r);
-    neg.push(t);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(n);
-    pos.push(t);
-    pos.push(h);
-    neg.push(s);
-    neg.push(r);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(n);
-    pos.push(t);
-    neg.push(r);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(n);
-    pos.push(t);
-    neg.push(h);
-    bool_clause(pos, neg);
-  }
-  {
-    vec<BoolView> pos, neg;
-    pos.push(n);
-    pos.push(t);
-    pos.push(s);
-    bool_clause(pos, neg);
-  }
-
-  // the 0/1 integer copies of the choices, for the output and the cost
+  // The choices as 0/1 integers, for the cost and the outputs.
   IntVar* ti = newIntVar(0, 1);
-  bool2int(t, ti);
   IntVar* hi = newIntVar(0, 1);
-  bool2int(h, hi);
   IntVar* ri = newIntVar(0, 1);
-  bool2int(r, ri);
   IntVar* si = newIntVar(0, 1);
-  bool2int(s, si);
   IntVar* ni = newIntVar(0, 1);
+  bool2int(t, ti);
+  bool2int(h, hi);
+  bool2int(r, ri);
+  bool2int(s, si);
   bool2int(n, ni);
 
-  // the cost: tie 10, hat 2, socks 12 and fee 11; the green shirt is already owned, so it costs nothing
-  vec<int> prices;
-  prices.push(10);
-  prices.push(2);
-  prices.push(12);
-  prices.push(11);
+  // Minimise the total cost: the tie, the hat, the socks and the fee (the shirt he owns).
+  IntVar* cost = newIntVar(0, 10 + 2 + 12 + 11);
+  vec<int> price;
   vec<IntVar*> bought;
-  bought.push(ti);
-  bought.push(hi);
-  bought.push(si);
-  bought.push(ni);
-  IntVar* cost = newIntVar(0, 35);
-  int_linear(prices, bought, IRT_EQ, cost);
-
-  // the choices are the decision variables
-  vec<IntVar*> search;
-  search.push(ti);
-  search.push(hi);
-  search.push(ri);
-  search.push(si);
-  search.push(ni);
-  branch(search, VAR_INORDER, VAL_MIN);
-
-  // minimise the cost
+  price.push(10); bought.push(ti);
+  price.push(2);  bought.push(hi);
+  price.push(12); bought.push(si);
+  price.push(11); bought.push(ni);
+  int_linear(price, bought, IRT_EQ, cost);
   optimize(cost, OPT_MIN);
 
-  outputs = {{"h", dcp::out(hi)}, {"n", dcp::out(ni)}, {"r", dcp::out(ri)},
-             {"s", dcp::out(si)}, {"t", dcp::out(ti)}};
+  vec<IntVar*> choices;
+  choices.push(ti); choices.push(hi); choices.push(ri); choices.push(si); choices.push(ni);
+  branch(choices, VAR_INORDER, VAL_MIN);
+
+  outputs = {{"t", dcp::out(ti)}, {"h", dcp::out(hi)}, {"r", dcp::out(ri)},
+             {"s", dcp::out(si)}, {"n", dcp::out(ni)}};
 }

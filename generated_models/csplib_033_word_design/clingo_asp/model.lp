@@ -1,29 +1,34 @@
-% Word design: find num_words words of length n over the alphabet {A, C, G, T} (coded 1, 2, 3, 4)
-% such that every word has exactly 4 letters from {C, G}, any two different words differ in at
-% least 4 positions, and for any two words x and y (possibly the same word) the reverse of x
-% and the Watson-Crick complement of y differ in at least 4 positions.
-% Instance facts: n(N): the length of each word; num_words(M): how many words to find.
-% The figure 4 in the three properties is fixed by the problem statement, not by the instance.
+% csplib_033_word_design: a clingo model from DCP Rosetta.
+%
+% Find a set S of num_words strings (words) of length n over the alphabet {A,C,G,T} with the following properties: each word in S has 4 symbols from {C,G}; each pair of distinct words in S differ in at least 4 positions; and each pair of words x and y in S (where x and y may be identical) are such that the reverse of x and the Watson-Crick complement of y differ in at least 4 positions. The Watson-Crick complement replaces each A by a T and vice versa, and each C by a G and vice versa.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+% Save this file as model.lp. Download `csplib_033_word_design.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_033_word_design.json
+%   python -m clingo model.lp csplib_033_word_design_1.lp
+
+% Input: n(N): the length N of each word; num_words(M): the number M of words. The words are numbered
+% 0..M-1 and the positions 0..N-1 (indices are 0-based). The letters are 1 for A, 2 for C, 3 for G and 4 for T,
+% so the complement of letter L is 5-L.
+
 word(0..M-1) :- num_words(M).
-position(0..N-1) :- n(N).
+pos(0..N-1) :- n(N).
+letter(1..4).
 
-% words(I, J, L): the J-th letter of word I is L (1 = A, 2 = C, 3 = G, 4 = T). Every position
-% of every word holds exactly one letter.
-1 { words(I,J,1..4) } 1 :- word(I), position(J).
+% words(W,P,L): word W has letter L at position P; each position holds exactly one letter
+1 { words(W,P,L) : letter(L) } 1 :- word(W), pos(P).
 
-% Each word has exactly 4 symbols from {C, G}.
-strong(I,J) :- words(I,J,2).
-strong(I,J) :- words(I,J,3).
-:- word(I), #count { J : strong(I,J) } != 4.
+% each word has exactly 4 symbols from {C, G}
+:- word(W), #count { P,c : words(W,P,2) ; P,g : words(W,P,3) } != 4.
 
-% Each pair of distinct words differs in at least 4 positions, that is, they agree in at most
-% n - 4 positions.
-:- word(I1), word(I2), I1 < I2, n(N), #count { J : words(I1,J,L), words(I2,J,L) } > N - 4.
+% each pair of distinct words differ in at least 4 positions, so they agree in at most n-4 positions
+:- word(W1), word(W2), W1 < W2, n(N), #count { P : words(W1,P,L), words(W2,P,L) } > N-4.
 
-% For every pair of words x and y (x and y may be the same word), the reverse of x and the
-% complement of y differ in at least 4 positions. The complement of a letter L is 5 - L
-% (A and T swap, C and G swap) and position J of the reverse of x holds letter x[N-1-J].
-:- word(X), word(Y), n(N),
-   #count { J : words(Y,J,M), words(X,K,L), K = N - 1 - J, L + M = 5 } > N - 4.
+% for each pair of words x and y, possibly the same, the reverse of x and the complement of y differ in
+% at least 4 positions: position P of the reverse of x is letter N-1-P of x, and the complement of y at P is 5-L
+:- word(W1), word(W2), n(N), #count { P : words(W1,N-1-P,L), words(W2,P,5-L) } > N-4.
 
 #show words/3.

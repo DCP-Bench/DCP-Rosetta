@@ -1,29 +1,35 @@
-"""Resource-constrained project scheduling: choose start times for jobs with given durations and
-resource needs so that every job starts after its predecessors finish, the jobs running at any
-moment never need more of a resource than its capacity, and the latest start time is minimized.
+# resource_constrained_project_scheduling: a CPLEX (Python) model from DCP Rosetta.
+# Download the `resource_constrained_project_scheduling.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/resource_constrained_project_scheduling.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python resource_constrained_project_scheduling.py resource_constrained_project_scheduling.json
 
-The model reports the start time of every job.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
-    durations = instance["durations_data"]
-    needs = instance["resource_needs_data"]          # needs[j][r]: units of resource r job j uses
-    capacities = instance["resource_capacities_data"]
-    links = instance["successors_link_data"]         # [p, s]: job s starts after job p ends
+def create_model(instance):
+    """Choose start times for jobs with given durations and resource needs so that every job starts
+    after its predecessors have ended, the jobs running at any moment never need more of a resource
+    than its capacity, and the makespan is minimised."""
+    durations = instance["durations_data"]               # durations[j]: how long job j takes
+    needs = instance["resource_needs_data"]              # needs[j][r]: units of resource r job j uses
+    capacities = instance["resource_capacities_data"]    # capacities[r]: units of resource r available at any time
+    links = instance["successors_link_data"]             # [p, s]: job s starts after job p ends
     n = len(durations)
     resources = range(len(capacities))
     jobs = range(n)
-    horizon = sum(durations)  # the reference's bound on a start time
+    # Running all jobs one after the other takes sum(durations), so an optimal schedule starts
+    # no job later than that: this bound cuts off no optimum.
+    horizon = sum(durations)
 
     model = Model("rcpsp")
 
+    # start_time[j] is the time at which job j starts
     start_time = [model.integer_var(0, horizon, name=f"start_{j}") for j in jobs]
 
     # Precedence: a job starts no earlier than each of its predecessors ends.
-    for p, s in links:
-        model.add_constraint(start_time[s] >= start_time[p] + durations[p])
+    model.add_constraints(start_time[s] >= start_time[p] + durations[p] for p, s in links)
 
     # Which jobs are ordered, directly or through a chain, by the precedences (data only).
     after = [[False] * n for _ in jobs]
@@ -78,7 +84,8 @@ def build(instance):
     for group in forbidden:
         model.add_constraint(model.sum(precedes(i, j) for i in group for j in group if i != j) >= 1)
 
-    # The objective is the latest start time (the reference minimizes max(start_time)).
+    # Minimise the makespan, taken as the latest start time: the instances end in a job of
+    # duration zero that follows every other job.
     # tail[j] is the longest chain of durations from job j to a later job's start; a job's
     # successors start at least tail[j] after it, so latest >= start_time[j] + tail[j]. This is
     # implied by the precedences and gives the solver the critical-path bound directly.
@@ -93,3 +100,28 @@ def build(instance):
     model.minimize(latest)
 
     return model, {"start_time": start_time}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.parameters.mip.tolerances.mipgap = 0  # prove the optimum; the default stops within 0.01% of it
+    solution = model.solve()
+
+    if solution:  # a proven optimum
+        print("Objective value:", round(solution.objective_value))
+
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

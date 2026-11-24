@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791989461.5043535,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "690b20038277627960683d03eb7b921bc8a06c3ce3e59585a7739ded9cb4168f"
+    },
+    "created_at": 1794341674.519452,
     "problem_id": "four_islands",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "dec26fe97f27e47e605711c77916c053a4fdb9719d9739e8b03e82cf9ac87e6c",
+    "run_id": "scip-polish",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:ba8c4d07b6eb8ea203c2d797b6975ad656d98f740f9de8a609c87f1a58fedc9b",
+      "recipe": "sha256:d8e8a4b0ba3e1fb49869ba406d7ffe0d76e0d36fec698d04ec0116b2346507ed",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.008173528010956943,
-        "execution_wall_seconds": 0.8020284650265239,
+        "checking_seconds": 0.0035586360027082264,
+        "execution_wall_seconds": 0.7956053410016466,
         "first_solution": {
           "attraction": [
             1,
@@ -69,9 +99,12 @@
           "attraction"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6962672829977237,
+        "reference_setup_seconds": 0.3141134879842866,
         "runner_status": {
+          "build_seconds": 0.006434334005462006,
           "detail": "",
+          "main_seconds": 0.00852230199961923,
+          "read_seconds": 0.0001247919863089919,
           "status": "complete",
           "type": "status"
         },
@@ -89,15 +122,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "cb4d6e8401f794e703f65807c1b0e2b579767e1b800c285407615decd311fb82",
+    "model_hash": "6cece4e24463d648e76926011ac46aa76f45e5b4c980fe3fd0388afb8454efec",
     "problem_id": "four_islands",
     "reason": "accepted",
-    "reference_hash": "bbb2d83add92d381e3376bc4ac34f95615450c924099a72693a0efa3b055c14b",
+    "reference_hash": "aefc2dd2de794f16e62617a91132c087f66d6ee7a276ded64db44311ee05b91b",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -108,11 +141,11 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "scip_python",
-    "total_wall_seconds": 1.605622395989485,
+    "total_wall_seconds": 1.4842243439925369,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

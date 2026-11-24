@@ -1,33 +1,40 @@
-vocabulary {
-    // the grid has n rows and n columns
-    type Range_n <: Int
-    // cell values range over 1..n*n
-    type Cell <: Int
-    Cell_size: () -> Int
-    n: () -> Int
-    magic_sum: () -> Int
-    // declared output: square[row][column]
-    square: Range_n * Range_n -> Cell
+// session1_magic_square: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A magic square is an n x n grid (n != 2) such that each cell contains a different integer from 1 to n^2 and the sum
+// of the integers in each row, column and diagonal is equal. Find a magic square for a given size n, knowing that the
+// sum of integers of each row, column and diagonal has to be equal to n(n^2 + 1)/2 (integer).
+//
+// Save this file as model.idp. Download `session1_magic_square.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_magic_square.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session1_magic_square.json
+//   idp-engine model_1.idp
+vocabulary V {
+    n: () -> Int                       // the size of the square: n rows and n columns
+    type Range_n <: Int                // the rows and the columns, numbered 1 to n
+    Value_size: () -> Int              // n * n, the number of cells (created by the conversion's rules)
+    type Value <: Int                  // the numbers in the cells, from 1 to n^2
+    square: Range_n * Range_n -> Value // square(r, c): the number in row r, column c
+    magic: () -> Int                   // the sum of each row, column and diagonal
 }
-theory {
-    // the values run from 1 to n^2
-    Cell_size() = n() * n().
-
-    // the common sum is n(n^2 + 1) / 2
-    magic_sum() = n() * (n() * n() + 1) / 2.
-
-    // each integer from 1 to n^2 is placed in exactly one cell
-    ! v in Cell: #{ r, c in Range_n: square(r, c) = v } = 1.
-
-    // every row sums to the magic constant
-    ! r in Range_n: sum{{ square(r, c) | c in Range_n }} = magic_sum().
-
-    // every column sums to the magic constant
-    ! c in Range_n: sum{{ square(r, c) | r in Range_n }} = magic_sum().
-
-    // the main diagonal sums to the magic constant
-    sum{{ square(r, r) | r in Range_n }} = magic_sum().
-
-    // the anti-diagonal sums to the magic constant
-    sum{{ square(r, c) | r, c in Range_n: r + c = n() + 1 }} = magic_sum().
+theory T:V {
+    // the square holds the numbers from 1 to n^2
+    Value_size() = n() * n().
+    // the constant sum of each row, column and diagonal is n(n^2 + 1)/2
+    magic() = n() * (n() * n() + 1) / 2.
+    // each number from 1 to n^2 is in exactly one cell, so every cell holds a different number
+    ! v in Value: #{ r in Range_n, c in Range_n: square(r, c) = v } = 1.
+    // the sum of each row is the magic sum
+    ! r in Range_n: sum{{ square(r, c) | c in Range_n }} = magic().
+    // the sum of each column is the magic sum
+    ! c in Range_n: sum{{ square(r, c) | r in Range_n }} = magic().
+    // the sum of the main diagonal is the magic sum
+    sum{{ square(i, i) | i in Range_n }} = magic().
+    // the sum of the other diagonal is the magic sum
+    sum{{ square(i, j) | i in Range_n, j in Range_n: i + j = n() + 1 }} = magic().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

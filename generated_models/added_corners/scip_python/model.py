@@ -1,38 +1,68 @@
-# Added corners: put the digits 1 to 8 in the 8 positions of a figure (four circles at
-# the corners, four squares at the edge midpoints) so that each square holds the sum
-# of the two circles next to it. Positions are read left to right, top to bottom.
+# added_corners: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/added_corners.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python added_corners.py
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    # The figure is fixed by the problem: 8 positions, digits 1 through 8.
-    n = 8
-    digits = range(1, n + 1)
-    m = Model()
+def create_model(instance):
+    """Added corners: write the digits 1 through 8 into the eight cells of a
+    ring-shaped figure. Four cells are circles (C) at the corners and four are
+    squares (F) on the edges. Each digit is used once, and each square holds the
+    sum of the two circles that touch it.
 
-    # value of each position, 0 = top left, 7 = bottom right in reading order
-    pos = [m.addVar(name=f"p{i}", vtype="I", lb=1, ub=n) for i in range(n)]
+    The instance is an empty list: the figure and the digits are fixed by the
+    statement, so the argument is not read.
+    """
+    model = Model("added_corners")
 
-    # one-hot choice: position i holds digit v when b[i, v] = 1
-    b = {(i, v): m.addVar(name=f"b{i}_{v}", vtype="B") for i in range(n) for v in digits}
-    # each position holds exactly one digit
-    for i in range(n):
-        m.addCons(quicksum(b[i, v] for v in digits) == 1)
-        m.addCons(pos[i] == quicksum(v * b[i, v] for v in digits))
+    # Cells are numbered in reading order, left to right, top to bottom:
+    #   0 top-left circle      1 top square        2 top-right circle
+    #   3 left square          4 right square
+    #   5 bottom-left circle   6 bottom square     7 bottom-right circle
 
-    # the digits 1 through 8 are each used once
-    for v in digits:
-        m.addCons(quicksum(b[i, v] for i in range(n)) == 1)
+    # digit[p] is the number written in cell p, a whole number from 1 to 8.
+    # The bounds 1 and 8 come from the statement: the digits are 1 through 8.
+    digit = [model.addVar(f"digit_{p}", vtype="I", lb=1, ub=8) for p in range(8)]
 
-    # circles are at the corners: positions 0, 2, 5, 7
-    # squares are at the edge midpoints: positions 1, 3, 4, 6
-    # the top square (1) is the sum of the circles next to it (0 and 2)
-    m.addCons(pos[1] == pos[0] + pos[2])
-    # the left square (3) is the sum of the circles above and below it (0 and 5)
-    m.addCons(pos[3] == pos[0] + pos[5])
-    # the right square (4) is the sum of the circles above and below it (2 and 7)
-    m.addCons(pos[4] == pos[2] + pos[7])
-    # the bottom square (6) is the sum of the circles next to it (5 and 7)
-    m.addCons(pos[6] == pos[5] + pos[7])
+    # place[p, v] is 1 when cell p holds the digit v, and 0 when not.
+    # SCIP has no all-different constraint, so each cell gets one binary per digit
+    # (one-hot), and each digit is used in exactly one cell. This is stronger than
+    # pairwise !=, which SCIP cannot state directly either.
+    place = {(p, v): model.addVar(f"place_{p}_{v}", vtype="B")
+             for p in range(8) for v in range(1, 9)}
 
-    return m, {"positions": pos}
+    # link digit[p] to its binaries
+    for p in range(8):
+        # each cell holds exactly one digit
+        model.addCons(quicksum(place[p, v] for v in range(1, 9)) == 1)
+        # digit[p] is the digit that the chosen binary picks
+        model.addCons(digit[p] == quicksum(v * place[p, v] for v in range(1, 9)))
+    for v in range(1, 9):
+        # the digit v is used in exactly one cell
+        model.addCons(quicksum(place[p, v] for p in range(8)) == 1)
+
+    # Each square holds the sum of the two circles that touch it.
+    model.addCons(digit[1] == digit[0] + digit[2])  # top square = top-left + top-right circle
+    model.addCons(digit[3] == digit[0] + digit[5])  # left square = top-left + bottom-left circle
+    model.addCons(digit[4] == digit[2] + digit[7])  # right square = top-right + bottom-right circle
+    model.addCons(digit[6] == digit[5] + digit[7])  # bottom square = bottom-left + bottom-right circle
+
+    # No objective: any arrangement that meets the rules is an answer.
+    return model, {"positions": digit}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

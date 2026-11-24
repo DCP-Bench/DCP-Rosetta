@@ -10,6 +10,7 @@ What holds in every interface (concepts, search, optimisation, enumeration) is i
 - [Solving](#solving)
 - [Scheduling](#scheduling)
 - [All solutions](#all-solutions)
+- [Readable models](#readable-models)
 - [Common issues](#common-issues)
 - [Further reading](#further-reading)
 
@@ -209,6 +210,45 @@ main :-
 ```
 
 Full program: [all-optimal-team](../assets/prolog/all-optimal-team/README.md). Details: [enumeration](https://www.swi-prolog.org/pldoc/man?section=clpfd).
+
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader runs it on
+one instance as `swipl -g "solve_file('data.json')" -t halt model.pl`; the model ends with a run block that reads the
+data file, solves and prints the answer.
+
+```prolog
+% Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+%
+% Data fields: capacity (the weight capacity), values and weights (value and weight of each item, lists indexed
+% from 0).
+:- use_module(library(clpfd)).
+
+model(Instance, X, [x-X], max(Value)) :-
+    Capacity = Instance.capacity,
+    length(Instance.values, N),            % the number of items
+    length(X, N),
+    X ins 0..1,                            % X[I] = 1 when item I is taken
+    % the items taken weigh no more than the capacity of the backpack
+    scalar_product(Instance.weights, X, #=<, Capacity),
+    % maximise the total value of the items taken
+    scalar_product(Instance.values, X, #=, Value).
+```
+
+followed by the run block exactly as the contract gives it.
+
+- Start with a comment that states the problem, then one that says what each field the model reads holds.
+- Name a size once (`length(Values, N)`) and give each requirement of the problem its own comment, in the problem's
+  words, rather than folding several into one.
+- Prefer the global constraints (`all_distinct/1`, `cumulative/2`, `circuit/1`, `tuples_in/2`, `global_cardinality/2`,
+  `automaton/3`, `element/3`, ...) and `scalar_product/4` to hand-built encodings.
+  A line or row rule over 0/1 cells (blocks of a given length) is an `automaton/3`, not all 2^n patterns enumerated
+  with `findall/3`; a machine that runs one task at a time is `cumulative/2` with limit 1, not pairwise disjunctions.
+  `scalar_product/4` needs integer coefficients: with decision variables on both sides use `sum/3` of products.
+- Fields are read as `Instance.field` (a dict); a name that is not a plain atom is quoted. JSON strings are atoms.
+  A model that reads no field names its argument `_Instance`.
+- Put every auxiliary variable in `Vars` (the driver labels `Vars` and the outputs only).
+- End with the run block: the driver never calls it, so one file serves both. It goes after `model/3|4`.
 
 ## Common issues
 

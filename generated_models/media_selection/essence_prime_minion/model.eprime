@@ -1,18 +1,37 @@
 language ESSENCE' 1.0
-$ Media selection: choose which advertising media to buy so that every target audience is reached by at least one selected medium, at the lowest total campaign cost.
-given incidence_matrix_dim1, incidence_matrix_dim2 : int
+$ media_selection: an Essence' model from DCP Rosetta.
+$
+$ The main media selection problem is allocating advertising budgets between possible advertising outlets. Given a set of media options, determine which media should be selected so that all audiences are reached with minimum campaign cost. An audience covered by more than one selected medium is still covered only once, and the company does not wish to spend more on the campaign than necessary.
+$
+$ Save this file as model.eprime. Download `media_selection.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/media_selection.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `media_selection_1.param.solution`:
+$   python dcp_convert_essence.py media_selection.json
+$   savilerow model.eprime media_selection_1.param -run-solver
+
+$ number of target audiences, derived from the data: the number of rows of incidence_matrix (the reader's JSON has no such field)
+given incidence_matrix_dim1 : int
+$ number of advertising media, derived from the data: the number of columns of incidence_matrix (the reader's JSON has no such field)
+given incidence_matrix_dim2 : int
+$ incidence_matrix[a,m]: 1 when medium m reaches audience a, 0 otherwise (indices 1-based: the data's index 0 is 1)
+given incidence_matrix : matrix indexed by [int(1..incidence_matrix_dim1), int(1..incidence_matrix_dim2)] of int
+$ media_costs[m]: the cost of buying medium m
+given media_costs : matrix indexed by [int(1..incidence_matrix_dim2)] of int
+
 letting n_audiences = incidence_matrix_dim1
 letting n_media = incidence_matrix_dim2
-$ incidence_matrix[a, m] is 1 when medium m reaches audience a
-given incidence_matrix : matrix indexed by [int(1..n_audiences), int(1..n_media)] of int
-given media_costs : matrix indexed by [int(1..n_media)] of int
+
+$ is_selected[m]: medium m is bought
 find is_selected : matrix indexed by [int(1..n_media)] of bool
+$ min_total_cost: the total cost of the media bought
 find min_total_cost : int(0..sum(media_costs))
 
 branching on [is_selected]
 minimising min_total_cost
 such that
-$ every target audience must be covered by at least one selected medium, so covering it more than once is allowed
-forAll a : int(1..n_audiences) . (sum m : int(1..n_media) . incidence_matrix[a, m] * is_selected[m]) >= 1,
-$ the total cost of the selected media is the campaign cost
-min_total_cost = (sum m : int(1..n_media) . media_costs[m] * is_selected[m])
+$ every target audience is reached by at least one selected medium
+forAll a : int(1..n_audiences) . ((sum m : int(1..n_media) . incidence_matrix[a,m] * toInt(is_selected[m])) >= 1),
+$ the total cost is the cost of the selected media
+min_total_cost = (sum m : int(1..n_media) . media_costs[m] * toInt(is_selected[m]))

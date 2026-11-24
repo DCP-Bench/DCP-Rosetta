@@ -1,40 +1,38 @@
-// Revenue maximization: choose how many seats to sell of each travel package so that the seats used on each flight leg stay within its available seats, maximizing total revenue.
-vocabulary {
-    // Travel packages, sized from the demand list.
-    type Pkg <: Int
-    // Flight legs, sized from the available seats list.
-    type Leg <: Int
-
-    // Revenue earned per sold package.
-    revenue: Pkg -> Int
-    // Maximum number of packages customers want.
-    demand: Pkg -> Int
-    // Seats available on each leg.
-    available_seats: Leg -> Int
-    // delta(p, l) = 1 when package p uses leg l.
-    delta: Pkg * Leg -> Int
-
-    // packages_to_sell(p): number of package p to sell.
-    packages_to_sell: Pkg -> Int
-    // earned(p): revenue collected from package p.
-    earned: Pkg -> Int
-    // max_revenue: total revenue of the packages sold.
-    max_revenue: () -> Int
-
-    maximize: () -> Int
+// revenue_maximization: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// We have a set of flight legs (one-way non-stop flights) with a limited passenger capacity. We have defined a set of
+// flight itineraries to sell as a package with a given price. For each package, there is an estimated demand. The
+// number of units of each package to sell is chosen to maximize the revenue. The passenger seats are reserved according
+// to the number of packages sold: the seats used on each leg may not exceed its capacity.
+//
+// Save this file as model.idp. Download `revenue_maximization.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/revenue_maximization.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py revenue_maximization.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Package <: Int                // the packages, numbered from 0, sized from demand
+    type Leg <: Int                    // the flight legs, numbered from 0, sized from available_seats
+    available_seats: Leg -> Int        // available_seats(l): the passenger seats of leg l
+    demand: Package -> Int             // demand(p): the estimated demand for package p
+    revenue: Package -> Int            // revenue(p): the price of one unit of package p
+    delta: Package * Leg -> Int        // delta(p, l): the seats on leg l used by one unit of package p
+    packages_to_sell: Package -> Int   // packages_to_sell(p): the units of package p to sell (declared output)
+    max_revenue: () -> Int             // the total revenue of the packages sold (declared output)
+    maximize: () -> Int                // the total revenue of the packages sold, to maximize
 }
-theory {
-    // A package is sold at most as often as customers demand it, and not a negative number of times.
-    ! p in Pkg: packages_to_sell(p) >= 0 & packages_to_sell(p) =< demand(p).
-
-    // Each leg has no more seats sold than available.
-    ! l in Leg: sum{{ packages_to_sell(p) | p in Pkg: delta(p, l) = 1 }} =< available_seats(l).
-
-    // The total revenue is the revenue of each package times the number sold.
-    ! p in Pkg: earned(p) = revenue(p) * packages_to_sell(p).
-
-    max_revenue() = sum{{ earned(p) | p in Pkg }}.
-
-    // The objective is the total revenue.
+theory T:V {
+    // the units of each package sold are between zero and its estimated demand
+    ! p in Package: 0 =< packages_to_sell(p) & packages_to_sell(p) =< demand(p).
+    // the seats used on each leg do not exceed the passenger capacity of that leg
+    ! l in Leg: sum{{ (delta(p, l) * packages_to_sell(p)) | p in Package }} =< available_seats(l).
+    // the revenue is the price of each unit times the units sold, summed over the packages
+    max_revenue() = sum{{ (revenue(p) * packages_to_sell(p)) | p in Package }}.
+    // the revenue is maximized
     maximize() = max_revenue().
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

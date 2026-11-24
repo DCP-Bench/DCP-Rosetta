@@ -1,13 +1,17 @@
-"""Costas array: a permutation costas of 1..n such that, for every distance d, the differences
-costas[j + d] - costas[j] over all positions j are all different (each row of the difference
-triangle holds different values).
+# csplib_076_costas_arrays: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_076_costas_arrays.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_076_costas_arrays.py csplib_076_costas_arrays.json
 
-The model reports the permutation.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Costas array: a permutation costas of 1..n such that, for every distance d, the differences
+    costas[j + d] - costas[j] over all positions j are all different (each row of the difference
+    triangle holds different values)."""
     n = instance["n"]  # size of the Costas array
 
     positions = range(n)
@@ -29,8 +33,8 @@ def build(instance):
     costas = [model.sum(v * at[j, v] for v in values) for j in positions]
 
     # All entries in a row of the difference triangle are distinct. Row d - 1 holds the
-    # differences costas[j + d] - costas[j]; the reference constrains the rows of distances
-    # 1..n-2 (the last row has a single entry). For each pair of entries of a row, larger is 1
+    # differences costas[j + d] - costas[j]; the last row (distance n - 1) has a single entry
+    # and needs no constraint. For each pair of entries of a row, larger is 1
     # when the second difference is the larger one. There are C(n, 3) such pairs, 220 at
     # n = 12, two indicator constraints each.
     for d in range(1, n - 1):
@@ -42,3 +46,25 @@ def build(instance):
                 model.add_indicator(larger, diff[b] + 1 <= diff[a], active_value=0)
 
     return model, {"costas": costas}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

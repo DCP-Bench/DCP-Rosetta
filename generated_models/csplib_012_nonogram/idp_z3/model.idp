@@ -1,31 +1,52 @@
-// Nonogram: shade squares of a grid so that every row and column shows its block sequence.
-vocabulary {
-    // row and column indices, sized from the instance arrays (0-based)
-    type Row <: Int
-    type Col <: Int
-    // rule slots of a row and of a column, sized from the instance arrays
-    type RK <: Int
-    type CK <: Int
-    type Cell := {0..1}
-    row_rules: Row * RK -> Int
-    col_rules: Col * CK -> Int
-    // leftmost shaded square of each row block, topmost of each column block
-    rstart: Row * RK -> Col
-    cstart: Col * CK -> Row
-    // declared output: 1 = shaded, 0 = unshaded
-    board: Row * Col -> Cell
+// csplib_012_nonogram: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Nonograms are a puzzle in which squares of a grid are shaded so that the blocks of consecutive shaded squares in each
+// row and in each column match the constraints given for that row or column. Constraints indicate the sequence of
+// shaded blocks (e.g. 3,1,2 means a block of 3, then a gap of unspecified size, a block of length 1, another gap, and
+// then a block of length 2).
+//
+// Save this file as model.idp. Download `csplib_012_nonogram.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_012_nonogram.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_012_nonogram.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Row <: Int                    // the rows, numbered from 0, sized from the row rules
+    type Col <: Int                    // the columns, numbered from 0, sized from the column rules
+    type RSlot <: Int                  // the block positions of a row rule, numbered from 0, sized from row_rules
+    type CSlot <: Int                  // the block positions of a column rule, numbered from 0, sized from col_rules
+    type Bit := {0..1}                 // a square: 0 unshaded, 1 shaded
+    rows: () -> Int                    // the number of rows of the grid
+    cols: () -> Int                    // the number of columns of the grid
+    row_rules: Row * RSlot -> Int       // row_rules(r, j): the length of block j of row r, 0-based; 0 where the rule has no such block
+    col_rules: Col * CSlot -> Int       // col_rules(c, j): the length of block j of column c, 0-based; 0 where the rule has no such block
+    row_start: Row * RSlot -> Int       // row_start(r, j): the first column of block j in row r (auxiliary)
+    col_start: Col * CSlot -> Int       // col_start(c, j): the first row of block j in column c (auxiliary)
+    board: Row * Col -> Bit            // board(r, c) = 1: the square in row r and column c is shaded
 }
-theory {
-    // blocks of consecutive shaded squares must fit inside their row
-    ! r in Row, k in RK: row_rules(r,k) > 0 => (? c in Col: c = rstart(r,k) + row_rules(r,k) - 1).
-    // blocks in a row keep their order and are separated by at least one unshaded square
-    ! r in Row, k1, k2 in RK: k1 < k2 & row_rules(r,k1) > 0 & row_rules(r,k2) > 0 => rstart(r,k2) > rstart(r,k1) + row_rules(r,k1).
-    // blocks of consecutive shaded squares must fit inside their column
-    ! c in Col, k in CK: col_rules(c,k) > 0 => (? r in Row: r = cstart(c,k) + col_rules(c,k) - 1).
-    // blocks in a column keep their order and are separated by at least one unshaded square
-    ! c in Col, k1, k2 in CK: k1 < k2 & col_rules(c,k1) > 0 & col_rules(c,k2) > 0 => cstart(c,k2) > cstart(c,k1) + col_rules(c,k1).
-    // a square is shaded exactly when a row block covers it
-    ! r in Row, c in Col: board(r,c) = 1 <=> (? k in RK: row_rules(r,k) > 0 & rstart(r,k) =< c & c < rstart(r,k) + row_rules(r,k)).
-    // a square is shaded exactly when a column block covers it
-    ! r in Row, c in Col: board(r,c) = 1 <=> (? k in CK: col_rules(c,k) > 0 & cstart(c,k) =< r & r < cstart(c,k) + col_rules(c,k)).
+
+theory T:V {
+    // each block of a row lies inside the row
+    ! r in Row, j in RSlot: row_rules(r, j) > 0 => row_start(r, j) >= 0 & row_start(r, j) + row_rules(r, j) =< cols().
+
+    // the blocks of a row come in order and are separated by at least one unshaded square
+    ! r in Row, j1, j2 in RSlot: j1 < j2 & row_rules(r, j1) > 0 & row_rules(r, j2) > 0 => row_start(r, j1) + row_rules(r, j1) < row_start(r, j2).
+
+    // a square is shaded in its row exactly when it lies in one of the blocks of that row
+    ! r in Row, c in Col: board(r, c) = 1 <=> (? j in RSlot: row_rules(r, j) > 0 & row_start(r, j) =< c & c < row_start(r, j) + row_rules(r, j)).
+
+    // each block of a column lies inside the column
+    ! c in Col, j in CSlot: col_rules(c, j) > 0 => col_start(c, j) >= 0 & col_start(c, j) + col_rules(c, j) =< rows().
+
+    // the blocks of a column come in order and are separated by at least one unshaded square
+    ! c in Col, j1, j2 in CSlot: j1 < j2 & col_rules(c, j1) > 0 & col_rules(c, j2) > 0 => col_start(c, j1) + col_rules(c, j1) < col_start(c, j2).
+
+    // a square is shaded in its column exactly when it lies in one of the blocks of that column
+    ! r in Row, c in Col: board(r, c) = 1 <=> (? j in CSlot: col_rules(c, j) > 0 & col_start(c, j) =< r & r < col_start(c, j) + col_rules(c, j)).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

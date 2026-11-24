@@ -1,12 +1,30 @@
-vocabulary {
-    type Range_n <: Int            // positions 1..n, sized from n
-    n: () -> Int
-    x: Range_n -> Int              // declared output: x(p) is the sequence entry at position p-1
+// csplib_019_magic_squares_and_sequences: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A magic sequence of length n is a sequence of integers x_0, ..., x_{n-1} between 0 and n-1 such that for all i in 0 to
+// n-1, the number i occurs exactly x_i times in the sequence. For example, 6, 2, 1, 0, 0, 0, 1, 0, 0, 0 is a magic
+// sequence, since 0 occurs 6 times in it, 1 occurs twice, and so on.
+//
+// Save this file as model.idp. Download `csplib_019_magic_squares_and_sequences.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_019_magic_squares_and_sequences.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_019_magic_squares_and_sequences.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                // the positions 1..n of the sequence: position j holds x_{j-1}
+    n: () -> Int                       // the length of the sequence
+    x: Range_n -> Int                  // x(j): the entry x_{j-1} of the sequence, the number of times the value j - 1 occurs
 }
-theory {
-    // every entry lies between 0 and n-1
-    ! p in Range_n: 0 =< x(p) & x(p) =< n() - 1.
 
-    // the number p-1 occurs exactly x(p) times in the sequence
-    ! p in Range_n: #{ q in Range_n: x(q) = p - 1 } = x(p).
+theory T:V {
+    // each entry is between 0 and n-1
+    ! j in Range_n: 0 =< x(j) & x(j) =< n() - 1.
+
+    // the number j - 1 occurs exactly x(j) times in the sequence
+    ! j in Range_n: #{k in Range_n: x(k) = j - 1} = x(j).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

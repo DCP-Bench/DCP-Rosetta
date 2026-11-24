@@ -16,6 +16,6 @@ open('/tmp/eclipse.tgz', 'wb').write(data)" "$ECLIPSE_URL" "$ECLIPSE_SHA256" \
 ENV ECLIPSEDIR=/opt/eclipse \
     LD_LIBRARY_PATH=/opt/eclipse/lib/x86_64_linux
 COPY --chmod=755 runner/runtime.py /opt/runner/runtime.py
-COPY --chmod=755 solvers/eclipse/prolog/run.py /opt/runner/run.py
+COPY --chmod=755 solvers/eclipse/prolog/run.py solvers/eclipse/prolog/dcp_convert_ecl.py /opt/runner/
 COPY --chmod=755 solvers/eclipse/prolog/driver.ecl /opt/runner/driver.ecl
 ENTRYPOINT ["python3", "/opt/runner/run.py"]

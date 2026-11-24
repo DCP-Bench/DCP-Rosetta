@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790858068.8188856,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/swipl/prolog/CONTRACT.md": "b97f7d686889990081e58dab14a6ac8043c8ce98cc6ff4a343336dfd7e1e4eb0"
+    },
+    "created_at": 1794603795.3901122,
     "problem_id": "csplib_022_bus_driver_scheduling",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "635c24bfacbdc0db90bff173e1d8728c56808b0f0c2b30c1ee074a259a4ca03e",
-    "run_id": "20261001T1218Z-swipl-ff16",
-    "schema": 2,
-    "skill_bundle_hash": "e0e594c9d4f749ceb6497b59d1a6851e2dd796a84100edc1376bc669fb93d17a",
-    "skill_source": "solvers\\swipl_clpfd\\skills\\swipl-clpfd",
+    "readiness_hash": "c216a6700b5b6b565400b685f2e4d7c79c73d4aa3a9f89b672ace727fc405137",
+    "run_id": "20261116-swipl-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "9e97e234e761b34da5daae9cfe5f583a4438d01e",
+      "commit": "ff67819ac843d18becffde04c040b763be5254ea",
       "modified": false,
-      "path": "solvers/swipl_clpfd/skills/swipl-clpfd"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "603573da813e9d0eca3be80bee07bc18e2039363c8857ca06373299f8d99a2c4",
+        "source": "solvers/swipl/skills/dcp-swipl",
+        "version": {
+          "commit": "ff67819ac843d18becffde04c040b763be5254ea",
+          "modified": false,
+          "path": "solvers/swipl/skills/dcp-swipl"
+        }
+      }
+    ],
     "solver_id": "swipl_clpfd"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:052c9de7b35053fe8e9a16398db20a42756e8fd63c0fcfd9efe4b5d2339d8127",
+      "id": "sha256:c4aecc7be95a0312db6dcd03a6fbbedccbe4179e5907592b652e5e0c35b6daaf",
+      "recipe": "sha256:68cf27681c1d4cc061d05393ab834128f32cbb1ddbdc9de6abffa288dc1ca604",
       "tag": "dcp-eval/swipl_clpfd:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.008036900078877807,
-        "execution_wall_seconds": 1.6598396000918,
+        "checking_seconds": 0.003937436966225505,
+        "execution_wall_seconds": 2.8985165779595263,
         "first_solution": {
           "x": [
             false,
@@ -65,10 +95,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8445812999270856,
+        "reference_setup_seconds": 0.7334571089595556,
         "runner_status": {
+          "build_seconds": 0.0035483837127685547,
           "detail": "",
-          "solve_seconds": 0.04462623596191406,
+          "main_seconds": 0.00910043716430664,
+          "read_seconds": 0.00016617774963378906,
+          "solve_seconds": 0.008931159973144531,
           "status": "complete",
           "type": "status"
         },
@@ -78,8 +111,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03327839984558523,
-        "execution_wall_seconds": 3.5687436000443995,
+        "checking_seconds": 0.0369476429768838,
+        "execution_wall_seconds": 3.2959218570031226,
         "first_solution": {
           "x": [
             false,
@@ -170,10 +203,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2962114000692964,
+        "reference_setup_seconds": 1.114742954960093,
         "runner_status": {
+          "build_seconds": 0.0133514404296875,
           "detail": "",
-          "solve_seconds": 0.475496768951416,
+          "main_seconds": 0.21685481071472168,
+          "read_seconds": 0.0004429817199707031,
+          "solve_seconds": 0.21640777587890625,
           "status": "limit",
           "type": "status"
         },
@@ -183,8 +219,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.00935479998588562,
-        "execution_wall_seconds": 1.7765014998149127,
+        "checking_seconds": 0.02375770697835833,
+        "execution_wall_seconds": 3.0441056020208634,
         "first_solution": {
           "x": [
             false,
@@ -228,10 +264,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.215915499953553,
+        "reference_setup_seconds": 0.9558869319735095,
         "runner_status": {
+          "build_seconds": 0.013888359069824219,
           "detail": "",
-          "solve_seconds": 0.08046627044677734,
+          "main_seconds": 0.07581830024719238,
+          "read_seconds": 0.00027489662170410156,
+          "solve_seconds": 0.07553791999816895,
           "status": "complete",
           "type": "status"
         },
@@ -241,8 +280,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03070040000602603,
-        "execution_wall_seconds": 2.6868523999582976,
+        "checking_seconds": 0.022180065978318453,
+        "execution_wall_seconds": 3.0432077340083197,
         "first_solution": {
           "x": [
             false,
@@ -316,10 +355,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6178733000997454,
+        "reference_setup_seconds": 0.581344096979592,
         "runner_status": {
+          "build_seconds": 0.011817455291748047,
           "detail": "",
-          "solve_seconds": 0.3050808906555176,
+          "main_seconds": 0.1871776580810547,
+          "read_seconds": 0.0004436969757080078,
+          "solve_seconds": 0.18672919273376465,
           "status": "limit",
           "type": "status"
         },
@@ -329,8 +371,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0361587000079453,
-        "execution_wall_seconds": 73.86297990009189,
+        "checking_seconds": 0.0636778199695982,
+        "execution_wall_seconds": 93.36964663100662,
         "first_solution": {
           "x": [
             false,
@@ -464,10 +506,13 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6847357000224292,
+        "reference_setup_seconds": 0.818163825024385,
         "runner_status": {
+          "build_seconds": 0.02794647216796875,
           "detail": "",
-          "solve_seconds": 71.49675726890564,
+          "main_seconds": 90.46870112419128,
+          "read_seconds": 0.0005733966827392578,
+          "solve_seconds": 90.46812272071838,
           "status": "limit",
           "type": "status"
         },
@@ -479,21 +524,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "aebd99703364cdcc3fbd211d55610e95d050e19f00dd0a09fb735ab528b561ce",
+    "model_hash": "816a0d2c6c25cc1d0bcc74671f9a05f4f003fe39e6e08293d663d9114f43ec21",
     "problem_id": "csplib_022_bus_driver_scheduling",
     "reason": "accepted",
-    "reference_hash": "f3aba87d181c4b5bf9f32570018f457b07c586228de81268ff7692f993675580",
+    "reference_hash": "6917d3f36ad44f344db8414edb6cd78477bc3057cd2c65e855a47017ee0f6781",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -504,11 +549,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "swipl_clpfd",
-    "total_wall_seconds": 95.40870839986019,
+    "total_wall_seconds": 111.20957880700007,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.pl",

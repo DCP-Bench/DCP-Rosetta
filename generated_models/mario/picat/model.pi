@@ -1,45 +1,72 @@
-% Mario's gold route: Mario starts at his house, visits some houses and ends at Luigi's house,
-% collecting the gold of every house visited. Travelling from one house to another uses fuel,
-% and the fuel of the whole route must stay within the fuel limit. Maximise the gold collected.
-% Houses are numbered from 0 in the instance (and in the output), so house h is stored at
-% position h + 1 of the lists.
+% mario: a Picat model from DCP Rosetta.
+%
+% Mario needs to collect as much gold as possible by visiting houses. He starts at Mario's house
+% and ends at Luigi's house. Each house has a certain amount of gold, and travelling from one
+% house to another uses fuel; Mario has a limited amount of fuel, so the route must not use more
+% fuel than the limit. Each house is either on the route, and then its successor is the next
+% house on the route, or it is not on the route and its successor is itself. The successor of
+% Luigi's house is Mario's house.
+%
+% Save this file as model.pi. Download `mario.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/mario.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py mario.json
+%   picat model.pi mario_1.dat
+%
+% Data.get(nHouses): the number of houses; Data.get(marioHouse), Data.get(luigiHouse): the house
+% of Mario and the house of Luigi; Data.get(fuelLimit): the fuel Mario has; Data.get(goldInHouse):
+% the gold in each house; Data.get(arc_fuel): the fuel used from each house to each other house
+% (lists indexed from 1). Houses are numbered from 0 in the data; the model numbers house h as h+1.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(nHouses),
-    MarioHouse = Data.get(marioHouse),
-    LuigiHouse = Data.get(luigiHouse),
+    Mario = Data.get(marioHouse) + 1,
+    Luigi = Data.get(luigiHouse) + 1,
     FuelLimit = Data.get(fuelLimit),
-    ArcFuel = Data.get(arc_fuel),         % ArcFuel[i + 1][j + 1] = fuel from house i to house j
     GoldInHouse = Data.get(goldInHouse),
-    % Succ[h + 1] = the house, numbered from 1, that follows house h on the route; house h
-    % itself if it is not on the route. Luigi's house is followed by Mario's, which closes the
-    % route into a cycle.
+    ArcFuel = Data.get(arc_fuel),
+    % Succ[H] = the house that follows house H on the route, or H itself when H is not on it
     Succ = new_list(N),
     Succ :: 1..N,
-    % the houses on the route form one cycle through Mario's and Luigi's houses, and every
-    % other house is its own successor. This stands for the reference's ranks of the houses
-    % (Mario's house first, each next house one rank later, off-route houses after Luigi's),
-    % which only keep the off-route houses from forming cycles of their own.
+    % the houses on the route form one cycle, and the other houses are left out of it
     subcircuit(Succ),
-    Succ[LuigiHouse + 1] #= MarioHouse + 1,
-    % S[h + 1] = the same successor numbered from 0, as the output wants it
+    % the route leaves Luigi's house for Mario's house, closing the cycle
+    Succ[Luigi] #= Mario,
+    % Used[H] = the fuel used going from house H to the house that follows it
+    Used = new_list(N),
+    Used :: 0..FuelLimit,
+    foreach (H in 1..N)
+        element(Succ[H], ArcFuel[H], Used[H]),
+        % a house left out of the route uses no fuel
+        (Succ[H] #= H) #=> (Used[H] #= 0)
+    end,
+    % the fuel used travelling along the route to Luigi's house does not exceed the fuel limit
+    % (the step from Luigi's house back to Mario's house only closes the cycle and is not travel)
+    sum([Used[H] : H in 1..N, H != Luigi]) #=< FuelLimit,
+    % S[H] = the house that follows house H, numbered from 0 as in the data
     S = new_list(N),
     S :: 0..N - 1,
     foreach (H in 1..N)
         S[H] #= Succ[H] - 1
     end,
-    % Fuel[h + 1] = the fuel used going from house h to its successor (0 if h is not on the route)
-    MaxFuel = max([max(Row) : Row in ArcFuel]),
-    Fuel = new_list(N),
-    Fuel :: 0..MaxFuel,
-    foreach (H in 1..N)
-        FuelRow = ArcFuel[H],
-        element(Succ[H], FuelRow, Fuel[H])
-    end,
-    sum(Fuel) #=< FuelLimit,
-    % the gold collected: the gold of every house on the route
-    Gold #= sum([GoldInHouse[H] * (Succ[H] #!= H) : H in 1..N]),
-    Vars = Succ ++ S,
+    % the gold collected is the gold of every house on the route
+    Collected #= sum([GoldInHouse[H] * (Succ[H] #!= H) : H in 1..N]),
+    Vars = Succ,
     Outputs = [s = S],
-    Options = [$max(Gold)].
+    % maximize the gold collected
+    Options = [$max(Collected)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

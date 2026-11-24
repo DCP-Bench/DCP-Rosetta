@@ -1,13 +1,34 @@
 language ESSENCE' 1.0
-$ Requires exactly m values in x to take one of the values in v. All other values may be anything from 0 to 7. Print the array x.
+$ among: an Essence' model from DCP Rosetta.
+$
+$ Find an array x of n integers between 0 and 7, inclusive, such that exactly m of them take one of the values in v. The other elements may take any other value in that range.
+$
+$ Save this file as model.eprime. Download `among.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/among.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `among_1.param.solution`:
+$   python dcp_convert_essence.py among.json
+$   savilerow model.eprime among_1.param -run-solver
+
+$ n: the length of the array x
 given n : int(1..)
+$ m: the exact number of entries of x that must take a value listed in v
 given m : int(0..)
+$ v_dim1: the number of values in v, derived from the data (the length of v; not a field of the reader's JSON)
 given v_dim1 : int(1..)
+$ v[k]: the k-th value of the set v, indices 1-based
 given v : matrix indexed by [int(1..v_dim1)] of int
+
+$ x[i]: the i-th element of the array, indices 1-based, with values from 0 to 7
 find x : matrix indexed by [int(1..n)] of int(0..7)
+$ inset[i]: element x[i] takes one of the values listed in v (auxiliary)
+find inset : matrix indexed by [int(1..n)] of bool
 
 branching on [x]
 
 such that
-$ exactly m entries of x take a value listed in v (v is the instance field, the set of allowed values)
-(sum i : int(1..n) . (x[i] in toSet(v))) = m
+$ inset[i] holds exactly when x[i] equals one of the values in v
+forAll i : int(1..n) . (inset[i] <-> (exists k : int(1..v_dim1) . x[i] = v[k])),
+$ exactly m elements of x take one of the values in v
+(sum i : int(1..n) . toInt(inset[i])) = m

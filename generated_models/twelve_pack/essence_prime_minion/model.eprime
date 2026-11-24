@@ -1,16 +1,29 @@
 language ESSENCE' 1.0
-$ Choose how many packs of each size to buy so that the number of beers is the closest to the target, meeting or exceeding it.
+$ twelve_pack: an Essence' model from DCP Rosetta.
+$
+$ Given a target number of items, find the combination of packs of different sizes whose total number of items is at least the target and as close to it as possible.
+$
+$ Save this file as model.eprime. Download `twelve_pack.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/twelve_pack.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `twelve_pack_1.param.solution`:
+$   python dcp_convert_essence.py twelve_pack.json
+$   savilerow model.eprime twelve_pack_1.param -run-solver
+
+$ number of pack sizes, derived from the data: the length of packs (not a field of the reader's JSON)
 given packs_dim1 : int
-given packs : matrix indexed by [int(1..packs_dim1)] of int(1..)
-given target : int
-find counts : matrix indexed by [int(1..packs_dim1)] of int(0..target)
-find total : int(0..target*2+1000)
+letting k = packs_dim1
+$ packs[j]: the number of items in a pack of size j, indices 1-based (the data's index 0 is packs[1])
+given packs : matrix indexed by [int(1..k)] of int(1..)
+$ the number of items wanted
+given target : int(1..)
 
-branching on [counts]
+$ counts[j]: how many packs of size j are used, indices 1-based
+find counts : matrix indexed by [int(1..k)] of int(0..target)
 
-minimising total
+$ the total number of items bought, which is to be as small as possible while at least the target
+minimising (sum j : int(1..k) . counts[j] * packs[j])
 such that
-$ the total number of beers is the sum of the packs bought
-total = (sum i : int(1..packs_dim1) . counts[i] * packs[i]),
-$ the total must meet or exceed the target
-total >= target
+$ the total number of items is at least the target
+(sum j : int(1..k) . counts[j] * packs[j]) >= target

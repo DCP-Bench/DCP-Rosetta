@@ -1,55 +1,58 @@
-// KenKen: fill the n x n grid with the digits 1..n so that every row and every column holds each digit once, and every cage reaches its target.
-vocabulary {
-    // grid rows, columns and digits, sized by the instance's n
-    type Range_n <: Int
-    // cage index, sized from the cage list
-    type I <: Int
-    // position of a cell within a cage, sized from the largest cage
-    type J <: Int
-    // coordinate of a cell: 0 is the row, 1 is the column
-    type K <: Int
-    // target value of cage i (instance field problem, column 1)
-    problem_1: I -> Int
-    // cells of cage i: the j-th cell is (problem_2(i,j,0), problem_2(i,j,1)), padded with 0
-    problem_2: I * J * K -> Int
-    // number of cells in cage i
-    problem_2_len: I -> Int
-    // declared output: the solved grid
-    x: Range_n * Range_n -> Range_n
-    // value of the j-th cell of cage i
-    cv: I * J -> Range_n
-    // sum of the cell values of cage i
-    sumv: I -> Int
-    // running product of the cell values of cage i up to position j
-    pr: I * J -> Int
-    // product of the cell values of cage i
-    cprod: I -> Int
-    // value of the first and second cell of cage i
-    cell1: I -> Int
-    cell2: I -> Int
+// kenken: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// KenKen or KEN-KEN is a style of arithmetic and logical puzzle sharing several characteristics with sudoku. The
+// objective is to fill the grid in with the digits 1 through 6 such that: each row contains exactly one of each digit;
+// each column contains exactly one of each digit; each bold-outlined group of cells is a cage containing digits which
+// achieve the specified result using the specified mathematical operation: addition (+), subtraction (-), multiplication
+// (x), and division (/). Unlike in Killer sudoku, digits may repeat within a group. More complex KenKen problems are
+// formed using the principles described above but omitting the symbols +, -, x and /, thus leaving them as yet another
+// unknown to be determined. A cage of one cell holds its result. A cage of two cells may use any of the four operations,
+// and a division must be exact. A larger cage uses either addition or multiplication.
+//
+// Save this file as model.idp. Download `kenken.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/kenken.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py kenken.json
+//   idp-engine model_1.idp
+vocabulary V {
+    n: () -> Int                       // the size of the grid: n rows and n columns, with the digits 1 to n
+    type Range_n <: Int                // the rows, the columns and the digits, numbered from 1 to n
+    type I <: Int                      // the cages, numbered from 0
+    type J <: Int                      // the positions of the cells within a cage, numbered from 0
+    type K <: Int                      // 0 for the row, 1 for the column of a cell
+    problem_1: I -> Int                // problem_1(i): the result (target) of cage i (the conversion's piece of problem)
+    problem_2: I * J * K -> Int        // problem_2(i, j, 0) and problem_2(i, j, 1): the row and the column of cell j of cage i,
+                                       // 1-based (the conversion's piece of problem, padded beyond the cells of the cage)
+    problem_2_len: I -> Int            // problem_2_len(i): the number of cells of cage i (created by the conversion)
+    x: Range_n * Range_n -> Int        // x(r, c): the digit in row r and column c of the solved grid
+    cv: I * J -> Int                   // cv(i, j): the digit in cell j of cage i
+    pr: I * J -> Int                   // pr(i, j): the product of the digits of cells 0 to j of cage i (auxiliary)
+    cprod: I -> Int                    // cprod(i): the product of the digits of all cells of cage i (auxiliary)
 }
-theory {
-    // the value of a cell of a cage is the digit in that grid cell
-    ! i in I: ! j in J: j < problem_2_len(i) => (! r in Range_n: ! c in Range_n: (problem_2(i,j,0) = r & problem_2(i,j,1) = c) => cv(i,j) = x(r,c)).
-
+theory T:V {
+    // the digit of each cell of a cage is the digit in that cell of the grid
+    ! i in I: ! j in J: j < problem_2_len(i) => (! r in Range_n: ! c in Range_n: (problem_2(i, j, 0) = r & problem_2(i, j, 1) = c) => cv(i, j) = x(r, c)).
+    // each digit is from 1 to n
+    ! r in Range_n: ! c in Range_n: 1 =< x(r, c) & x(r, c) =< n().
     // each row contains exactly one of each digit
-    ! r in Range_n: ! a in Range_n: ! b in Range_n: a ~= b => x(r,a) ~= x(r,b).
-
+    ! r in Range_n: ! a in Range_n: ! b in Range_n: a ~= b => x(r, a) ~= x(r, b).
     // each column contains exactly one of each digit
-    ! c in Range_n: ! r1 in Range_n: ! r2 in Range_n: r1 ~= r2 => x(r1,c) ~= x(r2,c).
-
-    // the cells of a cage added together
-    ! i in I: sumv(i) = sum{{ cv(i,j) | j in J: j < problem_2_len(i) }}.
-
-    // the cells of a cage multiplied together, built up one cell at a time
-    ! i in I: ! j in J: (j = 0 & 0 < problem_2_len(i)) => pr(i,j) = cv(i,j).
-    ! i in I: ! j in J: ! j2 in J: (j2 + 1 = j & j < problem_2_len(i)) => pr(i,j) = pr(i,j2) * cv(i,j).
-    ! i in I: ! j in J: (j + 1 = problem_2_len(i)) => cprod(i) = pr(i,j).
-
-    // the first and second cell of a cage, used by the two-cell operations
-    ! i in I: ! j in J: j = 0 => cell1(i) = cv(i,j).
-    ! i in I: ! j in J: j = 1 => cell2(i) = cv(i,j).
-
-    // each cage reaches its target by addition, multiplication, subtraction or division of its cells
-    ! i in I: sumv(i) = problem_1(i) | cprod(i) = problem_1(i) | (problem_2_len(i) = 2 & (cell1(i) - cell2(i) = problem_1(i) | cell2(i) - cell1(i) = problem_1(i) | cell1(i) = problem_1(i) * cell2(i) | cell2(i) = problem_1(i) * cell1(i))).
+    ! c in Range_n: ! r1 in Range_n: ! r2 in Range_n: r1 ~= r2 => x(r1, c) ~= x(r2, c).
+    // a cage of one cell holds its result
+    ! i in I: problem_2_len(i) = 1 => cv(i, 0) = problem_1(i).
+    // a cage of two cells reaches its result by addition, subtraction, multiplication or an exact division
+    ! i in I: problem_2_len(i) = 2 => (cv(i, 0) + cv(i, 1) = problem_1(i) | cv(i, 0) * cv(i, 1) = problem_1(i)
+        | cv(i, 0) - cv(i, 1) = problem_1(i) | cv(i, 1) - cv(i, 0) = problem_1(i)
+        | cv(i, 0) = problem_1(i) * cv(i, 1) | cv(i, 1) = problem_1(i) * cv(i, 0)).
+    // the running product of the digits of a cage, built up one cell at a time
+    ! i in I: ! j in J: j = 0 => pr(i, j) = cv(i, j).
+    ! i in I: ! j in J: ! j2 in J: (j2 + 1 = j & j < problem_2_len(i)) => pr(i, j) = pr(i, j2) * cv(i, j).
+    ! i in I: ! j in J: (j + 1 = problem_2_len(i)) => cprod(i) = pr(i, j).
+    // a cage of more than two cells reaches its result by addition or multiplication
+    ! i in I: problem_2_len(i) > 2 => (sum{{ cv(i, j) | j in J: j < problem_2_len(i) }} = problem_1(i) | cprod(i) = problem_1(i)).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

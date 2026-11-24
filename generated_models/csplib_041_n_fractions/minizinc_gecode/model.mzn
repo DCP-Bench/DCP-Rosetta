@@ -1,26 +1,36 @@
-% Fractions puzzle: find nine different non-zero digits A..I such that
-% A/BC + D/EF + G/HI = 1, where BC, EF and HI are two-digit numbers.
+% csplib_041_n_fractions: a MiniZinc model from DCP Rosetta.
+%
+% Find distinct non-zero digits such that the following equation holds: A / BC + D / EF + G / HI = 1
+% Here, BC, EF, and HI are two-digit numbers formed by B and C, E and F, and H and I, respectively.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_041_n_fractions.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% The puzzle has no data.
+var 1..9: A;                                      % the non-zero digits A to I
+var 1..9: B;
+var 1..9: C;
+var 1..9: D;
+var 1..9: E;
+var 1..9: F;
+var 1..9: G;
+var 1..9: H;
+var 1..9: I;
 
-% the nine digits, all different and non-zero
-var 1..9: A; var 1..9: B; var 1..9: C;
-var 1..9: D; var 1..9: E; var 1..9: F;
-var 1..9: G; var 1..9: H; var 1..9: I;
+% the digits A to I are all different
 constraint all_different([A, B, C, D, E, F, G, H, I]);
 
-% the three denominators BC, EF, HI as two-digit numbers
-var 11..99: D1 = 10 * B + C;
-var 11..99: D2 = 10 * E + F;
-var 11..99: D3 = 10 * H + I;
+var 11..99: BC = 10 * B + C;                      % the two-digit number BC
+var 11..99: EF = 10 * E + F;                      % the two-digit number EF
+var 11..99: HI = 10 * H + I;                      % the two-digit number HI
 
-% Multiplying the equation A/D1 + D/D2 + G/D3 = 1 through by D1*D2*D3 gives
-% A*D2*D3 + D*D1*D3 + G*D1*D2 = D1*D2*D3, which avoids fractions.
-constraint A * D2 * D3 + D * D1 * D3 + G * D1 * D2 = D1 * D2 * D3;
+% A / BC + D / EF + G / HI = 1, multiplied through by BC * EF * HI to avoid fractions
+constraint A * EF * HI + D * BC * HI + G * BC * EF = BC * EF * HI;
 
 solve satisfy;
 
-output ["{\"A\": ", show(A), ", \"B\": ", show(B), ", \"C\": ", show(C), ", \"D\": ", show(D),
-        ", \"E\": ", show(E), ", \"F\": ", show(F), ", \"G\": ", show(G), ", \"H\": ", show(H),
-        ", \"I\": ", show(I), "}"];
+output ["{\"A\": ", showJSON(A), ", \"B\": ", showJSON(B), ", \"C\": ", showJSON(C), ", \"D\": ", showJSON(D),
+        ", \"E\": ", showJSON(E), ", \"F\": ", showJSON(F), ", \"G\": ", showJSON(G), ", \"H\": ", showJSON(H),
+        ", \"I\": ", showJSON(I), "}"];

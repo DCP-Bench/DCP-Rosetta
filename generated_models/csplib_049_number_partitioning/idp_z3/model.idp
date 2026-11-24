@@ -1,36 +1,40 @@
-vocabulary {
-    type Range_n <: Int
-    n: () -> Int
-    type Half <: Int
-    Half_size: () -> Int
-    A: Half -> Range_n
-    B: Half -> Range_n
-    inA: Range_n -> Bool
+// csplib_049_number_partitioning: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Partition the numbers 1 to n into two sets A and B such that A and B have the same cardinality, the sum of the numbers
+// in A equals the sum of the numbers in B, and the sum of the squares of the numbers in A equals the sum of the squares
+// of the numbers in B.
+//
+// Save this file as model.idp. Download `csplib_049_number_partitioning.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_049_number_partitioning.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                   // the numbers to partition, 1..n
+    type Half <: Int                      // the positions in each set, numbered 1..n / 2, sized by Half_size
+    Half_size: () -> Int                  // the cardinality of each set, n / 2
+    n: () -> Int                          // the largest number to partition
+    A: Half -> Int                        // A(i): the i-th number of set A
+    B: Half -> Int                        // B(i): the i-th number of set B
 }
-theory {
-    // the sets A and B have the same cardinality, N / 2 each
+theory T:V {
+    // the two sets have the same cardinality, n / 2
     Half_size() = n() / 2.
 
-    // A is the set of its entries: inA holds exactly for the numbers listed in A
-    { ! k in Range_n: inA(k) <- ? i in Half: A(i) = k. }
+    // every number from 1 to n is in exactly one of the two sets
+    ! v in Range_n: #{ i in Half: A(i) = v } + #{ i in Half: B(i) = v } = 1.
 
-    // the entries of A are distinct, listed in ascending order
-    ! i, j in Half: i ~= j => A(i) ~= A(j).
-    ! i, j in Half: i < j => A(i) < A(j).
+    // the numbers in the sets are between 1 and n
+    ! i in Half: 1 =< A(i) & A(i) =< n() & 1 =< B(i) & B(i) =< n().
 
-    // the entries of B are distinct, listed in ascending order
-    ! i, j in Half: i ~= j => B(i) ~= B(j).
-    ! i, j in Half: i < j => B(i) < B(j).
+    // the sum of the numbers in A equals the sum of the numbers in B
+    sum{{ A(i) | i in Half }} = sum{{ B(i) | i in Half }}.
 
-    // A and B are disjoint
-    ! i in Half: ~inA(B(i)).
-
-    // every number 1..N is in A or in B
-    ! k in Range_n: inA(k) | (? j in Half: B(j) = k).
-
-    // the sums of A and B are equal
-    sum{{ k | k in Range_n: inA(k) }} = sum{{ k | k in Range_n: ~inA(k) }}.
-
-    // the sums of squares of A and B are equal
-    sum{{ (k * k) | k in Range_n: inA(k) }} = sum{{ (k * k) | k in Range_n: ~inA(k) }}.
+    // the sum of the squares of the numbers in A equals the sum of the squares of the numbers in B
+    sum{{ (A(i) * A(i)) | i in Half }} = sum{{ (B(i) * B(i)) | i in Half }}.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

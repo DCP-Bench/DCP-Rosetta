@@ -1,20 +1,44 @@
-% Capital budgeting: choose investments whose cash outflow fits the budget and
-% whose total net present value is as large as possible.
+% capital_budget: a Picat model from DCP Rosetta.
+%
+% A company is considering a number of investments. Each investment yields a net present value (NPV)
+% and requires a certain cash outflow at the present time. The total cash available for investment
+% is limited by a budget. Choose which investments to make so as to maximize the total NPV.
+%
+% Save this file as model.pi. Download `capital_budget.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/capital_budget.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py capital_budget.json
+%   picat model.pi capital_budget_1.dat
+%
+% Data.get(budget): the total budget available for investment; Data.get(cash_flow): the cash outflow
+% of each investment; Data.get(npv): the net present value of each investment (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Budget = Data.get(budget),
-    Npv = Data.get(npv),
     CashFlow = Data.get(cash_flow),
-    N = len(Npv),
-    % x[i] = 1 when investment i is chosen
+    Npv = Data.get(npv),
+    N = len(Npv),                          % the number of investments
     X = new_list(N),
-    X :: 0..1,
-    % the chosen investments fit the budget
+    X :: 0..1,                             % X[I] = 1 when investment I is chosen
+    % the cash outflows of the chosen investments do not exceed the budget
     sum([CashFlow[I] * X[I] : I in 1..N]) #=< Budget,
-    % z = the total net present value
-    Z :: 0..sum(Npv),
-    Z #= sum([Npv[I] * X[I] : I in 1..N]),
+    Z #= sum([Npv[I] * X[I] : I in 1..N]), % the total NPV of the chosen investments
     Vars = X,
     Outputs = [x = X, z = Z],
+    % maximize the total NPV obtained from the investments
     Options = [$max(Z)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

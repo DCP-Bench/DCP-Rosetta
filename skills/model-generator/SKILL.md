@@ -59,11 +59,13 @@ python -m generation.manage retain  --attempt ATTEMPT        # only when it was 
    lacks: work on the others, and name it in the report.
 5. **Read the contract.** `generation.brief PROBLEM` prints the problem
    description, the declared output names with their shapes, the objective
-   direction, and every instance field with its shape.
+   direction, and every instance field with its shape. The description is also
+   `bench/dataset/<problem>/description.md`, easier to read when it is long.
 
    **Start blind**: model from the brief, the instance JSON, the two contracts,
    the solver skill and the evaluator's feedback, without opening the reference
-   (`bench/dataset/<problem>/<problem>.cpmpy.py`) or other integrations' models. If
+   (`bench/dataset/<problem>/<problem>.cpmpy.py`), the links under `sources` in the
+   problem's `metadata.json` (some are published models) or other integrations' models. If
    that is not working, read the reference and say so in the attempt's
    `lessons.md`. Never execute its solve tail, never carry over a constraint it
    keeps commented out between `<SYMMETRY_BREAKING_CONSTRAINT_START>` and

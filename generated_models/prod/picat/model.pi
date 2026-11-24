@@ -1,6 +1,20 @@
-% Production planning: choose quantities x[j] up to u[j] so that the sum of
-% x[j] / a[j] stays within b and the profit sum of c[j] * x[j] is as large as
-% possible.
+% prod: a Picat model from DCP Rosetta.
+%
+% Production planning: there is a set of products j, each with a production quantity X[j] that is a
+% whole number between 0 and u[j]. Producing one unit of product j uses 1/a[j] of a shared resource,
+% and the total use of the resource must not exceed b. Each unit of product j gives a profit c[j].
+% Choose the production quantities to maximize the total profit.
+%
+% Save this file as model.pi. Download `prod.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/prod.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py prod.json
+%   picat model.pi prod_1.dat
+%
+% Data.get(a): a[j] for each product (lists indexed from 1); Data.get(b): the amount of the shared
+% resource available; Data.get(c): the profit per unit of each product; Data.get(u): the largest
+% quantity of each product.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
@@ -8,20 +22,32 @@ model(Data, Vars, Outputs, Options) =>
     B = Data.get(b),
     C = Data.get(c),
     U = Data.get(u),
-    N = len(A),
-    % the least common multiple of the a[j], to clear the divisions
-    Lcm = 1,
-    foreach (V in A)
-        Lcm := Lcm * V // gcd(Lcm, V)
-    end,
+    N = len(A),                            % the number of products
+    % X[J] = the quantity of product J produced
     X = new_list(N),
-    X :: 0..max(U),
     foreach (J in 1..N)
-        X[J] #=< U[J]
+        X[J] :: 0..U[J]
     end,
-    % sum of x[j] / a[j] <= b, multiplied through by the lcm
-    sum([(Lcm // A[J]) * X[J] : J in 1..N]) #=< B * Lcm,
+    % the resource used is the sum of X[J] / A[J] and must not exceed B; multiplying through by the
+    % product of the a[j] (each one divides it) keeps the coefficients whole
+    Scale = prod(A),
+    sum([(Scale // A[J]) * X[J] : J in 1..N]) #=< B * Scale,
+    % the total profit of the quantities produced
     TotalProfit #= sum([C[J] * X[J] : J in 1..N]),
     Vars = X,
     Outputs = [x = X, total_profit = TotalProfit],
+    % maximize the total profit
     Options = [$max(TotalProfit)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

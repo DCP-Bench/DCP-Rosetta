@@ -1,51 +1,75 @@
-% Kakuro (DCP-Bench): fill the white cells of an n x n grid with digits 1..9
-% so that each clue's entry sums to the clue and no digit repeats in an entry.
-% Black cells (the instance's `blanks`) are output as 0. Coordinates are 1-based.
+% kakuro: an ECLiPSe model from DCP Rosetta.
+%
+% A Kakuro puzzle is a grid of white and black cells. Insert a digit from 1 to 9 into each white cell so
+% that the digits in each entry (a run of white cells across or down, with its clue) add up to the clue,
+% and no digit is repeated in an entry. Black cells hold 0.
+%
+% Save this file as model.ecl. Download `kakuro.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/kakuro.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py kakuro.json
+%   eclipse -b model.ecl -e "run('kakuro_1.dat'), halt"
 
-:- lib(ic).
+:- lib(gfd).
 :- lib(listut).
 
-model(Instance, Vars, [x-Rows]) :-
-    memberchk(n-N, Instance),
-    memberchk(problem-Entries, Instance),
-    memberchk(blanks-Black, Instance),
-    dim(M, [N, N]),
-    flatten_array(M, Vars),
-
-    % Each white cell takes a digit 1..9; each black cell is 0.
-    % Digits in white cells: 1..9 (a digit is a non-zero value, so white cells exclude 0).
-    M[1..N,1..N] :: 0..9,
-    (   multifor([R,C], 1, [N,N]),
-        param(Black, M)
-    do
-        (   memberchk([R,C], Black)
-        ->  M[R,C] #= 0
-        ;   M[R,C] #>= 1
+% The data field n is the size of the grid, n rows by n columns. The data field blanks lists the black
+% cells as [Row, Column], counted from 1; every other cell is white. The data field problem lists the
+% entries, each as [Clue, Cell, Cell, ...] with the cells as [Row, Column].
+model(Data, Vars, [x-Grid]) :-
+    memberchk(n-N, Data),
+    memberchk(blanks-Blanks, Data),
+    memberchk(problem-Entries, Data),
+    length(Grid, N),
+    ( foreach(Row, Grid), param(N) do length(Row, N) ),
+    % each white cell holds a digit from 1 to 9, each black cell holds 0
+    ( for(R, 1, N), param(Grid, N, Blanks) do
+        nth1(R, Grid, Row),
+        ( for(C, 1, N), param(Row, R, Blanks) do
+            nth1(C, Row, X),
+            (   memberchk([R, C], Blanks) -> X = 0 ; X :: 1..9 )
         )
     ),
-
-    % The sum of the numbers in each entry matches the clue associated with it.
-    % No digit is duplicated in any entry.
-    (   foreach([Clue|Coords], Entries),
-        param(M)
-    do
-        cells_of(M, Coords, Xs),
-        sum(Xs) #= Clue,
-        alldifferent(Xs)
+    % each entry has distinct digits that add up to its clue
+    ( foreach(Entry, Entries), param(Grid) do
+        Entry = [Clue | Cells],
+        entry_values(Cells, Grid, Values),
+        alldifferent(Values),
+        sum(Values) #= Clue
     ),
+    flatten(Grid, Vars).
 
-    % Output: the solution matrix as a list of rows.
-    (   for(I, 1, N),
-        foreach(Row, Rows),
-        param(M, N)
-    do
-        collection_to_list(M[I,1..N], Row)
-    ).
+% entry_values(Cells, Grid, Values): Values holds the digits in the given cells of the grid
+entry_values([], _, []).
+entry_values([[R, C] | Cells], Grid, [V | Values]) :-
+    nth1(R, Grid, Row),
+    nth1(C, Row, V),
+    entry_values(Cells, Grid, Values).
 
-cells_of(_, [], []).
-cells_of(M, [[R,C]|Cs], [X|Xs]) :-
-    X is M[R,C],
-    cells_of(M, Cs, Xs).
+:- lib(branch_and_bound).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

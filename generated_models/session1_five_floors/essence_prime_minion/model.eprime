@@ -1,6 +1,24 @@
 language ESSENCE' 1.0
-$ Baker, Cooper, Fletcher, Miller and Smith live on floors 1 to 5 of an apartment house, each on a different floor, subject to the stated clues.
-find B, C, F, M, S : int(1..5)
+$ session1_five_floors: an Essence' model from DCP Rosetta.
+$
+$ Baker, Cooper, Fletcher, Miller and Smith live on the first five floors of an apartment house, one each. Find
+$ the floors where these people live, from the constraints below.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_five_floors.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ B: the floor of Baker (1 is the first floor, 5 the fifth)
+find B : int(1..5)
+$ C: the floor of Cooper
+find C : int(1..5)
+$ F: the floor of Fletcher
+find F : int(1..5)
+$ M: the floor of Miller
+find M : int(1..5)
+$ S: the floor of Smith
+find S : int(1..5)
 
 such that
 $ they all live on different floors
@@ -10,11 +28,10 @@ B != 5,
 $ Cooper does not live on the first floor
 C != 1,
 $ Fletcher does not live on either the fifth or the first floor
-F != 5,
-F != 1,
+F != 5 /\ F != 1,
 $ Miller lives on a higher floor than Cooper
 M > C,
 $ Smith does not live on a floor adjacent to Fletcher's
-S - F != 1 /\ F - S != 1,
+|S - F| != 1,
 $ Fletcher does not live on a floor adjacent to Cooper's
-F - C != 1 /\ C - F != 1
+|F - C| != 1

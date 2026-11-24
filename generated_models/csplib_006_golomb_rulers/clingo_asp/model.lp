@@ -1,32 +1,50 @@
-% Golomb ruler: place size marks at integer positions, the first at 0, so that all the
-% differences between two marks are distinct; the length of the ruler (the position of the last
-% mark) is to be as small as possible.
-% Instance facts: size(S): the number of marks. Positions lie between 0 and size * size, the
-% bound the problem gives for the marks.
-position(0..S*S) :- size(S).
+% csplib_006_golomb_rulers: a clingo model from DCP Rosetta.
+%
+% A Golomb ruler is a set of m integers 0 = a_1 < a_2 < ... < a_m such that the m(m-1)/2 differences
+% a_j - a_i, 1 <= i < j <= m, are distinct. Such a ruler contains m marks and has length a_m. Find
+% optimal rulers, that is rulers of minimum length.
+%
+% Save this file as model.lp. Download `csplib_006_golomb_rulers.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_006_golomb_rulers.json
+%   python -m clingo model.lp csplib_006_golomb_rulers_1.lp
+%
+% Input: size(S) holds the number S of marks (indices are 0-based, as in the data).
 
-% mark(P): there is a mark at position P. The first mark is at 0 and there are size marks in
-% all. Naming the positions that carry a mark (rather than the position of the I-th mark)
-% already makes the marks distinct and increasing.
+% the positions a mark may take: 0 up to size * size. This bound is not part of the problem: it is an assumed
+% upper limit, since optimal Golomb rulers are known to be shorter than size * size, so no optimal ruler is excluded
+position(0..M) :- size(S), M = S * S.
+
+% mark(P): there is a mark at position P; the first mark is at 0
 mark(0).
-{ mark(P) } :- position(P), P > 0.
-:- size(S), S != #count { P : mark(P) }.
+{ mark(P) : position(P), P > 0 }.
 
-% difference(D, P): there are marks at P and at P + D. Golomb constraint: every distance D is the
-% difference of at most one pair of marks.
-difference(D,P) :- mark(P), mark(P + D), size(S), D = 1..S*S.
-:- size(S), D = 1..S*S, #count { P : difference(D,P) } > 1.
+% the ruler has exactly size marks
+:- size(S), #count { P : mark(P) } != S.
 
-% Implied by the Golomb constraint, stated so that the solver prunes early: K + 1 marks need K
-% distinct differences between neighbouring marks, so they span at least 1 + 2 + ... + K =
-% K * (K + 1) / 2. Hence a stretch of K * (K + 1) / 2 consecutive positions holds at most K marks.
-:- size(S), K = 1..S - 1, position(P), #count { Q : mark(Q), Q >= P, Q < P + K * (K + 1) / 2 } > K.
+% the distances that can occur between two marks
+distance(D) :- position(D), D > 0.
 
-% marks(I, P): the I-th mark, counted from 0 in increasing order, is at position P.
+% difference(D,P): there are marks at P and at P + D
+difference(D,P) :- distance(D), mark(P), mark(P + D).
+
+% Golomb condition: every distance is the difference of at most one pair of marks
+:- distance(D), #count { P : difference(D,P) } > 1.
+
+% Implied by the Golomb condition, to prune early: K + 1 marks have K distinct gaps between
+% neighbouring marks, which add up to at least 1 + 2 + ... + K = K * (K + 1) / 2. So any K * (K + 1) / 2
+% consecutive positions hold at most K marks.
+:- size(S), K = 1..S-1, position(P), #count { Q : mark(Q), P <= Q, Q < P + K * (K + 1) / 2 } > K.
+
+% marks(I,P): the I-th mark, counted from 0 in increasing order, is at position P
 marks(I,P) :- mark(P), I = #count { Q : mark(Q), Q < P }.
 
-% The length of the ruler is the position of its last mark; it is to be minimised.
-length(L) :- mark(L), #count { Q : mark(Q), Q > L } == 0.
+% the length of the ruler is the position of its last mark
+length(L) :- L = #max { P : mark(P) }.
+
+% the length of the ruler is as small as possible
 #minimize { L : length(L) }.
 
 #show marks/2.

@@ -73,6 +73,12 @@ the variable's own value.
   is `timeout`, with no solution emitted: the optimum was not proven. An exhausted search with no
   solution is `unsat`. After the proof the runner posts `cost == optimum` and enumerates the other
   optima (below).
+- **Incumbents:** the runner's solution listener on that branch and bound (`executeAfterSolution`)
+  prints each solution JaCoP finds there as an `incumbent` record, flushed at once: `objective` the
+  problem's own value (the negation undone), `seconds` since the branch and bound began. Each is
+  strictly better than the last (JaCoP bounds the cost below it), and the last is the proven optimum
+  when the search ends. They carry no values; a run stopped by the deadline keeps its incumbents but
+  still reports no solution.
 - **Enumeration:** after each solution it posts a disjunction of `x != value` over the declared
   output variables that are not already constants, propagates it at the root, and searches again.
   Solutions are therefore distinct on the declared outputs. The status is `limit` when the requested

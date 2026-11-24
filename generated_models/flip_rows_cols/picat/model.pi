@@ -1,37 +1,65 @@
-% Flip rows and columns: choose a sign for every row and every column so that
-% every row sum and every column sum of the signed matrix is non-negative, with
-% the smallest possible total.
-import sat.
+% flip_rows_cols: a Picat model from DCP Rosetta.
+%
+% Given is an array of positive and negative numbers. You can flip the sign of entire rows and
+% columns, as many of them as you like. The goal is to make each one of all the rows and columns
+% sum to positive numbers (or zero), and then to find the solution (there are more than one) that
+% has the smallest overall sum.
+%
+% Save this file as model.pi. Download `flip_rows_cols.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py flip_rows_cols.json
+%   picat model.pi flip_rows_cols_1.dat
+%
+% Data.get(input_matrix): the array of numbers, one list per row (lists indexed from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Matrix = Data.get(input_matrix),
-    R = len(Matrix),
-    C = len(Matrix[1]),
-    RowSigns = new_list(R),
-    RowSigns :: [-1, 1],
-    ColSigns = new_list(C),
-    ColSigns :: [-1, 1],
-    % x[i, j] = the entry with the signs of its row and its column applied
-    X = new_array(R, C),
-    X :: -100..100,
-    foreach (I in 1..R, J in 1..C)
-        X[I, J] #= Matrix[I, J] * RowSigns[I] * ColSigns[J]
+    A = Data.get(input_matrix),
+    NR = len(A),                           % the number of rows
+    NC = len(A[1]),                        % the number of columns
+    % RowSign[I] = -1 or 1: flip row I when it is -1
+    RowSign = new_list(NR),
+    RowSign :: -1..1,
+    foreach (I in 1..NR)
+        RowSign[I] #!= 0
     end,
-    % every row sum and every column sum lies in 0..300
-    foreach (I in 1..R)
-        RowSum #= sum([X[I, J] : J in 1..C]),
-        RowSum #>= 0,
-        RowSum #=< 300
+    % ColSign[J] = -1 or 1: flip column J when it is -1
+    ColSign = new_list(NC),
+    ColSign :: -1..1,
+    foreach (J in 1..NC)
+        ColSign[J] #!= 0
     end,
-    foreach (J in 1..C)
-        ColSum #= sum([X[I, J] : I in 1..R]),
-        ColSum #>= 0,
-        ColSum #=< 300
+    % Sign[I,J] = the sign given to the entry in row I and column J
+    Sign = new_array(NR, NC),
+    Sign :: -1..1,
+    foreach (I in 1..NR, J in 1..NC)
+        Sign[I,J] #= RowSign[I] * ColSign[J]
     end,
-    % the total, 0..1000, is as small as possible
-    Total #= sum([X[I, J] : I in 1..R, J in 1..C]),
-    Total #>= 0,
-    Total #=< 1000,
-    Vars = RowSigns ++ ColSigns,
-    Outputs = [row_signs = RowSigns, col_signs = ColSigns],
+    % each row sums to a positive number or zero after the flips
+    foreach (I in 1..NR)
+        sum([A[I,J] * Sign[I,J] : J in 1..NC]) #>= 0
+    end,
+    % each column sums to a positive number or zero after the flips
+    foreach (J in 1..NC)
+        sum([A[I,J] * Sign[I,J] : I in 1..NR]) #>= 0
+    end,
+    % the overall sum of the flipped numbers is as small as possible
+    Total #= sum([A[I,J] * Sign[I,J] : I in 1..NR, J in 1..NC]),
+    Vars = RowSign ++ ColSign,
+    Outputs = [row_signs = RowSign, col_signs = ColSign],
     Options = [$min(Total)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

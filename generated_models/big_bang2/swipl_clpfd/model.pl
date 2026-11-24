@@ -1,121 +1,92 @@
+% big_bang2: a SWI-Prolog model from DCP Rosetta.
+%
+% Nontransitive dice: find five dice, each with six faces whose values are whole numbers from 1 to 12 (faces may
+% repeat, within a die and across dice), such that the "beats" relation between the dice is the relation of the game
+% Rock-Paper-Scissors-Lizard-Spock: Rock beats Scissors and Lizard; Paper beats Rock and Spock; Scissors beats Paper
+% and Lizard; Lizard beats Paper and Spock; Spock beats Rock and Scissors. A die A beats a die B when A has a strictly
+% larger face than B in more than half of all pairs of faces.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(pairs)).
 
-% Big Bang non-transitive dice: five dice with six faces each, face values 1 to
-% 12, such that the "beats" relation between the dice follows the game
-% Rock-Paper-Scissors-Lizard-Spock. Die A beats die B when A shows the larger
-% face in more than half of all pairs of faces.
-
-% Search: decide the dice one at a time, first how far the sum of its faces
-% lies from 39 (the sum of six faces numbered 1..12 on average), closest
-% first, then how many faces show each value, value 1 first and the most faces
-% first, so the dice of one face sum are tried in the lexicographic order of
-% their sorted faces; then place the faces. Nothing is restricted by this: the
-% face sum is only labelled, and the face order of a die is left free, so
-% every arrangement of a die's faces is still a solution.
-labeling_options([leftmost, down, step]).
-
+% The model reads no data. Dice lists the faces of each die, in the order Rock, Paper, Scissors, Lizard, Spock.
 model(_Instance, Vars, [dice-Dice]) :-
-    % The numbers of dice and faces, the largest face value and the ten
-    % "beats" rules belong to the problem (there are no instance fields).
-    % Dice: 0 Rock, 1 Paper, 2 Scissors, 3 Lizard, 4 Spock; each pair is
-    % [winner, loser].
-    NumDice = 5,
-    NumFaces = 6,
-    MaxFace = 12,
-    Beats = [[0, 2],    % Rock crushes Scissors
-             [0, 3],    % Rock crushes Lizard
-             [1, 0],    % Paper covers Rock
-             [1, 4],    % Paper disproves Spock
-             [2, 1],    % Scissors cuts Paper
-             [2, 3],    % Scissors decapitates Lizard
-             [3, 1],    % Lizard eats Paper
-             [3, 4],    % Lizard poisons Spock
-             [4, 0],    % Spock vaporizes Rock
-             [4, 2]],   % Spock smashes Scissors
+    Dice = [Rock, Paper, Scissors, Lizard, Spock],
+    % each die has six faces, each a whole number from 1 to 12
+    maplist(die_faces, Dice),
+    % search guidance, not part of the statement: all dice have the same total Total over their faces
+    % (solutions exist; it makes the search far shorter)
+    Total in 6..72,
+    maplist(sum_is(Total), Dice),
+    % Less[V] = number of faces of the die that are smaller than V, for V = 1..12
+    maplist(smaller_counts, Dice, [LR, LP, LS, LL, LK]),
+    % the ten beats relationships: the first die beats the second
+    beats(Rock, LS), beats(Rock, LL),
+    beats(Paper, LR), beats(Paper, LK),
+    beats(Scissors, LP), beats(Scissors, LL),
+    beats(Lizard, LP), beats(Lizard, LK),
+    beats(Spock, LR), beats(Spock, LS),
+    % labelling order: Rock, Scissors, Lizard, Paper, Spock, so that each die is fixed
+    % next to the dice it is compared with
+    append([Rock, Scissors, Lizard, Paper, Spock, [Total]], Vars).
 
-    % Dice[d][f] is the value on face f of die d, 1..12
-    length(Dice, NumDice),
-    maplist(die(NumFaces, MaxFace), Dice),
+% A die has six faces, each from 1 to 12. The faces of a die are a set, so they are listed in ascending order,
+% which breaks the symmetry.
+die_faces(Faces) :-
+    length(Faces, 6),
+    Faces ins 1..12,
+    chain(Faces, #=<).
 
-    % Counts[d][v-1] is the number of faces of die d showing v, and
-    % Below[d][v-1] the number of faces of die d showing less than v. They
-    % follow from the faces.
-    maplist(face_counts(MaxFace), Dice, CountLists),
-    maplist(faces_below(NumFaces), CountLists, BelowLists),
+% Less[V] = number of faces of the die that are smaller than V, for V = 1..12
+smaller_counts(Faces, Less) :-
+    length(Less, 12),
+    numlist(1, 12, Values),
+    maplist(count_smaller(Faces), Values, Less).
 
-    % The winner of each rule shows the larger face in more than half of all
-    % NumFaces * NumFaces pairs of faces: a face of the winner showing v beats
-    % the Below[loser][v-1] faces of the loser that show less, so the pairs won
-    % are the sum over v of Counts[winner][v-1] * Below[loser][v-1]. Once the
-    % search has fixed one die of a rule, that sum is linear in the other.
-    Half is (NumFaces * NumFaces) // 2,
-    maplist(beats(CountLists, BelowLists, Half), Beats),
+count_smaller(Faces, V, Count) :-
+    smaller_flags(Faces, V, Flags),
+    sum(Flags, #=, Count).
 
-    % Closeness[d] = 33 - |sum of the faces of die d - 39|: 33 is the largest
-    % distance a sum of six faces in 1..12 can have from 39 (6 or 72). It is
-    % labelled from the largest value down, so dice whose faces add up to 39
-    % come first. A depth-first search over whole dice (all 12376 multisets of
-    % six faces) in this order meets a solution within the first few dice,
-    % against about 30000 dice in plain sorted-face order.
-    MeanSum is NumFaces * (1 + MaxFace) // 2,
-    MaxDistance is max(MeanSum - NumFaces, NumFaces * MaxFace - MeanSum),
-    maplist(closeness(MeanSum, MaxDistance, NumFaces), CountLists, Closeness),
+smaller_flags([], _, []).
+smaller_flags([F|Fs], V, [B|Bs]) :-
+    B #<==> (F #< V),
+    smaller_flags(Fs, V, Bs).
 
-    % The dice are decided in the order Rock, Scissors, Paper, Lizard, Spock.
-    maplist(die_decisions(Closeness, CountLists), [0, 2, 1, 3, 4], Decisions),
-    append(Decisions, Decided),
-    append(Dice, Faces),
-    append(Decided, Faces, Vars).
+% Die A beats die B when A has a strictly larger face than B in at least 19 of the 36 pairs of faces.
+beats(A, LessB) :-
+    maplist(wins_of_face(LessB), A, Wins),
+    sum(Wins, #>=, 19).
 
-% The face sum is stated over the counts (sum of v * Counts[v-1]), and the
-% counts are stated to add up to the number of faces, so that both prune while
-% the counts are being decided rather than only once the faces are placed.
-closeness(MeanSum, MaxDistance, NumFaces, Counts, Closeness) :-
-    length(Counts, MaxFace),
-    numlist(1, MaxFace, Values),
-    sum(Counts, #=, NumFaces),
-    scalar_product(Values, Counts, #=, Sum),
-    Closeness in 0..MaxDistance,
-    Closeness #= MaxDistance - abs(Sum - MeanSum).
+% number of faces of the other die that are smaller than face X
+wins_of_face(LessB, X, W) :-
+    element(X, LessB, W).
 
-die_decisions(Closeness, CountLists, D, [C|Counts]) :-
-    nth0(D, Closeness, C),
-    nth0(D, CountLists, Counts).
+sum_is(Total, Faces) :- sum(Faces, #=, Total).
 
-die(NumFaces, MaxFace, Die) :-
-    length(Die, NumFaces),
-    Die ins 1..MaxFace.
+labeling_options([leftmost, up]).
 
-% face_counts(+MaxFace, +Die, -Counts): Counts[v-1] is the number of faces of
-% Die that show the value v, for v = 1..MaxFace.
-face_counts(MaxFace, Die, Counts) :-
-    numlist(1, MaxFace, Values),
-    length(Counts, MaxFace),
-    pairs_keys_values(Pairs, Values, Counts),
-    global_cardinality(Die, Pairs).
+:- use_module(library(http/json)).
 
-% faces_below(+NumFaces, +Counts, -Below): Below[v-1] is the number of faces
-% showing less than v, the sum of the counts before position v. Each is
-% between 0 and NumFaces, and all counts add up to NumFaces; stated on the
-% running sums so that a rule that needs more faces below a value than the die
-% has fails at once.
-faces_below(NumFaces, Counts, Below) :-
-    faces_below(Counts, NumFaces, 0, Below).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-faces_below([], NumFaces, Smaller, []) :-
-    Smaller #= NumFaces.
-faces_below([Count|Counts], NumFaces, Smaller, [Smaller|Below]) :-
-    Smaller in 0..NumFaces,
-    Smaller1 #= Smaller + Count,
-    faces_below(Counts, NumFaces, Smaller1, Below).
-
-beats(CountLists, BelowLists, Half, [Winner, Loser]) :-
-    nth0(Winner, CountLists, WinnerCounts),
-    nth0(Loser, BelowLists, LoserBelow),
-    maplist(pairs_won, WinnerCounts, LoserBelow, WinsPerValue),
-    sum(WinsPerValue, #>, Half).
-
-pairs_won(Count, Below, Wins) :- Wins #= Count * Below.
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

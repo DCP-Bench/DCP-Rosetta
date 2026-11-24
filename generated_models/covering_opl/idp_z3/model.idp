@@ -1,25 +1,34 @@
-vocabulary {
-    type W <: Int                  // workers, sized from Cost (0-based)
-    type I <: Int                  // tasks, sized from Qualified
-    type J <: Int                  // padded columns of Qualified
-    Cost: W -> Int
-    Qualified: I * J -> Int
-    Qualified_len: I -> Int
-    qual: I * W -> Bool
-    workers: W -> Bool             // declared output: worker hired
-    total_cost: () -> Int          // declared output
-    minimize: () -> Int
+// covering_opl: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Select a set of workers to perform all the tasks, while minimizing the cost. Each worker can perform certain tasks and
+// has a hiring cost. Ensure that all tasks are performed.
+//
+// Save this file as model.idp. Download `covering_opl.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/covering_opl.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py covering_opl.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Task <: Int                   // the tasks, numbered from 0
+    type Slot <: Int                   // the positions in the list of workers qualified for a task, numbered from 0
+    type W <: Int                      // the workers, numbered from 0 (worker w is worker number w + 1 in Qualified)
+    Cost: W -> Int                     // Cost(w): the hiring cost of worker w
+    Qualified: Task * Slot -> Int      // Qualified(t, k): the number (from 1) of the k-th worker qualified for task t, padded with 0 (the list of the instance, reshaped)
+    Qualified_len: Task -> Int         // Qualified_len(t): the number of workers qualified for task t (created by the conversion: the length of each row of Qualified)
+    workers: W -> Bool                 // workers(w): worker w is hired
+    total_cost: () -> Int              // the total hiring cost of the workers hired
+    minimize: () -> Int                // the total hiring cost of the workers hired, to minimize
 }
-theory {
-    // qual(i, w) holds when worker w is qualified for task i (worker ids are 1-based in the data)
-    { ! i in I, w in W: qual(i, w) <- ? j in J: j < Qualified_len(i) & Qualified(i, j) - 1 = w. }
-
-    // ensure all tasks are performed: each task has a hired qualified worker
-    ! i in I: ? w in W: qual(i, w) & workers(w).
-
-    // total cost is the sum of hiring costs of the selected workers
+theory T:V {
+    // every task is performed by at least one hired worker qualified for it
+    ! t in Task: ? k in Slot: k < Qualified_len(t) & workers(Qualified(t, k) - 1).
+    // the total hiring cost is the cost of the workers hired
     total_cost() = sum{{ Cost(w) | w in W: workers(w) }}.
-
-    // minimize the total cost
+    // the total hiring cost is the value to minimize
     minimize() = total_cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

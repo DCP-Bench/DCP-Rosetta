@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791958490.3610008,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ca37e2d464e28bfa3c834efb90c42fc26dafae4ed339fe036e945931ef50801c"
+    },
+    "created_at": 1794389830.1119378,
     "problem_id": "knights_tour",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,79 +18,105 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b078659adab06263d373a86bbf94ce6ceaaaeb4ac0a344d54eaba97e6a4ba54d",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "ffb29e1f78d205958491dbbecd007c3917028e10",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.1457432620227337,
-        "execution_wall_seconds": 5.670116404013243,
+        "checking_seconds": 0.05278026801533997,
+        "execution_wall_seconds": 1.5968063729815185,
         "first_solution": {
           "x": [
             [
-              7,
-              12,
-              9,
-              30,
-              5,
-              18
-            ],
-            [
-              10,
-              29,
-              6,
-              19,
-              2,
-              31
-            ],
-            [
-              13,
-              8,
-              11,
+              21,
               4,
-              17,
-              20
+              15,
+              28,
+              31,
+              6
             ],
             [
-              28,
-              25,
+              16,
+              27,
               22,
-              1,
-              32,
-              3
+              5,
+              14,
+              29
             ],
             [
               23,
-              14,
-              27,
-              34,
-              21,
-              16
+              20,
+              3,
+              30,
+              7,
+              32
             ],
             [
               26,
-              35,
+              17,
               24,
-              15,
+              1,
+              10,
+              13
+            ],
+            [
+              35,
+              2,
+              19,
+              12,
+              33,
+              8
+            ],
+            [
+              18,
+              25,
+              34,
+              9,
               0,
-              33
+              11
             ]
           ]
         },
@@ -99,9 +129,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3435227400041185,
+        "reference_setup_seconds": 0.4990987360069994,
         "runner_status": {
+          "build_seconds": 0.0904393196105957,
           "detail": "",
+          "main_seconds": 0.9679957350017503,
+          "read_seconds": 0.0008642489847261459,
           "status": "limit",
           "type": "status"
         },
@@ -111,89 +144,89 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.18282172799808905,
-        "execution_wall_seconds": 8.900693666015286,
+        "checking_seconds": 0.09986328799277544,
+        "execution_wall_seconds": 2.1983588289876934,
         "first_solution": {
           "x": [
             [
-              6,
+              21,
+              18,
+              33,
+              48,
               23,
-              12,
-              25,
-              0,
-              57,
-              62,
-              27
+              52,
+              31,
+              50
             ],
             [
-              13,
-              38,
-              7,
+              34,
+              47,
               22,
-              11,
-              26,
-              55,
-              58
+              19,
+              32,
+              49,
+              60,
+              53
             ],
             [
-              8,
+              17,
+              20,
               5,
               24,
-              1,
-              56,
               61,
-              28,
-              63
+              40,
+              51,
+              30
             ],
             [
-              37,
-              14,
+              46,
+              35,
+              62,
               39,
-              10,
-              21,
+              6,
+              29,
               54,
-              59,
-              48
+              59
             ],
             [
+              63,
+              16,
+              45,
               4,
-              9,
-              2,
-              33,
-              60,
-              47,
-              20,
-              29
+              25,
+              58,
+              41,
+              8
+            ],
+            [
+              36,
+              3,
+              38,
+              13,
+              10,
+              7,
+              28,
+              55
             ],
             [
               15,
-              36,
-              43,
-              40,
-              53,
-              32,
-              49,
-              46
-            ],
-            [
-              42,
-              3,
-              34,
-              17,
+              12,
+              1,
               44,
-              51,
-              30,
-              19
+              57,
+              26,
+              9,
+              42
             ],
             [
-              35,
-              16,
-              41,
-              52,
-              31,
-              18,
-              45,
-              50
+              2,
+              37,
+              14,
+              11,
+              0,
+              43,
+              56,
+              27
             ]
           ]
         },
@@ -206,9 +239,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.562303751008585,
+        "reference_setup_seconds": 1.0438222119992133,
         "runner_status": {
+          "build_seconds": 0.0948338508605957,
           "detail": "",
+          "main_seconds": 1.5810274559771642,
+          "read_seconds": 0.0006008419732097536,
           "status": "limit",
           "type": "status"
         },
@@ -218,129 +254,129 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.367041613033507,
-        "execution_wall_seconds": 39.602785523980856,
+        "checking_seconds": 0.18592708502546884,
+        "execution_wall_seconds": 13.683432518999325,
         "first_solution": {
           "x": [
             [
-              99,
-              48,
-              7,
-              18,
-              97,
-              2,
-              25,
-              28,
-              95,
-              0
+              85,
+              76,
+              27,
+              58,
+              11,
+              34,
+              69,
+              92,
+              47,
+              38
             ],
             [
+              26,
+              57,
+              86,
+              33,
+              70,
+              59,
+              12,
+              37,
+              68,
+              93
+            ],
+            [
+              77,
+              84,
+              75,
+              28,
+              35,
+              10,
+              91,
+              48,
+              39,
+              46
+            ],
+            [
+              56,
+              25,
+              32,
+              87,
+              60,
+              71,
+              36,
+              13,
+              94,
+              67
+            ],
+            [
+              83,
+              78,
+              29,
+              74,
+              9,
+              14,
+              49,
+              90,
+              45,
+              40
+            ],
+            [
+              24,
+              55,
+              82,
+              31,
+              88,
+              61,
+              72,
+              15,
+              66,
+              95
+            ],
+            [
+              81,
+              30,
+              79,
+              54,
+              73,
               8,
-              17,
+              89,
+              50,
+              41,
+              44
+            ],
+            [
+              2,
+              23,
+              20,
+              7,
+              62,
+              5,
+              16,
+              43,
+              96,
+              65
+            ],
+            [
+              21,
+              80,
+              1,
+              4,
+              53,
+              18,
+              63,
               98,
               51,
-              4,
-              19,
-              96,
-              1,
-              36,
-              27
+              42
             ],
             [
-              49,
-              52,
-              47,
-              6,
-              39,
-              24,
+              0,
               3,
-              26,
-              29,
-              94
-            ],
-            [
-              16,
-              9,
-              50,
-              55,
-              58,
-              5,
-              20,
-              37,
-              32,
-              35
-            ],
-            [
-              53,
-              46,
-              57,
-              40,
-              21,
-              38,
-              23,
-              34,
-              93,
-              30
-            ],
-            [
-              10,
-              15,
-              54,
-              59,
-              56,
-              71,
-              88,
-              31,
-              82,
-              33
-            ],
-            [
-              45,
-              64,
-              11,
-              70,
-              41,
               22,
-              83,
-              72,
-              87,
-              92
-            ],
-            [
-              14,
-              69,
-              60,
-              65,
-              76,
-              89,
-              78,
-              81,
-              84,
-              73
-            ],
-            [
-              63,
-              44,
-              67,
-              12,
-              61,
-              42,
-              75,
-              86,
-              91,
-              80
-            ],
-            [
-              68,
-              13,
-              62,
-              43,
-              66,
-              77,
-              90,
-              79,
-              74,
-              85
+              19,
+              6,
+              99,
+              52,
+              17,
+              64,
+              97
             ]
           ]
         },
@@ -353,9 +389,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 4.523023753019515,
+        "reference_setup_seconds": 2.398815463995561,
         "runner_status": {
+          "build_seconds": 0.11289787292480469,
           "detail": "",
+          "main_seconds": 13.100809892988764,
+          "read_seconds": 0.0009473399841226637,
           "status": "limit",
           "type": "status"
         },
@@ -365,44 +404,44 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07079048902960494,
-        "execution_wall_seconds": 2.153508020041045,
+        "checking_seconds": 0.03516837101778947,
+        "execution_wall_seconds": 1.6010369550203905,
         "first_solution": {
           "x": [
             [
-              6,
-              13,
-              18,
-              23,
-              4
+              4,
+              17,
+              22,
+              11,
+              24
             ],
             [
-              19,
-              24,
-              5,
-              12,
-              17
-            ],
-            [
-              14,
               7,
-              10,
-              3,
-              22
-            ],
-            [
-              9,
-              20,
-              1,
+              12,
+              5,
               16,
-              11
+              21
             ],
             [
-              0,
-              15,
+              18,
+              3,
               8,
-              21,
-              2
+              23,
+              10
+            ],
+            [
+              13,
+              6,
+              1,
+              20,
+              15
+            ],
+            [
+              2,
+              19,
+              14,
+              9,
+              0
             ]
           ]
         },
@@ -415,9 +454,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7952537800301798,
+        "reference_setup_seconds": 0.39281068500713445,
         "runner_status": {
+          "build_seconds": 0.08876442909240723,
           "detail": "",
+          "main_seconds": 1.0059579070075415,
+          "read_seconds": 0.0006137450109235942,
           "status": "limit",
           "type": "status"
         },
@@ -427,72 +469,72 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.15204876300413162,
-        "execution_wall_seconds": 4.977012936025858,
+        "checking_seconds": 0.07536605899804272,
+        "execution_wall_seconds": 2.700790314003825,
         "first_solution": {
           "x": [
             [
-              34,
-              31,
-              44,
-              41,
-              48,
-              29,
-              46
-            ],
-            [
-              43,
-              40,
-              33,
-              30,
-              45,
-              26,
-              23
-            ],
-            [
               32,
-              35,
-              42,
-              21,
-              24,
-              47,
-              28
-            ],
-            [
-              39,
-              20,
-              37,
-              0,
-              27,
-              22,
-              25
-            ],
-            [
-              36,
-              17,
-              8,
-              11,
-              14,
-              1,
-              4
+              9,
+              18,
+              25,
+              4,
+              45,
+              16
             ],
             [
               19,
-              38,
-              15,
+              26,
+              33,
+              8,
+              17,
               6,
-              3,
-              10,
-              13
+              3
             ],
             [
-              16,
-              7,
-              18,
-              9,
-              12,
+              10,
+              31,
+              24,
               5,
-              2
+              44,
+              15,
+              46
+            ],
+            [
+              27,
+              20,
+              29,
+              34,
+              7,
+              2,
+              43
+            ],
+            [
+              30,
+              11,
+              40,
+              23,
+              14,
+              47,
+              36
+            ],
+            [
+              21,
+              28,
+              13,
+              38,
+              35,
+              42,
+              1
+            ],
+            [
+              12,
+              39,
+              22,
+              41,
+              0,
+              37,
+              48
             ]
           ]
         },
@@ -505,9 +547,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1888854100252502,
+        "reference_setup_seconds": 0.7085947239829693,
         "runner_status": {
+          "build_seconds": 0.09027862548828125,
           "detail": "",
+          "main_seconds": 2.1329011990164872,
+          "read_seconds": 0.0006245110125746578,
           "status": "limit",
           "type": "status"
         },
@@ -519,21 +564,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "b80b7d2fa66a81f268d594ef2f165289fd0ee3cb9fdd831965acbccc0b92a53c",
+    "model_hash": "23644e19985303c29f26104dc3bbd873b8e6166a62dd583f9a5ce3ae05f340cd",
     "problem_id": "knights_tour",
     "reason": "accepted",
-    "reference_hash": "927c57181e65d293357f7f57663443c41936b0e2e306df030d3de12d6592a7e5",
+    "reference_hash": "252eb5400007fdca7b9e76656ef258e5b72fe6a041dff6cdf1aad63533f22660",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -544,11 +589,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 73.94715434696991,
+    "total_wall_seconds": 27.66427508398192,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

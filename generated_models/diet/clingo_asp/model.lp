@@ -1,39 +1,48 @@
-% Diet problem: choose how many servings of each of four foods to eat so that the diet meets the
-% minimum amount of each nutrient (calories, chocolate, sugar, fat) at the lowest total price.
-% Instance facts: n(N) foods numbered 0..N-1, price(F, P): price in cents of one serving of food F,
-% limits(L, R): the least amount R required of nutrient L.
+% diet: a clingo model from DCP Rosetta.
+%
+% Given the prices and the minimum nutritional requirements for each nutrition type, find the optimal diet:
+% the choice of whole numbers of units of the foods that meets every requirement at the lowest total cost.
+% The foods, with their contents per unit in calories, chocolate (ounces), sugar (ounces) and fat (ounces),
+% are: chocolate cake (1 slice) 400, 3, 2, 2; chocolate ice cream (1 scoop) 200, 2, 2, 4; cola (1 bottle)
+% 150, 0, 4, 1; pineapple cheesecake (1 piece) 500, 0, 4, 5.
+%
+% Save this file as model.lp. Download `diet.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py diet.json
+%   python -m clingo model.lp diet_1.lp
+
+% Input: n(N): the number N of foods, numbered 0..N-1; price(F, P): the price P of one unit of food F;
+% limits(L, R): the least amount R required of nutrient L (0 calories, 1 chocolate, 2 sugar, 3 fat).
+
 food(0..N-1) :- n(N).
 
-% The nutrient content of one serving, fixed by the problem statement (not by the instance):
-% content(L, F, Q): a serving of food F holds Q of nutrient L.
-% Nutrients: 0 calories, 1 chocolate (ounces), 2 sugar (ounces), 3 fat (ounces).
-% Foods: 0 chocolate cake, 1 chocolate ice cream, 2 cola, 3 pineapple cheesecake.
-content(0,0,400). content(0,1,200). content(0,2,150). content(0,3,500).
-content(1,0,3).   content(1,1,2).   content(1,2,0).   content(1,3,0).
-content(2,0,2).   content(2,1,2).   content(2,2,4).   content(2,3,4).
-content(3,0,2).   content(3,1,4).   content(3,2,1).   content(3,3,5).
+% content(F, L, Q): one unit of food F holds Q of nutrient L, as in the table of the problem
+content(0,0,400). content(0,1,3). content(0,2,2). content(0,3,2).
+content(1,0,200). content(1,1,2). content(1,2,2). content(1,3,4).
+content(2,0,150). content(2,1,0). content(2,2,4). content(2,3,1).
+content(3,0,500). content(3,1,0). content(3,2,4). content(3,3,5).
 
-% The most servings of a food: the problem allows 10000 of each food, and the cost has to stay
-% within 1000, so a food that costs P cents per serving is eaten at most 1000 / P times.
-most(F,B) :- price(F,P), P > 0, B = 1000 / P.
-most(F,10000) :- price(F,0).
+% reach(F, L, U): the least number of units of food F that alone reach the requirement of nutrient L
+reach(F,L,(R+Q-1)/Q) :- food(F), content(F,L,Q), Q > 0, limits(L,R).
 
-% The number of servings of food F is written in unary: servings(F, V) says food F is eaten
-% at least V times. Sums over these atoms are propagated much more strongly than a sum over
-% one atom per count.
-{ servings(F,V) } :- most(F,B), V = 1..B.
-:- servings(F,V), V > 1, not servings(F,V - 1).
+% K: the largest of these over all foods and nutrients
+largest_reach(K) :- K = #max { C,F,L : reach(F,L,C) }.
 
-% The diet holds at least the required amount of every nutrient.
-:- limits(L,R), #sum { Q,F,V : servings(F,V), content(L,F,Q) } < R.
+% the number of units of a food is at most K+1: with more than K+1 units, removing one unit leaves at
+% least K units, which alone reach the requirement of every nutrient the food holds, and the cost does not rise
+amount(0..K+1) :- largest_reach(K).
 
-% cost(S): the total price of the diet is S, to be minimised. The problem keeps it between 0
-% and 1000. The value is chosen and tied to the prices by one sum, because defining it with
-% a sum assignment would ground one atom for every possible total.
-1 { cost(S) : S = 0..1000 } 1.
-:- #sum { P,F,V : servings(F,V), price(F,P) ; -S,total,S : cost(S) } != 0.
-#minimize { S,total : cost(S) }.
+% the number of units of each food is exactly one amount
+1 { units(F,V) : amount(V) } 1 :- food(F).
 
-% Which servings are eaten is not part of the answer, so solutions are projected onto cost.
-#project cost/1.
+% every nutrient reaches its minimum amount
+:- limits(L,R), #sum { Q*V,F : units(F,V), content(F,L,Q) } < R.
+
+% cost(S): the total price S of the diet
+cost(S) :- S = #sum { P*V,F : units(F,V), price(F,P) }.
+
+#minimize { P*V,F : units(F,V), price(F,P) }.
+
 #show cost/1.

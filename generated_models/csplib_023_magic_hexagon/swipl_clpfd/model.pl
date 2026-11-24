@@ -1,38 +1,63 @@
-:- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
-
-% Magic hexagon: place the numbers 1..19 in the 19 cells of a hexagon (rows of
-% 3, 4, 5, 4, 3 cells) so that the numbers along each of the 15 lines add up to
-% the same magic sum.
+% csplib_023_magic_hexagon: a SWI-Prolog model from DCP Rosetta.
 %
-% The geometry is fixed by the problem. Cells are numbered row by row from 1:
-%       1  2  3
-%     4  5  6  7
-%   8  9 10 11 12
-%    13 14 15 16
-%      17 18 19
-lines([
-    % the 5 horizontal rows
-    [1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19],
-    % the 5 diagonals running from top left to bottom right
-    [1, 4, 8], [2, 5, 9, 13], [3, 6, 10, 14, 17], [7, 11, 15, 18], [12, 16, 19],
-    % the 5 diagonals running from top right to bottom left
-    [3, 7, 12], [2, 6, 11, 16], [1, 5, 10, 15, 19], [4, 9, 14, 18], [8, 13, 17]]).
+% A magic hexagon arranges the numbers 1 to 19 in a hexagon of cells A to S, laid out in five rows of 3, 4, 5, 4 and 3
+% cells:
+%       A  B  C
+%     D  E  F  G
+%   H  I  J  K  L
+%     M  N  O  P
+%       Q  R  S
+% The sum of the numbers on each of the 15 lines (rows and diagonals) is the same magic constant, 38.
+%
+% Save this file as model.pl. Download `csplib_023_magic_hexagon.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_023_magic_hexagon.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('csplib_023_magic_hexagon.json')" -t halt model.pl
+%
+% Data fields: MAGIC_SUM (the sum of each line) and NUM_CELLS (the number of cells, 19).
+:- use_module(library(clpfd)).
 
-model(Instance, LD, ['LD'-LD]) :-
-    NumCells = Instance.'NUM_CELLS',
+model(Instance, Vars, ['LD'-LD]) :-
     MagicSum = Instance.'MAGIC_SUM',
-    lines(Lines),
-
-    % LD[c] = the number in cell c
+    NumCells = Instance.'NUM_CELLS',
+    % LD is [A, B, ..., S], the numbers in the cells of the hexagon in the order of the statement
+    LD = [A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S],
     length(LD, NumCells),
+    % the numbers 1 to 19, each used once
     LD ins 1..NumCells,
+    all_different(LD),
+    Vars = LD,
+    % the rows of the hexagon
+    Rows = [[A, B, C], [D, E, F, G], [H, I, J, K, L], [M, N, O, P], [Q, R, S]],
+    % the diagonals running down and to the left
+    Left = [[A, D, H], [B, E, I, M], [C, F, J, N, Q], [G, K, O, R], [L, P, S]],
+    % the diagonals running down and to the right
+    Right = [[A, E, J, O, S], [B, F, K, P], [C, G, L], [D, I, N, R], [H, M, Q]],
+    % each of the 15 lines sums to the magic constant
+    append([Rows, Left, Right], Lines),
+    maplist(line_sum(MagicSum), Lines).
 
-    % every number from 1 to 19 is used exactly once
-    all_distinct(LD),
+line_sum(MagicSum, Line) :- sum(Line, #=, MagicSum).
 
-    % every line of the hexagon adds up to the magic sum
-    maplist({LD, MagicSum}/[Line]>>(maplist({LD}/[Cell, Value]>>nth1(Cell, LD, Value), Line, Values),
-                                    sum(Values, #=, MagicSum)), Lines).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+:- use_module(library(http/json)).
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

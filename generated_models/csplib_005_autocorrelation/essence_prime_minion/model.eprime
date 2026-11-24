@@ -1,15 +1,27 @@
 language ESSENCE' 1.0
-$ Binary sequence of length n with entries +1 or -1 that minimises the sum of squares of the periodic autocorrelations.
-given n : int
-$ the sequence S, one bit per position, each +1 or -1
-find sequence : matrix indexed by [int(1..n)] of int(-1, 1)
-$ the periodic autocorrelation C_k for shift k, bounded by the number of terms n
+$ csplib_005_autocorrelation: an Essence' model from DCP Rosetta.
+$
+$ Construct a binary sequence of length n, each bit +1 or -1, that minimizes the autocorrelations between bits, with periodic (cyclic) boundary conditions. The k-th autocorrelation is C_k = sum over i from 0 to n-1 of S_i * S_((i+k) mod n), for k from 1 to n-1. The aim is to minimize E = sum over k from 1 to n-1 of C_k^2.
+$
+$ Save this file as model.eprime. Download `csplib_005_autocorrelation.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_005_autocorrelation.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_005_autocorrelation_1.param.solution`:
+$   python dcp_convert_essence.py csplib_005_autocorrelation.json
+$   savilerow model.eprime csplib_005_autocorrelation_1.param -run-solver
+
+$ n: the length of the sequence
+given n : int(2..)
+
+$ sequence[i]: bit i of the sequence (indices 1-based, so the reference's S_0 is sequence[1]), +1 or -1
+find sequence : matrix indexed by [int(1..n)] of int(-1..1)
+$ C[k]: the k-th periodic autocorrelation of the sequence (k from 1 to n-1)
 find C : matrix indexed by [int(1..n-1)] of int(-n..n)
-$ E is the sum of the squared autocorrelations C_k for k from 1 to n-1
-find E : int(0..n*n*n)
-minimising E
+
+minimising sum k : int(1..n-1) . C[k] * C[k]
 such that
-$ the k-th periodic autocorrelation is the sum over positions i of S_i times S_((i+k) mod n), with positions counted from 1
-forAll k : int(1..n-1) . C[k] = (sum i : int(1..n) . sequence[i] * sequence[((i + k - 1) % n) + 1]),
-$ the energy E is the sum of the squares of the autocorrelations
-E = (sum k : int(1..n-1) . C[k] * C[k])
+$ every bit is +1 or -1, so no bit is 0
+forAll i : int(1..n) . sequence[i] != 0,
+$ the k-th autocorrelation is the sum of the products of bits that are k apart, wrapping around at the end (j = i+k, or j = i+k-n after wrapping)
+forAll k : int(1..n-1) . C[k] = (sum i : int(1..n) . sum j : int(1..n) . toInt(j = i + k \/ j = i + k - n) * sequence[i] * sequence[j])

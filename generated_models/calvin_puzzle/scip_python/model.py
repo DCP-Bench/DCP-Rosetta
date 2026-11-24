@@ -1,46 +1,70 @@
-# Calvin puzzle: fill an n by n grid with the numbers 1..n*n, each once, so that
-# each number is placed 3 squares away horizontally or vertically from the previous
-# number, or exactly 2 squares away diagonally. The output is the completed grid.
+# calvin_puzzle: a SCIP (Python) model from DCP Rosetta.
+# Download the `calvin_puzzle.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/calvin_puzzle.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python calvin_puzzle.py calvin_puzzle.json
 
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n = instance["n"]
-    K = n * n
-    cells = [(r, c) for r in range(n) for c in range(n)]
+def create_model(instance):
+    """Fill an n by n grid with the numbers 1 to n*n, each square getting one
+    number and each number placed once. Each number after the first is placed
+    either three squares away horizontally or vertically, or two squares away
+    diagonally, from the previous number. Output the completed grid."""
+    n = instance["n"]   # the side of the grid, so the grid has n * n squares (from the statement)
+    N = n * n           # the numbers placed: 1 to N, one per square (from the statement)
 
-    # Two cells are a legal step if they are 3 apart horizontally or vertically,
-    # or 2 apart on both axes (diagonally).
-    def legal_step(a, b):
-        dr = abs(a[0] - b[0])
-        dc = abs(a[1] - b[1])
-        return (dr == 3 and dc == 0) or (dr == 0 and dc == 3) or (dr == 2 and dc == 2)
+    model = Model("calvin_puzzle")
 
-    m = Model()
+    # v[r, c, k] is 1 when square (r, c) holds the number k + 1, and 0 when not.
+    # Binaries, so the bounds 0 and 1 are the domain; no big-M bounds needed.
+    v = model.addMatrixVar((n, n, N), vtype="B", name="v")
 
-    # p[k, r, c] = 1 if the number k is written in the square (r, c)
-    p = {(k, r, c): m.addVar(name=f"p_{k}_{r}_{c}", vtype="B")
-         for k in range(1, K + 1) for (r, c) in cells}
+    # Each square holds exactly one number.
+    model.addMatrixCons(v.sum(axis=2) == 1)
 
-    # each number is written in exactly one square
-    for k in range(1, K + 1):
-        m.addCons(quicksum(p[k, r, c] for (r, c) in cells) == 1)
+    # Each number is placed on exactly one square.
+    model.addMatrixCons(v.sum(axis=(0, 1)) == 1)
 
-    # each square holds exactly one number
-    for (r, c) in cells:
-        m.addCons(quicksum(p[k, r, c] for k in range(1, K + 1)) == 1)
+    # The moves from one number to the next, as (row, column) steps:
+    # three squares horizontally or vertically, or two squares diagonally.
+    moves = [(0, 3), (0, -3), (3, 0), (-3, 0), (2, 2), (2, -2), (-2, 2), (-2, -2)]
 
-    # the next number is placed a legal step away from the previous number
-    for k in range(1, K):
-        for a in cells:
-            # if number k is in square a, number k+1 is in a square reachable from a
-            nbrs = [b for b in cells if legal_step(a, b)]
-            m.addCons(p[k, a[0], a[1]] <= quicksum(p[k + 1, b[0], b[1]] for b in nbrs))
+    # If square (r, c) holds the number k + 1, then the number k + 2 is on a square
+    # reachable from (r, c) by one move. Only the squares inside the grid are listed.
+    # Number k + 2 is on exactly one square, so this leaves exactly one such move.
+    for k in range(N - 1):
+        for r in range(n):
+            for c in range(n):
+                reachable = [v[r + dr, c + dc, k + 1]
+                             for dr, dc in moves
+                             if 0 <= r + dr < n and 0 <= c + dc < n]
+                model.addCons(v[r, c, k] <= quicksum(reachable))
 
-    # the grid entry of a square is the number written in it
-    x = [[quicksum(k * p[k, r, c] for k in range(1, K + 1)) for c in range(n)]
+    # The grid: square (r, c) shows the number it holds, each number weighted by its value.
+    x = [[quicksum((k + 1) * v[r, c, k] for k in range(N)) for c in range(n)]
          for r in range(n)]
 
-    m.setObjective(0)
-    return m, {"x": x}
+    # There is no objective: any grid that meets the rules is an answer.
+    return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

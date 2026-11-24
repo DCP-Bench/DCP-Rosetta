@@ -1,24 +1,29 @@
-// Maximal independent set: choose nodes so that no two chosen nodes are adjacent, and every node not chosen has a chosen neighbour.
-vocabulary {
-    // the number of nodes of the graph
-    n: () -> Int
-    // the nodes, numbered 1..n as in the adjacency list
-    type Range_n <: Int
-    // the rows of the adjacency list, one per node (0-based), node of row r is r + 1
-    type Row <: Int
-    // the neighbour slots of a row (0-based)
-    type Slot <: Int
-
-    // for each node, the set of adjacent nodes (node ids are 1-based)
-    adjacency_list: Row * Slot -> Int
-
-    // whether each node is included in the maximal independent set
-    nodes: Range_n -> Bool
+// session2_maximal_independent_sets: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// In graph theory, an independent set is a set of vertices in a graph, no two of which are adjacent. A maximal
+// independent set is an independent set that is not a subset of any other independent set. A graph may have many
+// maximal independent sets of widely varying sizes: find a maximal independent set for the data provided. The data
+// provides an array containing for each node of the graph the set of adjacent nodes.
+//
+// Save this file as model.idp. Download `session2_maximal_independent_sets.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_maximal_independent_sets.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session2_maximal_independent_sets.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Node <: Int                   // the nodes of the graph, numbered from 0
+    type Slot <: Int                   // the positions in the adjacency list of a node, numbered from 0
+    adjacency_list: Node * Slot -> Int // adjacency_list(i, j): the j-th neighbour of node i, numbered from 1
+    nodes: Node -> Bool                // nodes(i): node i is in the independent set
 }
-theory {
-    // no two adjacent nodes are both in the set
-    ! u in Range_n, r in Row, s in Slot: r + 1 = u => ! v in Range_n: adjacency_list(r, s) = v => ~(nodes(u) & nodes(v)).
-
-    // every node not in the set is adjacent to a node in the set, so the set is maximal
-    ! u in Range_n: ~nodes(u) => ? r in Row, s in Slot, v in Range_n: r + 1 = u & adjacency_list(r, s) = v & nodes(v).
+theory T:V {
+    // no two nodes of the set are adjacent
+    ! i in Node: ! j in Slot: nodes(i) => ~nodes(adjacency_list(i, j) - 1).
+    // every node outside the set is adjacent to a node of the set, so the set cannot be extended
+    ! i in Node: ~nodes(i) => ?j in Slot: nodes(adjacency_list(i, j) - 1).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

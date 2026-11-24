@@ -17,4 +17,11 @@ def improving_incumbents(result, minimize=True):
     return True
 
 
-__all__ = ["evaluate", "improving_incumbents"]
+def incumbents_with_values(result, minimize=True):
+    """A readiness check for runners that give incumbents their values (evaluate(..., incumbent_values=True)):
+    improving_incumbents holds, and on every instance each incumbent carried values, which the evaluator checked."""
+    return improving_incumbents(result, minimize) and all(
+        item.get("incumbents_with_values") == len(item.get("incumbents", [])) for item in result.get("instances", []))
+
+
+__all__ = ["evaluate", "improving_incumbents", "incumbents_with_values"]

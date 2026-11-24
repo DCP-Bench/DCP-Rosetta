@@ -1,18 +1,45 @@
-% Maximum clique: the largest set of vertices of a graph that are pairwise adjacent.
+% csplib_074_maximum_clique: a Picat model from DCP Rosetta.
+%
+% Given a simple undirected graph, a clique is a set of vertices in which every two distinct vertices are
+% adjacent. Find a clique of the largest possible size in the graph.
+%
+% Save this file as model.pi. Download `csplib_074_maximum_clique.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_074_maximum_clique.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_074_maximum_clique.json
+%   picat model.pi csplib_074_maximum_clique_1.dat
+
+% Data.get(n): the number of vertices; Data.get(adj): the adjacency matrix, a list of rows indexed from 1,
+% with adj[I,J] = 1 when vertices I and J are joined by an edge and 0 otherwise.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     Adj = Data.get(adj),
-    % c[i] = 1 when vertex i is in the clique
     C = new_list(N),
-    C :: 0..1,
-    % two vertices without an edge are not both in the clique
-    foreach (I in 1..N-1, J in I+1..N)
-        if Adj[I, J] == 0 then
+    C :: 0..1,                            % C[I] = 1 when vertex I is in the clique
+    % two distinct vertices that are not adjacent cannot both be in the clique
+    foreach (I in 1..N, J in I+1..N)
+        if Adj[I,J] + Adj[J,I] < 2 then
             C[I] + C[J] #=< 1
         end
     end,
+    Size #= sum(C),
     Vars = C,
     Outputs = [c = C],
-    Options = [$max(sum(C))].
+    % maximise the number of vertices in the clique
+    Options = [$max(Size)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

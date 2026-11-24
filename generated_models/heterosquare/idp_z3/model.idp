@@ -1,42 +1,52 @@
-vocabulary {
-    n: () -> Int
-    type Range_n <: Int
-    type Val <: Int
-    Val_size: () -> Int
-    x: Range_n * Range_n -> Val
-    rowsum: Range_n -> Int
-    colsum: Range_n -> Int
-    diag1: () -> Int
-    diag2: () -> Int
+// heterosquare: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A heterosquare of order n is an n by n square whose elements are distinct integers from 1 to n^2 such that the sums
+// of the rows, columns and diagonals are all different.
+//
+// Save this file as model.idp. Download `heterosquare.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/heterosquare.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py heterosquare.json
+//   idp-engine model_1.idp
+vocabulary V {
+    n: () -> Int                       // the order of the square
+    type Range_n <: Int                // the rows and the columns, numbered 1 to n
+    x: Range_n * Range_n -> Int        // x(i, j): the element in row i and column j
+    rowsum: Range_n -> Int             // rowsum(i): the sum of the elements of row i
+    colsum: Range_n -> Int             // colsum(j): the sum of the elements of column j
+    diag1: () -> Int                   // the sum of the main diagonal
+    diag2: () -> Int                   // the sum of the anti-diagonal
 }
-
-theory {
-    // the elements are integers from 1 to n^2 (the type Val)
-    Val_size() = n() * n().
-
-    // every element is a distinct integer (a bijection onto 1..n^2)
-    ! a in Range_n: ! b in Range_n: ! c in Range_n: ! d in Range_n:
-        (a ~= c | b ~= d) => x(a, b) ~= x(c, d).
-
-    // the sum of row a
-    ! a in Range_n: rowsum(a) = sum{{ x(a, b) | b in Range_n }}.
-
-    // the sum of column b
-    ! b in Range_n: colsum(b) = sum{{ x(a, b) | a in Range_n }}.
-
-    // the sum of the main diagonal
-    diag1() = sum{{ x(i, j) | i, j in Range_n: i = j }}.
-
-    // the sum of the anti-diagonal
-    diag2() = sum{{ x(i, j) | i, j in Range_n: i + j = n() + 1 }}.
-
-    // the sums of the rows, columns and diagonals are all different
-    ! a in Range_n: ! b in Range_n: a ~= b => rowsum(a) ~= rowsum(b).
-    ! a in Range_n: ! b in Range_n: a ~= b => colsum(a) ~= colsum(b).
-    ! a in Range_n: ! b in Range_n: rowsum(a) ~= colsum(b).
-    ! a in Range_n: rowsum(a) ~= diag1().
-    ! a in Range_n: rowsum(a) ~= diag2().
-    ! a in Range_n: colsum(a) ~= diag1().
-    ! a in Range_n: colsum(a) ~= diag2().
+theory T:V {
+    // every element is an integer from 1 to n^2
+    ! i in Range_n: ! j in Range_n: 1 =< x(i, j) & x(i, j) =< n() * n().
+    // the elements are distinct
+    ! i in Range_n: ! j in Range_n: ! k in Range_n: ! l in Range_n: (i ~= k | j ~= l) => x(i, j) ~= x(k, l).
+    // the sum of row i is the sum of its elements
+    ! i in Range_n: rowsum(i) = sum{{ x(i, j) | j in Range_n }}.
+    // the sum of column j is the sum of its elements
+    ! j in Range_n: colsum(j) = sum{{ x(i, j) | i in Range_n }}.
+    // the sum of the main diagonal is the sum of its elements
+    diag1() = sum{{ x(i, i) | i in Range_n }}.
+    // the sum of the anti-diagonal is the sum of its elements
+    diag2() = sum{{ x(i, j) | i in Range_n, j in Range_n: i + j = n() + 1 }}.
+    // the sums of the rows are all different
+    ! i in Range_n: ! j in Range_n: i ~= j => rowsum(i) ~= rowsum(j).
+    // the sums of the columns are all different
+    ! i in Range_n: ! j in Range_n: i ~= j => colsum(i) ~= colsum(j).
+    // the sums of the rows and of the columns are all different
+    ! i in Range_n: ! j in Range_n: rowsum(i) ~= colsum(j).
+    // the sums of the rows are different from the sums of the diagonals
+    ! i in Range_n: rowsum(i) ~= diag1().
+    ! i in Range_n: rowsum(i) ~= diag2().
+    // the sums of the columns are different from the sums of the diagonals
+    ! j in Range_n: colsum(j) ~= diag1().
+    ! j in Range_n: colsum(j) ~= diag2().
+    // the two diagonals have different sums
     diag1() ~= diag2().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

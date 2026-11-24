@@ -1,18 +1,54 @@
-% Grocery: the prices of the items, in cents, add up to the total, and their
-% product equals the total with the prices read in dollars, that is the total
-% times 100^(items - 1).
+% session5_grocery: a Picat model from DCP Rosetta.
+%
+% A kid goes into a grocery store and buys a number of items. The cashier charges a total price, the kid pays and is
+% about to leave when the cashier calls the kid back, and says "Hold on, I multiplied the items instead of adding
+% them; I'll try again; Hah, with adding them the price still comes to the same total price". What were the prices of
+% the items?
+%
+% Each price is a positive whole number of cents, and total_price is given in cents. Both the sum and the product of
+% the prices in dollars equal the total price in dollars.
+%
+% Save this file as model.pi. Download `session5_grocery.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_grocery.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session5_grocery.json
+%   picat model.pi session5_grocery_1.dat
+%
+% Data.get(num_items): the number of items bought; Data.get(total_price): the total price in cents.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Total = Data.get(total_price),
-    N = Data.get(num_items),
-    Product = Total * 100 ** (N - 1),
-    % every price divides the product, which is implied by it and keeps the
-    % domains small
-    Prices = new_list(N),
-    Prices :: [D : D in 1..Total, Product mod D == 0],
-    sum(Prices) #= Total,
-    prod(Prices) #= Product,
+    NumItems = Data.get(num_items),
+    TotalPrice = Data.get(total_price),
+    % Prices[I] = the price of item I in cents
+    Prices = new_list(NumItems),
+    Prices :: 1..TotalPrice,
+    % the sum of the prices, in dollars, is the total price in dollars
+    sum(Prices) #= TotalPrice,
+    % the product of the prices, in dollars, is the total price in dollars: the product of the prices in cents
+    % equals the total price times 100 for each item but one
+    Product = new_list(NumItems),
+    Scale = TotalPrice * 100 ** (NumItems - 1),
+    Product :: 1..Scale,
+    Product[1] #= Prices[1],
+    foreach (I in 2..NumItems)
+        Product[I] #= Product[I - 1] * Prices[I]
+    end,
+    Product[NumItems] #= Scale,
     Vars = Prices,
     Outputs = [prices = Prices],
-    Options = [ff].
+    Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

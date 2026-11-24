@@ -1,66 +1,64 @@
+% broken_weights: a SWI-Prolog model from DCP Rosetta.
+%
+% A merchant's measuring weight broke into a number of pieces, each a whole number of pounds. The pieces can be used on
+% a balance scale to weigh every whole number of pounds from 1 up to the total weight: a piece may go on either pan
+% or be left off the scale. For example, a 1-pound and a 4-pound piece weigh a 3-pound object, with the object and the
+% 1-pound piece on one pan and the 4-pound piece on the other. Find the weights of the pieces.
+%
+% Save this file as model.pl. Download `broken_weights.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('broken_weights.json')" -t halt model.pl
+%
+% Data fields: m (the total weight, in pounds), n (the number of pieces).
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Broken weights: a weight of m pounds broke into n pieces of whole-pound weight.
-% On a balance scale the pieces must be able to weigh every whole weight from 1
-% to m, each piece on the left pan, on the right pan, or not used.
 model(Instance, Vars, [weights-Weights]) :-
-    M = Instance.m,    % total weight of the unbroken weight
-    N = Instance.n,    % number of pieces
-
-    % Weights[j] = weight of piece j
-    length(Weights, N),
+    M = Instance.m,
+    N = Instance.n,
+    length(Weights, N),                     % the weight of each piece
     Weights ins 1..M,
-
-    % the pieces add up to the total weight
-    sum(Weights, #=, M),
-
-    % The pieces are split in two groups. Each group has a signed sum for every
-    % way of placing its pieces (-1 left pan, 0 off the scale, 1 right pan).
-    % A weight is weighed when a sum of the first group and a sum of the second
-    % add up to it.
-    HalfSize is N // 2,
-    length(First, HalfSize),
-    append(First, Second, Weights),
-    signed_sums(First, M, FirstSums),
-    signed_sums(Second, M, SecondSums),
-
-    % every weight from 1 to m is a sum of the first group plus one of the
-    % second. The two parts of each weight (FirstPart, SecondPart) are not
-    % searched for: once the pieces are known, their domains hold exactly the
-    % possible sums, and FirstPart + SecondPart = Weight is a constraint
-    % between two variables that is checked completely. Leaving them out of
-    % Vars keeps each set of pieces from being reported once per way of
-    % weighing every weight.
-    MinusM is -M,
+    sum(Weights, #=, M),                    % the pieces make up the total weight
+    chain(Weights, #=<),                    % symmetry breaking, not in the statement: the pieces are listed in ascending weight
+    % each whole weight T from 1 to M is weighed by some placement of the pieces
     numlist(1, M, Targets),
-    maplist({FirstSums, SecondSums, MinusM, M}/[Target]>>(
-                FirstPart in MinusM..M,
-                SecondPart in MinusM..M,
-                element(_, FirstSums, FirstPart),
-                element(_, SecondSums, SecondPart),
-                FirstPart + SecondPart #= Target),
-            Targets),
-    append([Weights, FirstSums, SecondSums], Vars).
+    maplist(weighable(Weights), Targets, Placements),
+    append([Weights|Placements], Vars).
 
-% The signed sums of the pieces over every placement of them: 3^(number of pieces).
-signed_sums(Pieces, M, Sums) :-
-    length(Pieces, Count),
-    findall(Placement, placement(Count, Placement), Placements),
-    MinusM is -M,
-    maplist({Pieces, MinusM, M}/[Placement, Sum]>>(
-                Sum in MinusM..M,
-                scalar_product(Placement, Pieces, #=, Sum)),
-            Placements, Sums).
+% The pieces (with weights Weights) can weigh Target: Placement gives each piece -1 when it is on the object's pan,
+% 1 when it is on the other pan and 0 when it is off the scale, and the pieces on the other pan outweigh those with the
+% object by Target.
+weighable(Weights, Target, Placement) :-
+    length(Weights, N),
+    length(Placement, N),
+    Placement ins -1..1,
+    maplist(on_pan, Placement, Weights, Contributions),   % each piece contributes its signed weight
+    sum(Contributions, #=, Target).
 
-% A placement of Count pieces: each is -1, 0 or 1.
-placement(0, []) :- !.
-placement(Count, [Side|Sides]) :-
-    Next is Count - 1,
-    member(Side, [-1, 0, 1]),
-    placement(Next, Sides).
+% Contribution is the signed weight of one piece (Side is its placement, Weight its weight).
+on_pan(Side, Weight, Contribution) :-
+    Contribution #= Side * Weight.
 
-% The pieces are decided in order.
-labeling_options([leftmost]).
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

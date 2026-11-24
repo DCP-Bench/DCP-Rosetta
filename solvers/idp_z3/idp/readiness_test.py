@@ -5,6 +5,10 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver idp_z3` runs this and keeps its
 output as the readiness evidence.
 
+`standalone_run` is what a reader does: run dcp_convert_idp.py on a list of instances (the dataset file's
+form), then `idp-engine model_1.idp` in the image, once per file, and read the answer the model's `main`
+procedure prints. The converter runs in the image too, since it needs the engine.
+
 A submission here is an FO(.) knowledge base, not a program, so the slow
 fixture cannot sleep: it is a nonlinear integer theory z3 cannot decide, which
 runs until the solver's own budget expires. The container sandbox itself is
@@ -18,8 +22,13 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate, improving_incumbents
+<<<<<<< HEAD
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity
+=======
+from evaluation import evaluate, improving_incumbents
+from evaluation.execution import image_identity, integration, run_process
+>>>>>>> origin/main
 from evaluation.results import EvaluationError
 
 SOLVER = "idp_z3"
@@ -248,6 +257,49 @@ theory {
 # IDP.execute(). The runner never calls it, so this procedure must not run: if it
 # did, its line on stdout would break the JSONL protocol and fail the check.
 # (Procedure strings take no escapes, so it cannot print a JSON record anyway.)
+STANDALONE_MODEL = """vocabulary V {
+    n: () -> Int
+    x: () -> Int
+    y: () -> Int
+}
+theory T:V {
+    0 =< x() & x() =< n().
+    0 =< y() & y() =< n().
+    x() + y() = n().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
+}
+"""
+STANDALONE_INSTANCES = [{"n": 2, "name": "two"}, {"n": 3, "name": "three"}]
+
+
+def standalone_run(temp):
+    """The reader's path, in the image: convert a list of instances with dcp_convert_idp.py, then run
+    `idp-engine model_N.idp` on each file."""
+    staging = temp / "standalone"
+    staging.mkdir()
+    (staging / "model.idp").write_text(STANDALONE_MODEL, encoding="utf-8")
+    (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+    staging.chmod(0o777)
+    for path in staging.iterdir():
+        path.chmod(0o666)
+    count = len(STANDALONE_INSTANCES)
+    script = ("python /opt/runner/dcp_convert_idp.py instances.json model.idp >/dev/null && "
+              + " && ".join(f"idp-engine model_{i}.idp" for i in range(1, count + 1)))
+    code, out, err = run_process([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+        "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+        "--mount", f"type=bind,source={staging},target=/w",
+        "--workdir=/w", "--env=HOME=/tmp", "--entrypoint", "sh",
+        integration(SOLVER)["image"], "-c", script], 300)
+    if code or out.count("x :=") != count or out.count("y :=") != count:
+        print((err or out)[-400:], file=sys.stderr)
+        return False
+    return True
+
+
 ISOLATED = GOOD + """
 procedure main() {
     print("PROCEDURE EXECUTED")
@@ -318,6 +370,24 @@ theory {
 }
 """
 
+# incumbent_values: minimise x + y subject to x * y >= 30 (optimum 11, at 5 * 6), where z3's first model is
+# not optimal, so at least two improving models carry their values.
+PRODUCT_MINIMUM = OPTIMIZING.replace("n = 2", "n = 30").replace("x + y >= n", "x * y >= n")
+PRODUCT_OPTIMAL = OPTIMAL.replace("x() + y() >= n().", "x() * y() >= n().").replace("DIRECTION", "minimize")
+
+
+STRING_INSTANCE = {"devices": ["A", "B"], "links": [["A", "B", 3], ["B", "A", 1]], "alphabet": "abc",
+                   "words": ["cab", "ba"], "day": ["2024-05-01", "2024-05-03"], "name": "demo"}
+STRING_IDS = {"devices": [0, 1], "links": [[0, 1, 3], [1, 0, 1]], "alphabet": [0, 1, 2], "words": [[2, 0, 1], [1, 0]],
+              "day": [19844, 19846], "name": "demo"}
+
+
+def string_ids_bound():
+    """The converter's id rules: a vocabulary and the strings that refer to it, words over an alphabet, ISO dates."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import dcp_convert_idp
+    return dcp_convert_idp.string_ids(STRING_INSTANCE) == STRING_IDS
+
 
 def main():
     results = {}
@@ -355,6 +425,9 @@ def main():
         results["incumbents_maximize"] = improving_incumbents(
             check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
             minimize=False)
+        # incumbent_values: asked for, each incumbent carries the declared outputs of that model.
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", PRODUCT_OPTIMAL, reference=PRODUCT_MINIMUM, incumbent_values=True))
         maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
         minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
         results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
@@ -372,6 +445,8 @@ def main():
               instances=[{"pos": [2, 0, 1, 3]}], instance_count=2)
         check("engine_error_reported", ENGINE_ERROR, expected={"execution_error"},
               detail="NoneType")
+        results["string_ids"] = string_ids_bound()
+        results["standalone_run"] = standalone_run(temp)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

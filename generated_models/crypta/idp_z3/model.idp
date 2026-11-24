@@ -1,73 +1,81 @@
-// Cryptarithmetic puzzle: BAIJJAJIIAHFCFEBBJEA + DHFGABCDIDBIFFAGFEJE = GJEGACDDHFAFJBFIHEEF,
-// each letter stands for a distinct digit from 0 to 9, and the first letter of each number is not zero.
+// crypta: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Cryptarithmetic puzzle: solve the addition
+//
+//     B A I J J A J I I A H F C F E B B J E A
+//   + D H F G A B C D I D B I F F A G F E J E
+//   -----------------------------------------
+//   = G J E G A C D D H F A F J B F I H E E F
+//
+// where all letters are distinct digits from 0 to 9, and the first letter of each number cannot be zero.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+
 vocabulary V {
-    type Digit := {0..9}
-    type Letter := {1..10}
-    type Col := {0..20}
-    // dg(l): the digit of letter number l (A=1 .. J=10)
-    dg: Letter -> Digit
-    // the digit of each letter (declared outputs)
-    A: () -> Digit
-    B: () -> Digit
-    C: () -> Digit
-    D: () -> Digit
-    E: () -> Digit
-    F: () -> Digit
-    G: () -> Digit
-    H: () -> Digit
-    I: () -> Digit
-    J: () -> Digit
-    // cy(k): carry into column k (columns numbered 1..20 from the left; column 0 is beyond the left end)
-    cy: Col -> Digit
+    type Digit := {0..9}                // a digit
+    type Bit := {0..1}                  // a carry: 0 or 1
+    type Column := {0..20}              // carry positions k: columns are numbered 1 to 20 from the units column; carry k leaves column k and enters column k + 1, so 0 is the units column's carry in and 20 the leading column's carry out
+    carry: Column -> Bit                // carry(k): the carry out of column k into column k + 1 (auxiliary)
+    A: () -> Digit                      // the digit of letter A
+    B: () -> Digit                      // the digit of letter B
+    C: () -> Digit                      // the digit of letter C
+    D: () -> Digit                      // the digit of letter D
+    E: () -> Digit                      // the digit of letter E
+    F: () -> Digit                      // the digit of letter F
+    G: () -> Digit                      // the digit of letter G
+    H: () -> Digit                      // the digit of letter H
+    I: () -> Digit                      // the digit of letter I
+    J: () -> Digit                      // the digit of letter J
 }
-theory T : V {
-    // each letter name stands for its digit
-    A() = dg(1). B() = dg(2). C() = dg(3). D() = dg(4). E() = dg(5).
-    F() = dg(6). G() = dg(7). H() = dg(8). I() = dg(9). J() = dg(10).
-    // all letters are distinct digits
-    ! i, j in Letter: i ~= j => dg(i) ~= dg(j).
-    // the first letter of each number cannot be zero
-    B() ~= 0. D() ~= 0. G() ~= 0.
-    // no carry comes out of the leftmost column, and none goes into the rightmost column
-    cy(0) = 0. cy(20) = 0.
-    // column 1 (from the left)
-    B() + D() + cy(1) = G() + 10 * cy(0).
-    // column 2
-    A() + H() + cy(2) = J() + 10 * cy(1).
-    // column 3
-    I() + F() + cy(3) = E() + 10 * cy(2).
-    // column 4
-    J() + G() + cy(4) = G() + 10 * cy(3).
-    // column 5
-    J() + A() + cy(5) = A() + 10 * cy(4).
-    // column 6
-    A() + B() + cy(6) = C() + 10 * cy(5).
-    // column 7
-    J() + C() + cy(7) = D() + 10 * cy(6).
-    // column 8
-    I() + D() + cy(8) = D() + 10 * cy(7).
-    // column 9
-    I() + I() + cy(9) = H() + 10 * cy(8).
-    // column 10
-    A() + D() + cy(10) = F() + 10 * cy(9).
-    // column 11
-    H() + B() + cy(11) = A() + 10 * cy(10).
-    // column 12
-    F() + I() + cy(12) = F() + 10 * cy(11).
-    // column 13
-    C() + F() + cy(13) = J() + 10 * cy(12).
-    // column 14
-    F() + F() + cy(14) = B() + 10 * cy(13).
-    // column 15
-    E() + A() + cy(15) = F() + 10 * cy(14).
-    // column 16
-    B() + G() + cy(16) = I() + 10 * cy(15).
-    // column 17
-    B() + F() + cy(17) = H() + 10 * cy(16).
-    // column 18
-    J() + E() + cy(18) = E() + 10 * cy(17).
-    // column 19
-    E() + J() + cy(19) = E() + 10 * cy(18).
-    // column 20
-    A() + E() + cy(20) = F() + 10 * cy(19).
+
+theory T:V {
+    // different letters stand for different digits
+    A() ~= B() & A() ~= C() & A() ~= D() & A() ~= E() & A() ~= F() & A() ~= G() & A() ~= H() & A() ~= I() & A() ~= J().
+    B() ~= C() & B() ~= D() & B() ~= E() & B() ~= F() & B() ~= G() & B() ~= H() & B() ~= I() & B() ~= J().
+    C() ~= D() & C() ~= E() & C() ~= F() & C() ~= G() & C() ~= H() & C() ~= I() & C() ~= J().
+    D() ~= E() & D() ~= F() & D() ~= G() & D() ~= H() & D() ~= I() & D() ~= J().
+    E() ~= F() & E() ~= G() & E() ~= H() & E() ~= I() & E() ~= J().
+    F() ~= G() & F() ~= H() & F() ~= I() & F() ~= J().
+    G() ~= H() & G() ~= I() & G() ~= J().
+    H() ~= I() & H() ~= J().
+    I() ~= J().
+
+    // the first letter of each number is not zero
+    B() ~= 0.
+    D() ~= 0.
+    G() ~= 0.
+
+    // no carry into the units column, and no carry out of the leading column
+    carry(0) = 0.
+    carry(20) = 0.
+
+    // the column sums: in each column, the two digits of the numbers plus the carry in make the digit of the
+    // result plus ten times the carry out (column k is labelled k from the units column, its carry in is carry(k - 1));
+    // the short comment after each sentence names the letters of the column, not the carries
+    A() + E() + carry(0) = F() + 10 * carry(1).         // column 1 (units): A + E = F
+    E() + J() + carry(1) = E() + 10 * carry(2).         // column 2: E + J = E
+    J() + E() + carry(2) = E() + 10 * carry(3).         // column 3: J + E = E
+    B() + F() + carry(3) = H() + 10 * carry(4).         // column 4: B + F = H
+    B() + G() + carry(4) = I() + 10 * carry(5).         // column 5: B + G = I
+    E() + A() + carry(5) = F() + 10 * carry(6).         // column 6: E + A = F
+    F() + F() + carry(6) = B() + 10 * carry(7).         // column 7: F + F = B
+    C() + F() + carry(7) = J() + 10 * carry(8).         // column 8: C + F = J
+    F() + I() + carry(8) = F() + 10 * carry(9).         // column 9: F + I = F
+    H() + B() + carry(9) = A() + 10 * carry(10).        // column 10: H + B = A
+    A() + D() + carry(10) = F() + 10 * carry(11).       // column 11: A + D = F
+    I() + I() + carry(11) = H() + 10 * carry(12).       // column 12: I + I = H
+    I() + D() + carry(12) = D() + 10 * carry(13).       // column 13: I + D = D
+    J() + C() + carry(13) = D() + 10 * carry(14).       // column 14: J + C = D
+    A() + B() + carry(14) = C() + 10 * carry(15).       // column 15: A + B = C
+    J() + A() + carry(15) = A() + 10 * carry(16).       // column 16: J + A = A
+    J() + G() + carry(16) = G() + 10 * carry(17).       // column 17: J + G = G
+    I() + F() + carry(17) = E() + 10 * carry(18).       // column 18: I + F = E
+    A() + H() + carry(18) = J() + 10 * carry(19).       // column 19: A + H = J
+    B() + D() + carry(19) = G() + 10 * carry(20).       // column 20 (leading): B + D = G
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1, timeout_seconds=300))
 }

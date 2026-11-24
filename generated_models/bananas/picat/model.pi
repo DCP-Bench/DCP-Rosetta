@@ -1,15 +1,35 @@
-% Bananas: five bananas cost $3, seven oranges $5, nine mangoes $7 and three
-% apples $9. Buy 100 fruits for $100, some of every kind, with as few bananas and
-% apples as possible.
+% bananas: a Picat model from DCP Rosetta.
+%
+% Five bananas cost three dollars, seven oranges cost five dollars, nine mangoes cost seven dollars, and
+% three apples cost nine dollars. I need to purchase 100 fruits in 100 dollars. All types of fruits need to
+% be purchased, but I do not like bananas and apples, so the number of bananas and apples together should
+% be as small as possible.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bananas.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
-    X = [Bananas, Oranges, Mangoes, Apples],
-    X :: 1..100,
-    % the cost, multiplied by 3 * 5 * 7 * 9 = 945 to clear the fractions
-    3 * Bananas * 189 + 5 * Oranges * 135 + 7 * Mangoes * 105 + 9 * Apples * 315 #= 100 * 945,
-    sum(X) #= 100,
-    Vars = X,
+    Bananas :: 1..100,
+    Oranges :: 1..100,
+    Mangoes :: 1..100,
+    Apples :: 1..100,
+    Vars = [Bananas, Oranges, Mangoes, Apples],
+    % the cost of the fruits is 100 dollars; all prices are multiplied by 315 (the lcm of 5, 7, 9 and 3)
+    % so that the costs are whole numbers: a banana costs 189, an orange 225, a mango 245, an apple 945,
+    % and the total is 31500
+    189 * Bananas + 225 * Oranges + 245 * Mangoes + 945 * Apples #= 31500,
+    % exactly 100 fruits are bought
+    Bananas + Oranges + Mangoes + Apples #= 100,
     Outputs = [bananas = Bananas, oranges = Oranges, mangoes = Mangoes, apples = Apples],
+    % the number of bananas and apples together is as small as possible
     Options = [$min(Bananas + Apples)].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

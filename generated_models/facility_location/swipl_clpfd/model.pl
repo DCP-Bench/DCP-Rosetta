@@ -1,263 +1,111 @@
+% facility_location: a SWI-Prolog model from DCP Rosetta.
+%
+% A company is considering opening warehouses in four cities to meet regional demands at minimal costs. The potential
+% cities for these warehouses are New York, Los Angeles, Chicago, and Atlanta. Each open warehouse has a fixed weekly
+% cost and can ship at most max_shipping units per week, and a closed one ships nothing. Shipping one unit from a
+% warehouse to a region has a given cost, and each region must receive at least its weekly demand.
+%
+% The company needs to decide which warehouses to open based on several constraints:
+% 1. If the New York warehouse is opened, then the Los Angeles warehouse must also be opened.
+% 2. No more than three warehouses can be operational in any given week.
+% 3. Either the Atlanta or the Los Angeles warehouse must be opened.
+%
+% The objective is to determine the optimal set of warehouses to open and the distribution of shipments to various
+% regions to minimize total costs: the fixed costs of the open warehouses plus the shipping costs.
+%
+% Save this file as model.pl. Download `facility_location.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/facility_location.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('facility_location.json')" -t halt model.pl
+%
+% Data fields: warehouse_s (the name of each candidate warehouse city), fixed_costs (the weekly fixed cost of each
+% warehouse), max_shipping (the most units an open warehouse ships per week), demands (the weekly demand of each
+% region), shipping_costs (the cost of one unit from each warehouse, one row per warehouse, to each region); lists are
+% indexed from 0.
 :- use_module(library(clpfd)).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
-:- use_module(library(pairs)).
 :- use_module(library(yall)).
 
-% Facility location: decide which of four candidate warehouses to open and how
-% many units each ships to each region, meeting every region's demand at the
-% least total cost (fixed cost of the open warehouses plus shipping cost),
-% subject to three rules about which warehouses may be open together.
-
-% Search: the open/closed decisions first, closing warehouses first (fewest
-% fixed costs first), then the shipments from the cheapest warehouse-region
-% pairs to the dearest, splitting each domain in half and trying the upper half
-% first, so a plan ships greedily along cheap pairs and the optimality proof
-% reasons over intervals instead of single shipment values.
-labeling_options([leftmost, down, bisect]).
-
-model(Instance, Vars,
-      [total_cost-Total, open_warehouse-Open, ships-Ships], min(Total)) :-
-    Names = Instance.warehouse_s,            % warehouse cities
-    FixedCosts = Instance.fixed_costs,       % weekly fixed cost of each warehouse
-    MaxShipping = Instance.max_shipping,     % most units one warehouse can send per week
-    Demands = Instance.demands,              % weekly demand of each region
-    ShippingCosts = Instance.shipping_costs, % cost per unit from warehouse i to region j
-    length(Names, NW),
-    length(Demands, NR),
+model(Instance, Vars, [total_cost-Total, open_warehouse-Open, ships-Ships], min(Total)) :-
+    Names = Instance.warehouse_s,
+    FixedCosts = Instance.fixed_costs,
+    MaxShipping = Instance.max_shipping,
+    Demands = Instance.demands,
+    ShippingCosts = Instance.shipping_costs,
+    length(Names, NW),                 % the number of candidate warehouses
+    length(Demands, NR),               % the number of regions
     nth1(NewYork, Names, 'New York'),
     nth1(LosAngeles, Names, 'Los Angeles'),
     nth1(Atlanta, Names, 'Atlanta'),
-
-    % Open[i] is 1 when warehouse i is open
+    % Open[W] is 1 when warehouse W is open
     length(Open, NW),
     Open ins 0..1,
-    % Ships[i][j] = units sent from warehouse i to region j, 0..max_shipping
+    % Ships[W][R] is the number of units warehouse W ships to region R
     length(Ships, NW),
-    maplist(ship_row(NR, MaxShipping), Ships),
-
-    % a warehouse sends at most max_shipping units, and nothing when it is closed
-    maplist(capacity(MaxShipping), Ships, Open),
-
-    % every region receives at least its demand
+    maplist({NR, MaxShipping}/[Row]>>(length(Row, NR), Row ins 0..MaxShipping), Ships),
+    % a region never needs more than its demand from one warehouse
+    maplist({Demands}/[Row]>>maplist([X, D]>>(X #=< D), Row, Demands), Ships),
+    % a warehouse ships at most max_shipping units, and nothing when it is closed
+    maplist({MaxShipping}/[Row, IsOpen]>>sum(Row, #=<, MaxShipping*IsOpen), Ships, Open),
+    % every region receives its demand (shipping more than the demand only adds cost, so exactly the demand is
+    % enough for an optimal plan)
     transpose(Ships, Regions),
-    maplist(meets_demand, Regions, Demands),
-
-    % 1. if the New York warehouse is open, the Los Angeles one must be open too
+    maplist([Column, Demand]>>sum(Column, #=, Demand), Regions, Demands),
+    % rule 1: if New York is open, Los Angeles is open too
     nth1(NewYork, Open, OpenNewYork),
     nth1(LosAngeles, Open, OpenLosAngeles),
     OpenNewYork #=< OpenLosAngeles,
-    % 2. at most three warehouses are open
+    % rule 2: no more than three warehouses are open
     sum(Open, #=<, 3),
-    % 3. the Atlanta or the Los Angeles warehouse (or both) must be open
+    % rule 3: Atlanta or Los Angeles, or both, is open
     nth1(Atlanta, Open, OpenAtlanta),
     OpenAtlanta + OpenLosAngeles #>= 1,
-
-    % Implied: the open warehouses together can cover the total demand, since
-    % everything shipped is at most max_shipping per open warehouse and at
-    % least the sum of the demands.
-    sum_list(Demands, TotalDemand),
-    sum(Open, #=, NOpen),
-    MaxShipping * NOpen #>= TotalDemand,
-
-    % shipping cost of each region = sum over warehouses of unit cost * units
-    transpose(ShippingCosts, RegionCosts),
-    maplist(region_cost(NW, MaxShipping), RegionCosts, Regions, RegionCostVars, Levels),
-    % Level[1] of a region is everything it receives, so it is at least the
-    % demand; stated on the level as well, since clpfd does not carry the
-    % demand from the column sum over to the chain of levels
-    maplist(receives_demand, Levels, Demands),
-
-    % total cost = fixed costs of the open warehouses + shipping cost of every
-    % region; 0..10000 is the reference's domain for total_cost
-    Total in 0..10000,
+    % the total cost is the fixed costs of the open warehouses plus the shipping cost of every unit shipped
     scalar_product(FixedCosts, Open, #=, FixedTotal),
-    sum(RegionCostVars, #=, ShippedTotal),
-    Total #= FixedTotal + ShippedTotal,
+    % the shipping cost of each region, which is at least its demand at the cheapest open warehouse's unit cost
+    append(ShippingCosts, CostCells),
+    append(Ships, ShipCells),
+    max_list(CostCells, MaxCost),
+    transpose(ShippingCosts, CostColumns),
+    maplist(region_cost(Open, MaxCost), CostColumns, Regions, Demands, RegionCosts),
+    sum(RegionCosts, #=, ShippingTotal),
+    Total #= FixedTotal + ShippingTotal,
+    append([Open, ShipCells, RegionCosts, [Total]], Vars).
 
-    % Implied, for the capacity limit (a Lagrangian bound): for prices
-    % p[i] >= 0 charged per unit a warehouse sends,
-    %   shipping cost + sum over i of p[i] * (units warehouse i sends)
-    %     = sum over pairs of (unit cost + p[i]) * units
-    %     >= sum over regions of demand * the cheapest priced rate of an open
-    %        warehouse to that region,
-    % because a closed warehouse sends nothing and every region receives at
-    % least its demand. With each warehouse sending at most max_shipping, this
-    % bounds the shipping cost where capacity, rather than the cheapest rate,
-    % decides who serves a region; the per-region bounds above assume the
-    % cheapest open warehouse can serve every region it is cheapest for.
-    % The candidate price vectors charge at most two warehouses, each at 0 or
-    % at a gap between its unit cost to some region and a dearer warehouse's
-    % cost to that region (the prices at which the bound changes slope). Each
-    % candidate is a valid bound, but posting them all (hundreds) slows every
-    % search step, so only the strongest candidate for each open/closed
-    % pattern is posted: the one with the largest right-hand side when every
-    % open warehouse sends max_shipping. The right-hand side depends only on
-    % which warehouses are open, so it is read from a table over the
-    % open/closed patterns, computed from the instance costs and demands.
-    maplist(load, Ships, Loads),
-    findall(Lambda, price_vector(NW, ShippingCosts, Lambda), Lambdas0),
-    sort(Lambdas0, Candidates),
-    findall(Best, ( open_pattern(NW, Pattern),
-                    strongest_price(Candidates, Pattern, RegionCosts, Demands,
-                                    MaxShipping, Best) ), Chosen0),
-    sort(Chosen0, Lambdas),
-    maplist(price_bound(NW, Open, Loads, RegionCosts, Demands, ShippedTotal), Lambdas),
-
-    % shipments labelled cheapest pair first (instance data decides the order)
-    ship_order(ShippingCosts, Ships, OrderedShips),
-    append(Levels, LevelVars),
-    % Closed[i] = 1 - Open[i], labelled in place of Open so that, with the
-    % upper half tried first, a warehouse is tried closed before open
-    maplist(closed, Open, Closed),
-    append([Closed, OrderedShips, LevelVars, RegionCostVars, [Total]], Vars).
-
-closed(IsOpen, IsClosed) :-
-    IsClosed in 0..1,
-    IsClosed #= 1 - IsOpen.
-
-ship_row(NR, MaxShipping, Row) :-
-    length(Row, NR),
-    Row ins 0..MaxShipping.
-
-capacity(MaxShipping, Row, IsOpen) :-
-    sum(Row, #=<, MaxShipping * IsOpen).
-
-meets_demand(Column, Demand) :-
-    sum(Column, #>=, Demand).
-
-% The cost of region j is the scalar product of its unit costs and its
-% shipments. It is restated, as an implied constraint, by ranking the
-% warehouses by unit cost to j: with Level[k] the units received from the
-% warehouses ranked k or worse, the cost equals
-%   c(1) * Level[1] + sum over k >= 2 of (c(k) - c(k-1)) * Level[k],
-% an exact identity (summation by parts). Every coefficient is nonnegative and
-% Level[1] >= demand, so a bound on the total cost caps how many units can come
-% from the dearer warehouses, which the scalar product alone does not propagate.
-region_cost(NW, MaxShipping, Costs, Column, RegionCost, Levels) :-
-    max_list([0|Costs], MaxCost),
-    Top is NW * MaxShipping * MaxCost,
-    RegionCost in 0..Top,
+% RegionCost is the cost of the units shipped into one region; each unit costs at least the cheapest open warehouse's
+% unit cost to that region (a closed warehouse is priced at MaxCost, above every unit cost, so it is never the cheapest)
+region_cost(Open, MaxCost, Costs, Column, Demand, RegionCost) :-
     scalar_product(Costs, Column, #=, RegionCost),
-    length(Costs, NCosts),
-    numlist(1, NCosts, Positions),
-    maplist(cost_key, Costs, Positions, Column, Keyed),
-    msort(Keyed, Ranked),
-    pairs_keys_values(Ranked, RankedKeys, RankedShips),
-    pairs_keys(RankedKeys, RankedCosts),
-    LevelTop is NW * MaxShipping,
-    suffix_levels(RankedShips, LevelTop, Levels),
-    steps(RankedCosts, 0, Steps),
-    scalar_product(Steps, Levels, #=, RegionCost).
+    maplist({MaxCost}/[C, IsOpen, V]>>(V #= C + MaxCost*(1 - IsOpen)), Costs, Open, Values),
+    Values = [First|Rest],
+    foldl([V, M0, M]>>(M #= min(M0, V)), Rest, First, Cheapest),
+    RegionCost #>= Demand*Cheapest.
 
-load(Row, Load) :- sum(Row, #=, Load).
+% The variables are labelled in the order of Vars: the open warehouses first, then the shipments. Domains are split in
+% halves and the upper half is tried first.
+labeling_options([leftmost, down, bisect]).
 
-% P is the gap between warehouse W's unit cost to some region and the higher
-% unit cost of another warehouse to the same region
-price(W, ShippingCosts, P) :-
-    nth1(W, ShippingCosts, RowW),
-    nth1(K, ShippingCosts, RowK),
-    K =\= W,
-    nth1(J, RowW, CW),
-    nth1(J, RowK, CK),
-    P is CK - CW,
-    P > 0.
+:- use_module(library(http/json)).
 
-breakpoints(W, ShippingCosts, Prices) :-
-    findall(P, price(W, ShippingCosts, P), Ps),
-    sort([0|Ps], Prices).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-% Lambda charges warehouse W the price P and warehouse V the price Q, W < V,
-% and nothing to the others; the all-zero vector is left out (the per-region
-% bounds already cover it)
-price_vector(NW, ShippingCosts, Lambda) :-
-    between(1, NW, W),
-    between(1, NW, V),
-    W < V,
-    breakpoints(W, ShippingCosts, PricesW),
-    breakpoints(V, ShippingCosts, PricesV),
-    member(P, PricesW),
-    member(Q, PricesV),
-    P + Q > 0,
-    numlist(1, NW, Is),
-    maplist(price_at(W, P, V, Q), Is, Lambda).
-
-price_at(W, P, V, Q, I, L) :-
-    (   I =:= W -> L = P
-    ;   I =:= V -> L = Q
-    ;   L = 0
-    ).
-
-% shipping cost + sum of Lambda[i] * load[i] >= Bound, with Bound the table
-% value for the open/closed pattern of the warehouses
-price_bound(NW, Open, Loads, RegionCosts, Demands, ShippedTotal, Lambda) :-
-    findall(Row,
-            ( open_pattern(NW, Pattern),
-              priced_demand(RegionCosts, Demands, Lambda, Pattern, Bound0),
-              append(Pattern, [Bound0], Row) ),
-            Rows),
-    append(Open, [Bound], Tuple),
-    tuples_in([Tuple], Rows),
-    scalar_product(Lambda, Loads, #=, Priced),
-    ShippedTotal + Priced #>= Bound.
-
-% Best = the candidate price vector with the largest bound for Pattern when
-% each open warehouse sends max_shipping units (the first such in the
-% candidate order on ties)
-strongest_price(Candidates, Pattern, RegionCosts, Demands, MaxShipping, Best) :-
-    findall(NegValue-Lambda,
-            ( member(Lambda, Candidates),
-              priced_demand(RegionCosts, Demands, Lambda, Pattern, Bound),
-              scalar_product_ground(Lambda, Pattern, Charged),
-              NegValue is -(Bound - MaxShipping * Charged) ),
-            Valued),
-    keysort(Valued, [_-Best|_]).
-
-scalar_product_ground(Xs, Ys, P) :-
-    foldl([X, Y, P0, P1]>>(P1 is P0 + X * Y), Xs, Ys, 0, P).
-
-% a 0/1 pattern with at least one open warehouse (rule 3 needs one)
-open_pattern(NW, Pattern) :-
-    length(Pattern, NW),
-    maplist(between(0, 1), Pattern),
-    sum_list(Pattern, NOpen),
-    NOpen > 0.
-
-% sum over regions of demand * the cheapest priced rate among the warehouses
-% open in Pattern
-priced_demand(RegionCosts, Demands, Lambda, Pattern, Bound) :-
-    foldl(region_priced(Lambda, Pattern), RegionCosts, Demands, 0, Bound).
-
-region_priced(Lambda, Pattern, Costs, Demand, Bound0, Bound) :-
-    findall(Rate, ( nth1(I, Pattern, 1), nth1(I, Costs, C), nth1(I, Lambda, L),
-                    Rate is C + L ), Rates),
-    min_list(Rates, Cheapest),
-    Bound is Bound0 + Demand * Cheapest.
-
-receives_demand([Received|_], Demand) :- Received #>= Demand.
-
-% Levels[k] = sum of the ranked shipments from position k to the end
-suffix_levels([], _, []).
-suffix_levels([S|Ss], Top, [L|Ls]) :-
-    L in 0..Top,
-    suffix_levels(Ss, Top, Ls),
-    (   Ls = [Next|_] -> L #= S + Next ; L #= S ).
-
-% Steps[k] = c(k) - c(k-1), with c(0) = 0
-steps([], _, []).
-steps([C|Cs], Previous, [Step|Steps]) :-
-    Step is C - Previous,
-    steps(Cs, C, Steps).
-
-% Shipment variables ordered by unit cost, cheapest pair first; ties keep the
-% warehouse-major order of the instance.
-ship_order(ShippingCosts, Ships, Ordered) :-
-    append(ShippingCosts, CellCosts),
-    append(Ships, Cells),
-    length(Cells, N),
-    numlist(1, N, Positions),
-    maplist(cost_key, CellCosts, Positions, Cells, Keyed),
-    msort(Keyed, Sorted),
-    pairs_values(Sorted, Ordered).
-
-cost_key(Cost, Position, Cell, (Cost-Position)-Cell).
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

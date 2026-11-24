@@ -1,35 +1,44 @@
-% Best host: six guests sit at a round table; each guest will only sit next to
-% two particular other guests. Seat them in an order where every guest has
-% only such neighbours (no conflicts). The guests are numbered 0 Andrew,
-% 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank. This problem has no instance data:
-% the guests and their likes are part of the problem statement.
+% best_host: a MiniZinc model from DCP Rosetta.
+%
+% Hosting a dinner party: six guests sit around a table, and some guests do not get along, so two guests
+% who do not get along must not sit next to each other. Andrew will only sit next to Dave and Frank;
+% Betty will only sit next to Cara and Erica; Cara will only sit next to Betty and Frank; Dave will only
+% sit next to Andrew and Erica; Erica will only sit next to Betty and Dave; Frank will only sit next to
+% Andrew and Cara. Arrange the guests in a seating order around the table in which every guest sits
+% only next to the guests they will sit next to.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/best_host.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-int: n = 6;  % number of guests (and seats)
-int: Andrew = 0; int: Betty = 1; int: Cara = 2; int: Dave = 3; int: Erica = 4; int: Frank = 5;
+int: n = 6;                                   % the number of guests, and of seats
+int: Andrew = 0;
+int: Betty = 1;
+int: Cara = 2;
+int: Dave = 3;
+int: Erica = 4;
+int: Frank = 5;
 
-% prefs[g, 1..2] = the two guests that guest g will sit next to (fixed by the problem statement)
-array[0..n - 1, 1..2] of int: prefs = array2d(0..n - 1, 1..2, [
-    Dave, Frank,    % Andrew
-    Cara, Erica,    % Betty
-    Betty, Frank,   % Cara
-    Andrew, Erica,  % Dave
-    Betty, Dave,    % Erica
-    Andrew, Cara    % Frank
+set of int: Guests = 0..n-1;                  % the guests, by number
+set of int: Seats = 1..n;                     % the seats around the table, in order
+
+% the ordered pairs of guests who will sit next to each other (each pair listed both ways round)
+array[1..12, 1..2] of int: willing = array2d(1..12, 1..2, [
+    Andrew, Dave,   Andrew, Frank,  Dave, Andrew,   Frank, Andrew,
+    Betty, Cara,    Betty, Erica,   Cara, Betty,    Erica, Betty,
+    Cara, Frank,    Frank, Cara,    Dave, Erica,    Erica, Dave
 ]);
 
-% x[i] = the guest in seat i, going around the table
-array[0..n - 1] of var 0..n - 1: x;
+% x[s]: the guest in seat s
+array[Seats] of var Guests: x;
 
-% every guest has one seat
+% each guest has exactly one seat
 constraint all_different(x);
 
-% the guest in each seat has a neighbour on each side (seat i-1 and i+1, going
-% round the table) that he or she is willing to sit next to
-constraint forall(i in 0..n - 1)
-    (exists(j in 1..2) (prefs[x[i], j] = x[(i - 1 + n) mod n]) /\
-     exists(j in 1..2) (prefs[x[i], j] = x[(i + 1) mod n]));
+% the guests in neighbouring seats (the last seat is next to the first) will sit next to each other
+constraint forall(s in Seats)(table([x[s], x[s mod n + 1]], willing));
 
 solve satisfy;
-
-output ["{\"x\": [", join(", ", [show(x[i]) | i in 0..n - 1]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];

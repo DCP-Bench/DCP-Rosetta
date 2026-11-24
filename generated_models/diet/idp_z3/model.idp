@@ -1,45 +1,48 @@
-// Diet: choose whole numbers of servings of four foods to minimise the total cost while meeting at least the nutritional requirements.
-vocabulary {
-    type I <: Int                   // foods, sized from price
-    type Nut <: Int                 // nutrients, sized from limits: 0 calories, 1 chocolate, 2 sugar, 3 fat
-    price: I -> Int                 // price of one unit of each food, in cents
-    limits: Nut -> Int              // minimum requirements: calories, chocolate, sugar and fat
-    nutr: I * Nut -> Int            // nutrient content of one unit of each food (problem constant)
-    amount: I -> Int                // number of units of each food bought
-    contrib: I * Nut -> Int         // nutrient content of the units bought
-    pay: I -> Int                   // cost of the units bought of each food
-    cost: () -> Int                 // declared output: total cost of the diet
-    minimize: () -> Int
+// diet: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given the prices and the nutritional requirements (at least) for each nutrition type, find the optimal diet: the
+// number of units of each food to buy, each a whole number, that meets the minimum requirement of each nutrition type
+// (calories, chocolate, sugar and fat) at the lowest total cost. The foods are chocolate cake (1 slice), chocolate ice
+// cream (1 scoop), cola (1 bottle) and pineapple cheesecake (1 piece); their nutrition per unit is given in the theory.
+//
+// Save this file as model.idp. Download `diet.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/diet.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py diet.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Food <: Int                   // the foods, numbered from 0, sized from price
+    type Nut <: Int                    // the nutrition types, numbered from 0, sized from limits: calories, chocolate, sugar, fat
+    price: Food -> Int                 // price(f): the price of one unit of food f
+    limits: Nut -> Int                 // limits(j): the minimum required amount of nutrition type j
+    per_unit: Food * Nut -> Int        // per_unit(f, j): the amount of nutrition type j in one unit of food f (the table, in the theory)
+    buy: Food -> Int                   // buy(f): the number of units of food f bought
+    cost: () -> Int                    // the total cost of the diet (declared output)
+    minimize: () -> Int                // the total cost of the diet, to minimize
 }
-theory {
-    // Nutrient table from the problem description: Chocolate Cake, Chocolate ice cream, Cola, Pineapple cheesecake.
-    nutr(0, 0) = 400.  nutr(0, 1) = 3.  nutr(0, 2) = 2.  nutr(0, 3) = 2.
-    nutr(1, 0) = 200.  nutr(1, 1) = 2.  nutr(1, 2) = 2.  nutr(1, 3) = 4.
-    nutr(2, 0) = 150.  nutr(2, 1) = 0.  nutr(2, 2) = 4.  nutr(2, 3) = 1.
-    nutr(3, 0) = 500.  nutr(3, 1) = 0.  nutr(3, 2) = 4.  nutr(3, 3) = 5.
+theory T:V {
+    // each food is bought in a whole, not negative, number of units; the upper bound (the sum of the limits) is an implied
+    // bound that an optimal diet never needs, not part of the problem
+    ! f in Food: buy(f) >= 0 & buy(f) =< sum{{ limits(j) | j in Nut }}.
 
-    // Each food is bought in a whole, non-negative number of units.
-    ! f in I: amount(f) >= 0.
+    // the foods bought supply at least the required amount of each nutrition type
+    ! j in Nut: sum{{ (per_unit(f, j) * buy(f)) | f in Food }} >= limits(j).
 
-    // The nutrient content of the units bought, per food and nutrient.
-    ! f in I, k in Nut: contrib(f, k) = nutr(f, k) * amount(f).
+    // the nutrition per unit of each food (calories, chocolate in ounces, sugar in ounces, fat in ounces):
+    // chocolate cake 400, 3, 2, 2; chocolate ice cream 200, 2, 2, 4; cola 150, 0, 4, 1; pineapple cheesecake 500, 0, 4, 5
+    per_unit(0, 0) = 400 & per_unit(0, 1) = 3 & per_unit(0, 2) = 2 & per_unit(0, 3) = 2.
+    per_unit(1, 0) = 200 & per_unit(1, 1) = 2 & per_unit(1, 2) = 2 & per_unit(1, 3) = 4.
+    per_unit(2, 0) = 150 & per_unit(2, 1) = 0 & per_unit(2, 2) = 4 & per_unit(2, 3) = 1.
+    per_unit(3, 0) = 500 & per_unit(3, 1) = 0 & per_unit(3, 2) = 4 & per_unit(3, 3) = 5.
 
-    // The diet must provide at least the required calories.
-    sum{{ contrib(f, 0) | f in I }} >= limits(0).
+    // the total cost is the price of each food times the units bought
+    cost() = sum{{ (price(f) * buy(f)) | f in Food }}.
 
-    // The diet must provide at least the required amount of chocolate.
-    sum{{ contrib(f, 1) | f in I }} >= limits(1).
-
-    // The diet must provide at least the required amount of sugar.
-    sum{{ contrib(f, 2) | f in I }} >= limits(2).
-
-    // The diet must provide at least the required amount of fat.
-    sum{{ contrib(f, 3) | f in I }} >= limits(3).
-
-    // The cost of the diet is the price of each food times the amount bought.
-    ! f in I: pay(f) = price(f) * amount(f).
-    cost() = sum{{ pay(f) | f in I }}.
-
-    // The objective is to minimise the cost.
+    // the cost to minimize is the total cost of the diet
     minimize() = cost().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

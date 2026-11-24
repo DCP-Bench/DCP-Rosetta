@@ -1,6 +1,16 @@
 language ESSENCE' 1.0
-$ Four friends each have one surname and one allergy. Print, for each allergy and each surname, the friend index (Debra=0, Janet=1, Hugh=2, Rick=3).
+$ allergy: an Essence' model from DCP Rosetta.
+$
+$ Four friends (two women named Debra and Janet, and two men named Hugh and Rick) found that each of them is allergic to something different: eggs, mold, nuts and ragweed. We would like to match each one's surname (Baxter, Lemon, Malone and Fleet) with his or her allergy. We know that: Rick is not allergic to mold; Baxter is allergic to eggs; Hugh is neither surnamed Lemon nor Fleet; Debra is allergic to ragweed; Janet (who isn't Lemon) is neither allergic to eggs nor to mold.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/allergy.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the friend (Debra = 0, Janet = 1, Hugh = 2, Rick = 3) allergic to eggs, mold, nuts and ragweed
 find eggs, mold, nuts, ragweed : int(0..3)
+$ the friend (Debra = 0, Janet = 1, Hugh = 2, Rick = 3) with surname Baxter, Lemon, Malone and Fleet
 find baxter, lemon, malone, fleet : int(0..3)
 
 branching on [eggs, mold, nuts, ragweed, baxter, lemon, malone, fleet]
@@ -10,16 +20,17 @@ $ each friend has exactly one allergy, so the four allergies belong to four diff
 allDiff([eggs, mold, nuts, ragweed]),
 $ each friend has exactly one surname, so the four surnames belong to four different friends
 allDiff([baxter, lemon, malone, fleet]),
-$ Rick is not allergic to mold
+$ Rick (3) is not allergic to mold
 mold != 3,
-$ Baxter is allergic to eggs: the friend with surname Baxter is the friend allergic to eggs
+$ Baxter is allergic to eggs: the friend surnamed Baxter is the friend allergic to eggs
 baxter = eggs,
-$ Hugh is neither surnamed Lemon nor Fleet
+$ Hugh (2) is neither surnamed Lemon nor Fleet
 lemon != 2,
 fleet != 2,
-$ Debra is allergic to ragweed
+$ Debra (0) is allergic to ragweed
 ragweed = 0,
-$ Janet, who is not Lemon, is neither allergic to eggs nor to mold
+$ Janet (1) is not surnamed Lemon
 lemon != 1,
+$ Janet (1) is neither allergic to eggs nor to mold
 eggs != 1,
 mold != 1

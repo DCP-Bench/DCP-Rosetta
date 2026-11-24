@@ -1,36 +1,63 @@
-% Hanging weights puzzle: weights A-M (outputs a-m), each an integer 1..13, hang
-% from a system of bars. Each bar is a pivot with weights or bars at its holes.
+% hanging_weights: an ECLiPSe model from DCP Rosetta.
+%
+% Weights A to M hang from a system of bars. The weights have different integer values from 1 to 13,
+% and must be such that every bar balances about its pivot: the weights on either side of a pivot,
+% each multiplied by its distance from the pivot, are equal, and a bar hanging beneath another
+% contributes its total weight as though it were a single weight.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/hanging_weights.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
 
-:- lib(ic).
+:- lib(gfd).
+:- lib(listut).
 
-model(_Instance, Vars, Outputs) :-
+% The model reads no data fields: the weights are the unknowns of the puzzle.
+model(_Instance, Vars, [a-A, b-B, c-C, d-D, e-E, f-F, g-G, h-H, i-I, j-J, k-K, l-L, m-M]) :-
     Vars = [A, B, C, D, E, F, G, H, I, J, K, L, M],
+    % the weights have different values from 1 to 13
     Vars :: 1..13,
-    % The weights on either side of a given pivot point must be equal, when weighted
-    % by the distance from the pivot.
-    % Bar with E and F: E is 3 holes from the pivot, F is 2 holes from it.
-    3*E #= 2*F,
-    % Bar with H, I and the E-F bar: H is 3 holes from the pivot, the E-F bar hangs
-    % 2 holes from it on one side and I is 3 holes on the other side.
-    % A bar hanging beneath another contributes its total weight as though it were a single weight.
-    3*H #= 2*(E + F) + 3*I,
-    % Bar with the H-bar (total H+I+E+F) on one side and L and M on the other:
-    % the H-bar is 1 hole from the pivot, L is 1 hole, M is 4 holes.
-    H + I + E + F #= L + 4*M,
-    % Top bar: the left bar (H, I, E, F, L, M) is 4 holes from the pivot, the right bar
-    % (J, K, A, B, C, D, G) is 3 holes from the pivot.
-    4*(H + I + E + F + L + M) #= 3*(J + K + A + B + C + D + G),
-    % Bar with J and K and the bars below it: J is 2 holes from the pivot, the A-B bar
-    % hangs 3 holes from it on the left, K is 1 hole on the right, the G bar is 2 holes.
-    % A bar hanging beneath another contributes its total weight as though it were a single weight.
-    2*J + 3*(A + B) #= K + 2*(G + C + D),
-    % Bar with A and B: A is 4 holes from the pivot and B is 1 hole.
-    4*A #= B,
-    % The bar on the bottom right must have 5*C=D.
-    5*C #= D,
-    % The bar above it must have 3*G=2*(C+D).
-    3*G #= 2*(C + D),
-    Outputs = [a-A, b-B, c-C, d-D, e-E, f-F, g-G, h-H, i-I, j-J, k-K, l-L, m-M].
+    alldifferent(Vars),
+    % the bottom right bar: 5*C = D
+    5 * C #= D,
+    % the bar above it: 3*G = 2*(C+D)
+    3 * G #= 2 * (C + D),
+    % the bottom left bar: 4*A = B
+    4 * A #= B,
+    % the bar holding J and K: the bar of A and B hangs three units to the left of the pivot, J two units
+    % to the left, K one unit to the right, and the bar of G, C and D hangs two units to the right
+    3 * (A + B) + 2 * J #= K + 2 * (G + C + D),
+    % the bar holding E and F: 3*E = 2*F
+    3 * E #= 2 * F,
+    % the bar holding H and I: H three units to the left, the bar E+F two units and I three units to the right
+    3 * H #= 2 * (E + F) + 3 * I,
+    % the bar holding L and M: the bar H+I+E+F one unit to the left, L one unit and M four units to the right
+    (H + I + E + F) #= L + 4 * M,
+    % the top bar: the bar L+M+H+I+E+F four units to the left of its pivot balances the bar of the
+    % other weights three units to the right
+    4 * (L + M + H + I + E + F) #= 3 * (J + K + A + B + G + C + D).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
+:- lib(branch_and_bound).
+
+run :- solve_model([]).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

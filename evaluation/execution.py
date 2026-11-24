@@ -185,7 +185,7 @@ def container_engine():
 
 
 def execute(model_path, instance, metadata, image, *, solution_limit, execution_timeout,
-            compilation_timeout, memory_mb, cpus, legacy=False, model_bytes=None, outputs=None):
+            compilation_timeout, memory_mb, cpus, legacy=False, model_bytes=None, outputs=None, incumbent_values=False):
     started = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="dcp_candidate_") as temp:
         staging = Path(temp)
@@ -201,6 +201,8 @@ def execute(model_path, instance, metadata, image, *, solution_limit, execution_
         request = {"instance": instance, "solution_limit": solution_limit,
                    "execution_timeout": execution_timeout, "compilation_timeout": compilation_timeout,
                    "legacy": legacy, "outputs": list(outputs or [])}
+        if incumbent_values:  # only when asked: every other request stays as it was
+            request["incumbent_values"] = True
         (staging / "request.json").write_text(json.dumps(request, allow_nan=False), encoding="utf-8")
         for path in staging.iterdir():
             path.chmod(0o644)

@@ -85,6 +85,47 @@ Options: [manual section 4.5](https://arxiv.org/abs/2201.03472), `savilerow -hel
 - **Pass `-S0` when enumerating.** The default `-S1` lets Savile Row delete "unused" `find` variables by fixing them to one value, and a variable whose only constraints are unary counts as unused (they fold into its domain). Measured: `find x : int(1..3)` with `x != 2` gives 1 solution under `-S1`, 2 under `-S0`; an unconstrained `find` is likewise pinned. With `-S0`, every `find` is enumerated, so a free auxiliary variable repeats each solution once per value: pin it to a function of the others or leave it out.
 - **All optimal solutions**: solve, check `SolverTimeOut:0`, read the optimum, then re-solve **without** the objective line and with `(EXPR) = optimum` appended after the last constraint, using `-all-solutions -S0` ([example](../assets/essence_prime/all-optimal/README.md)). Parenthesise EXPR: `sum i : D . e = v` would put `= v` inside the sum. To read the optimum of an expression, add `find best` with `maximising best` and `best = (EXPR)`. That wrapper is needed only for an expression objective: when the objective is already one variable (`maximising total`), read it directly and fix it in pass 2 (`total = optimum`), which enumerates the same solutions.
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader
+runs it on one instance as `savilerow model.eprime data.param -run-solver`, and the solution lands in
+`data.param.solution`.
+
+```
+language ESSENCE' 1.0
+$ Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+
+$ capacity of the backpack
+given capacity : int
+$ values_dim1: the number of items (derived from the data); values[i], weights[i]: value and weight of item i
+given values_dim1 : int
+given values : matrix indexed by [int(1..values_dim1)] of int
+given weights : matrix indexed by [int(1..values_dim1)] of int
+
+$ x[i]: item i is taken
+find x : matrix indexed by [int(1..values_dim1)] of bool
+$ the total value of the items taken, at most the sum of all values
+find total : int(0..sum(values))
+
+maximising total
+such that
+  $ the items taken weigh no more than the capacity of the backpack
+  (sum i : int(1..values_dim1) . toInt(x[i]) * weights[i]) <= capacity,
+  $ the total is the value of the items taken
+  total = (sum i : int(1..values_dim1) . toInt(x[i]) * values[i])
+```
+
+- Start with a comment that states the problem; comment each `given` and `find` (what it holds, the index base).
+- Give a `find` the widest domain the problem states or the data implies (`int(0..sum(values))`), never a number
+  that only fits the example instances.
+- Give each requirement of the problem its own entry of the `such that` list with a comment saying it in the
+  problem's words, rather than folding several into one.
+- Prefer `allDiff`, `table`, `gcc`-style globals and quantifiers (`forAll`, `exists`, `sum`) to hand-built
+  encodings; name a bound once with a `letting` instead of repeating a number.
+- A size that varies per instance comes from a given (`<field>_dim1`), as the contract says.
+- For a tour or path, state the rule between consecutive steps (the position of step t and of step t+1) instead of an implication over all pairs of squares, add the inverse mapping with an `allDiff` channel, and a `branching on` hint over the step variables; the all-pairs form grows with the fourth power of the board.
+- Strings arrive as ids (contract rule 5): a vocabulary list as `1..n`, a string equal to a vocabulary item as its id, words over an alphabet as ragged lists of letter ids, an ISO date as its day number. Declare the given, say in its comment what an id stands for.
+
 ## Common issues
 
 | Symptom | Cause | Fix |

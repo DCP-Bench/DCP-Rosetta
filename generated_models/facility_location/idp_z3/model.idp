@@ -1,46 +1,65 @@
-vocabulary {
-    // Warehouse cities, indexed 0-based: 0 New York, 1 Los Angeles, 2 Chicago, 3 Atlanta.
-    type Warehouse <: Int
-    // Regions served, sized from the demands array (0-based).
-    type Region <: Int
+// facility_location: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A company is considering opening warehouses in four cities (New York, Los Angeles, Chicago and Atlanta, in that order)
+// to meet regional demands at minimal cost. Each open warehouse has a fixed weekly cost and can ship at most max_shipping
+// units per week; a closed warehouse ships nothing. Shipping one unit from a warehouse to a region has a given cost, and
+// each region must receive at least its weekly demand. The following must hold: if New York is opened then Los Angeles is
+// also opened; no more than three warehouses are operational; either Atlanta or Los Angeles is opened. Decide which
+// warehouses to open and how many units each open warehouse ships to each region, to minimize the total cost: the fixed
+// costs of the open warehouses plus the shipping costs.
+//
+// Save this file as model.idp. Download `facility_location.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/facility_location.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py facility_location.json
+//   idp-engine model_1.idp
 
-    demands: Region -> Int
-    fixed_costs: Warehouse -> Int
-    shipping_costs: Warehouse * Region -> Int
-    max_shipping: () -> Int
-
-    open_warehouse: Warehouse -> Bool
-    ships: Warehouse * Region -> Int
-    total_cost: () -> Int
-
-    minimize: () -> Int
+vocabulary V {
+    type W <: Int                      // the warehouses, numbered from 0 (0 New York, 1 Los Angeles, 2 Chicago, 3 Atlanta), sized from fixed_costs
+    type R <: Int                      // the regions, numbered from 0, sized from demands
+    max_shipping: () -> Int            // the most units an open warehouse ships per week
+    demands: R -> Int                  // demands(r): the weekly demand of region r
+    fixed_costs: W -> Int              // fixed_costs(w): the weekly cost of keeping warehouse w open
+    shipping_costs: W * R -> Int       // shipping_costs(w, r): the cost of shipping one unit from warehouse w to region r
+    open_warehouse: W -> Bool          // open_warehouse(w): warehouse w is open
+    ships: W * R -> Int                // ships(w, r): the number of units shipped from warehouse w to region r
+    shipping_cost_of: W * R -> Int     // shipping_cost_of(w, r): the cost of the units shipped from warehouse w to region r
+    total_cost: () -> Int              // the fixed costs of the open warehouses plus the shipping costs
+    minimize: () -> Int                // the total cost to be minimized
 }
 
-theory {
-    // If New York is opened, Los Angeles must also be opened.
+theory T:V {
+    // the total cost is the fixed costs of the open warehouses plus the shipping costs
+    total_cost() = sum{{ fixed_costs(w) | w in W: open_warehouse(w) }} + sum{{ shipping_cost_of(w, r) | w in W, r in R }}.
+
+    // the cost of the units shipped from each warehouse to each region is the unit cost times the number of units
+    ! w in W, r in R: shipping_cost_of(w, r) = shipping_costs(w, r) * ships(w, r).
+
+    // the total cost is the value to minimize
+    minimize() = total_cost().
+
+    // each region receives at least its weekly demand
+    ! r in R: sum{{ ships(w, r) | w in W }} >= demands(r).
+
+    // an open warehouse ships at most the maximum shipping amount per week
+    ! w in W: sum{{ ships(w, r) | r in R }} =< max_shipping().
+
+    // a closed warehouse ships nothing, and no warehouse ships a negative number of units
+    ! w in W: ~open_warehouse(w) => ! r in R: ships(w, r) = 0.
+    ! w in W, r in R: ships(w, r) >= 0.
+
+    // if New York is opened then Los Angeles must also be opened
     open_warehouse(0) => open_warehouse(1).
 
-    // No more than three warehouses are operational.
-    #{ w in Warehouse: open_warehouse(w) } =< 3.
+    // no more than three warehouses can be operational
+    #{ w in W: open_warehouse(w) } =< 3.
 
-    // Either Atlanta or Los Angeles must be opened.
+    // either Atlanta or Los Angeles must be opened
     open_warehouse(3) | open_warehouse(1).
+}
 
-    // Shipments from a closed warehouse are zero.
-    ! w in Warehouse, r in Region: ~open_warehouse(w) => ships(w, r) = 0.
-
-    // Shipments are non-negative and bounded by the capacity.
-    ! w in Warehouse, r in Region: 0 =< ships(w, r) & ships(w, r) =< max_shipping().
-
-    // An open warehouse ships at most its capacity.
-    ! w in Warehouse: open_warehouse(w) => sum{{ ships(w, r) | r in Region }} =< max_shipping().
-
-    // Each region receives exactly its demand.
-    ! r in Region: sum{{ ships(w, r) | w in Warehouse }} = demands(r).
-
-    // Total cost: fixed costs of open warehouses plus shipping costs.
-    total_cost() = sum{{ (if open_warehouse(w) then fixed_costs(w) else 0) | w in Warehouse }}
-                 + sum{{ (shipping_costs(w, r) * ships(w, r)) | w in Warehouse, r in Region }}.
-
-    minimize() = total_cost().
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

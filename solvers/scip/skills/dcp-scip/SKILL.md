@@ -38,7 +38,8 @@ Other bindings (C API, C++, Java, Julia and others from the SCIP documentation) 
 ## Modelling
 
 Use the general constraints where they state the problem; their exact calls, the encodings
-SCIP lacks (`!=`, `abs`, min/max, `//`, `%`) and the examples are in the interface file.
+for what SCIP lacks (`!=`, min/max, `//`, `%`) or handles slowly (`abs`), and the examples
+are in the interface file.
 
 Lessons that turned timeouts into solves:
 
@@ -49,13 +50,17 @@ Lessons that turned timeouts into solves:
   a sign binary with indicators was fast ([encoding](references/python/encodings.md#absolute-value)).
 - **Symmetry breaking and implied constraints** derived from the data
   ([details](references/python/encodings.md#search-help-symmetry-and-implied-constraints)).
+- **Tight bounds matter most on variables linked by indicators**: with a generic
+  ceiling of 10**6 on the values of a chain of indicator-linked equalities, one model
+  found no solution in 180 s; with the bound derived from the data (about 1000) it solved
+  in about 1 s.
 - **Large coefficients in one linear equality are fine**: a cryptarithm's
   `SEND + MORE == MONEY` with `10**k` weights solved in milliseconds; no need to split it
   into column-wise carries.
-- **Hold the objective in a bounded integer variable** (`z == expr`, bounds from the data,
-  `setObjective(z)`): it can then be pinned to enumerate optima. With a bare expression as
-  objective, one model proved its optimum in 2 s and then timed out finding a second
-  optimal solution.
+- **To enumerate optima, hold the objective in a bounded integer variable** (`z == expr`,
+  bounds from the data, `setObjective(z)`): it can then be pinned. With a bare expression
+  as objective, one model proved its optimum in 2 s and then timed out finding a second
+  optimal solution. For a single optimum a bare expression is fine.
 
 ## Solving
 
@@ -83,7 +88,7 @@ Calls and the objective pin: [interfaces/python.md](interfaces/python.md#all-sol
 | Problem | Likely cause | Fix |
 |---|---|---|
 | `inforunbd` taken as "no solution" | presolve could not tell infeasible from unbounded | re-solve with presolve off ([Solving](interfaces/python.md#solving)) |
-| fractional objective: all-optimal list misses optima or repeats | objective variable declared integer, or pinned with `==` on a float | `z` continuous, pin `z <= best + 1e-6` (or `>=`) ([All solutions](interfaces/python.md#all-solutions)) |
+| fractional objective: all-optimal list misses optima or repeats | objective variable declared integer, or an exact `==` pin on a float (relies on `numerics/feastol`) | `z` continuous, pin `z <= best + 1e-6` (or `>=`) ([All solutions](interfaces/python.md#all-solutions)) |
 | enumeration slow with many solutions | one full re-solve per no-good | expected; use `m.count()` for a count on pure binary linear models |
 | `timelimit`, slow proof | weak formulation | one-hot binaries, indicators, no `abs`, symmetry breaking, implied constraints, tight bounds |
 

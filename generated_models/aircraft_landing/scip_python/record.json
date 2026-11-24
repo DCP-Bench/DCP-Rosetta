@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791983992.299007,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "690b20038277627960683d03eb7b921bc8a06c3ce3e59585a7739ded9cb4168f"
+    },
+    "created_at": 1794340931.4817352,
     "problem_id": "aircraft_landing",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "dec26fe97f27e47e605711c77916c053a4fdb9719d9739e8b03e82cf9ac87e6c",
+    "run_id": "scip-polish",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:ba8c4d07b6eb8ea203c2d797b6975ad656d98f740f9de8a609c87f1a58fedc9b",
+      "recipe": "sha256:d8e8a4b0ba3e1fb49869ba406d7ffe0d76e0d36fec698d04ec0116b2346507ed",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.004708749009296298,
-        "execution_wall_seconds": 0.7010482659679838,
+        "checking_seconds": 0.004481823998503387,
+        "execution_wall_seconds": 0.8114744799968321,
         "first_solution": {
           "landing_times": [
             1,
@@ -47,6 +77,20 @@
           "total_penalty": 50
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0012333759805187583,
+            190
+          ],
+          [
+            0.0017553599900566041,
+            140
+          ],
+          [
+            0.0018938879948109388,
+            50
+          ]
+        ],
         "instance_hash": "0533277377cd0bec25e0a9fda64ecaa031650a8a098865525441dedc4045ae63",
         "is_optimization": true,
         "oom_killed": false,
@@ -56,9 +100,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8190131969749928,
+        "reference_setup_seconds": 0.2863816629978828,
         "runner_status": {
+          "build_seconds": 0.007251095987157896,
           "detail": "",
+          "main_seconds": 0.010278623987687752,
+          "read_seconds": 0.00013464799849316478,
           "status": "complete",
           "type": "status"
         },
@@ -68,8 +115,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.009748514043167233,
-        "execution_wall_seconds": 0.6489720980171114,
+        "checking_seconds": 0.009703649004222825,
+        "execution_wall_seconds": 0.9672647749830503,
         "first_solution": {
           "landing_times": [
             98,
@@ -86,6 +133,20 @@
           "total_penalty": 700
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.001779220998287201,
+            2050
+          ],
+          [
+            0.002221893984824419,
+            1690
+          ],
+          [
+            0.0027199159958399832,
+            700
+          ]
+        ],
         "instance_hash": "3583399054d9539e08fd828b58349277369bd996e5ed71f34d8e7e6c8b8d28d3",
         "is_optimization": true,
         "oom_killed": false,
@@ -95,9 +156,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6446925890049897,
+        "reference_setup_seconds": 0.27226223799516447,
         "runner_status": {
+          "build_seconds": 0.009740895999129862,
           "detail": "",
+          "main_seconds": 0.029954533005366102,
+          "read_seconds": 0.0001829350076150149,
           "status": "complete",
           "type": "status"
         },
@@ -107,8 +171,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.031497090007178485,
-        "execution_wall_seconds": 0.7510896419989876,
+        "checking_seconds": 0.03975054100737907,
+        "execution_wall_seconds": 1.0590088139870204,
         "first_solution": {
           "landing_times": [
             90,
@@ -124,12 +188,30 @@
             196,
             250,
             313,
-            341,
-            344
+            339,
+            342
           ],
           "total_penalty": 1480
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0022879919852130115,
+            2080
+          ],
+          [
+            0.002768773993011564,
+            1720
+          ],
+          [
+            0.003098730987403542,
+            1570
+          ],
+          [
+            0.0033215000003110617,
+            1480
+          ]
+        ],
         "instance_hash": "9376fb5d8d4213600d8cb68263a27d829b9c21a2768b3ce61ee5fd228eecd585",
         "is_optimization": true,
         "oom_killed": false,
@@ -139,9 +221,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.508812288986519,
+        "reference_setup_seconds": 0.3282234119833447,
         "runner_status": {
+          "build_seconds": 0.008313495985930786,
           "detail": "",
+          "main_seconds": 0.022986454016063362,
+          "read_seconds": 0.00017101000412367284,
           "status": "limit",
           "type": "status"
         },
@@ -151,8 +236,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04527700401376933,
-        "execution_wall_seconds": 0.7568427679943852,
+        "checking_seconds": 0.06277179400785826,
+        "execution_wall_seconds": 0.8911978990072384,
         "first_solution": {
           "landing_times": [
             82,
@@ -179,6 +264,24 @@
           "total_penalty": 820
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0028725900046993047,
+            3320
+          ],
+          [
+            0.003348361002281308,
+            1950
+          ],
+          [
+            0.003660215006675571,
+            1610
+          ],
+          [
+            0.003822819999186322,
+            820
+          ]
+        ],
         "instance_hash": "7ac82dccd48544bab5a1b7eeec7cc42fc032e829c2433293e324ccc39e5f5cdb",
         "is_optimization": true,
         "oom_killed": false,
@@ -188,9 +291,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5944793170201592,
+        "reference_setup_seconds": 0.30084142499254085,
         "runner_status": {
+          "build_seconds": 0.008693615003721789,
           "detail": "",
+          "main_seconds": 0.023531814018497244,
+          "read_seconds": 0.00017551900236867368,
           "status": "limit",
           "type": "status"
         },
@@ -200,8 +306,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0051772259757854044,
-        "execution_wall_seconds": 0.7487629820243455,
+        "checking_seconds": 0.0057938699901569635,
+        "execution_wall_seconds": 0.9361241300066467,
         "first_solution": {
           "landing_times": [
             11,
@@ -214,6 +320,12 @@
           "total_penalty": 21
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.000982852012384683,
+            21
+          ]
+        ],
         "instance_hash": "547c194f945f54edff8a945c26abb4179443461cf0f717cfde625504bc32f0ec",
         "is_optimization": true,
         "oom_killed": false,
@@ -223,9 +335,12 @@
           "total_penalty"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.5807115670177154,
+        "reference_setup_seconds": 0.32657691498752683,
         "runner_status": {
+          "build_seconds": 0.01268566699582152,
           "detail": "",
+          "main_seconds": 0.0163562270172406,
+          "read_seconds": 0.00014528000610880554,
           "status": "complete",
           "type": "status"
         },
@@ -243,15 +358,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "924cc50fc47cc666879785cf84e2c6ce5fc228c61835915a64bf94700de654d2",
+    "model_hash": "a0868c3e203d366819a4015991340e975a42c80b82a2473c5df598a6f58f6a60",
     "problem_id": "aircraft_landing",
     "reason": "accepted",
-    "reference_hash": "132d764d185fc7616ee154307a99c5c1edeae9a97d595cf5527c1e4ede973f1d",
+    "reference_hash": "68debf4c58dfe49fdb3661ca1f20836529beddb6464fd43596645a3da35ddd06",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -262,11 +377,11 @@
     "skipped_instances": [],
     "solutions_checked": 7,
     "solver_id": "scip_python",
-    "total_wall_seconds": 7.113329397048801,
+    "total_wall_seconds": 6.751133054000093,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

@@ -1,36 +1,39 @@
-// SONET problem: place nodes on rings with ADMs so that every demand pair shares a ring,
-// respecting each ring's node capacity, minimizing the total number of ADMs.
-vocabulary {
-    // a ring index; the number of rings comes from the length of capacity_nodes
-    type Ring <: Int
-    // a node index; the number of nodes comes from the size of demand
-    type Node <: Int
-
-    // the maximum number of nodes each ring can host
-    capacity_nodes: Ring -> Int
-    // traffic demand between two nodes (nonzero means they must communicate)
-    demand: Node * Node -> Int
-
-    // ring_config[k, i] is true if node i is on ring k
-    ring_config: Ring * Node -> Bool
-    // total number of ADMs used
-    total_adms: () -> Int
-    // number of ADMs installed on a ring
-    ring_size: Ring -> Int
-
-    minimize: () -> Int
+// csplib_056_sonet: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// In the SONET problem, a set of nodes has a traffic demand for each pair of nodes, and the nodes are connected by a set
+// of rings. A node is installed on a ring using an add-drop multiplexer (ADM). For two nodes to communicate, they must be
+// on at least one common ring. Each ring has a capacity, limiting the number of nodes it can host. Satisfy all
+// communication demands while minimizing the total number of ADMs used.
+//
+// Save this file as model.idp. Download `csplib_056_sonet.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_056_sonet.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_056_sonet.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Ring <: Int                       // the rings, numbered 0-based, sized from capacity_nodes
+    type Node <: Int                       // the nodes, numbered 0-based, sized from demand
+    capacity_nodes: Ring -> Int            // capacity_nodes(k): the number of nodes ring k can host
+    demand: Node * Node -> Int             // demand(i, j): the traffic demand between nodes i and j
+    ring_config: Ring * Node -> Bool       // ring_config(k, i): node i is installed on ring k
+    total_adms: () -> Int                  // the total number of ADMs used, one for each node installed on a ring
+    minimize: () -> Int                    // the total number of ADMs to minimize
 }
-theory {
-    // a node is installed on a ring using an ADM, so the ADMs on a ring are the nodes on it
-    ! k in Ring: ring_size(k) = #{ i in Node: ring_config(k, i) }.
+theory T:V {
+    // for each pair of nodes with a traffic demand, the two nodes are on a common ring
+    ! i, j in Node: i ~= j & demand(i, j) > 0 => ?k in Ring: ring_config(k, i) & ring_config(k, j).
 
-    // each ring has a capacity, limiting the number of nodes it can host
-    ! k in Ring: ring_size(k) =< capacity_nodes(k).
+    // each ring hosts no more nodes than its capacity
+    ! k in Ring: #{ i in Node: ring_config(k, i) } =< capacity_nodes(k).
 
-    // for two nodes to communicate, they must be on at least one common ring
-    ! i, j in Node: demand(i, j) ~= 0 => ? k in Ring: ring_config(k, i) & ring_config(k, j).
+    // the total number of ADMs is the number of nodes installed on rings
+    total_adms() = #{ k in Ring, i in Node: ring_config(k, i) }.
 
-    // the objective is the total number of ADMs used
-    total_adms() = sum{{ ring_size(k) | k in Ring }}.
+    // the total number of ADMs is the value to minimize
     minimize() = total_adms().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

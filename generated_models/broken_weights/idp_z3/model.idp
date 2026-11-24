@@ -1,26 +1,39 @@
-// Broken weights: a weight of m pounds broke into n pieces, each a whole number of pounds.
-// The pieces must weigh every whole number from 1 to m on a balance scale, with the
-// pieces on both pans and the object on one pan.
-vocabulary {
-    m: () -> Int
-    type Range_n <: Int      // one entry per piece, sized from the instance field n
-    type Range_m <: Int         // a piece weighs at most the total weight m
-    weights: Range_n -> Range_m         // declared output: the weight of each piece, ascending
-    on_left: Range_n * Range_m -> Bool   // piece p is on the object's pan when weighing k
-    on_right: Range_n * Range_m -> Bool  // piece p is on the other pan when weighing k
+// broken_weights: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A merchant's measuring weight broke into a number of pieces when it fell. Each piece weighs a whole number of pounds,
+// and the pieces can be used to weigh every integral weight between 1 and the total weight, on a balance scale, by
+// placing weights on both pans.
+//
+// Save this file as model.idp. Download `broken_weights.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py broken_weights.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_m <: Int                // the whole weights 1..m that must be weighed
+    type Range_n <: Int                // the pieces, numbered 1..n
+    m: () -> Int                       // the total weight of the broken measuring weight
+    n: () -> Int                       // the number of pieces
+    weights: Range_n -> Int            // weights(i): the weight of piece i in pounds (the output)
+    with_object: Range_m * Range_n -> Bool   // with_object(k, i): piece i is on the same pan as the object of weight k
+    other_pan: Range_m * Range_n -> Bool     // other_pan(k, i): piece i is on the other pan from the object of weight k
 }
-theory {
-    // the pieces weigh the total weight of the merchant's weight, m pounds
-    sum{{ weights(p) | p in Range_n }} = m().
 
-    // the pieces are listed in ascending order and all weights are different
-    ! p, q in Range_n: p < q => weights(p) < weights(q).
+theory T:V {
+    // every piece weighs a positive whole number of pounds
+    ! i in Range_n: weights(i) >= 1.
+    // the pieces together weigh the total weight m
+    sum{{ weights(i) | i in Range_n }} = m().
+    // a piece is on at most one pan
+    ! k in Range_m, i in Range_n: ~(with_object(k, i) & other_pan(k, i)).
+    // for every whole weight k from 1 to m, the pieces can balance an object of weight k: the pieces on the pan
+    // opposite to the object weigh k more than the pieces on its pan
+    ! k in Range_m: sum{{ weights(i) | i in Range_n: other_pan(k, i) }} = k + sum{{ weights(i) | i in Range_n: with_object(k, i) }}.
+}
 
-    // each piece is on the object's pan, on the other pan, or off the scale
-    ! p in Range_n, k in Range_m: ~(on_left(p, k) & on_right(p, k)).
-
-    // every integral weight k from 1 to m can be weighed:
-    // the object k and the pieces on its pan balance the pieces on the other pan
-    ! k in Range_m: sum{{ (if on_right(p, k) then weights(p) else 0) | p in Range_n }}
-        = k + sum{{ (if on_left(p, k) then weights(p) else 0) | p in Range_n }}.
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

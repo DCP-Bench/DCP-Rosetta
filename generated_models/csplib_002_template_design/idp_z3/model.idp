@@ -1,25 +1,62 @@
-vocabulary {
-    type V <: Int                      // variations, sized from demand
-    type Range_n_templates <: Int      // templates 1..n_templates
-    type Range_n_slots <: Int          // 1..n_slots, the counts a template can hold
-    n_slots: () -> Int
-    demand: V -> Int
-    layout: Range_n_templates * V -> Int
-    production: Range_n_templates -> Int
-    printed: Range_n_templates * V -> Int   // copies of v printed from template t
-    minimize: () -> Int
+// csplib_002_template_design: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A colour printing firm produces variations of one design (same size and shape, differing in a small proportion of the
+// text or colour). Each mother sheet of board is printed from a template: a thin aluminium sheet on which the designs of
+// several variations are etched, in a fixed number of slots, and every slot of a template is filled. Given a number of
+// templates with a given number of slots each, decide which variations, and how many copies of each, to etch on each
+// template, and how many sheets to take from each template. Each template is printed between 1 sheet and as many sheets
+// as the largest demand. The sheets printed must meet at least the demand of every variation, and the objective is to
+// minimize the total number of printed sheets.
+//
+// Save this file as model.idp. Download `csplib_002_template_design.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_002_template_design.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Var <: Int                          // the variations, numbered from 0; sized from demand
+    type Range_n_templates <: Int            // the templates, numbered 1 to n_templates
+    type Count <: Int                        // the numbers of slots a variation can take on a template, 1 to n_slots (auxiliary)
+    Count_size: () -> Int                    // the size of Count: n_slots (auxiliary)
+    n_slots: () -> Int                       // the number of slots on each template (all of them filled)
+    demand: Var -> Int                       // demand(v): the number of sheets needed of variation v
+    max_demand: () -> Int                    // the largest demand over all variations
+    layout: Range_n_templates * Var -> Int   // layout(t, v): the number of slots of template t given to variation v
+    production: Range_n_templates -> Int     // production(t): the number of sheets printed from template t
+    copies: Range_n_templates * Var -> Int   // copies(t, v): the copies of variation v printed on all sheets from template t (auxiliary)
+    minimize: () -> Int                      // the total number of printed sheets
 }
-theory {
-    // each template carries at most n_slots designs
-    ! t in Range_n_templates: sum{{ layout(t, v) | v in V }} =< n_slots().
-    // counts are non-negative and bounded by the slots
-    ! t in Range_n_templates, v in V: 0 =< layout(t, v) & layout(t, v) =< n_slots().
-    ! t in Range_n_templates: 0 =< production(t) & production(t) =< sum{{ demand(v) | v in V }}.
-    // printed copies are the layout count times the number of sheets, written
-    // as a sum over the possible counts so every term is linear
-    ! t in Range_n_templates, v in V: printed(t, v) = sum{{ (if layout(t, v) = k then k * production(t) else 0) | k in Range_n_slots }}.
-    // each variation is printed at least as often as demanded
-    ! v in V: demand(v) =< sum{{ printed(t, v) | t in Range_n_templates }}.
-    // minimise the total number of printed sheets
+
+theory T:V {
+    // the number of slot counts is the number of slots
+    Count_size() = n_slots().
+
+    // the largest demand is the largest of the demands
+    ! v in Var: demand(v) =< max_demand().
+    ?v in Var: max_demand() = demand(v).
+
+    // every slot of each template is filled by some variation
+    ! t in Range_n_templates: sum{{ layout(t, v) | v in Var }} = n_slots().
+    // a variation takes no negative number of slots, and no more slots than a template has
+    ! t in Range_n_templates, v in Var: 0 =< layout(t, v) & layout(t, v) =< n_slots().
+
+    // each template is printed between 1 sheet and as many sheets as the largest demand
+    ! t in Range_n_templates: 1 =< production(t) & production(t) =< max_demand().
+
+    // the copies of a variation printed from a template: the slots it takes, times the sheets printed from the template
+    ! t in Range_n_templates, v in Var: layout(t, v) = 0 => copies(t, v) = 0.
+    ! t in Range_n_templates, v in Var, k in Count: layout(t, v) = k => copies(t, v) = k * production(t).
+
+    // the sheets printed meet the demand of every variation: the copies of a variation on all templates are at least its demand
+    ! v in Var: sum{{ copies(t, v) | t in Range_n_templates }} >= demand(v).
+
+    // the objective is the total number of sheets printed
     minimize() = sum{{ production(t) | t in Range_n_templates }}.
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

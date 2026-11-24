@@ -1,29 +1,46 @@
-# Eighteen-hole golf course: choose a length of 3, 4 or 5 for each of 18 holes so that the lengths sum to 72.
+# eighteen_hole_golf: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python eighteen_hole_golf.py
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    # number of holes is fixed by the problem statement (18 holes)
-    n_holes = 18
-    # every hole has length 3, 4 or 5 (problem statement)
-    lengths = [3, 4, 5]
-    # the total length of the course is 72 (problem statement)
-    total_length = 72
+def create_model(instance):
+    """Generate an 18-hole golf course in which every hole is 3, 4 or 5 long
+    and the total length of the course is 72.
 
-    m = Model()
+    The instance file is empty ([]), so the statement fixes every number:
+    18 holes, lengths from 3 to 5, and a total of 72. The instance argument is
+    not read. The model is a satisfaction problem with no objective."""
+    num_holes = 18        # the course has 18 holes
+    shortest = 3          # the shortest hole the statement allows
+    longest = 5           # the longest hole the statement allows
+    total_length = 72     # the total length of the course
 
-    # one-hot choice: b[i, v] = 1 if hole i has length v
-    b = {(i, v): m.addVar(name=f"b_{i}_{v}", vtype="B") for i in range(n_holes) for v in lengths}
-    holes = [m.addVar(name=f"hole_{i}", lb=3, ub=5, vtype="I") for i in range(n_holes)]
+    model = Model("eighteen_hole_golf")
 
-    # each hole has exactly one length
-    for i in range(n_holes):
-        # each hole has exactly one length from 3, 4 or 5
-        m.addCons(quicksum(b[i, v] for v in lengths) == 1)
-        # the length of hole i is the chosen value
-        m.addCons(holes[i] == quicksum(v * b[i, v] for v in lengths))
+    # holes[i] is the length of hole i, a whole number from 3 to 5.
+    # The bounds are the statement's lengths, so no separate constraint is needed.
+    holes = [model.addVar(f"hole_{i}", vtype="I", lb=shortest, ub=longest)
+             for i in range(num_holes)]
 
-    # the total length of the course is 72
-    m.addCons(quicksum(holes) == total_length)
+    # The lengths of the 18 holes add up to the total length of the course.
+    model.addCons(quicksum(holes) == total_length)
 
-    return m, {"holes": holes}
+    return model, {"holes": holes}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

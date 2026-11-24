@@ -1,26 +1,40 @@
-// Choose which potential cell tower locations to build, under a limited budget, to cover as much population as possible.
-vocabulary {
-    type S <: Int                               // potential tower sites, sized from the cost list
-    type R <: Int                               // regions of the city, sized from the population list
-    delta: S * R -> Int                         // 1 if a tower at the site covers the region, 0 otherwise
-    cost: S -> Int                              // cost of building a tower at each site
-    population: R -> Int                        // known population of each region
-    budget: () -> Int                           // the budget limits how many towers can be built
-    build_tower: S -> Bool                      // declared output: build a tower at the site
-    covered: R -> Bool                          // auxiliary: the region is covered by at least one built tower
-    total_population_covered: () -> Int         // declared output: total population covered
-    maximize: () -> Int                         // objective: the largest population coverage possible
+// cell_tower: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A telecom company needs to build a set of cell towers to provide signal coverage for the inhabitants of a given city.
+// A number of potential locations where the towers could be built have been identified. The towers have a fixed range,
+// and due to budget constraints only a limited number of them can be built. The company wishes to provide coverage to
+// the largest percentage of the population possible: the area is split into regions, each with a known population, and
+// the goal is to choose which potential locations to build cell towers on so that as many people as possible are covered.
+//
+// Save this file as model.idp. Download `cell_tower.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/cell_tower.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py cell_tower.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Loc <: Int                        // the potential tower locations, numbered from 0
+    type Reg <: Int                        // the regions, numbered from 0
+    budget: () -> Int                      // the total cost the towers built may not exceed
+    cost: Loc -> Int                       // cost(l): the cost of building a tower at location l
+    population: Reg -> Int                 // population(r): the population of region r
+    delta: Loc * Reg -> Int                // delta(l, r): 1 if a tower at location l covers region r, else 0
+    build_tower: Loc -> Bool               // build_tower(l): a tower is built at location l
+    covered: Reg -> Bool                   // covered(r): region r is covered by some built tower (auxiliary)
+    total_population_covered: () -> Int    // the total population of the regions covered
+    maximize: () -> Int                    // the total population covered, to maximize
 }
-theory {
-    // a region is covered when some built tower has range over it
-    ! r in R: covered(r) <=> ?s in S: build_tower(s) & delta(s, r) = 1.
-
-    // due to budget constraints, the total cost of the towers built must not exceed the budget
-    sum{{ cost(s) | s in S: build_tower(s) }} =< budget().
-
-    // the total population covered is the sum of the populations of the covered regions
-    total_population_covered() = sum{{ population(r) | r in R: covered(r) }}.
-
-    // maximize the population covered
+theory T:V {
+    // a region is covered when a built tower at a location covers it
+    ! r in Reg: covered(r) <=> ?l in Loc: build_tower(l) & delta(l, r) = 1.
+    // the total cost of the towers built is within the budget
+    sum{{ cost(l) | l in Loc: build_tower(l) }} =< budget().
+    // the total population covered is the population of the covered regions
+    total_population_covered() = sum{{ population(r) | r in Reg: covered(r) }}.
+    // the total population covered is the value to maximize
     maximize() = total_population_covered().
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

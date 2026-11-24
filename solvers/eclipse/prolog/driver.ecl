@@ -32,8 +32,9 @@
 % hr_time, as session_time counts in hundredths.
 :- local variable(dcp_started), variable(dcp_read_seconds), variable(dcp_building),
          variable(dcp_build_seconds).
-% When the optimisation search (bb_min) started, for the incumbents' seconds.
-:- local variable(dcp_search_start).
+% When the optimisation search (bb_min) started, for the incumbents' seconds, and whether
+% each incumbent carries its declared outputs (the request's incumbent_values).
+:- local variable(dcp_search_start), variable(dcp_incumbent_values).
 
 dcp_main :-
     statistics(hr_time, Started),
@@ -58,8 +59,9 @@ dcp_run :-
     set_stream(warning_output, Messages),
     set_stream(log_output, Null),
     open('/tmp/dcp_request.ecl', read, In),
-    read(In, request(Instance, Limit, Budget)),
+    read(In, request(Instance, Limit, Budget, IncumbentValues)),
     close(In),
+    setval(dcp_incumbent_values, IncumbentValues),
     statistics(session_time, Start),
     statistics(hr_time, Building),
     getval(dcp_started, Started),
@@ -122,7 +124,7 @@ dcp_optimum(Instance, Optimum) :-
             setval(dcp_search_start, SearchStart),
             (   bb_min(dcp_search_all(Vars, Outputs, Expression-Cost), Target,
                        bb_options{strategy:continue, delta:1, factor:1,
-                                  report_success:dcp_incumbent(Direction)/1})
+                                  report_success:dcp_incumbent(Direction, Outputs)/1})
             ->  (   integer(Cost)
                 ->  Optimum = Cost
                 ;   dcp_fail_with("The objective is not an integer after search: %w", [Cost])
@@ -137,14 +139,26 @@ dcp_optimum(Instance, Optimum) :-
 % branch_and_bound's report_success hook, called with the bound variable's value on
 % each improving solution (its default only prints to log_output, so the search is
 % unchanged): an incumbent record, the objective and the seconds since bb_min started.
-% Maximisation minimises the negated cost, so its value is negated back.
-dcp_incumbent(Direction, Target) :-
+% Maximisation minimises the negated cost, so its value is negated back. bb_continue
+% calls the hook before it fails back into the search, so Outputs (the term the search
+% goal labels, shared through the options) still hold that solution's values; when the
+% request asks for them they are written as a solution's are.
+dcp_incumbent(Direction, Outputs, Target) :-
     ( Direction == min -> Value is fix(Target) ; Value is -fix(Target) ),
     statistics(hr_time, Now),
     getval(dcp_search_start, Start),
     Seconds is max(0.0, Now - Start),
-    printf(dcp_protocol, "{\"type\": \"incumbent\", \"objective\": %d, \"seconds\": %.6f}%n",
+    printf(dcp_protocol, "{\"type\": \"incumbent\", \"objective\": %d, \"seconds\": %.6f",
            [Value, Seconds]),
+    (   getval(dcp_incumbent_values, true)
+    ->  dcp_check_values(Outputs),
+        write(dcp_protocol, ", \"values\": {"),
+        dcp_write_pairs(Outputs),
+        write(dcp_protocol, "}")
+    ;   true
+    ),
+    write(dcp_protocol, "}"),
+    nl(dcp_protocol),
     flush(dcp_protocol).
 
 dcp_enumerate(Instance, Limit, Optimum, Status) :-

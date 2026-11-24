@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790710277.0517466,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794438066.27864,
     "problem_id": "csplib_028_bibd",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20260929T1914Z-hermax-exact-pysat-clingo-c5e1",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "81f2696c2938bf040591d134c7438ec0ec4baf4b",
+      "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.0787632999708876,
-        "execution_wall_seconds": 3.426796199986711,
+        "checking_seconds": 0.14990249800030142,
+        "execution_wall_seconds": 0.7968239060137421,
         "first_solution": {
           "matrix": [
             [
@@ -177,9 +207,12 @@
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.545836600009352,
+        "reference_setup_seconds": 0.4990181710163597,
         "runner_status": {
+          "build_seconds": 0.00437542301369831,
           "detail": "",
+          "main_seconds": 0.0129374879761599,
+          "read_seconds": 0.00025836098939180374,
           "status": "limit",
           "type": "status"
         },
@@ -189,8 +222,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0468164999037981,
-        "execution_wall_seconds": 3.3791138000087813,
+        "checking_seconds": 0.023623229004442692,
+        "execution_wall_seconds": 0.732672284997534,
         "first_solution": {
           "matrix": [
             [
@@ -267,9 +300,12 @@
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.490289199980907,
+        "reference_setup_seconds": 0.4080899360124022,
         "runner_status": {
+          "build_seconds": 0.0029201199940871447,
           "detail": "",
+          "main_seconds": 0.005699572997400537,
+          "read_seconds": 0.00016252300702035427,
           "status": "limit",
           "type": "status"
         },
@@ -279,8 +315,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.051258399966172874,
-        "execution_wall_seconds": 3.5046067000366747,
+        "checking_seconds": 0.019496773020364344,
+        "execution_wall_seconds": 0.7443462809897028,
         "first_solution": {
           "matrix": [
             [
@@ -366,9 +402,12 @@
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.668811999959871,
+        "reference_setup_seconds": 0.5572379369987175,
         "runner_status": {
+          "build_seconds": 0.004441087978193536,
           "detail": "",
+          "main_seconds": 0.009959096001693979,
+          "read_seconds": 0.0002203579933848232,
           "status": "limit",
           "type": "status"
         },
@@ -378,8 +417,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0996435999404639,
-        "execution_wall_seconds": 3.7961075000930578,
+        "checking_seconds": 0.032212250982411206,
+        "execution_wall_seconds": 0.6945966419880278,
         "first_solution": {
           "matrix": [
             [
@@ -521,9 +560,12 @@
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.7329866000218317,
+        "reference_setup_seconds": 0.6438211580098141,
         "runner_status": {
+          "build_seconds": 0.0032348399981856346,
           "detail": "",
+          "main_seconds": 0.00853171999915503,
+          "read_seconds": 0.00016513600712642074,
           "status": "limit",
           "type": "status"
         },
@@ -533,8 +575,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.19103079999331385,
-        "execution_wall_seconds": 2.170146099990234,
+        "checking_seconds": 0.08814529998926446,
+        "execution_wall_seconds": 0.8206055860209744,
         "first_solution": {
           "matrix": [
             [
@@ -743,9 +785,12 @@
           "matrix"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.9632064000470564,
+        "reference_setup_seconds": 0.6374116530059837,
         "runner_status": {
+          "build_seconds": 0.007382593001239002,
           "detail": "",
+          "main_seconds": 0.01907344101346098,
+          "read_seconds": 0.00020821401267312467,
           "status": "limit",
           "type": "status"
         },
@@ -757,21 +802,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "eb5fefd94f4071feb31275f0392be8812d2e1201363dafc11e230bb4fcc23bc9",
+    "model_hash": "8b6912605ad089a890c8af4adc1dd096fa5c0d9ab39c4ef7e47b0e8aab47466d",
     "problem_id": "csplib_028_bibd",
     "reason": "accepted",
-    "reference_hash": "8f9356c07da94614152ef497235537a26508956fac23fd30b2e800a6c5e8106f",
+    "reference_hash": "a2884eb57fba210b8a06fd64d963ab2ea3d72c0764ba0b6ca4e2a42e5c7da384",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -782,11 +827,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 33.5923609000165,
+    "total_wall_seconds": 7.390295568009606,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.lp",

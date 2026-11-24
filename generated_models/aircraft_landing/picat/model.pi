@@ -1,33 +1,67 @@
-% Aircraft landing with a fixed landing order: give every aircraft a landing time
-% in its window so that later aircraft keep the required separation after
-% earlier ones, at the least total penalty for landing early or late.
+% aircraft_landing: a Picat model from DCP Rosetta.
+%
+% The Aircraft Landing Problem involves scheduling the landing of a set of aircraft on a single
+% runway. Each aircraft has a specified time window (earliest and latest possible landing time) and
+% a target landing time. Penalties are incurred for landing earlier or later than the target time.
+% Additionally, a minimum separation time between the landings of any two aircraft must be
+% respected. The order in which the aircraft land is fixed. The objective is to determine the exact
+% landing time for each aircraft to minimize the total penalty, while respecting all time windows
+% and separation constraints.
+%
+% Save this file as model.pi. Download `aircraft_landing.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/aircraft_landing.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py aircraft_landing.json
+%   picat model.pi aircraft_landing_1.dat
+%
+% Data.get(earliest_landing), Data.get(latest_landing), Data.get(target_landing): the earliest,
+% latest and target landing time of each aircraft; Data.get(penalty_before), Data.get(penalty_after):
+% the penalty per time unit for landing before or after the target time; Data.get(separation_time):
+% the least separation time from the landing of aircraft I to the landing of aircraft J, a list of
+% lists indexed from 1 (row I, column J). Aircraft are listed in their landing order.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Earliest = Data.get(earliest_landing),
     Latest = Data.get(latest_landing),
     Target = Data.get(target_landing),
-    PenaltyAfter = Data.get(penalty_after),     % per time unit after the target
-    PenaltyBefore = Data.get(penalty_before),   % per time unit before the target
-    Separation = Data.get(separation_time),     % separation[i][j]: least gap from i to j
-    N = len(Earliest),
+    PenaltyBefore = Data.get(penalty_before),
+    PenaltyAfter = Data.get(penalty_after),
+    Separation = Data.get(separation_time),
+    N = len(Earliest),                     % the number of aircraft
     Horizon = max(Latest),
     LandingTimes = new_list(N),
-    Earliness = new_list(N),
-    Lateness = new_list(N),
+    Earliness = new_list(N),               % how many time units before the target each one lands
+    Lateness = new_list(N),                % how many time units after the target each one lands
     Earliness :: 0..Horizon,
     Lateness :: 0..Horizon,
     foreach (I in 1..N)
-        % each aircraft lands inside its window
+        % each aircraft lands inside its time window
         LandingTimes[I] :: Earliest[I]..Latest[I],
-        % the deviation from the target, split into earliness and lateness
+        % the landing time is the target, plus the lateness, minus the earliness
         LandingTimes[I] - Target[I] #= Lateness[I] - Earliness[I]
     end,
-    % aircraft j lands after aircraft i, at least separation[i][j] later
+    % any two aircraft land in the fixed order of their numbers, at least the separation time apart
     foreach (I in 1..N-1, J in I+1..N)
         LandingTimes[J] - LandingTimes[I] #>= Separation[I, J]
     end,
+    % the penalties for landing early and for landing late, summed over all aircraft
     TotalPenalty #= sum([PenaltyBefore[I] * Earliness[I] + PenaltyAfter[I] * Lateness[I] : I in 1..N]),
     Vars = LandingTimes ++ Earliness ++ Lateness,
     Outputs = [landing_times = LandingTimes, total_penalty = TotalPenalty],
+    % minimize the total penalty
     Options = [$min(TotalPenalty)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

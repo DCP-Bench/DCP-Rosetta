@@ -1,28 +1,45 @@
+# csplib_049_number_partitioning: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_049_number_partitioning.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_049_number_partitioning.py csplib_049_number_partitioning.json
+
 from pycsp3 import *
 
-# Partition the numbers 1 to n into two sets A and B of the same size, with equal sums and equal
-# sums of squares.
-n = data.n
-half = n // 2
 
-# the members of set A and of set B; the names are lowercase, with the output names aliased below
-a = VarArray(size=half, dom=range(1, n + 1))
-b = VarArray(size=half, dom=range(1, n + 1))
-A, B = a, b
+def create_model(instance):
+    """Partition the numbers 1 to N into two sets A and B of the same size, with
+    the same sum and the same sum of squares."""
+    n_numbers = instance["n"]  # N, the numbers 1 to N are partitioned
+    half = n_numbers // 2      # size of each set, taken as N even: the two sets together hold all N numbers
 
-# squares of the members, linked to the members by a table of (value, square) pairs
-square_pairs = [(v, v * v) for v in range(1, n + 1)]
-sq_a = VarArray(size=half, dom={v * v for v in range(1, n + 1)})
-sq_b = VarArray(size=half, dom={v * v for v in range(1, n + 1)})
+    # A[i] is the i-th number of set A.
+    A = VarArray(size=half, dom=range(1, n_numbers + 1))
+    # B[i] is the i-th number of set B.
+    B = VarArray(size=half, dom=range(1, n_numbers + 1))
 
-satisfy(
-    # every number from 1 to n is in exactly one of the two sets
-    AllDifferent(a + b),
-    # the two sets have the same sum
-    Sum(a) == Sum(b),
-    # each member of A and of B is linked to its square
-    [Table(scope=[a[i], sq_a[i]], supports=square_pairs) for i in range(half)],
-    [Table(scope=[b[i], sq_b[i]], supports=square_pairs) for i in range(half)],
-    # the two sets have the same sum of squares
-    Sum(sq_a) == Sum(sq_b),
-)
+    satisfy(
+        # Every number from 1 to N is in exactly one of the sets A and B.
+        AllDifferent(A + B),
+        # The numbers in A and in B have the same sum.
+        Sum(A) == Sum(B),
+        # The squares of the numbers in A and in B have the same sum.
+        Sum(a * a for a in A) == Sum(b * b for b in B),
+    )
+
+    return {"A": A, "B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

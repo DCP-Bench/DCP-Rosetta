@@ -1,86 +1,82 @@
-// Solitaire battleships: fill the grid with water, submarines and ship parts so that the fleet, the row and column counts and the hints all hold.
-vocabulary {
-    // grid rows and columns, sized from the row and column sums
-    type Row <: Int
-    type Col <: Int
-    // fleet entries, and the (length, count) columns of a fleet entry
-    type Fleet <: Int
-    type FCol <: Int
-    // hints, and the (row, column, code) columns of a hint
-    type Hint <: Int
-    type HCol <: Int
-
-    rowsum: Row -> Int
-    colsum: Col -> Int
-    fleet_counts: Fleet * FCol -> Int
-    hints: Hint * HCol -> Int
-
-    // cell codes from the instance
-    WATER: () -> Int
-    CIRCLE: () -> Int
-    LEFT: () -> Int
-    RIGHT: () -> Int
-    TOP: () -> Int
-    BOTTOM: () -> Int
-    MIDDLE: () -> Int
-
-    // grid[r,c] is the code of cell (r,c)
-    grid: Row * Col -> Int
-
-    // auxiliary: connections between neighbouring ship parts
-    hr: Row * Col -> Bool
-    hl: Row * Col -> Bool
-    vd: Row * Col -> Bool
-    vu: Row * Col -> Bool
-    // a middle part lies horizontally
-    hmid: Row * Col -> Bool
-    // the cell holds a ship part
-    ship: Row * Col -> Bool
+// csplib_014_solitaire_battleships: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The Battleships puzzle is played on a grid. The fleet consists of battleships (four squares long), cruisers (three
+// squares long), destroyers (two squares long) and submarines (one square each). Ships are placed horizontally or
+// vertically, and no two ships occupy adjacent squares, not even diagonally. The numbers along the right side of and
+// below the grid give the number of squares in the corresponding rows and columns that are occupied by vessels. Some
+// squares may be fixed by shots: each shot shows water, a complete submarine, or a part of a longer vessel. Each square
+// is water, a submarine, or a ship part (left, right, top, bottom or middle).
+//
+// Save this file as model.idp. Download `csplib_014_solitaire_battleships.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_014_solitaire_battleships.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Row <: Int                    // the rows, numbered from 0, sized from rowsum
+    type Col <: Int                    // the columns, numbered from 0, sized from colsum
+    type Hint <: Int                   // the shots, numbered from 0, sized from hints
+    type HintField := {0..2}           // hints(h, 0) row, hints(h, 1) column, hints(h, 2) the square's code
+    type Kind <: Int                   // the kinds of ship in the fleet, numbered from 0, sized from fleet_counts
+    type FleetField := {0..1}          // fleet_counts(k, 0) the length of the ships of kind k, fleet_counts(k, 1) how many there are
+    WATER: () -> Int                   // the code of a square with water
+    CIRCLE: () -> Int                  // the code of a submarine (a ship of one square)
+    LEFT: () -> Int                    // the code of the left end of a horizontal ship
+    RIGHT: () -> Int                   // the code of the right end of a horizontal ship
+    TOP: () -> Int                     // the code of the top end of a vertical ship
+    BOTTOM: () -> Int                  // the code of the bottom end of a vertical ship
+    MIDDLE: () -> Int                  // the code of a square inside a ship
+    rowsum: Row -> Int                 // rowsum(r): the number of occupied squares in row r
+    colsum: Col -> Int                 // colsum(c): the number of occupied squares in column c
+    hints: Hint * HintField -> Int     // hints(h, 0), hints(h, 1): the 0-based row and column of shot h; hints(h, 2): its code
+    fleet_counts: Kind * FleetField -> Int   // fleet_counts(k, 0): the length of the ships of kind k; fleet_counts(k, 1): their number
+    grid: Row * Col -> Int             // grid(r, c): the code of the square in row r and column c, 0-based
 }
-theory {
-    // every cell is water, a submarine, or a ship part (left, right, top, bottom, middle)
+
+theory T:V {
+    // each square is water or one of the parts of a ship or a submarine
     ! r in Row, c in Col: grid(r, c) = WATER() | grid(r, c) = CIRCLE() | grid(r, c) = LEFT() | grid(r, c) = RIGHT() | grid(r, c) = TOP() | grid(r, c) = BOTTOM() | grid(r, c) = MIDDLE().
 
-    // a horizontal middle part has a middle orientation; only middle parts can have one
-    ! r in Row, c in Col: hmid(r, c) => grid(r, c) = MIDDLE().
+    // the number of occupied squares in each row is the number given for that row
+    ! r in Row: #{c in Col: grid(r, c) ~= WATER()} = rowsum(r).
 
-    // the ship part to the right of a cell, which a left or middle part connects to
-    ! r in Row, c in Col: hr(r, c) <=> (grid(r, c) = LEFT() | (grid(r, c) = MIDDLE() & hmid(r, c))).
-    // the ship part to the left of a cell, which a right or middle part connects to
-    ! r in Row, c in Col: hl(r, c) <=> (grid(r, c) = RIGHT() | (grid(r, c) = MIDDLE() & hmid(r, c))).
-    // the ship part above a cell, which a top or vertical middle part connects to
-    ! r in Row, c in Col: vd(r, c) <=> (grid(r, c) = TOP() | (grid(r, c) = MIDDLE() & ~hmid(r, c))).
-    // the ship part below a cell, which a bottom or vertical middle part connects to
-    ! r in Row, c in Col: vu(r, c) <=> (grid(r, c) = BOTTOM() | (grid(r, c) = MIDDLE() & ~hmid(r, c))).
+    // the number of occupied squares in each column is the number given for that column
+    ! c in Col: #{r in Row: grid(r, c) ~= WATER()} = colsum(c).
 
-    // a ship part exists in the cell exactly when the cell is not water
-    ! r in Row, c in Col: ship(r, c) <=> ~(grid(r, c) = WATER()).
+    // each shot fixes the square it names to its code
+    ! h in Hint, r in Row, c in Col: hints(h, 0) = r & hints(h, 1) = c => grid(r, c) = hints(h, 2).
 
-    // a connection to the right needs a matching connection from the cell on its right, and the same for the other directions
-    ! r in Row, c in Col: hr(r, c) => ? c2 in Col: c2 = c + 1 & hl(r, c2).
-    ! r in Row, c in Col: hl(r, c) => ? c2 in Col: c2 = c - 1 & hr(r, c2).
-    ! r in Row, c in Col: vd(r, c) => ? r2 in Row: r2 = r + 1 & vu(r2, c).
-    ! r in Row, c in Col: vu(r, c) => ? r2 in Row: r2 = r - 1 & vd(r2, c).
+    // two horizontally adjacent occupied squares are parts of one horizontal ship
+    ! r in Row, c in Col, d in Col: d = c + 1 & grid(r, c) ~= WATER() & grid(r, d) ~= WATER() => (grid(r, c) = LEFT() | grid(r, c) = MIDDLE()) & (grid(r, d) = MIDDLE() | grid(r, d) = RIGHT()).
 
-    // ships do not touch unless they are the same ship: neighbouring ship parts are connected
-    ! r in Row, c in Col, c2 in Col: (c2 = c + 1 & ship(r, c) & ship(r, c2)) => hr(r, c).
-    ! r in Row, c in Col, r2 in Row: (r2 = r + 1 & ship(r, c) & ship(r2, c)) => vd(r, c).
+    // two vertically adjacent occupied squares are parts of one vertical ship
+    ! r in Row, s in Row, c in Col: s = r + 1 & grid(r, c) ~= WATER() & grid(s, c) ~= WATER() => (grid(r, c) = TOP() | grid(r, c) = MIDDLE()) & (grid(s, c) = MIDDLE() | grid(s, c) = BOTTOM()).
 
-    // no two ships are adjacent, not even diagonally
-    ! r in Row, c in Col, r2 in Row, c2 in Col: ((r2 = r + 1 | r2 = r - 1) & (c2 = c + 1 | c2 = c - 1)) => ~(ship(r, c) & ship(r2, c2)).
+    // no two occupied squares are diagonally adjacent: ships do not touch, not even diagonally
+    ! r in Row, s in Row, c in Col, d in Col: s = r + 1 & (d = c + 1 | d = c - 1) => grid(r, c) = WATER() | grid(s, d) = WATER().
 
-    // the number of grid squares occupied by vessels in each row is the row sum
-    ! r in Row: rowsum(r) = #{ c in Col: ship(r, c) }.
+    // the left end of a horizontal ship has an occupied square to its right
+    ! r in Row, c in Col: grid(r, c) = LEFT() => (? d in Col: d = c + 1 & grid(r, d) ~= WATER()).
 
-    // the number of grid squares occupied by vessels in each column is the column sum
-    ! c in Col: colsum(c) = #{ r in Row: ship(r, c) }.
+    // the right end of a horizontal ship has an occupied square to its left
+    ! r in Row, c in Col: grid(r, c) = RIGHT() => (? d in Col: d = c - 1 & grid(r, d) ~= WATER()).
 
-    // the fleet: for each ship length, the number of ships of that length is the fleet count.
-    // A submarine is a single square.
-    ! i in Fleet: fleet_counts(i, 0) = 1 => fleet_counts(i, 1) = #{ r in Row, c in Col: grid(r, c) = CIRCLE() }.
-    // a longer ship runs from its left or top end to its right or bottom end, with middle parts between
-    ! i in Fleet: fleet_counts(i, 0) ~= 1 => fleet_counts(i, 1) = #{ r in Row, c in Col, e in Col: e = c + fleet_counts(i, 0) - 1 & grid(r, c) = LEFT() & grid(r, e) = RIGHT() & (! k in Col: (c < k & k < e) => grid(r, k) = MIDDLE()) } + #{ r in Row, c in Col, e in Row: e = r + fleet_counts(i, 0) - 1 & grid(r, c) = TOP() & grid(e, c) = BOTTOM() & (! k in Row: (r < k & k < e) => grid(k, c) = MIDDLE()) }.
+    // the top end of a vertical ship has an occupied square below it
+    ! r in Row, c in Col: grid(r, c) = TOP() => (? s in Row: s = r + 1 & grid(s, c) ~= WATER()).
 
-    // the hints fix the code of the given cells
-    ! h in Hint, r in Row, c in Col: (hints(h, 0) = r & hints(h, 1) = c) => grid(r, c) = hints(h, 2).
+    // the bottom end of a vertical ship has an occupied square above it
+    ! r in Row, c in Col: grid(r, c) = BOTTOM() => (? s in Row: s = r - 1 & grid(s, c) ~= WATER()).
+
+    // a middle square of a ship has occupied squares on both sides of it, horizontally or vertically
+    ! r in Row, c in Col: grid(r, c) = MIDDLE() => (? d, e in Col: d = c - 1 & e = c + 1 & grid(r, d) ~= WATER() & grid(r, e) ~= WATER()) | (? s, t in Row: s = r - 1 & t = r + 1 & grid(s, c) ~= WATER() & grid(t, c) ~= WATER()).
+
+    // the number of ships of each kind is the number given for it: a submarine is one square, a longer ship runs from its left or top end to its right or bottom end
+    ! k in Kind: fleet_counts(k, 0) = 1 => #{r in Row, c in Col: grid(r, c) = CIRCLE()} = fleet_counts(k, 1).
+    ! k in Kind: fleet_counts(k, 0) > 1 => #{r in Row, c in Col, d in Col: d = c + fleet_counts(k, 0) - 1 & grid(r, c) = LEFT() & grid(r, d) = RIGHT()} + #{r in Row, s in Row, c in Col: s = r + fleet_counts(k, 0) - 1 & grid(r, c) = TOP() & grid(s, c) = BOTTOM()} = fleet_counts(k, 1).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

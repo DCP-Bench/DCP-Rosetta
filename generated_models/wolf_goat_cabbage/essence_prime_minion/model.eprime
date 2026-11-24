@@ -1,31 +1,41 @@
 language ESSENCE' 1.0
-$ A farmer must take a wolf, a goat and a cabbage across a river in a boat that carries the farmer and at most one item. Nothing may be eaten: the wolf must not be left with the goat, and the goat must not be left with the cabbage, without the farmer. All start on the starting shore (0) and all end on the destination shore (1).
+$ wolf_goat_cabbage: an Essence' model from DCP Rosetta.
+$
+$ The wolf, goat and cabbage problem is a river crossing puzzle. The story: A farmer with a wolf, a goat, and a cabbage must cross a river by boat. The boat can carry only the farmer and a single item. If left unattended together, the wolf would eat the goat, or the goat would eat the cabbage. How can they cross the river without anything being eaten? The crossing takes the given number of stages. At the first stage everything is on the starting shore, at the last stage everything is on the destination shore, and the boat, with the farmer, changes shore from each stage to the next.
+$
+$ Save this file as model.eprime. Download `wolf_goat_cabbage.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/wolf_goat_cabbage.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `wolf_goat_cabbage_1.param.solution`:
+$   python dcp_convert_essence.py wolf_goat_cabbage.json
+$   savilerow model.eprime wolf_goat_cabbage_1.param -run-solver
+
+$ number of stages of the crossing
 given stage : int(1..)
-$ each position is true if that thing is on the destination shore at that stage, false on the starting shore
-find wolf_pos : matrix indexed by [int(1..stage)] of bool
-find goat_pos : matrix indexed by [int(1..stage)] of bool
-find cabbage_pos : matrix indexed by [int(1..stage)] of bool
-find boat_pos : matrix indexed by [int(1..stage)] of bool
+letting nst = stage
+
+$ wolf_pos[t], goat_pos[t], cabbage_pos[t], boat_pos[t]: the shore of the wolf, goat, cabbage and boat at stage t
+$ (indices 1-based: stage 1 is the data's index 0); true is the destination shore, false the starting shore
+find wolf_pos : matrix indexed by [int(1..nst)] of bool
+find goat_pos : matrix indexed by [int(1..nst)] of bool
+find cabbage_pos : matrix indexed by [int(1..nst)] of bool
+find boat_pos : matrix indexed by [int(1..nst)] of bool
 
 such that
-$ at the start every item and the farmer's boat are on the starting shore
-wolf_pos[1] = false,
-goat_pos[1] = false,
-cabbage_pos[1] = false,
-boat_pos[1] = false,
-$ at the end every item and the boat are on the destination shore
-wolf_pos[stage] = true,
-goat_pos[stage] = true,
-cabbage_pos[stage] = true,
-boat_pos[stage] = true,
-$ the boat crosses the river at every stage, so it changes shore between consecutive stages
-forAll k : int(1..stage-1) . boat_pos[k+1] != boat_pos[k],
-$ an item can only change shore when the boat is on the shore it is on, and the boat carries the farmer and at most one item per crossing
-forAll k : int(1..stage-1) . (wolf_pos[k+1] != wolf_pos[k]) -> (wolf_pos[k] = boat_pos[k]),
-forAll k : int(1..stage-1) . (goat_pos[k+1] != goat_pos[k]) -> (goat_pos[k] = boat_pos[k]),
-forAll k : int(1..stage-1) . (cabbage_pos[k+1] != cabbage_pos[k]) -> (cabbage_pos[k] = boat_pos[k]),
-forAll k : int(1..stage-1) . (toInt(wolf_pos[k+1] != wolf_pos[k]) + toInt(goat_pos[k+1] != goat_pos[k]) + toInt(cabbage_pos[k+1] != cabbage_pos[k])) <= 1,
-$ the wolf is never left alone with the goat when the farmer is on the other shore
-forAll k : int(1..stage) . (wolf_pos[k] = goat_pos[k]) -> (boat_pos[k] = wolf_pos[k]),
-$ the goat is never left alone with the cabbage when the farmer is on the other shore
-forAll k : int(1..stage) . (goat_pos[k] = cabbage_pos[k]) -> (boat_pos[k] = goat_pos[k])
+$ at the first stage everything is on the starting shore
+!wolf_pos[1] /\ !goat_pos[1] /\ !cabbage_pos[1] /\ !boat_pos[1],
+$ at the last stage everything is on the destination shore
+wolf_pos[nst] /\ goat_pos[nst] /\ cabbage_pos[nst] /\ boat_pos[nst],
+$ the boat, with the farmer, changes shore from each stage to the next
+forAll t : int(1..nst-1) . boat_pos[t + 1] != boat_pos[t],
+$ an item changes shore only when it is on the boat's shore, so the farmer carries it across
+forAll t : int(1..nst-1) . (wolf_pos[t + 1] != wolf_pos[t] -> wolf_pos[t] = boat_pos[t]),
+forAll t : int(1..nst-1) . (goat_pos[t + 1] != goat_pos[t] -> goat_pos[t] = boat_pos[t]),
+forAll t : int(1..nst-1) . (cabbage_pos[t + 1] != cabbage_pos[t] -> cabbage_pos[t] = boat_pos[t]),
+$ the boat carries at most one item at a time, so at most one of the wolf, goat and cabbage changes shore
+forAll t : int(1..nst-1) . (toInt(wolf_pos[t + 1] != wolf_pos[t]) + toInt(goat_pos[t + 1] != goat_pos[t]) + toInt(cabbage_pos[t + 1] != cabbage_pos[t])) <= 1,
+$ the wolf would eat the goat if they are left unattended together: at every stage, they are not on the same shore without the farmer
+forAll t : int(1..nst) . !(wolf_pos[t] = goat_pos[t] /\ goat_pos[t] != boat_pos[t]),
+$ the goat would eat the cabbage if they are left unattended together: at every stage, they are not on the same shore without the farmer
+forAll t : int(1..nst) . !(goat_pos[t] = cabbage_pos[t] /\ goat_pos[t] != boat_pos[t])

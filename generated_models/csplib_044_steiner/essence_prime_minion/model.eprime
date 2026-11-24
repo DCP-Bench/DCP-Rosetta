@@ -1,15 +1,27 @@
 language ESSENCE' 1.0
-$ Find n(n-1)/6 triples of distinct elements from 1..n such that any two triples have at most one common element (ternary Steiner system of order n).
-given n : int(1..)
-$ sets[r,j] is true if element j is part of triple r
-find sets : matrix indexed by [int(1..n*(n-1)/6), int(1..n)] of bool
+$ csplib_044_steiner: an Essence' model from DCP Rosetta.
+$
+$ The ternary Steiner problem of order n is to find a set of n * (n-1) / 6 triples of distinct elements from 1 to n such that any two triples have at most one common element. It is a hypergraph problem from combinatorial mathematics, where n modulo 6 must be equal to 1 or 3.
+$
+$ Save this file as model.eprime. Download `csplib_044_steiner.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_044_steiner.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_044_steiner_1.param.solution`:
+$   python dcp_convert_essence.py csplib_044_steiner.json
+$   savilerow model.eprime csplib_044_steiner_1.param -run-solver
 
+$ n: the order of the Steiner system, so the elements are 1 to n
+given n : int(1..)
+$ the number of triples, n * (n-1) / 6
+letting triples = n * (n - 1) / 6
+
+$ sets[r,j]: element j is part of triple r (rows and columns 1-based)
+find sets : matrix indexed by [int(1..triples), int(1..n)] of bool
+
+branching on [sets]
 such that
 $ each triple consists of exactly three distinct elements
-forAll r : int(1..n*(n-1)/6) . (sum j : int(1..n) . toInt(sets[r,j])) = 3,
-$ any two triples have at most one common element
-forAll r : int(1..n*(n-1)/6) . forAll s : int(r+1..n*(n-1)/6) . (sum j : int(1..n) . toInt(sets[r,j] /\ sets[s,j])) <= 1,
-$ symmetry breaking: triples are a set, so the rows are kept in lexicographic order
-forAll r : int(1..n*(n-1)/6-1) . sets[r,..] <=lex sets[r+1,..],
-$ redundant: every element lies in (n-1)/2 triples, since every pair of elements lies in exactly one triple
-forAll j : int(1..n) . (sum r : int(1..n*(n-1)/6) . toInt(sets[r,j])) = (n-1)/2
+forAll r : int(1..triples) . ((sum j : int(1..n) . toInt(sets[r,j])) = 3),
+$ any two distinct triples have at most one common element
+forAll r : int(1..triples) . forAll s : int(r+1..triples) . ((sum j : int(1..n) . toInt(sets[r,j] /\ sets[s,j])) <= 1)

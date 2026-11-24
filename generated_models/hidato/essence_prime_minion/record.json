@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791953268.4062176,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794650519.7747135,
     "problem_id": "hidato",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.48220534302527085,
-        "execution_wall_seconds": 3.314511110947933,
+        "checking_seconds": 3.153355739021208,
+        "execution_wall_seconds": 9.821192675968632,
         "first_solution": {
           "x": [
             [
@@ -219,20 +249,23 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9412544579827227,
+        "reference_setup_seconds": 9.3068578519742,
         "runner_status": {
+          "build_seconds": 5.652065753936768,
           "detail": "",
+          "main_seconds": 6.296539128990844,
+          "read_seconds": 0.000766629003919661,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01471186795970425,
-        "execution_wall_seconds": 1.2511840750230476,
+        "checking_seconds": 0.06369845400331542,
+        "execution_wall_seconds": 5.957340367953293,
         "first_solution": {
           "x": [
             [
@@ -261,20 +294,23 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7161058989586309,
+        "reference_setup_seconds": 1.0264892060076818,
         "runner_status": {
+          "build_seconds": 2.208089828491211,
           "detail": "",
+          "main_seconds": 2.4553441840107553,
+          "read_seconds": 0.0008097279933281243,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.05014979903353378,
-        "execution_wall_seconds": 1.6049431230057962,
+        "checking_seconds": 0.22366156900534406,
+        "execution_wall_seconds": 5.075715222978033,
         "first_solution": {
           "x": [
             [
@@ -323,20 +359,23 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7318484929855913,
+        "reference_setup_seconds": 2.6523256769869477,
         "runner_status": {
+          "build_seconds": 2.041769027709961,
           "detail": "",
+          "main_seconds": 2.275437703006901,
+          "read_seconds": 0.008155376999638975,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07626144395908341,
-        "execution_wall_seconds": 1.7024054849753156,
+        "checking_seconds": 0.44554229197092354,
+        "execution_wall_seconds": 6.4610087989713065,
         "first_solution": {
           "x": [
             [
@@ -413,20 +452,23 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.811238669033628,
+        "reference_setup_seconds": 2.6830266540055163,
         "runner_status": {
+          "build_seconds": 3.155712842941284,
           "detail": "",
+          "main_seconds": 3.4275725230108947,
+          "read_seconds": 0.01018860301701352,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.12894875701749697,
-        "execution_wall_seconds": 1.9530786299728788,
+        "checking_seconds": 0.8628649500315078,
+        "execution_wall_seconds": 6.595319723011926,
         "first_solution": {
           "x": [
             [
@@ -520,35 +562,38 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9139915669802576,
+        "reference_setup_seconds": 1.964683465019334,
         "runner_status": {
+          "build_seconds": 2.9818124771118164,
           "detail": "",
+          "main_seconds": 3.207967402006034,
+          "read_seconds": 0.0007379719754680991,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       }
     ],
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "dcdeb4c457e7c596ac85fba9f92659e1e603e16e27aeaea4ac195808ca22ee45",
+    "model_hash": "71400b36d3395c79dbb6a89c8b7e0bf643b14c5b590037754e5f4d1015c6108c",
     "problem_id": "hidato",
     "reason": "accepted",
-    "reference_hash": "5762af4ee350dc71c88ae9c75513c786a4175feab3e901528f52742c8ebc4546",
+    "reference_hash": "b16c5dfde2e99113142f849b35b3105d44103979e1a9ad48cbf44b9520e7a8e1",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -559,11 +604,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 16.039156106999144,
+    "total_wall_seconds": 58.51941120903939,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.eprime",

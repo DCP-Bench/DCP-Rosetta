@@ -1,12 +1,37 @@
 language ESSENCE' 1.0
-$ Climbing stairs: climb a stair of n steps, taking between m1 and m2 steps at each move; steps[i] is the number of steps of move i, or 0 once the top is reached.
-given n, m1, m2 : int(1..)
+$ session5_climbing_stairs: an Essence' model from DCP Rosetta.
+$
+$ We want to climb a stair of n steps, taking a number of steps at a time within the given range from m1 to m2 steps. For example, a stair of 4 steps with m1 = 1 and m2 = 2 can be climbed with four one-step moves or with two two-step moves. Find a way to climb the stair of n steps, so that each move takes between m1 and m2 steps, where a move that comes after the top has been reached takes 0 steps.
+$
+$ Save this file as model.eprime. Download `session5_climbing_stairs.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_climbing_stairs.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session5_climbing_stairs_1.param.solution`:
+$   python dcp_convert_essence.py session5_climbing_stairs.json
+$   savilerow model.eprime session5_climbing_stairs_1.param -run-solver
+
+$ n: the number of steps of the stair
+given n : int(1..)
+$ m1: the fewest steps that can be taken in one move
+given m1 : int(1..)
+$ m2: the most steps that can be taken in one move
+given m2 : int(1..)
+
+$ steps[i]: the number of steps taken in move i, which is between m1 and m2 while the top is not reached, and 0 once it is reached
 find steps : matrix indexed by [int(1..n)] of int(0..m2)
+$ before[i]: auxiliary, the number of steps climbed before move i
+find before : matrix indexed by [int(1..n)] of int(0..n)
+
+$ search hint: branch on the moves first (speeds up the search)
 branching on [steps]
+
 such that
-$ the moves climb exactly the n steps of the stair
+$ the moves together climb exactly the n steps of the stair
 (sum i : int(1..n) . steps[i]) = n,
+$ before[i] is the total of the moves that come before move i
+forAll i : int(1..n) . before[i] = (sum j : int(1..i-1) . steps[j]),
 $ while the top is not reached, each move takes between m1 and m2 steps
-forAll i : int(1..n) . ((sum j : int(1..i-1) . steps[j]) < n -> (steps[i] >= m1 /\ steps[i] <= m2)),
+forAll i : int(1..n) . (before[i] < n -> (steps[i] >= m1 /\ steps[i] <= m2)),
 $ once the top is reached, no further steps are taken
-forAll i : int(1..n) . ((sum j : int(1..i-1) . steps[j]) >= n -> steps[i] = 0)
+forAll i : int(1..n) . (before[i] >= n -> steps[i] = 0)

@@ -1,29 +1,69 @@
-% Kidney exchange: people donate to compatible recipients; whoever gives a
-% kidney receives one, nobody gives or receives more than one, and as many
-% transplants as possible take place.
-import sat.
+% session3_kidney_exchange: a Picat model from DCP Rosetta.
+%
+% At the hospital n people are on a waiting list for a kidney's transplant. We have the information about the
+% compatibility between these people as a directed graph: compatible[i] is the set of people to which i can donate.
+% Given this information, we want to maximize the number of people that receive a new kidney: anyone who gives a
+% kidney must receive one, and no person receives more than one kidney.
+%
+% Save this file as model.pi. Download `session3_kidney_exchange.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session3_kidney_exchange.json
+%   picat model.pi session3_kidney_exchange_1.dat
+%
+% Data.get(num_people): the number of people n, numbered from 1; Data.get(compatible): for each person i, the list
+% of the people that i can donate to (a list indexed from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(num_people),
-    Compatible = Data.get(compatible),   % compatible[i] = the people i can donate to, 1-based
-    % t[i, j] = 1 when i donates to j
-    T = new_array(N, N),
-    T :: 0..1,
+    Compatible = Data.get(compatible),
+    % Transplant[I,J] = 1 when person I donates a kidney to person J
+    Transplant = [new_list(N) : _I in 1..N],
+    foreach (Row in Transplant)
+        Row :: 0..1
+    end,
+    % a kidney can only be donated to a compatible person
     foreach (I in 1..N)
-        Gives #= sum([T[I, J] : J in 1..N]),
-        Receives #= sum([T[J, I] : J in 1..N]),
-        % whoever gives receives
-        Gives #>= 1 #=> Receives #>= 1,
-        % at most one kidney given and one received
-        Gives #=< 1,
-        Receives #=< 1,
-        % only to compatible recipients
-        foreach (J in 1..N)
-            if not membchk(J, Compatible[I]) then
-                T[I, J] #= 0
-            end
+        Row = Transplant[I],
+        Allowed = Compatible[I],
+        Forbidden = [Row[J] : J in 1..N, not member(J, Allowed)],
+        foreach (X in Forbidden)
+            X #= 0
         end
     end,
-    Vars = T,
-    Outputs = [transplants = T],
-    Options = [$max(sum([T[I, J] : I in 1..N, J in 1..N]))].
+    Gives = new_list(N),                   % Gives[I] = the kidneys donated by person I
+    Gets = new_list(N),                    % Gets[J] = the kidneys received by person J
+    Gives :: 0..1,
+    Gets :: 0..1,
+    foreach (I in 1..N)
+        Gives[I] #= sum(Transplant[I]),
+        Gets[I] #= sum([Transplant[J,I] : J in 1..N])
+    end,
+    Received :: 0..N,
+    Received #= sum(Gets),
+    % each person donates at most one kidney and receives at most one kidney
+    foreach (I in 1..N)
+        Gives[I] #=< 1,
+        Gets[I] #=< 1,
+        % anyone who gives a kidney must receive one
+        Gives[I] #=< Gets[I]
+    end,
+    Vars = Transplant,
+    Outputs = [transplants = Transplant],
+    % maximize the number of people that receive a kidney
+    Options = [$max(Received)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

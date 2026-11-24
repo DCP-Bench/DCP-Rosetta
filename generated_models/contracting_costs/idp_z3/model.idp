@@ -1,29 +1,35 @@
-// Contracting costs: a house has six tradesmen (paper hanger, painter, plumber, electrician, carpenter, mason),
-// each charging a price for his service, and six pairwise costs are known.
-vocabulary {
-    paper_hanger: () -> Int
-    painter: () -> Int
-    plumber: () -> Int
-    electrician: () -> Int
-    carpenter: () -> Int
-    mason: () -> Int
+// contracting_costs: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A contractor planning the construction of a house found that he would have to pay: $1,100 to the paper hanger and the
+// painter, $1,700 to the painter and plumber, $1,100 to the plumber and electrician, $3,300 to the electrician and
+// carpenter, $5,300 to the carpenter and mason, and $3,200 to the mason and painter. What does each man charge for his
+// services?
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/contracting_costs.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    paper_hanger: () -> Int            // the charge of the paper hanger, in dollars
+    painter: () -> Int                 // the charge of the painter, in dollars
+    plumber: () -> Int                 // the charge of the plumber, in dollars
+    electrician: () -> Int             // the charge of the electrician, in dollars
+    carpenter: () -> Int               // the charge of the carpenter, in dollars
+    mason: () -> Int                   // the charge of the mason, in dollars
 }
-theory {
-    // The contractor pays $1,100 to the paper hanger and the painter.
+theory T:V {
+    // the paper hanger and the painter together are paid $1,100
     paper_hanger() + painter() = 1100.
-
-    // The contractor pays $1,700 to the painter and the plumber.
+    // the painter and the plumber together are paid $1,700
     painter() + plumber() = 1700.
-
-    // The contractor pays $1,100 to the plumber and the electrician.
+    // the plumber and the electrician together are paid $1,100
     plumber() + electrician() = 1100.
-
-    // The contractor pays $3,300 to the electrician and the carpenter.
+    // the electrician and the carpenter together are paid $3,300
     electrician() + carpenter() = 3300.
-
-    // The contractor pays $5,300 to the carpenter and the mason.
+    // the carpenter and the mason together are paid $5,300
     carpenter() + mason() = 5300.
-
-    // The contractor pays $3,200 to the mason and the painter.
+    // the mason and the painter together are paid $3,200
     mason() + painter() = 3200.
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

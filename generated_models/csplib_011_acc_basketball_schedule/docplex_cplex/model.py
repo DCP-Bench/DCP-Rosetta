@@ -1,24 +1,30 @@
-"""CSPLib 11, ACC basketball schedule: a mirrored double round-robin timetable for the 9 teams
-of the 1997/98 Atlantic Coast Conference over 18 dates, with the conference's pattern, rival
-and fixture constraints.
-"""
+# csplib_011_acc_basketball_schedule: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_011_acc_basketball_schedule.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_011_acc_basketball_schedule.py csplib_011_acc_basketball_schedule.json
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    n_teams = instance["n_teams"]
-    n_days = instance["n_days"]
+def create_model(instance):
+    """ACC basketball schedule: a timetable for the 9 teams of the 1997/98 Atlantic Coast
+    Conference, a double round-robin (each team plays each other once at home and once away)
+    over 18 dates, subject to the mirroring, pattern, rival and fixture constraints."""
+    n_teams = instance["n_teams"]  # number of teams
+    n_days = instance["n_days"]    # number of dates
     teams = range(n_teams)
     days = range(n_days)
 
-    # Team numbering, rivals and the mirroring scheme are fixed by the problem statement and
-    # mirrored from the reference.
+    # Teams are numbered in the order of the statement. rivals[t] is the traditional rival of
+    # team t (FSU has none, so its entry is itself).
     CLEM, DUKE, FSU, GT, UMD, UNC, NCSt, UVA, WAKE = range(9)
     rivals = [GT, UNC, FSU, CLEM, UVA, DUKE, WAKE, UMD, NCSt]
     # Mirroring: date d and date scheme[d] have the same pairings with home and away swapped.
     scheme = [7, 8, 11, 12, 13, 14, 15, 0, 1, 16, 17, 2, 3, 4, 5, 6, 9, 10]
-    weekends = [d for d in days if d % 2 == 1]
-    last = n_days - 1
+    weekends = [d for d in days if d % 2 == 1]  # the even dates of the statement (dates count from 0 here)
+    last = n_days - 1  # the last date
 
     model = Model("acc_basketball_schedule")
     # A satisfaction problem: ask CPLEX to look for a feasible schedule first.
@@ -38,17 +44,18 @@ def build(instance):
         return hosts_base[scheme[d], j, i]
 
     def home(d, t):
+        """1 when team t plays at home on date d."""
         return model.sum(hosts(d, t, j) for j in teams if j != t)
 
     def away(d, t):
+        """1 when team t plays away on date d."""
         return model.sum(hosts(d, j, t) for j in teams if j != t)
 
     def meets(d, t, j):
         """1 when team t plays team j on date d, at home or away."""
         return hosts(d, t, j) + hosts(d, j, t)
 
-    # A team plays at most one match per date; otherwise it has a bye. Opponents pair up, so
-    # the opponents of a date are all different and each is played back.
+    # A team plays at most one match per date; otherwise it has a bye.
     for d in base_days:
         for t in teams:
             model.add_constraint(home(d, t) + away(d, t) <= 1)
@@ -160,3 +167,25 @@ def build(instance):
     where = [[1 - home(d, t) + away(d, t) for t in teams] for d in days]
 
     return model, {"config": config, "where": where}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

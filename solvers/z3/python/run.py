@@ -116,11 +116,12 @@ def remaining(deadline):
     return None if left <= 0 else max(1, int(left * 1000))
 
 
-def optimum(constraints, direction, objective, deadline):
+def optimum(constraints, direction, objective, deadline, outputs=None):
     """Prove the optimal objective value, or say why it could not be proven.
 
     Each strictly better model z3 reports while it optimises (`set_on_model`) is emitted as an incumbent,
-    with the seconds since this search started (right after the build)."""
+    with the seconds since this search started (right after the build). With `outputs` (the request asked
+    for incumbent_values), each carries that model's declared outputs, read as the final solution's are."""
     started = time.monotonic()
     optimizer = z3.Optimize()
     optimizer.add(constraints)
@@ -135,7 +136,10 @@ def optimum(constraints, direction, objective, deadline):
         if last and not (value < last[-1] if direction == "minimize" else value > last[-1]):
             return
         last.append(value)
-        emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+        record = {"type": "incumbent", "objective": value, "seconds": time.monotonic() - started}
+        if outputs is not None:
+            record["values"] = mapped(outputs, lambda e: read(e, model))
+        emit(record)
 
     optimizer.set_on_model(improved)
     budget = remaining(deadline)
@@ -155,7 +159,11 @@ def optimum(constraints, direction, objective, deadline):
     # z3 does not hand over every last model: the proven optimum ends the incumbents.
     if not last or last[-1] != low.as_long():
         last.append(low.as_long())
-        emit({"type": "incumbent", "objective": low.as_long(), "seconds": time.monotonic() - started})
+        record = {"type": "incumbent", "objective": low.as_long(), "seconds": time.monotonic() - started}
+        if outputs is not None:  # the optimizer's final model has the optimum
+            model = optimizer.model()
+            record["values"] = mapped(outputs, lambda e: read(e, model))
+        emit(record)
     return low.as_long(), None
 
 
@@ -179,7 +187,8 @@ def solve(request):
     flat = flatten(outputs)
 
     if objective is not None:
-        best, failure = optimum(constraints, objective[0], objective[1], deadline)
+        best, failure = optimum(constraints, objective[0], objective[1], deadline,
+                                outputs if request.get("incumbent_values") else None)
         if failure is not None:
             return finish(failure[0], failure[1])
         # Enumerate only assignments achieving the proven optimum.

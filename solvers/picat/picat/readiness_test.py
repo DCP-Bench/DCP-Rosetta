@@ -5,6 +5,10 @@ mapping check name to Boolean on stdout, and exits nonzero if any check failed.
 `python -m generation.readiness check --solver picat` runs this and keeps its
 output as the readiness evidence.
 
+`standalone_run` and `standalone_run_no_data` are what a reader does: run dcp_convert_picat.py on a list of
+instances (the dataset file's form), then `picat model.pi <data file>` in the image, once per file, with the run
+block the contract gives, and read the answer it prints. The converter runs in the image too.
+
 Every check runs the cp module; the sat_* checks repeat satisfaction,
 enumeration and minimisation with `import sat.`, because the driver reaches
 the solver through whichever module the submission imported and the two must
@@ -18,7 +22,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from evaluation import evaluate, improving_incumbents
-from evaluation.execution import image_identity
+from evaluation.execution import image_identity, integration, run_process
 from evaluation.results import EvaluationError
 
 SOLVER = "picat"
@@ -118,10 +122,15 @@ spin(N) => spin(N + 1).
 # image's Python, started with command/1.
 ISOLATED = r"""import cp.
 import os.
+import util.
 
 model(Data, Vars, Outputs, Options) =>
     Status = read_file_lines("/proc/self/status"),
-    membchk("Uid:\t65534\t65534\t65534\t65534", Status),
+    UidMap = read_file_lines("/proc/self/uid_map"),
+    % unprivileged on the host: Docker runs as nobody; rootless podman without a subuid range can only run as
+    % container root, which maps to the invoking user (the first uid map line does not map 0 to 0)
+    (membchk("Uid:\t65534\t65534\t65534\t65534", Status)
+    ; membchk("Uid:\t0\t0\t0\t0", Status), UidMap = [Line|_], Fields = split(Line), Fields[2] != "0"),
     not exists("/dataset"),
     sort(listdir("/input")) == sort([".", "..", "model.pi", "request.json"]),
     not writable("/probe.txt"),
@@ -135,6 +144,69 @@ model(Data, Vars, Outputs, Options) =>
 
 writable(Path) => catch((FD = open(Path, write), close(FD)), _, fail).
 """
+
+
+RUN_BLOCK_DATA = """
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\\n", Name, Value)
+    end.
+"""
+RUN_BLOCK_NO_DATA = """
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\\n", Name, Value)
+    end.
+"""
+NO_DATA_MODEL = """import cp.
+
+model(_Data, Vars, Outputs, Options) =>
+    [X, Y] :: 0..2,
+    X + Y #= 2,
+    Vars = [X, Y],
+    Outputs = [x = X, y = Y],
+    Options = [].
+"""
+STANDALONE_INSTANCES = [{"n": 2, "name": "two"}, {"n": 3, "name": "three"}]
+
+
+def standalone_run(temp, with_data):
+    """The reader's path, in the image: convert a list of instances with dcp_convert_picat.py, then run
+    `picat model.pi <data file>` on each file (or `picat model.pi` for a model with no data)."""
+    staging = temp / ("standalone_data" if with_data else "standalone_no_data")
+    staging.mkdir()
+    (staging / "model.pi").write_text((GOOD + RUN_BLOCK_DATA) if with_data else (NO_DATA_MODEL + RUN_BLOCK_NO_DATA),
+                                      encoding="utf-8")
+    runs = ["/opt/picat/picat model.pi"]
+    if with_data:
+        (staging / "instances.json").write_text(json.dumps(STANDALONE_INSTANCES), encoding="utf-8")
+        runs = [f"/opt/picat/picat model.pi instances_{i}.dat" for i in range(1, len(STANDALONE_INSTANCES) + 1)]
+    staging.chmod(0o777)
+    for path in staging.iterdir():
+        path.chmod(0o666)
+    script = ("python /opt/runner/dcp_convert_picat.py instances.json >/dev/null && " if with_data else "") + " && ".join(runs)
+    code, out, err = run_process([
+        "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+        "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+        "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+        "--mount", f"type=bind,source={staging},target=/w",
+        "--workdir=/w", "--env=HOME=/tmp", "--entrypoint", "sh",
+        integration(SOLVER)["image"], "-c", script], 300)
+    if code or out.count("x = ") != len(runs) or out.count("y = ") != len(runs):
+        print((err or out)[-400:], file=sys.stderr)
+        return False
+    return True
 
 
 def main():
@@ -191,6 +263,10 @@ def main():
             for module in (lambda source: source, sat)
             for objective, reference in (("$max(3 + X + Y)", CONSTANT_MAXIMIZING),
                                          ("$min(X + Y - 10)", NEGATIVE_MINIMIZING)))
+        # a standalone model carries a run block (main/1 over one file name); the driver's own main/1 takes two
+        check("run_block_ignored", GOOD + RUN_BLOCK_DATA)
+        results["standalone_run"] = standalone_run(temp, True)
+        results["standalone_run_no_data"] = standalone_run(temp, False)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

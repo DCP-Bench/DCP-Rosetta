@@ -1,38 +1,64 @@
-# Costas array problem: a permutation X of 1..n whose difference triangle has all-different lines.
-from pyscipopt import Model, quicksum
+# csplib_076_costas_arrays: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_076_costas_arrays.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_076_costas_arrays.py csplib_076_costas_arrays.json
+
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    n = instance["n"]
-    m = Model()
-    values = range(1, n + 1)
+def create_model(instance):
+    """A Costas array of size n: a permutation costas[0..n-1] of 1..n such that,
+    for every gap l = 1..n-1, the differences costas[i + l] - costas[i] are all
+    different. The grid has n rows and n columns, with one mark per row and column."""
+    n = instance["n"]  # the side of the grid, which is also the number of marks
 
-    # X[i] is the mark's column in row i (1-based values), as a one-hot choice over 1..n
-    b = {(i, v): m.addVar(name=f"b_{i}_{v}", vtype="B") for i in range(n) for v in values}
-    X = [quicksum(v * b[i, v] for v in values) for i in range(n)]
-    for i in range(n):
-        # each row holds exactly one mark
-        m.addCons(quicksum(b[i, v] for v in values) == 1)
-    for v in values:
-        # each column holds exactly one mark: X is a permutation
-        m.addCons(quicksum(b[i, v] for i in range(n)) == 1)
+    model = Model("costas_array")
 
-    # difference values X[i+l] - X[i] range over -(n-1)..(n-1); zero is impossible in a permutation
-    diffs = [d for d in range(-(n - 1), n) if d != 0]
-    for l in range(1, n):
-        # line l of the difference triangle: n-l differences X[i+l] - X[i]
-        dv = {}
-        for i in range(n - l):
-            for d in diffs:
-                dv[i, d] = m.addVar(name=f"d_{l}_{i}_{d + n}", vtype="B")
-            # each difference takes exactly one value
-            m.addCons(quicksum(dv[i, d] for d in diffs) == 1)
-            # the difference variable equals the actual difference of the two marks
-            m.addCons(quicksum(d * dv[i, d] for d in diffs) == X[i + l] - X[i])
-        # all differences within line l are different
-        # (line l must not contain any value twice)
-        for d in diffs:
-            m.addCons(quicksum(dv[i, d] for i in range(n - l)) <= 1)
+    # x[i, j] is 1 when the mark in row i sits in column j + 1.
+    # SCIP has no all-different constraint, so the permutation is written as one-hot
+    # binaries: each row and each column holds exactly one mark.
+    x = model.addMatrixVar((n, n), vtype="B", name="x")
+    model.addMatrixCons(x.sum(axis=1) == 1)  # one mark in each row
+    model.addMatrixCons(x.sum(axis=0) == 1)  # one mark in each column
 
-    # the output gives the mark column of each row, numbered from 1
-    return m, {"costas": X}
+    # costas[i] is the column (1..n) of the mark in row i. It is an expression over the
+    # binaries, so the output needs no integer variable of its own.
+    costas = x @ np.arange(1, n + 1)
+
+    # Difference triangle. Every entry of costas is a column from 1 to n, so any two
+    # entries differ by at most n - 1 in absolute value. This bound is derived here, not
+    # assumed. values[c] = c - (n - 1) is the difference that column c of d stands for.
+    values = np.arange(-(n - 1), n)
+
+    for gap in range(1, n):
+        # d[i, c] is 1 when costas[i + gap] - costas[i] equals values[c].
+        # The all-different constraint of this line is written as "each value is used at
+        # most once", the one-hot form SCIP needs for it.
+        d = model.addMatrixVar((n - gap, 2 * n - 1), vtype="B", name=f"d{gap}")
+        model.addMatrixCons(d.sum(axis=1) == 1)  # each difference of this gap takes one value
+        model.addMatrixCons(d.sum(axis=0) <= 1)  # no value is repeated in this line
+        model.addMatrixCons(d @ values == costas[gap:] - costas[: n - gap])  # the chosen value is the difference
+
+    return model, {"costas": costas}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

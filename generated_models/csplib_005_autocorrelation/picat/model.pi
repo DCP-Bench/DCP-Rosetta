@@ -1,22 +1,48 @@
-% Low autocorrelation binary sequences: choose a sequence of n values, each -1 or +1, that
-% minimises the sum over the shifts k = 1..n-1 of the squared periodic autocorrelation
-% C_k = sum_i s_i * s_{(i + k) mod n}.
+% csplib_005_autocorrelation: a Picat model from DCP Rosetta.
+%
+% These problems have many practical applications in communications and electrical engineering. The objective
+% is to construct a binary sequence of length n that minimizes the autocorrelations between bits. Each bit in
+% the sequence takes the value +1 or -1. With periodic (or cyclic) boundary conditions, the k-th autocorrelation
+% is C_k = sum over i from 0 to n-1 of S_i * S_((i+k) mod n), where S_i is the bit at position i. This problem
+% uses the periodic ones: the aim is to minimize the sum of their squares, that is, to minimize
+% E = sum over k from 1 to n-1 of C_k^2.
+%
+% Save this file as model.pi. Download `csplib_005_autocorrelation.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_005_autocorrelation.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_005_autocorrelation.json
+%   picat model.pi csplib_005_autocorrelation_1.dat
+%
+% Data.get(n): the length n of the sequence.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),                  % length of the sequence
-    % Sequence[i] is the i-th bit of the sequence: -1 or +1 (0 is excluded)
-    Sequence = new_list(N),
-    Sequence :: [-1, 1],
-    % C[k] = periodic autocorrelation for shift k; the index (i + k - 1) mod n + 1 wraps around
-    C = new_list(N - 1),
-    C :: -N..N,
+    N = Data.get(n),
+    % Bit[I] = the bit at position I, numbered from 1 (position I-1 of the problem), either +1 or -1
+    Bit = new_list(N),
+    Bit :: [-1, 1],
+    % C[K] = the autocorrelation at shift K, periodic: the bits I and I+K (mod n) multiplied and summed
+    C = new_list(N - 1),                   % C[K] for the shifts K = 1..n-1
     foreach (K in 1..N - 1)
-        C[K] #= sum([Sequence[I] * Sequence[(I + K - 1) mod N + 1] : I in 1..N])
+        C[K] #= sum([Bit[I] * Bit[(I - 1 + K) mod N + 1] : I in 1..N])
     end,
-    % E = energy: the sum of the squared autocorrelations, to be minimised
-    E :: 0..(N - 1) * N * N,
-    E #= sum([C[K] * C[K] : K in 1..N - 1]),
-    Vars = Sequence,
-    Outputs = [sequence = Sequence],
-    Options = [$min(E)].
+    % E = the sum of the squares of the autocorrelations
+    Energy #= sum([C[K] * C[K] : K in 1..N - 1]),
+    Vars = Bit,
+    Outputs = [sequence = Bit],
+    % minimize the sum of the squared autocorrelations
+    Options = [$min(Energy)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

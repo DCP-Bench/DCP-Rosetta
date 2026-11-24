@@ -1,24 +1,31 @@
-vocabulary {
-    type Coin <: Int                  // one index per coin, sized from init
-    init: Coin -> Int                 // instance: initial face of each coin (1 = tails)
-    num_moves: () -> Int              // instance: number of moves
-
-    type Step <: Int                  // states 1..num_moves+1
-    Step_size: () -> Int
-
-    steps: Step * Coin -> Bool        // declared output: True means tails
+// three_coins: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Three coins lie on a table in the order tails, heads, tails. In precisely three moves make them face either all heads
+// or all tails. Each move consists of choosing one coin and flipping it over.
+//
+// Save this file as model.idp. Download `three_coins.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py three_coins.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Coin <: Int                   // the coins, numbered from 0, sized from init
+    type Step := {0..3}                // the configurations of the coins, numbered from 0: the initial one, then the one after each of the three moves
+    init: Coin -> Int                  // init(c): 1 if coin c starts tails, 0 if it starts heads
+    steps: Step * Coin -> Bool         // steps(s, c): coin c shows tails (true) or heads (false) in configuration s (declared output)
 }
+theory T:V {
+    // the initial configuration is the one given: each coin shows tails exactly when it starts tails
+    ! c in Coin: steps(0, c) <=> init(c) = 1.
 
-theory {
-    // the number of states is one more than the number of moves
-    Step_size() = num_moves() + 1.
+    // each of the three moves flips exactly one coin
+    ! s in Step: s < 3 => #{ c in Coin: steps(s, c) ~= steps(s + 1, c) } = 1.
 
-    // the first state is the initial configuration
-    ! t in Step: t = 1 => ! c in Coin: steps(t, c) <=> init(c) = 1.
-
-    // each move flips exactly one coin
-    ! t in Step: ! u in Step: u = t + 1 => #{ c in Coin: steps(t, c) ~= steps(u, c) } = 1.
-
-    // the final state has all coins showing the same face
-    ! t in Step: t = num_moves() + 1 => ! c1, c2 in Coin: steps(t, c1) <=> steps(t, c2).
+    // after the three moves, all coins face the same way, all heads or all tails
+    ! c, d in Coin: steps(3, c) <=> steps(3, d).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

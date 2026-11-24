@@ -1,23 +1,53 @@
-% Climbing stairs: climb n steps taking between m1 and m2 steps at a time; each
-% move is the steps taken, or 0 once the top is reached.
+% session5_climbing_stairs: a Picat model from DCP Rosetta.
+%
+% We want to climb a stair of n steps with a number of steps at a time, within a given range [m1, m2]. For example a
+% stair of 4 steps with m1 = 1, and m2 = 2 can be climbed with a sequence of four one-step moves or with two two-steps
+% moves. Find a way to climb a stair of n steps, i.e. you can take only m1 to m2 steps at a time.
+%
+% Save this file as model.pi. Download `session5_climbing_stairs.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_climbing_stairs.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session5_climbing_stairs.json
+%   picat model.pi session5_climbing_stairs_1.dat
+%
+% Data.get(n): the number of steps of the stair; Data.get(m1), Data.get(m2): the least and the most steps
+% that can be taken at a time.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     M1 = Data.get(m1),
     M2 = Data.get(m2),
-    Steps = new_list(N),
+    % at most one move per step of the stair, so n moves; Steps[K] = the number of steps taken at move K,
+    % 0 when no step is taken
+    MaxMoves = N,
+    Steps = new_list(MaxMoves),
     Steps :: 0..M2,
-    % the moves add up to the stair
-    sum(Steps) #= N,
-    % a move is 0 or between m1 and m2 steps
-    foreach (I in 1..N)
-        Steps[I] #>= M1 #\/ Steps[I] #= 0
+    % Climbed[K] = the number of steps climbed after move K
+    Climbed = new_list(MaxMoves),
+    Climbed :: 0..N,
+    foreach (K in 1..MaxMoves)
+        Climbed[K] #= sum([Steps[I] : I in 1..K]),
+        % a move takes between m1 and m2 steps, or no step once the top is reached
+        Steps[K] #= 0 #\/ Steps[K] #>= M1,
+        Steps[K] #= 0 #=> Climbed[K] #= N
     end,
-    % once a move is 0, every later move is 0 too
-    foreach (I in 1..N-1)
-        Steps[I] #= 0 #=> Steps[I + 1] #= 0
-    end,
+    % the top of the stair is reached
+    Climbed[MaxMoves] #= N,
     Vars = Steps,
     Outputs = [steps = Steps],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

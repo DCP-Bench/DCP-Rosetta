@@ -1,21 +1,25 @@
-"""Curious numbers (Dudeney 114): 48 plus 1 is a square, and half of 48 plus 1 is a square.
-Find another number between 1 and 10000 with this property.
-"""
+# cur_num: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python cur_num.py
+
 from docplex.mp.model import Model
 
 
-def build(instance):
-    # The problem has no instance data. Every quantity lies in 1..10000, the domain the
-    # reference declares; 48 is the known example the statement excludes.
-    top = 10000
-    known = 48
+def create_model(instance):
+    """Curious numbers (Dudeney 114): 48 plus 1 is a square, and half of 48 plus 1 is a square.
+    Find another number between 1 and 10000 with this property."""
+    top = 10000  # the number looked for is between 1 and top
+    known = 48   # the example in the statement; the number looked for is another one
 
     model = Model("cur_num")
 
+    # peculiar is the number looked for, and half is its half
     peculiar = model.integer_var(1, top, name="peculiar")
     half = model.integer_var(1, top, name="half")
 
-    # A square in 1..10000 has a root in 1..100. root_is[r] is 1 when the square's root is
+    # A square up to top has a root up to the square root of top. root_is[r] is 1 when the square's root is
     # r; a square is read as sum of r * r over the chosen root, since CPLEX refuses b * b
     # for a variable b.
     roots = [r for r in range(1, top + 1) if r * r <= top]
@@ -34,3 +38,19 @@ def build(instance):
     model.add_constraint(half + 1 == square("half_plus_one"))
 
     return model, {"peculiar": peculiar}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

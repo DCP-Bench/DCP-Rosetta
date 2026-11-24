@@ -1,15 +1,44 @@
-% Map colouring: colour the countries 1, 2, ... so that neighbours differ, with
-% as few colours as possible (the largest colour used is as small as possible).
+% session2_color_simple: a Picat model from DCP Rosetta.
+%
+% We want to assign a different colour to the following countries: Belgium, Denmark, France, Germany, Netherlands and
+% Luxembourg. Two neighbouring countries cannot have the same colour. You can use integers starting from 1 to represent
+% the colours. Find a colouring that minimizes the number of colours used.
+%
+% Save this file as model.pi. Download `session2_color_simple.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_color_simple.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session2_color_simple.json
+%   picat model.pi session2_color_simple_1.dat
+%
+% Data.get(graph): the pairs of neighbouring countries, each pair as two country numbers from 1 (lists, indexed
+% from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Graph = Data.get(graph),     % pairs of neighbouring countries, 1-based
-    N = max(flatten(Graph)),     % number of countries
-    Colors = new_list(N),
+    Graph = Data.get(graph),
+    N = 6,                                 % the six countries are numbered 1..6
+    Colors = new_list(N),                  % Colors[I] = the colour of country I
     Colors :: 1..N,
+    % two neighbouring countries have different colours
     foreach (Edge in Graph)
         Colors[Edge[1]] #!= Colors[Edge[2]]
     end,
     Vars = Colors,
     Outputs = [colors = Colors],
+    % minimize the number of colours used, which is the largest colour used
     Options = [$min(max(Colors))].
+
+% Reads the data file, builds the model, solves it and prints each output.
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

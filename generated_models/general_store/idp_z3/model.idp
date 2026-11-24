@@ -1,89 +1,112 @@
-// General store cryptarithm: each letter stands for a different digit, and the sixteen addends sum to ALL WOOL.
-vocabulary {
-    type Digit := {0..9}
-
-    // the ten letters, one digit each
-    A: () -> Digit
-    B: () -> Digit
-    C: () -> Digit
-    E: () -> Digit
-    H: () -> Digit
-    L: () -> Digit
-    O: () -> Digit
-    P: () -> Digit
-    S: () -> Digit
-    W: () -> Digit
-
-    // the value of each word in the sum
-    chess: () -> Int
-    cash: () -> Int
-    bowwow: () -> Int
-    chops: () -> Int
-    alsops: () -> Int
-    paleale: () -> Int
-    cool: () -> Int
-    bass: () -> Int
-    hops: () -> Int
-    ales: () -> Int
-    hoes: () -> Int
-    apples: () -> Int
-    cows: () -> Int
-    cheese: () -> Int
-    chsoap: () -> Int
-    sheep: () -> Int
-    allwool: () -> Int
+// general_store: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The owner of a general store, who is something of a puzzlist, has put up a sign with a sum of words: the words above
+// the horizontal line add up to the total ALL WOOL. Each different letter stands for a different digit, and a word may
+// start with the digit 0. The sum is:
+//
+//        C H E S S
+// +      C A S H
+// +  B O W W O W
+// +    C H O P S
+// +  A L S O P S
+// +  P A L E A L E
+// +      C O O L
+// +      B A S S
+// +      H O P S
+// +      A L E S
+// +      H O E S
+// +  A P P L E S
+// +      C O W S
+// +  C H E E S E
+// +  C H S O A P
+// +    S H E E P
+// = A L L W O O L
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Digit <: Int                  // the digits 0 to 9
+    A: () -> Digit                      // the digit for A
+    B: () -> Digit                      // the digit for B
+    C: () -> Digit                      // the digit for C
+    E: () -> Digit                      // the digit for E
+    H: () -> Digit                      // the digit for H
+    L: () -> Digit                      // the digit for L
+    O: () -> Digit                      // the digit for O
+    P: () -> Digit                      // the digit for P
+    S: () -> Digit                      // the digit for S
+    W: () -> Digit                      // the digit for W
 }
-theory {
+structure D:V {
+    Digit := {0..9}.
+}
+theory T:V {
     // each different letter stands for a different digit
-    A() ~= B(). A() ~= C(). A() ~= E(). A() ~= H(). A() ~= L(). A() ~= O(). A() ~= P(). A() ~= S(). A() ~= W().
-    B() ~= C(). B() ~= E(). B() ~= H(). B() ~= L(). B() ~= O(). B() ~= P(). B() ~= S(). B() ~= W().
-    C() ~= E(). C() ~= H(). C() ~= L(). C() ~= O(). C() ~= P(). C() ~= S(). C() ~= W().
-    E() ~= H(). E() ~= L(). E() ~= O(). E() ~= P(). E() ~= S(). E() ~= W().
-    H() ~= L(). H() ~= O(). H() ~= P(). H() ~= S(). H() ~= W().
-    L() ~= O(). L() ~= P(). L() ~= S(). L() ~= W().
-    O() ~= P(). O() ~= S(). O() ~= W().
-    P() ~= S(). P() ~= W().
+    A() ~= B().
+    A() ~= C().
+    A() ~= E().
+    A() ~= H().
+    A() ~= L().
+    A() ~= O().
+    A() ~= P().
+    A() ~= S().
+    A() ~= W().
+    B() ~= C().
+    B() ~= E().
+    B() ~= H().
+    B() ~= L().
+    B() ~= O().
+    B() ~= P().
+    B() ~= S().
+    B() ~= W().
+    C() ~= E().
+    C() ~= H().
+    C() ~= L().
+    C() ~= O().
+    C() ~= P().
+    C() ~= S().
+    C() ~= W().
+    E() ~= H().
+    E() ~= L().
+    E() ~= O().
+    E() ~= P().
+    E() ~= S().
+    E() ~= W().
+    H() ~= L().
+    H() ~= O().
+    H() ~= P().
+    H() ~= S().
+    H() ~= W().
+    L() ~= O().
+    L() ~= P().
+    L() ~= S().
+    L() ~= W().
+    O() ~= P().
+    O() ~= S().
+    O() ~= W().
+    P() ~= S().
+    P() ~= W().
     S() ~= W().
-
-    // the leading letter of a word is not zero (C of CHESS, B of BOWWOW, A of ALSOPS, P of PALEALE, H of HOPS)
-    // S of SHEEP may be zero: the puzzle's solution has S = 0
-    C() ~= 0. B() ~= 0. A() ~= 0. P() ~= 0. H() ~= 0.
-
-    // CHESS = 10000C + 1000H + 100E + 10S + S
-    chess() = 10000*C() + 1000*H() + 100*E() + 10*S() + S().
-    // CASH = 1000C + 100A + 10S + H
-    cash() = 1000*C() + 100*A() + 10*S() + H().
-    // BOWWOW = 100000B + 10000O + 1000W + 100W + 10O + W
-    bowwow() = 100000*B() + 10000*O() + 1000*W() + 100*W() + 10*O() + W().
-    // CHOPS = 10000C + 1000H + 100O + 10P + S
-    chops() = 10000*C() + 1000*H() + 100*O() + 10*P() + S().
-    // ALSOPS = 100000A + 10000L + 1000S + 100O + 10P + S
-    alsops() = 100000*A() + 10000*L() + 1000*S() + 100*O() + 10*P() + S().
-    // PALEALE = 1000000P + 100000A + 10000L + 1000E + 100A + 10L + E
-    paleale() = 1000000*P() + 100000*A() + 10000*L() + 1000*E() + 100*A() + 10*L() + E().
-    // COOL = 1000C + 100O + 10O + L
-    cool() = 1000*C() + 100*O() + 10*O() + L().
-    // BASS = 1000B + 100A + 10S + S
-    bass() = 1000*B() + 100*A() + 10*S() + S().
-    // HOPS = 1000H + 100O + 10P + S
-    hops() = 1000*H() + 100*O() + 10*P() + S().
-    // ALES = 1000A + 100L + 10E + S
-    ales() = 1000*A() + 100*L() + 10*E() + S().
-    // HOES = 1000H + 100O + 10E + S
-    hoes() = 1000*H() + 100*O() + 10*E() + S().
-    // APPLES = 100000A + 10000P + 1000P + 100L + 10E + S
-    apples() = 100000*A() + 10000*P() + 1000*P() + 100*L() + 10*E() + S().
-    // COWS = 1000C + 100O + 10W + S
-    cows() = 1000*C() + 100*O() + 10*W() + S().
-    // CHEESE = 100000C + 10000H + 1000E + 100E + 10S + E
-    cheese() = 100000*C() + 10000*H() + 1000*E() + 100*E() + 10*S() + E().
-    // CHSOAP = 100000C + 10000H + 1000S + 100O + 10A + P
-    chsoap() = 100000*C() + 10000*H() + 1000*S() + 100*O() + 10*A() + P().
-    // SHEEP = 10000S + 1000H + 100E + 10E + P
-    sheep() = 10000*S() + 1000*H() + 100*E() + 10*E() + P().
-    // ALL WOOL = 1000000A + 100000L + 10000L + 1000W + 100O + 10O + L
-    allwool() = 1000000*A() + 100000*L() + 10000*L() + 1000*W() + 100*O() + 10*O() + L().
-
-    // the sixteen addends sum to ALL WOOL
-    chess() + cash() + bowwow() + chops() + alsops() + paleale() + cool() + bass() + hops() + ales() + hoes() + apples() + cows() + cheese() + chsoap() + sheep() = allwool().
+    // the sixteen words above the line add up to ALL WOOL
+    10000 * C() + 1000 * H() + 100 * E() + 10 * S() + S()
+    + 1000 * C() + 100 * A() + 10 * S() + H()
+    + 100000 * B() + 10000 * O() + 1000 * W() + 100 * W() + 10 * O() + W()
+    + 10000 * C() + 1000 * H() + 100 * O() + 10 * P() + S()
+    + 100000 * A() + 10000 * L() + 1000 * S() + 100 * O() + 10 * P() + S()
+    + 1000000 * P() + 100000 * A() + 10000 * L() + 1000 * E() + 100 * A() + 10 * L() + E()
+    + 1000 * C() + 100 * O() + 10 * O() + L()
+    + 1000 * B() + 100 * A() + 10 * S() + S()
+    + 1000 * H() + 100 * O() + 10 * P() + S()
+    + 1000 * A() + 100 * L() + 10 * E() + S()
+    + 1000 * H() + 100 * O() + 10 * E() + S()
+    + 100000 * A() + 10000 * P() + 1000 * P() + 100 * L() + 10 * E() + S()
+    + 1000 * C() + 100 * O() + 10 * W() + S()
+    + 100000 * C() + 10000 * H() + 1000 * E() + 100 * E() + 10 * S() + E()
+    + 100000 * C() + 10000 * H() + 1000 * S() + 100 * O() + 10 * A() + P()
+    + 10000 * S() + 1000 * H() + 100 * E() + 10 * E() + P()
+    = 1000000 * A() + 100000 * L() + 10000 * L() + 1000 * W() + 100 * O() + 10 * O() + L().
+}
+procedure main() {
+    pretty_print(model_expand(T, D, max=1))
 }

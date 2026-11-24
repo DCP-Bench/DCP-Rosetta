@@ -1,18 +1,33 @@
-% Clock triplets: arrange the numbers 1 to 12 on a clock face so that no three
-% neighbouring numbers add up to more than 21.
+% clock_triplets: a Picat model from DCP Rosetta.
+%
+% Rearrange the numbers 1 to 12 on the face of a clock so that no triplet of adjacent numbers has a sum
+% higher than 21. The clock is round, so the last numbers are adjacent to the first ones.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    N = 12,
-    X = new_list(N),
+    N = 12,                                % the number of positions on the clock
+    X = new_list(N),                      % X[I] = the number placed at position I of the clock
     X :: 1..N,
-    % every number appears once
-    all_distinct(X),
-    % no three neighbouring positions, going round the clock, add up to more than 21
+    % each number from 1 to 12 is placed once
+    all_different(X),
+    % no triplet of adjacent positions has a sum higher than 21
     foreach (I in 1..N)
-        X[I] + X[(I mod N) + 1] + X[((I + 1) mod N) + 1] #=< 21
+        sum([X[(I - 1 + K) mod N + 1] : K in 0..2]) #=< 21
     end,
     Vars = X,
     Outputs = [x = X],
-    Options = [ff].
+    % a satisfaction problem: no objective
+    Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,34 +1,62 @@
-% Age changing: applying +2, /8, -3 and *7 to my age in some order gives my
-% husband's age, and applying them to his age in a different order gives mine.
-% Ages are 16 to 120.
+% age_changing: a Picat model from DCP Rosetta.
+%
+% If you start with my age, in years, and apply the four operations +2, /8, -3 and *7 in some
+% order, then the final answer you get is my husband's age.
+%
+% Funnily enough, if you start with his age and apply the same four operations in a different
+% order, then you get my age.
+%
+% Both ages are between 16 and 120, and every intermediate result is a positive integer, so a
+% division by 8 must be exact.
+%
+% What are our two ages?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
-    N = 4,
-    M :: 16..120,     % my age
-    H :: 16..120,     % my husband's age
-    % perm1[i], perm2[i] = the i-th operation applied: 0 is +2, 1 is /8, 2 is -3, 3 is *7
-    Perm1 = new_list(N), Perm1 :: 0..N-1, all_different(Perm1),
-    Perm2 = new_list(N), Perm2 :: 0..N-1, all_different(Perm2),
-    % the two orders differ somewhere
-    sum([Perm1[I] #!= Perm2[I] : I in 1..N]) #> 0,
-    % hlist goes from my age to his, mlist from his to mine
-    HList = new_list(N + 1), HList :: 1..1000,
-    MList = new_list(N + 1), MList :: 1..1000,
-    HList[1] #= M, HList[N + 1] #= H,
-    MList[1] #= H, MList[N + 1] #= M,
-    foreach (I in 1..N)
-        apply_operation(Perm1[I], HList[I], HList[I + 1]),
-        apply_operation(Perm2[I], MList[I], MList[I + 1])
+    NOps = 4,                              % the four operations
+    M :: 16..120,                          % my age
+    H :: 16..120,                          % my husband's age
+    % Ops1[I] and Ops2[I] are the I-th operation of each order: 0 is +2, 1 is /8, 2 is -3, 3 is *7
+    Ops1 = new_list(NOps), Ops1 :: 0..NOps-1,
+    Ops2 = new_list(NOps), Ops2 :: 0..NOps-1,
+    % each operation is applied exactly once in each order
+    all_different(Ops1),
+    all_different(Ops2),
+    % the two orders are different
+    sum([Ops1[I] #!= Ops2[I] : I in 1..NOps]) #> 0,
+    % the ages along the way: from my age to his in the first order; no intermediate result can
+    % exceed (120 + 2) * 7 = 854, so 1..1000 loses nothing
+    FromMe = new_list(NOps + 1), FromMe :: 1..1000,
+    FromMe[1] #= M,
+    FromMe[NOps + 1] #= H,
+    % and from his age to mine in the second order
+    FromHim = new_list(NOps + 1), FromHim :: 1..1000,
+    FromHim[1] #= H,
+    FromHim[NOps + 1] #= M,
+    % each step applies its operation, and every intermediate result is a positive integer
+    foreach (I in 1..NOps)
+        apply_operation(Ops1[I], FromMe[I], FromMe[I + 1]),
+        apply_operation(Ops2[I], FromHim[I], FromHim[I + 1])
     end,
-    Vars = [M, H] ++ Perm1 ++ Perm2 ++ HList ++ MList,
+    Vars = [M, H] ++ Ops1 ++ Ops2 ++ FromMe ++ FromHim,
     Outputs = [m = M, h = H],
     Options = [].
 
-% the operation op takes old to new
+% operation Op takes the age Old to the age New; a division by 8 must be exact
 apply_operation(Op, Old, New) =>
     Op #= 0 #=> New #= Old + 2,
     Op #= 1 #=> 8 * New #= Old,
     Op #= 2 #=> New #= Old - 3,
     Op #= 3 #=> New #= Old * 7.
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

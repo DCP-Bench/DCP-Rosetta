@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790947121.3640316,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794438053.9701052,
     "problem_id": "calvin_puzzle",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20261001T1218Z-clingo-8f73",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "4113655c1cb38b8a051c9d2486c318e1fb26a484",
+      "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.1918238999787718,
-        "execution_wall_seconds": 1.6540793001186103,
+        "checking_seconds": 0.051420204021269456,
+        "execution_wall_seconds": 0.6946365640033036,
         "first_solution": {
           "x": [
             [
@@ -86,9 +116,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 4.611784000182524,
+        "reference_setup_seconds": 0.7421884160139598,
         "runner_status": {
+          "build_seconds": 0.00611276100971736,
           "detail": "",
+          "main_seconds": 0.01046783899073489,
+          "read_seconds": 0.00013518199557438493,
           "status": "limit",
           "type": "status"
         },
@@ -98,8 +131,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.23678619996644557,
-        "execution_wall_seconds": 1.920595700154081,
+        "checking_seconds": 0.06392575000063516,
+        "execution_wall_seconds": 0.95191736400011,
         "first_solution": {
           "x": [
             [
@@ -161,9 +194,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 31.19957230007276,
+        "reference_setup_seconds": 4.053120481985388,
         "runner_status": {
+          "build_seconds": 0.013653991016326472,
           "detail": "",
+          "main_seconds": 0.06816200498724356,
+          "read_seconds": 0.00014258100418373942,
           "status": "limit",
           "type": "status"
         },
@@ -175,21 +211,21 @@
     "instances_available": 2,
     "instances_checked": 2,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "0c6e40cf45fe685717565fee01647240b7c98b0359ebed851ce3ccf95bed3425",
+    "model_hash": "31b555599b5b34b812073f82be0593153155adc864b702ec5b18ea95794d7fec",
     "problem_id": "calvin_puzzle",
     "reason": "accepted",
-    "reference_hash": "01afa38ec02b6613b107799f192fadd1c28d89767931e20b913ac618b7d7ca2e",
+    "reference_hash": "99c61de583ef526932f8b5f6532f02ee81c658f98a3b576a44629ad9121ac141",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -200,11 +236,11 @@
     "skipped_instances": [],
     "solutions_checked": 4,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 41.238459300016984,
+    "total_wall_seconds": 6.935031444998458,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.lp",

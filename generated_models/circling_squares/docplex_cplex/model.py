@@ -1,17 +1,20 @@
-"""Circling the squares (Dudeney): place a different number in each of ten squares around a circle
-so that for any two adjacent squares the sum of the squares of their numbers equals that of the
-two diametrically opposite squares. A = 16, B = 2, F = 8 and G = 14 are given.
+# circling_squares: a CPLEX (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+# Run it (after `pip install docplex cplex`; the CPLEX that comes with pip allows models
+# up to 1000 variables and 1000 constraints) with:
+#   python circling_squares.py
 
-The model reports the ten numbers A..K. The puzzle has no instance data; the givens and the
-range 1..99 ("no number need contain more than two figures") are the puzzle's own.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Circling the squares (Dudeney): place a different number in each of ten squares around a circle
+    so that for any two adjacent squares the sum of the squares of their numbers equals that of the
+    two diametrically opposite squares. A = 16, B = 2, F = 8 and G = 14 are given."""
     names = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K"]  # around the circle
     given = {"A": 16, "B": 2, "F": 8, "G": 14}                   # puzzle givens
-    numbers = range(1, 100)
+    max_number = 99                       # "no number need contain more than two figures"
+    numbers = range(1, max_number + 1)    # the numbers are positive, with at most two figures
 
     model = Model("circling_squares")
 
@@ -30,7 +33,7 @@ def build(instance):
         else:
             model.add_constraint(model.sum(pick[x, v] for x in open_squares) <= 1)
 
-    def value(x):
+    def number(x):  # the number in square x, a constant for a given square
         if x in given:
             return given[x]
         return model.sum(v * pick[x, v] for v in numbers)
@@ -46,4 +49,20 @@ def build(instance):
                            ("D", "E", "I", "K"), ("E", "F", "K", "A")]:
         model.add_constraint(square(x1) + square(x2) == square(y1) + square(y2))
 
-    return model, {x: value(x) for x in names}
+    return model, {x: number(x) for x in names}
+
+
+if __name__ == "__main__":
+    model, outputs = create_model({})
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

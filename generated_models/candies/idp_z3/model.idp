@@ -1,23 +1,37 @@
-// Candies: give each child at least one candy, give more candies to a child
-// with a higher rating than an immediate neighbour, and minimise the total.
-vocabulary {
-    type I <: Int                  // children in the line, sized from ratings
-    ratings: I -> Int              // rating score of each child
-    x: I -> Int                    // declared output: candies per child
-    z: () -> Int                   // declared output: total candies
-    minimize: () -> Int
+// candies: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Alice wants to give candies to the children sitting in a line, each with a rating score. She gives each child at least
+// 1 candy. If two children sit next to each other, the one with the higher rating must get more candies than the other.
+// Alice wants to minimize the total number of candies.
+//
+// Save this file as model.idp. Download `candies.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/candies.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py candies.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type I <: Int                      // the children, numbered from 0 in the line, sized from ratings
+    ratings: I -> Int                  // ratings(i): the rating score of child i
+    x: I -> Int                        // x(i): the number of candies given to child i (the output)
+    z: () -> Int                       // the total number of candies given
+    minimize: () -> Int                // the total number of candies, to be minimized
 }
-theory {
-    // each child gets at least one candy
+
+theory T:V {
+    // every child gets at least one candy
     ! i in I: x(i) >= 1.
-
-    // a child never needs more candies than there are children
-    ! i in I: x(i) =< #{ k in I: true }.
-
-    // two children sitting next to each other: the one with the higher rating gets more candies
-    ! i, j in I: j = i + 1 => ((ratings(i) < ratings(j) => x(i) < x(j)) & (ratings(i) > ratings(j) => x(i) > x(j))).
-
+    // of two children sitting next to each other, the one with the higher rating gets more candies
+    ! i, j in I: j = i + 1 & ratings(i) < ratings(j) => x(i) < x(j).
+    ! i, j in I: j = i + 1 & ratings(i) > ratings(j) => x(i) > x(j).
     // the total number of candies
     z() = sum{{ x(i) | i in I }}.
+    // the total number of candies is to be minimized
     minimize() = z().
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

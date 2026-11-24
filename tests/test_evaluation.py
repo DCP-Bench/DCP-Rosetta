@@ -95,6 +95,28 @@ class OrchestrationTests(unittest.TestCase):
         result["instances"][0]["incumbents"] = [[0.01, 3], [0.02, 3], [0.03, 2]]
         self.assertFalse(improving_incumbents(result))
 
+    def test_incumbent_values_are_checked_when_asked(self):
+        status = {"type": "status", "status": "limit"}
+        good = {"type": "incumbent", "objective": 2, "seconds": 0.01, "values": {"x": 1, "y": 1}}
+        bad = {"type": "incumbent", "objective": 2, "seconds": 0.01, "values": {"x": 2, "y": 2}}
+        final = {"type": "solution", "values": {"x": 0, "y": 2}}
+        result = self.run_records([good, final, status], incumbent_values=True)
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["instances"][0]["incumbents_with_values"], 1)
+        from evaluation import incumbents_with_values
+        result["instances"][0]["optimum"] = 2
+        self.assertTrue(incumbents_with_values(result))
+        result["instances"][0]["incumbents"].append([0.02, 1])  # one without values
+        self.assertFalse(incumbents_with_values(result))
+        self.assertEqual(self.run_records([bad, final, status], incumbent_values=True)["reason"], "invalid_incumbent")
+        self.assertTrue(self.run_records([bad, final, status])["accepted"])  # not asked: not checked
+        with tempfile.TemporaryDirectory() as temp:  # the request asks only when told to
+            model = Path(temp) / "model.py"
+            model.write_text("")
+            with built_image(), patch("evaluation.check.execute", return_value=([final, status], {})) as run:
+                evaluate(model, "tiny", "cpmpy_python", reference_source=SOURCE, instances=[], incumbent_values=True)
+            self.assertTrue(run.call_args.kwargs["incumbent_values"])
+
     def test_solution_count_is_bounded(self):
         """Duplicate records must not each cost a reference solve."""
         one = {"type": "solution", "values": {"x": 0, "y": 2}}

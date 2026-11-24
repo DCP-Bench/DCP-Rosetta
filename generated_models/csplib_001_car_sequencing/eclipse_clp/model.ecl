@@ -1,156 +1,117 @@
-% CSPLib 001 car sequencing: produce cars of different types on an assembly
-% line so that each option station is never over capacity.
-% Output: sequence, the car type (0-based) at each position of the line.
+% csplib_001_car_sequencing: an ECLiPSe model from DCP Rosetta.
 %
-% Encoding: Rank[s] in 1..T is a rank of the car type at position s. The types
-% are ordered in Prolog by how heavily they load the option stations (a search
-% order computed from the instance data). Seq[s] is the type at that rank, via
-% element/3. Per option, Setup[s] tells whether position s needs the option,
-% and prefix counts Count[k] bound the cars with the option among the first k
-% positions. A window of per_slots consecutive positions holds at most at_most
-% cars with the option.
+% Car sequencing: a number of cars are to be produced; they are not identical, because different options (air
+% conditioning, sunroof, etc.) are available as variants on the basic model. The assembly line has stations which
+% install the options, and each station is designed to handle at most a certain share of the cars passing along the
+% line: at most at_most[o] cars out of any per_slots[o] consecutive cars may require option o. The cars must be
+% arranged in a sequence so that the capacity of each station is never exceeded. Find the sequence of car types in
+% the assembly line; each car type is a number starting from 0.
+%
+% Save this file as model.ecl. Download `csplib_001_car_sequencing.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_001_car_sequencing.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_001_car_sequencing.json
+%   eclipse -b model.ecl -e "run('csplib_001_car_sequencing_1.dat'), halt"
 
-:- lib(ic).
-:- lib(ic_global).
-:- lib(ic_global_gac).
-:- lib(listut).
-:- import alldifferent/1 from ic_global.
+% Fields read: demand (the number of cars of each type, indexed from 0), at_most and per_slots (for each option o,
+% at most at_most[o] of any per_slots[o] consecutive cars require it), requires (requires[t][o] is 1 when cars of
+% type t need option o).
+:- lib(gfd).
+:- lib(listut).   % nth0/3
 
-% Vars (the rank of each position) is what the driver labels; Seq follows from it.
+% Rank[S] is the rank of the car at position S of the line, a number from 1 to the number of types; the types are
+% ranked by decreasing load on the stations, which is the order the search tries them in. Seq[S] is its type.
 model(Instance, Rank, [sequence-Seq]) :-
     memberchk(demand-Demand, Instance),
     memberchk(at_most-AtMost, Instance),
     memberchk(per_slots-PerSlots, Instance),
     memberchk(requires-Requires, Instance),
-    length(Demand, T),
-    length(AtMost, NO),
-    ( foreach(D, Demand), fromto(0, A0, A1, L) do A1 is A0 + D ),
-    L1 is L + 1,
+    length(Demand, NTypes),                 % the number of car types
+    NCars #= sum(Demand),                   % the length of the line
 
-    % the total demand of each option, and the order of the types by station load
-    option_totals(0, NO, Demand, Requires, Totals),
-    order_types(T, NO, Requires, Totals, PerSlots, AtMost, Order),
-
-    % the rank of each position, the number of positions per rank, and the type
-    length(Rank, L),
-    Rank :: 1..T,
-    rank_demand(Order, Demand, DemandByRank),
-    ( foreach(Dr, DemandByRank), fromto(1, R0, R1, _), foreach(gcc(Dr, Dr, R0), Specs) do
-        R1 is R0 + 1
+    % rank the types by decreasing load: the share of each station's capacity that its options use up
+    ( foreach(Row, Requires), foreach(D, Demand), count(T, 0, _), foreach(Key-T, Keys),
+      param(AtMost, PerSlots) do
+        ( foreach(Req, Row), foreach(M, AtMost), foreach(Q, PerSlots), fromto(0, L0, L1, Load) do
+            L1 is L0 + Req * Q / M
+        ),
+        Key is -(Load * 1000 + D)
     ),
-    gcc(Specs, Rank),
-    length(Seq, L),
-    ( foreach(R, Rank), foreach(S, Seq), param(Order, T) do
-        S :: 0..T-1,
+    keysort(Keys, Sorted),
+    ( foreach(_-T, Sorted), foreach(T, Order) do true ),   % Order[R-1] is the type of rank R
+
+    % each position of the line holds a car of some type
+    length(Rank, NCars),
+    Rank :: 1..NTypes,
+    length(Seq, NCars),
+    ( foreach(R, Rank), foreach(S, Seq), param(Order) do
         element(R, Order, S)
     ),
 
-    % cars requiring option o must not be bunched together: a station
-    % handles at most at_most[o] cars among any per_slots[o] consecutive cars
-    ( for(O, 0, NO-1),
-      param(Requires, AtMost, PerSlots, Totals, Order, Rank, L, L1) do
-        nth0(O, AtMost, M),
-        nth0(O, PerSlots, Q),
-        nth0(O, Totals, Tot),
-        option_column(Order, Requires, O, Col),
-        length(Setup, L),
-        Setup :: 0..1,
-        ( foreach(R, Rank), foreach(Sv, Setup), param(Col) do
-            element(R, Col, Sv)
+    % exactly demand[t] cars of each type t are produced
+    ( foreach(T, Order), count(R, 1, _), param(Demand, Rank) do
+        nth0(T, Demand, D),
+        occurrences(R, Rank, D)
+    ),
+
+    % cars requiring option o must not be bunched together: a station handles at most at_most[o] of any
+    % per_slots[o] consecutive cars
+    ( foreach(M, AtMost), foreach(Q, PerSlots), count(O, 0, _),
+      param(Rank, Requires, Order, Demand, NCars) do
+        % Need[S] is 1 when the car at position S requires option O
+        ( foreach(T, Order), foreach(Req, Column), param(Requires, O) do
+            nth0(T, Requires, Row), nth0(O, Row, Req)
         ),
-        length(Counts, L1),
-        Counts :: 0..Tot,
-        prefix_counts(Counts, Setup, 0),
-        nth0(0, Counts, C0), C0 #= 0,
-        nth0(L, Counts, CL), CL #= Tot,
-        ( for(K, 0, L), param(Counts, Q, M, Tot, L) do
-            count_bounds(K, Q, M, L, Tot, Lo, Hi),
-            nth0(K, Counts, Ck),
-            Ck #>= Lo,
-            Ck #=< Hi
+        length(Need, NCars),
+        Need :: 0..1,
+        ( foreach(R, Rank), foreach(N, Need), param(Column) do
+            element(R, Column, N)
         ),
-        ( for(P, 0, L-Q), param(Counts, Q, M) do
-            Pq is P + Q,
-            nth0(P, Counts, Cp),
-            nth0(Pq, Counts, Cpq),
-            Cpq - Cp #=< M
+        sequence(0, M, Q, Need),
+        % redundant: the cars needing option O among the first K positions are at most what the station can
+        % handle in K positions, and at least the total number needing it minus what fits in the remaining ones
+        ( foreach(D, Demand), foreach(Row, Requires), fromto(0, T0, T1, Total), param(O) do
+            nth0(O, Row, Req), T1 is T0 + D * Req
+        ),
+        ( for(K, 1, NCars-1), param(Need, M, Q, NCars, Total) do
+            length(Prefix, K), append(Prefix, _, Need),
+            Rest is NCars - K,
+            Hi is min(Total, (K // Q) * M + min(M, K mod Q)),
+            Lo is max(0, Total - ((Rest // Q) * M + min(M, Rest mod Q))),
+            Count #= sum(Prefix),
+            Count :: Lo..Hi
         )
     ).
 
-% Counts[k+1] = Counts[k] + Setup[k] for k = I .. L-1
-prefix_counts(Counts, Setup, I) :-
-    ( nth0(I, Setup, Sk) ->
-        I1 is I + 1,
-        nth0(I, Counts, Ck),
-        nth0(I1, Counts, Ck1),
-        Ck1 #= Ck + Sk,
-        prefix_counts(Counts, Setup, I1)
-    ;
-        true
-    ).
-
-% the total demand of option O over all types (Demand weighted by Requires)
-option_totals(NO, NO, _, _, []) :- !.
-option_totals(O, NO, Demand, Requires, [Tot|Rest]) :-
-    option_total(Demand, Requires, O, 0, Tot),
-    O1 is O + 1,
-    option_totals(O1, NO, Demand, Requires, Rest).
-
-option_total([], [], _, Acc, Acc).
-option_total([D|Ds], [Row|Rows], O, Acc, Tot) :-
-    nth0(O, Row, V),
-    Acc1 is Acc + D * V,
-    option_total(Ds, Rows, O, Acc1, Tot).
-
-% the 0/1 need of option O for the car types in rank order
-option_column(Order, Requires, O, Col) :-
-    ( foreach(Ty, Order), foreach(C, Col), param(Requires, O) do
-        nth0(Ty, Requires, Row),
-        nth0(O, Row, C)
-    ).
-
-% the number of cars of each type, in rank order
-rank_demand(Order, Demand, DemandByRank) :-
-    ( foreach(Ty, Order), foreach(Dr, DemandByRank), param(Demand) do
-        nth0(Ty, Demand, Dr)
-    ).
-
-% the bounds on the number of cars with an option among the first K positions
-count_bounds(K, Q, M, L, Tot, Lo, Hi) :-
-    cap(K, Q, M, CapK),
-    R is L - K,
-    cap(R, Q, M, CapR),
-    Lo is max(0, Tot - CapR),
-    Hi is min(Tot, CapK).
-
-% the most cars with an option that fit in K consecutive positions
-cap(K, Q, M, Cap) :-
-    Cap is (K // Q) * M + min(M, K mod Q).
-
-% the types in order of decreasing station load (the search order)
-order_types(T, NO, Requires, Totals, PerSlots, AtMost, Order) :-
-    type_keys(0, T, NO, Requires, Totals, PerSlots, AtMost, Keys),
-    keysort(Keys, Sorted),
-    ( foreach(_-Ty, Sorted), foreach(Ty, Order) do true ).
-
-% Keys: negated station load of each type, paired with the type
-type_keys(T, T, _, _, _, _, _, []) :- !.
-type_keys(Ty, T, NO, Requires, Totals, PerSlots, AtMost, [Key-Ty|Rest]) :-
-    nth0(Ty, Requires, Row),
-    option_load(0, NO, Row, Totals, PerSlots, AtMost, 0.0, S),
-    Key is -S,
-    Ty1 is Ty + 1,
-    type_keys(Ty1, T, NO, Requires, Totals, PerSlots, AtMost, Rest).
-
-option_load(NO, NO, _, _, _, _, S, S) :- !.
-option_load(O, NO, Row, Totals, PerSlots, AtMost, S0, S) :-
-    nth0(O, Row, R),
-    nth0(O, Totals, Tot),
-    nth0(O, PerSlots, P),
-    nth0(O, AtMost, M),
-    S1 is S0 + R * Tot * P / (M * 1.0),
-    O1 is O + 1,
-    option_load(O1, NO, Row, Totals, PerSlots, AtMost, S1, S).
-
+% positions from the start of the line, trying the most heavily loading types first
 search_goal(Vars) :-
     search(Vars, 0, input_order, indomain_min, complete, []).
+
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

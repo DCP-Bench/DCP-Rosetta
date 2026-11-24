@@ -1,22 +1,33 @@
-// Climb a stair of n steps, taking between m1 and m2 steps at a time.
-// Print the number of steps taken at each move, as a list of n integers, each between m1 and m2,
-// or 0 if no steps are taken at that move (after reaching the top of the stair).
-vocabulary {
-    n: () -> Int
-    m1: () -> Int
-    m2: () -> Int
-    // one entry per move; there are at most n moves
-    type Range_n <: Int
-    // steps[k] is the number of steps taken at move k
-    steps: Range_n -> Int
+// session5_climbing_stairs: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// We want to climb a stair of n steps with a number of steps at a time, within a given range [m1, m2]. For example a
+// stair of 4 steps with m1 = 1, and m2 = 2 can be climbed with a sequence of four one-step moves or with two two-steps
+// moves. Find a way to climb a stair of n steps, i.e. you can take only m1 to m2 steps at a time.
+//
+// Save this file as model.idp. Download `session5_climbing_stairs.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_climbing_stairs.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session5_climbing_stairs.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                // the moves, numbered from 1 to n
+    n: () -> Int                       // the number of steps of the stair
+    m1: () -> Int                      // the fewest steps that can be taken at a time
+    m2: () -> Int                      // the most steps that can be taken at a time
+    steps: Range_n -> Int              // steps(k): the number of steps taken at move k, 0 when no steps are taken
 }
-theory {
-    // each move takes either 0 steps, or between m1 and m2 steps
-    ! k in Range_n: steps(k) = 0 | (m1() =< steps(k) & steps(k) =< m2()).
-
-    // the moves together climb exactly the n steps of the stair
+theory T:V {
+    // the steps taken over all moves add up to the number of steps of the stair
     sum{{ steps(k) | k in Range_n }} = n().
 
-    // once the top is reached (a move of 0 steps), every later move is also 0
-    ! k, l in Range_n: k < l & steps(k) = 0 => steps(l) = 0.
+    // each move takes between m1 and m2 steps, or no steps once the top is reached
+    ! k in Range_n: (m1() =< steps(k) & steps(k) =< m2()) | steps(k) = 0.
+
+    // once no steps are taken at a move (the top is reached), no steps are taken at any later move
+    ! k in Range_n: steps(k) = 0 => (! j in Range_n: j > k => steps(j) = 0).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

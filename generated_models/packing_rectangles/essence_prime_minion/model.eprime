@@ -1,24 +1,43 @@
 language ESSENCE' 1.0
-$ Place rectangular items with given widths and heights inside a larger rectangle without overlap and within its boundaries, minimising the area of the larger rectangle.
-given heights_dim1 : int(1..)
-letting n = heights_dim1
-given heights : matrix indexed by [int(1..n)] of int(1..)
-given widths : matrix indexed by [int(1..n)] of int(1..)
-find pos_x : matrix indexed by [int(1..n)] of int(0..sum(widths))
-find pos_y : matrix indexed by [int(1..n)] of int(0..sum(heights))
-find total_x : int(max(widths)..sum(widths))
-find total_y : int(max(heights)..sum(heights))
+$ packing_rectangles: an Essence' model from DCP Rosetta.
+$
+$ Place a set of rectangles, each with a given width and height, inside a larger rectangle so that no two
+$ rectangles overlap and every rectangle lies within the larger one. The rectangles are not rotated. Minimise the area
+$ of the larger rectangle needed to pack all of them.
+$
+$ Save this file as model.eprime. Download `packing_rectangles.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/packing_rectangles.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `packing_rectangles_1.param.solution`:
+$   python dcp_convert_essence.py packing_rectangles.json
+$   savilerow model.eprime packing_rectangles_1.param -run-solver
 
-branching on [total_x, total_y, pos_x, pos_y]
-heuristic sdf
+$ widths_dim1: the number of rectangles (derived from the data)
+given widths_dim1 : int
+$ heights_dim1: the same number of rectangles (derived from the data)
+given heights_dim1 : int
+$ widths[i]: the width of rectangle i (indices from 1)
+given widths : matrix indexed by [int(1..widths_dim1)] of int(1..)
+$ heights[i]: the height of rectangle i (indices from 1)
+given heights : matrix indexed by [int(1..heights_dim1)] of int(1..)
+
+$ the sum of all widths and the sum of all heights: the enclosing rectangle never needs to be larger
+letting sum_widths = sum i : int(1..widths_dim1) . widths[i]
+letting sum_heights = sum i : int(1..heights_dim1) . heights[i]
+
+$ pos_x[i]: the x coordinate of the left edge of rectangle i, counted from 0 (indices from 1)
+find pos_x : matrix indexed by [int(1..widths_dim1)] of int(0..sum_widths)
+$ pos_y[i]: the y coordinate of the bottom edge of rectangle i, counted from 0 (indices from 1)
+find pos_y : matrix indexed by [int(1..widths_dim1)] of int(0..sum_heights)
+$ total_x: the width of the enclosing rectangle
+find total_x : int(1..sum_widths)
+$ total_y: the height of the enclosing rectangle
+find total_y : int(1..sum_heights)
 
 minimising total_x * total_y
-
 such that
-$ the larger rectangle has at least the total area of the items
-total_x * total_y >= sum i : int(1..n) . widths[i] * heights[i],
-$ every item lies within the larger rectangle, horizontally and vertically
-forAll i : int(1..n) . (pos_x[i] + widths[i] <= total_x),
-forAll i : int(1..n) . (pos_y[i] + heights[i] <= total_y),
-$ no two items overlap: one lies left of, right of, below or above the other
-forAll i : int(1..n) . forAll j : int(i+1..n) . ((pos_x[i] + widths[i] <= pos_x[j]) \/ (pos_x[j] + widths[j] <= pos_x[i]) \/ (pos_y[i] + heights[i] <= pos_y[j]) \/ (pos_y[j] + heights[j] <= pos_y[i]))
+$ every rectangle lies within the enclosing rectangle
+forAll i : int(1..widths_dim1) . (pos_x[i] + widths[i] <= total_x /\ pos_y[i] + heights[i] <= total_y),
+$ no two rectangles overlap: for each pair, one lies to the left of, right of, below or above the other
+forAll i : int(1..widths_dim1) . forAll j : int(i+1..widths_dim1) . (pos_x[i] + widths[i] <= pos_x[j] \/ pos_x[j] + widths[j] <= pos_x[i] \/ pos_y[i] + heights[i] <= pos_y[j] \/ pos_y[j] + heights[j] <= pos_y[i])

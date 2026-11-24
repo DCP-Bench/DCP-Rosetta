@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1790857462.9042487,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/minizinc/minizinc/CONTRACT.md": "b300d37d013b3ca18dbe0fe5e6c07b3dbf287d4fff5f1a3077207c450b862160"
+    },
+    "created_at": 1794433842.457176,
     "problem_id": "csplib_033_word_design",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,86 +18,72 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "d628d501a023e1706da115b6fbe4195e95dec302376f13d52f49f12518795a19",
-    "run_id": "20261001T1218Z-mzn-8350",
-    "schema": 2,
-    "skill_bundle_hash": "4e72d807c899e72b205a619164948d9c7c241f977f10fc0372073f606491eac0",
-    "skill_source": "solvers\\minizinc_gecode\\skills\\minizinc-gecode",
+    "readiness_hash": "6ad60bae7f1c5b92e276d32dbe9f2652b704e69541c928703823e6363d9db2e0",
+    "run_id": "20261111-minizinc-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "9e97e234e761b34da5daae9cfe5f583a4438d01e",
+      "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
       "modified": false,
-      "path": "solvers/minizinc_gecode/skills/minizinc-gecode"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "957267ea94c67694f873fba7908efad1bfbee0d2aff67fff7296aa9dfaa72625",
+        "source": "solvers/minizinc/skills/dcp-minizinc",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "solvers/minizinc/skills/dcp-minizinc"
+        }
+      }
+    ],
     "solver_id": "minizinc_gecode"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:6e91486ac7d4a1dae5bcbab8e332a0669d37cea9d30a516598735e5bd0eb410b",
+      "id": "sha256:e7010653e8c901f08696fc4b9822d6342c4f0f2d0148584048f6411ab2462a5c",
+      "recipe": "sha256:c84d37170272580e63e1170438f9d5a8d887ddb101623f785a696df04e9a071f",
       "tag": "dcp-eval/minizinc_gecode:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.8750870998483151,
-        "execution_wall_seconds": 2.0916200999636203,
+        "checking_seconds": 0.20949065900640562,
+        "execution_wall_seconds": 0.8956183530099224,
         "first_solution": {
           "words": [
             [
-              1,
-              3,
-              2,
-              1,
-              3,
-              3,
-              1,
-              1
-            ],
-            [
-              1,
-              2,
-              1,
-              2,
-              2,
-              3,
-              1,
-              1
-            ],
-            [
+              4,
               3,
               4,
-              4,
-              2,
+              3,
               2,
               2,
               1,
               1
             ],
             [
-              4,
-              3,
-              4,
-              3,
-              3,
-              2,
               1,
-              1
-            ],
-            [
-              4,
-              2,
               3,
-              4,
               2,
-              2,
-              1,
-              1
-            ],
-            [
-              2,
-              3,
-              1,
               2,
               4,
               2,
@@ -101,9 +91,49 @@
               1
             ],
             [
+              2,
+              1,
+              3,
+              3,
+              3,
+              4,
+              1,
+              1
+            ],
+            [
+              3,
+              1,
+              3,
+              2,
+              4,
+              3,
+              1,
+              1
+            ],
+            [
+              1,
               1,
               2,
+              3,
               2,
+              3,
+              1,
+              1
+            ],
+            [
+              2,
+              2,
+              4,
+              4,
+              3,
+              2,
+              1,
+              1
+            ],
+            [
+              3,
+              2,
+              1,
               3,
               4,
               2,
@@ -112,18 +142,18 @@
             ],
             [
               1,
-              1,
-              3,
               2,
               3,
+              1,
+              2,
               2,
               1,
               1
             ],
             [
               3,
-              2,
               1,
+              2,
               1,
               3,
               2,
@@ -133,8 +163,8 @@
             [
               2,
               1,
-              2,
               1,
+              2,
               2,
               2,
               1,
@@ -171,7 +201,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.8492364999838173,
+        "reference_setup_seconds": 0.652958127000602,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -179,69 +209,69 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x70b7449cc180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f79ab314900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4173661000095308,
-        "execution_wall_seconds": 2.426299500046298,
+        "checking_seconds": 0.09652563597774133,
+        "execution_wall_seconds": 0.8960749839898199,
         "first_solution": {
           "words": [
             [
+              3,
+              2,
+              4,
+              4,
               2,
               3,
               1,
+              1
+            ],
+            [
+              2,
+              2,
               3,
+              4,
               4,
               2,
               1,
               1
             ],
             [
-              3,
-              2,
-              2,
-              4,
               4,
               2,
-              1,
-              1
-            ],
-            [
-              2,
-              2,
-              1,
               4,
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            [
+              1,
+              2,
+              2,
+              1,
+              2,
+              2,
+              1,
+              1
+            ],
+            [
+              3,
+              1,
+              1,
+              3,
               3,
               3,
               1,
               1
             ],
             [
-              1,
               2,
               1,
-              2,
-              2,
-              2,
-              1,
-              1
-            ],
-            [
-              3,
-              1,
-              3,
-              1,
-              3,
-              3,
-              1,
-              1
-            ],
-            [
-              2,
               1,
               2,
-              1,
               2,
               2,
               1,
@@ -278,7 +308,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0159573999699205,
+        "reference_setup_seconds": 0.4569829579850193,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -286,63 +316,19 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7d461bd98180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f9263a48900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4044361000414938,
-        "execution_wall_seconds": 1.783743199892342,
+        "checking_seconds": 0.10707551799714565,
+        "execution_wall_seconds": 0.8953753699897788,
         "first_solution": {
           "words": [
             [
-              1,
-              1,
-              1,
               2,
               2,
-              2,
-              1,
-              1,
-              2
-            ],
-            [
-              2,
-              1,
-              1,
               3,
-              1,
-              3,
-              1,
-              2,
-              1
-            ],
-            [
-              3,
-              3,
-              1,
-              1,
-              1,
-              2,
-              1,
-              2,
-              1
-            ],
-            [
-              1,
-              2,
-              3,
-              3,
-              1,
-              3,
-              1,
-              1,
-              1
-            ],
-            [
-              3,
-              1,
-              2,
-              3,
+              4,
               1,
               2,
               1,
@@ -350,11 +336,55 @@
               1
             ],
             [
-              2,
-              2,
               1,
               2,
               1,
+              3,
+              3,
+              2,
+              1,
+              1,
+              1
+            ],
+            [
+              2,
+              1,
+              2,
+              4,
+              3,
+              3,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              3,
+              3,
+              2,
+              3,
+              1,
+              1,
+              1
+            ],
+            [
+              3,
+              1,
+              2,
+              3,
+              1,
+              2,
+              1,
+              1,
+              1
+            ],
+            [
+              2,
+              1,
+              1,
+              2,
+              2,
               2,
               1,
               1,
@@ -393,7 +423,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.245151799870655,
+        "reference_setup_seconds": 0.47635937298764475,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -401,66 +431,30 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7203e6464180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f0d7cc88900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.41168690007179976,
-        "execution_wall_seconds": 1.9305273999925703,
+        "checking_seconds": 0.11812756699509919,
+        "execution_wall_seconds": 0.8955450229987036,
         "first_solution": {
           "words": [
             [
-              2,
-              2,
-              4,
-              4,
-              2,
-              3,
               1,
               1,
               1,
-              1
-            ],
-            [
-              3,
-              2,
-              2,
-              4,
-              4,
-              2,
               1,
               1,
               1,
-              1
+              2,
+              2,
+              2,
+              2
             ],
             [
               4,
-              2,
-              2,
               3,
               2,
-              4,
-              1,
-              1,
-              1,
-              1
-            ],
-            [
-              1,
-              2,
-              1,
-              2,
-              2,
-              2,
-              1,
-              1,
-              1,
-              1
-            ],
-            [
-              3,
-              1,
-              3,
               1,
               3,
               3,
@@ -470,10 +464,46 @@
               1
             ],
             [
+              4,
+              2,
+              4,
+              2,
+              3,
+              2,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              2,
               2,
               1,
               2,
+              2,
               1,
+              1,
+              1,
+              1
+            ],
+            [
+              3,
+              1,
+              1,
+              3,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              2,
+              1,
+              1,
+              2,
               2,
               2,
               1,
@@ -516,7 +546,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9440158000215888,
+        "reference_setup_seconds": 0.4822782190167345,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -524,21 +554,34 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7c1d6ce24180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f01aed7c900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.5085593000985682,
-        "execution_wall_seconds": 1.7689842998515815,
+        "checking_seconds": 0.12836413699551485,
+        "execution_wall_seconds": 0.8973229989933316,
         "first_solution": {
           "words": [
             [
+              3,
+              2,
+              1,
+              4,
+              2,
+              3,
               1,
               1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              2,
               3,
               2,
               2,
-              2,
+              1,
               1,
               1,
               1,
@@ -548,23 +591,10 @@
             [
               2,
               1,
-              3,
-              1,
-              2,
-              1,
-              2,
-              1,
-              1,
-              1,
-              1
-            ],
-            [
-              2,
-              3,
               2,
               4,
               3,
-              1,
+              3,
               1,
               1,
               1,
@@ -573,11 +603,11 @@
             ],
             [
               1,
-              2,
-              3,
-              3,
-              3,
               1,
+              3,
+              3,
+              3,
+              2,
               1,
               1,
               1,
@@ -599,11 +629,11 @@
             ],
             [
               2,
-              2,
+              1,
               1,
               2,
               2,
-              1,
+              2,
               1,
               1,
               1,
@@ -647,7 +677,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.955068999901414,
+        "reference_setup_seconds": 0.5125203909992706,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -655,35 +685,35 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x77a2edc08180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7fef5aa64900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6785812999587506,
-        "execution_wall_seconds": 1.860227899858728,
+        "checking_seconds": 0.15538725300575607,
+        "execution_wall_seconds": 0.8957161229918711,
         "first_solution": {
           "words": [
             [
-              4,
-              3,
               1,
-              3,
-              3,
+              1,
+              1,
+              1,
+              1,
+              1,
               2,
-              1,
-              1,
-              1,
-              1,
+              2,
+              2,
+              2,
               1,
               1
             ],
             [
-              2,
-              2,
-              4,
-              3,
               4,
               2,
+              3,
+              1,
+              3,
+              3,
               1,
               1,
               1,
@@ -692,25 +722,11 @@
               1
             ],
             [
-              2,
-              2,
-              1,
               4,
               3,
-              3,
-              1,
-              1,
-              1,
-              1,
-              1,
-              1
-            ],
-            [
-              1,
-              2,
-              1,
               2,
               2,
+              4,
               2,
               1,
               1,
@@ -720,10 +736,24 @@
               1
             ],
             [
+              1,
+              2,
+              2,
+              1,
+              2,
+              2,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
               3,
               1,
-              3,
               1,
+              3,
               3,
               3,
               1,
@@ -736,8 +766,8 @@
             [
               2,
               1,
-              2,
               1,
+              2,
               2,
               2,
               1,
@@ -786,7 +816,7 @@
           "words"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.099619399989024,
+        "reference_setup_seconds": 0.5359475849836599,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -794,27 +824,27 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7c5440ad8180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7fc9dd47c900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       }
     ],
     "instances_available": 6,
     "instances_checked": 6,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "683ebd962fc58141e5bdd042e23288e5bd992665f76386a10d19c4633a080f85",
+    "model_hash": "442448e6b043c698b1fbf19eef30073204a7f408862301c985d2dfad054a65e9",
     "problem_id": "csplib_033_word_design",
     "reason": "accepted",
-    "reference_hash": "da4e2b7cec09876f36454bbf42164b7835ce6c71180abe929249560a0b6d0a6d",
+    "reference_hash": "6b9783aa1c966d1bcbebf0eaff9e0318931ed52d2241620dec1591d55bd70ee0",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -825,11 +855,11 @@
     "skipped_instances": [],
     "solutions_checked": 12,
     "solver_id": "minizinc_gecode",
-    "total_wall_seconds": 30.61993800010532,
+    "total_wall_seconds": 9.684133723989362,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.mzn",

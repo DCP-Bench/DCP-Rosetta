@@ -1,15 +1,28 @@
-// Place n queens on an n x n chessboard (csplib 054) so that no two queens attack each other.
-vocabulary {
-    type Range_n <: Int           // rows and columns are 1..n
-    queens: Range_n -> Range_n              // queens(r) is the column of the queen in row r
+// csplib_054_n_queens: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Can n queens of the same colour be placed on an n by n chessboard so that no queen attacks another? A queen attacks
+// the squares on the same row, column, or either diagonal as itself. Find n locations on the chessboard, no two of
+// which are on the same row, column or diagonal.
+//
+// Save this file as model.idp. Download `csplib_054_n_queens.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_054_n_queens.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_054_n_queens.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                   // the rows and the columns of the chessboard, numbered 1..n
+    n: () -> Int                          // the size of the chessboard and the number of queens
+    queens: Range_n -> Range_n            // queens(r): the column of the queen in row r
 }
-theory {
-    // no two queens are in the same column
+theory T:V {
+    // no two queens are in the same column (each row holds exactly one queen, by the function queens)
     ! r1, r2 in Range_n: r1 ~= r2 => queens(r1) ~= queens(r2).
 
-    // no two queens are on the same diagonal (one way)
-    ! r1, r2 in Range_n: r1 ~= r2 => queens(r1) - r1 ~= queens(r2) - r2.
-
-    // no two queens are on the same diagonal (other way)
-    ! r1, r2 in Range_n: r1 ~= r2 => queens(r1) + r1 ~= queens(r2) + r2.
+    // no two queens are on the same diagonal
+    ! r1, r2 in Range_n: r1 ~= r2 => abs(queens(r1) - queens(r2)) ~= abs(r1 - r2).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

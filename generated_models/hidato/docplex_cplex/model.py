@@ -1,17 +1,23 @@
-"""Hidato: fill the empty cells of an r-by-c grid with the numbers 1..r*c, each used once and
-the given numbers kept, so that every number k < r*c has k + 1 in one of its eight
-neighbouring cells (a king's move away).
+# hidato: a CPLEX (Python) model from DCP Rosetta.
+# Download the `hidato.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python hidato.py hidato.json
 
-The model reports the filled grid.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Hidato: fill the empty cells of an r-by-c grid with the numbers 1..r*c, each used once and
+    the given numbers kept, so that every number k < r*c has k + 1 in one of its eight
+    neighbouring cells (a king's move away)."""
     puzzle = instance["puzzle"]  # 0 marks an empty cell; other cells hold their given number
-    r, c = len(puzzle), len(puzzle[0])
+    r, c = len(puzzle), len(puzzle[0])  # the number of rows and of columns
     total = r * c
 
+    # given[k] is the cell where the number k is already placed; empty lists the cells to fill
+    # and missing the numbers still to place.
     given = {puzzle[i][j]: (i, j) for i in range(r) for j in range(c) if puzzle[i][j] > 0}
     empty = [(i, j) for i in range(r) for j in range(c) if puzzle[i][j] == 0]
     missing = [k for k in range(1, total + 1) if k not in given]
@@ -35,10 +41,8 @@ def build(instance):
 
     # Every empty cell holds one number, and every missing number is placed in one cell: with
     # the given numbers, the numbers 1..r*c are all different.
-    for q in empty:
-        model.add_constraint(model.sum(holds[q, k] for k in candidates[q]) == 1)
-    for k in missing:
-        model.add_constraint(model.sum(holds[q, k] for q in empty if (q, k) in holds) == 1)
+    model.add_constraints(model.sum(holds[q, k] for k in candidates[q]) == 1 for q in empty)
+    model.add_constraints(model.sum(holds[q, k] for q in empty if (q, k) in holds) == 1 for k in missing)
 
     def neighbours(q):
         return [(q[0] + a, q[1] + b) for a in (-1, 0, 1) for b in (-1, 0, 1)
@@ -66,3 +70,25 @@ def build(instance):
           for j in range(c)] for i in range(r)]
 
     return model, {"x": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

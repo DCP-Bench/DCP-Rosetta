@@ -1,38 +1,59 @@
-// Age changing: my age, after the four operations +2, /8, -3, *7 in some order, gives my husband's age; his age, after the same four operations in a different order, gives mine. Find both ages.
-vocabulary {
-    type Op := {1..4}          // 1 is +2, 2 is /8, 3 is -3, 4 is *7
-    type Step := {1..4}        // the four steps of a sequence of operations
-    type Pos := {0..4}         // a position along a sequence: 0 is the start, 4 is the end
-    type Age := {0..1000}      // ages and intermediate values, never negative
-    first: Step -> Op          // the order of the operations applied to my age
-    second: Step -> Op         // the order of the operations applied to his age
-    from_me: Pos -> Age        // the value after each step, starting from my age
-    from_him: Pos -> Age       // the value after each step, starting from his age
-    m: () -> Int               // my age
-    h: () -> Int               // my husband's age
+// age_changing: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// If you start with my age, in years, and apply the four operations +2, /8, -3 and *7 in some order, then the final
+// answer you get is my husband's age. If you start with his age and apply the same four operations in a different
+// order, then you get my age. Both ages are between 16 and 120, and every intermediate result is a positive integer,
+// so a division by 8 must be exact.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/age_changing.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Op := {0..3}                  // the four operations: 0 is +2, 1 is /8, 2 is -3, 3 is *7
+    type Step := {0..3}                // the position of an operation in a sequence of four, numbered from 0
+    type Phase := {0..4}               // the number of operations applied so far, from 0 to 4
+    m: () -> Int                       // my age in years
+    h: () -> Int                       // my husband's age in years
+    first: Step -> Op                  // first(s): the operation applied at step s to my age
+    second: Step -> Op                 // second(s): the operation applied at step s to his age
+    a: Phase -> Int                    // a(k): the result after k steps of my sequence, starting from my age
+    b: Phase -> Int                    // b(k): the result after k steps of his sequence, starting from his age
 }
-theory {
-    // each order uses every one of the four operations exactly once
-    ! s, t in Step: s ~= t => first(s) ~= first(t).
-    ! s, t in Step: s ~= t => second(s) ~= second(t).
-    // the second order is a different order from the first
-    ? s in Step: first(s) ~= second(s).
-
-    // starting from my age and applying the operations in the first order gives my husband's age
-    from_me(0) = m().
-    from_me(4) = h().
-    // each step applies its operation: +2, /8 (exact division), -3, *7
-    ! s in Step: first(s) = 1 => from_me(s) = from_me(s-1) + 2.
-    ! s in Step: first(s) = 2 => from_me(s-1) = 8 * from_me(s).
-    ! s in Step: first(s) = 3 => from_me(s) = from_me(s-1) - 3.
-    ! s in Step: first(s) = 4 => from_me(s) = 7 * from_me(s-1).
-
-    // starting from my husband's age and applying the operations in the second order gives my age
-    from_him(0) = h().
-    from_him(4) = m().
-    // each step applies its operation: +2, /8 (exact division), -3, *7
-    ! s in Step: second(s) = 1 => from_him(s) = from_him(s-1) + 2.
-    ! s in Step: second(s) = 2 => from_him(s-1) = 8 * from_him(s).
-    ! s in Step: second(s) = 3 => from_him(s) = from_him(s-1) - 3.
-    ! s in Step: second(s) = 4 => from_him(s) = 7 * from_him(s-1).
+theory T:V {
+    // both ages are between 16 and 120
+    16 =< m() & m() =< 120.
+    16 =< h() & h() =< 120.
+    // the first sequence uses each of the four operations once
+    ! s1, s2 in Step: first(s1) = first(s2) => s1 = s2.
+    // the second sequence uses each of the four operations once
+    ! s1, s2 in Step: second(s1) = second(s2) => s1 = s2.
+    // the second sequence applies the operations in a different order from the first
+    ?s in Step: first(s) ~= second(s).
+    // starting from my age and applying the first sequence gives my husband's age
+    a(0) = m().
+    a(4) = h().
+    // starting from his age and applying the second sequence gives my age
+    b(0) = h().
+    b(4) = m().
+    // every intermediate result is a positive integer
+    ! k in Phase: a(k) >= 1 & b(k) >= 1.
+    // in my sequence, +2 adds 2 to the result of the previous step
+    ! s in Step: first(s) = 0 => a(s + 1) = a(s) + 2.
+    // in my sequence, /8 divides the result of the previous step by 8 exactly
+    ! s in Step: first(s) = 1 => a(s) = 8 * a(s + 1).
+    // in my sequence, -3 subtracts 3 from the result of the previous step
+    ! s in Step: first(s) = 2 => a(s + 1) = a(s) - 3.
+    // in my sequence, *7 multiplies the result of the previous step by 7
+    ! s in Step: first(s) = 3 => a(s + 1) = 7 * a(s).
+    // in his sequence, +2 adds 2 to the result of the previous step
+    ! s in Step: second(s) = 0 => b(s + 1) = b(s) + 2.
+    // in his sequence, /8 divides the result of the previous step by 8 exactly
+    ! s in Step: second(s) = 1 => b(s) = 8 * b(s + 1).
+    // in his sequence, -3 subtracts 3 from the result of the previous step
+    ! s in Step: second(s) = 2 => b(s + 1) = b(s) - 3.
+    // in his sequence, *7 multiplies the result of the previous step by 7
+    ! s in Step: second(s) = 3 => b(s + 1) = 7 * b(s).
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

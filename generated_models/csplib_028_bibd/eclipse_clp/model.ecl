@@ -1,57 +1,74 @@
-% Balanced Incomplete Block Design (BIBD), CSPLib 028.
-% Find a v by b incidence matrix (v objects, b blocks) of 0s and 1s such that
-% each block contains exactly k objects, each object occurs in exactly r blocks,
-% and every two distinct objects occur together in exactly lambda blocks.
+% csplib_028_bibd: an ECLiPSe model from DCP Rosetta.
+%
+% A balanced incomplete block design (BIBD) arranges v distinct objects into b blocks such that each block contains
+% exactly k distinct objects, each object occurs in exactly r different blocks, and every two distinct objects occur
+% together in exactly lambda blocks. Equivalently, its v by b incidence matrix is a binary matrix with exactly r ones per
+% row, k ones per column, and a scalar product of lambda between any pair of distinct rows.
+%
+% Save this file as model.ecl. Download `csplib_028_bibd.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_028_bibd.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_028_bibd.json
+%   eclipse -b model.ecl -e "run('csplib_028_bibd_1.dat'), halt"
+%
+% The instance fields: v (objects), b (blocks), r (blocks per object), k (objects per block), l (lambda, blocks shared by
+% each pair of objects).
 
 :- lib(ic).
-:- lib(listut).
+:- lib(branch_and_bound).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
-
-model(Instance, Vars, [matrix-Rows], none) :-
+% Output matrix: Rows[I][J] is 1 when object I is in block J, counting from 1.
+model(Instance, Vars, [matrix-Rows]) :-
     memberchk(v-V, Instance),
     memberchk(b-B, Instance),
     memberchk(r-R, Instance),
     memberchk(k-K, Instance),
     memberchk(l-L, Instance),
-    length(Rows, V),
-    ( foreach(Row, Rows), param(B) do
-        length(Row, B),
-        Row :: 0..1
-    ),
+    length(Rows, V),                       % one row per object
+    ( foreach(Row, Rows), param(B) do length(Row, B) ),
     flatten(Rows, Vars),
+    Vars :: 0..1,
 
-    % each object occurs in exactly r blocks (row sums)
-    ( foreach(Row, Rows), param(R) do
-        sum(Row) #= R
-    ),
+    % each object occurs in exactly r blocks
+    ( foreach(Row, Rows), param(R) do sum(Row) #= R ),
 
-    % each block contains exactly k objects (column sums)
-    ( for(C, 1, B), param(Rows, K) do
-        column(Rows, C, Col),
+    % each block contains exactly k objects
+    ( for(J, 1, B), param(Rows, K) do
+        ( foreach(Row, Rows), foreach(X, Col), param(J) do element(J, Row, X) ),
         sum(Col) #= K
     ),
 
-    % every two distinct objects occur together in exactly lambda blocks
-    pairwise_lambda(Rows, L).
-
-% column(+Rows, +C, -Col): the C-th entry of every row, in row order
-column(Rows, C, Col) :-
-    ( foreach(Row, Rows), foreach(X, Col), param(C) do
-        nth1(C, Row, X)
+    % every two distinct objects occur together in exactly lambda blocks: the scalar product of their rows is lambda
+    ( fromto(Rows, [RowA|Later], Later, []) do
+        ( foreach(RowB, Later), param(RowA, L) do
+            ( foreach(XA, RowA), foreach(XB, RowB), foreach(P, Ps) do P #= XA * XB ),
+            sum(Ps) #= L
+        )
     ).
 
-% any two distinct rows share exactly L blocks (scalar product of 0/1 rows)
-pairwise_lambda([], _).
-pairwise_lambda([Row|Rows], L) :-
-    ( foreach(Other, Rows), param(Row, L) do
-        common_blocks(Row, Other, L)
-    ),
-    pairwise_lambda(Rows, L).
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
 
-common_blocks(Row1, Row2, L) :-
-    ( foreach(X, Row1), foreach(Y, Row2), foreach(P, Ps) do
-        P #= X * Y
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-    sum(Ps) #= L.
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

@@ -1,45 +1,74 @@
+# csplib_008_vessel_loading: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_008_vessel_loading.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_008_vessel_loading.py csplib_008_vessel_loading.json
+
 from pycsp3 import *
 
-# Vessel loading: place all containers on the deck, without overlap and with the required separations.
-# The deck width runs along x and the deck length along y. Coordinates start at 0.
-# left and right are the x-edges of a container (right edge excluded), bottom and top its y-edges
-# (top edge excluded, so top lies above bottom). Each container may be turned by 90 degrees.
-n = data.n_containers
-W = data.deck_width
-L = data.deck_length
 
-left = VarArray(size=n, dom=range(W + 1), id="left")
-right = VarArray(size=n, dom=range(W + 1), id="right")
-bottom = VarArray(size=n, dom=range(L + 1), id="bottom")
-top = VarArray(size=n, dom=range(L + 1), id="top")
+def create_model(instance):
+    """Containers are cuboids laid out in a single layer on a rectangular deck, all parallel to
+    the sides of the deck, and they must not overlap. Containers of some classes must be kept
+    a minimum distance apart, along the deck or across it. Decide whether all containers can be
+    positioned on the deck. Each container may be rotated by 90 degrees."""
+    deck_width = instance["deck_width"]  # the size of the deck across its width
+    deck_length = instance["deck_length"]  # the size of the deck along its length
+    n_containers = instance["n_containers"]  # the number of containers to place
+    container_class = instance["classes"]  # container_class[i] is the class of container i, numbered from 1
+    container_width = instance["width"]  # container_width[i] is the width of container i across the deck
+    container_length = instance["length"]  # container_length[i] is the length of container i along the deck
+    separation = instance["separation"]  # separation[a-1][b-1] is the distance classes a and b must keep in at least one direction
 
-# sx[i], sy[i]: the extent of container i along the deck width and along the deck length
-dims = set(data.width) | set(data.length)
-sx = VarArray(size=n, dom=dims, id="sx")
-sy = VarArray(size=n, dom=dims, id="sy")
+    # left[i] and right[i] are the edges of container i across the width of the deck, each between 0 and deck_width
+    left = VarArray(size=n_containers, dom=range(deck_width + 1))
+    right = VarArray(size=n_containers, dom=range(deck_width + 1))
+    # bottom[i] and top[i] are the edges of container i along the length of the deck, each between 0 and deck_length
+    bottom = VarArray(size=n_containers, dom=range(deck_length + 1))
+    top = VarArray(size=n_containers, dom=range(deck_length + 1))
 
-# minimum distance required between container i and container j, from their classes
-# (classes are numbered from 1, the separation matrix from 0)
-min_gap = [[data.separation[data.classes[i] - 1][data.classes[j] - 1] for j in range(n)] for i in range(n)]
+    # the distance that each pair of containers i < j must keep, from the separation of their classes
+    pairs = [
+        (i, j, separation[container_class[i] - 1][container_class[j] - 1])
+        for i in range(n_containers)
+        for j in range(i + 1, n_containers)
+    ]
 
-satisfy(
-    # each container is parallel to the deck sides, with its width along the deck width or turned by 90 degrees
-    [(sx[i], sy[i]) in {(data.width[i], data.length[i]), (data.length[i], data.width[i])} for i in range(n)],
-    # the right edge of each container is its left edge plus its extent along the deck width
-    [right[i] == left[i] + sx[i] for i in range(n)],
-    # the top edge of each container is its bottom edge plus its extent along the deck length
-    [top[i] == bottom[i] + sy[i] for i in range(n)],
-    # every container lies on the deck
-    [right[i] <= W for i in range(n)],
-    [top[i] <= L for i in range(n)],
-)
+    satisfy(
+        # each container has its width across the deck and its length along it, or both turned by 90 degrees
+        [
+            Or(
+                And(right[i] - left[i] == container_width[i], top[i] - bottom[i] == container_length[i]),
+                And(right[i] - left[i] == container_length[i], top[i] - bottom[i] == container_width[i]),
+            )
+            for i in range(n_containers)
+        ],
+        # containers of classes a and b are apart by separation[a-1][b-1] in at least one direction;
+        # with a distance of 0 this is the no-overlap condition, and touching is allowed
+        [
+            Or(
+                left[j] - right[i] >= gap,
+                left[i] - right[j] >= gap,
+                bottom[j] - top[i] >= gap,
+                bottom[i] - top[j] >= gap,
+            )
+            for i, j, gap in pairs
+        ],
+    )
 
-satisfy(
-    # no two containers overlap, and containers of classes with a separation are apart by that minimum distance,
-    # either along the deck or across it
-    [Or(right[i] + min_gap[i][j] <= left[j],
-        right[j] + min_gap[i][j] <= left[i],
-        top[i] + min_gap[i][j] <= bottom[j],
-        top[j] + min_gap[i][j] <= bottom[i])
-     for i in range(n) for j in range(i + 1, n)],
-)
+    return {"left": left, "right": right, "top": top, "bottom": bottom}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

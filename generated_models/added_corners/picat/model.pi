@@ -1,23 +1,41 @@
-% Added corners: put the digits 1 to 8 into the eight cells of a 3x3 frame (the centre is
-% empty) so that each edge-middle cell (a square) holds the sum of the two corner cells
-% (circles) beside it. Cells are numbered like reading a book:
-%   a b c
-%   d   e
-%   f g h
+% added_corners: a Picat model from DCP Rosetta.
+%
+% Enter the digits 1 through 8 into the eight positions around the edge of a 3 by 3 grid whose
+% centre is empty, using each digit exactly once. The corners are circles (C) and the middles of
+% the sides are squares (F):
+%   C F C
+%   F   F
+%   C F C
+% The number in each square must equal the sum of the numbers in the two circles adjoining it.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/added_corners.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    N = 8,                           % the digits 1..8 fill the 8 cells (fixed by the puzzle)
-    Positions = new_list(N),
-    Positions :: 1..N,
-    [A, B, C, D, E, F, G, H] = Positions,
-    % each digit is used once
-    all_different(Positions),
-    % each square is the sum of the circles that adjoin it
+model(_Data, Vars, Outputs, Options) =>
+    N = 8,                                 % the digits 1 to 8
+    P = new_list(N),                       % the positions, read like a book
+    P :: 1..N,
+    [A, B, C, D, E, F, G, H] = P,          % A B C / D . E / F G H
+    % each digit is entered exactly once
+    all_different(P),
+    % the square B is the sum of the circles A and C beside it
     B #= A + C,
+    % the square D is the sum of the circles A and F beside it
     D #= A + F,
+    % the square E is the sum of the circles C and H beside it
     E #= C + H,
+    % the square G is the sum of the circles F and H beside it
     G #= F + H,
-    Vars = Positions,
-    Outputs = [positions = Positions],
+    Vars = P,
+    Outputs = [positions = P],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

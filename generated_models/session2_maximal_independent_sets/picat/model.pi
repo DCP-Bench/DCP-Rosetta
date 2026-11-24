@@ -1,20 +1,49 @@
-% Maximal independent set: choose nodes no two of which are adjacent, such that
-% every node left out has a chosen neighbour.
+% session2_maximal_independent_sets: a Picat model from DCP Rosetta.
+%
+% In graph theory, an independent set is a set of vertices in a graph, no two of which are adjacent. A maximal
+% independent set is an independent set that is not a subset of any other independent set. A graph may have many
+% maximal independent sets of widely varying sizes: find a maximal independent set for the data provided. The data
+% provides an array containing for each node of the graph the set of adjacent nodes.
+%
+% Save this file as model.pi. Download `session2_maximal_independent_sets.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_maximal_independent_sets.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py session2_maximal_independent_sets.json
+%   picat model.pi session2_maximal_independent_sets_1.dat
+%
+% Data.get(n): the number of nodes; Data.get(adjacency_list): for each node, the nodes adjacent to it, as node numbers
+% from 1 (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
-    Adjacency = Data.get(adjacency_list),   % neighbours of each node, 1-based
-    Nodes = new_list(N),
+    Adjacency = Data.get(adjacency_list),
+    Nodes = new_list(N),                   % Nodes[I] = 1 when node I is in the set
     Nodes :: 0..1,
     foreach (I in 1..N)
-        % no edge has both ends chosen
-        foreach (J in Adjacency[I], I < J)
+        % two adjacent nodes are not both in the set
+        foreach (J in Adjacency[I])
             Nodes[I] + Nodes[J] #=< 1
         end,
-        % maximality: a node is chosen or has a chosen neighbour
+        % the set is maximal: a node left out has a neighbour in the set, so each node is in the set or has a
+        % neighbour in it
         Nodes[I] + sum([Nodes[J] : J in Adjacency[I]]) #>= 1
     end,
     Vars = Nodes,
     Outputs = [nodes = Nodes],
     Options = [].
+
+% Reads the data file, builds the model, solves it and prints each output.
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

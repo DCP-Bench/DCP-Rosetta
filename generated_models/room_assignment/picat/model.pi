@@ -1,26 +1,40 @@
-% Room assignment: give every booking (a room from a start date up to, but not
-% including, an end date) one room for its whole stay, so that no room hosts two
-% bookings on the same night. Some bookings have their room fixed already.
+% room_assignment: a Picat model from DCP Rosetta.
+%
+% The room assignment problem involves assigning a set of requests to a limited number of rooms such that each
+% request is assigned to one room for its entire duration. Some requests may already have a room pre-assigned. The
+% main constraint is that a room can only serve one request at a time, meaning no overlapping requests can be
+% assigned to the same room. A request occupies its room from its start date up to, but not including, its end date,
+% so one request can start in a room on the day another ends there. A pre-assigned room of -1 means that the request
+% has none.
+%
+% Save this file as model.pi. Download `room_assignment.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/room_assignment.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py room_assignment.json
+%   picat model.pi room_assignment_1.dat
+%
+% Data.get(max_rooms): the number of rooms; Data.get(start_data), Data.get(end_data): the start and end date of each
+% request as ISO strings (YYYY-MM-DD); Data.get(preassigned_room_data): the room already fixed for each request, or -1
+% (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NRooms = Data.get(max_rooms),
-    % the dates are ISO strings, YYYY-MM-DD, which compare like the dates they name
     Starts = Data.get(start_data),
     Ends = Data.get(end_data),
-    Preassigned = Data.get(preassigned_room_data),   % -1 when the room is not fixed
-    N = len(Starts),
-    % room[i] = the room, 0-based, of booking i
-    Room = new_list(N),
+    Preassigned = Data.get(preassigned_room_data),
+    N = len(Starts),                       % the number of requests
+    Room = new_list(N),                    % Room[I] = the room, 0-based, of request I
     Room :: 0..NRooms-1,
-    % bookings whose room is already fixed
+    % a request with a pre-assigned room keeps that room
     foreach (I in 1..N)
         if Preassigned[I] != -1 then
             Room[I] #= Preassigned[I]
         end
     end,
-    % two bookings that share a night get different rooms: [s1, e1) and [s2, e2)
-    % share a night when s1 < e2 and s2 < e1
+    % two requests whose dates overlap, [start, end) against [start, end), get different rooms; ISO dates compare
+    % in date order when compared as strings
     foreach (I in 1..N-1, J in I+1..N)
         if (Starts[I] @< Ends[J], Starts[J] @< Ends[I]) then
             Room[I] #!= Room[J]
@@ -29,3 +43,16 @@ model(Data, Vars, Outputs, Options) =>
     Vars = Room,
     Outputs = [room_assignments = Room],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

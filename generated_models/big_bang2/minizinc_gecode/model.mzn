@@ -1,54 +1,54 @@
-% Big Bang non-transitive dice: five dice with six faces each (face values 1..12,
-% values may repeat) such that their "beats" relations match the game Rock,
-% Paper, Scissors, Lizard, Spock: every choice beats two others and loses to
-% two others. Die A beats die B if A's face is strictly larger than B's face
-% in more than half of all pairs of faces. This problem has no instance data:
-% the number of dice and faces and the beats relation are fixed by the problem statement.
+% big_bang2: a MiniZinc model from DCP Rosetta.
+%
+% Nontransitive dice: find five dice, one for each of Rock, Paper, Scissors, Lizard and Spock, such that
+% the dominance relationships between the dice are those of Rock-Paper-Scissors extended by Lizard and
+% Spock. Each choice beats two other choices and is beaten by two other choices:
+%   Rock crushes Scissors and Lizard; Paper covers Rock and disproves Spock; Scissors cuts Paper and
+%   decapitates Lizard; Lizard eats Paper and poisons Spock; Spock vaporizes Rock and smashes Scissors.
+% Each die has six integer faces, each between 1 and 12 inclusive. Faces may repeat, within a die and
+% across dice. A die A beats a die B if A has a strictly larger face value than B in more than half of
+% all pairs of faces.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-int: m = 5;   % number of dice
-int: n = 6;   % faces of each die
-int: f = 12;  % largest face value
+int: num_dice = 5;                            % Rock, Paper, Scissors, Lizard, Spock
+int: faces = 6;                               % faces on each die
+int: max_value = 12;                          % the largest face value
 
-% the dice, in the order they appear in the output
-int: rock = 0; int: paper = 1; int: scissors = 2; int: lizard = 3; int: spock = 4;
+int: Rock = 0;
+int: Paper = 1;
+int: Scissors = 2;
+int: Lizard = 3;
+int: Spock = 4;
 
-% beats[k, 1] beats beats[k, 2] (the ten relations of the game, fixed by the problem statement)
-int: n_beats = 10;
-array[1..n_beats, 1..2] of int: beats = array2d(1..n_beats, 1..2, [
-    rock, scissors,      % Rock crushes Scissors
-    rock, lizard,        % Rock crushes Lizard
-    paper, rock,         % Paper covers Rock
-    paper, spock,        % Paper disproves Spock
-    scissors, paper,     % Scissors cuts Paper
-    scissors, lizard,    % Scissors decapitates Lizard
-    lizard, paper,       % Lizard eats Paper
-    lizard, spock,       % Lizard poisons Spock
-    spock, rock,         % Spock vaporizes Rock
-    spock, scissors      % Spock smashes Scissors
+set of int: Dice = 0..num_dice-1;             % the dice, in the order Rock, Paper, Scissors, Lizard, Spock
+set of int: Face = 1..faces;                  % the faces of a die
+set of int: Values = 1..max_value;            % the face values
+
+% the ten beats relations, as (winner, loser) pairs
+int: num_beats = 10;
+array[1..num_beats, 1..2] of int: beats = array2d(1..num_beats, 1..2, [
+    Rock, Scissors,     Rock, Lizard,       Paper, Rock,        Paper, Spock,       Scissors, Paper,
+    Scissors, Lizard,   Lizard, Paper,      Lizard, Spock,      Spock, Rock,        Spock, Scissors
 ]);
 
-% dice[i, j] = value on the j-th face of die i
-array[0..m - 1, 1..n] of var 1..f: dice;
+% dice[d, f]: the value on face f of die d
+array[Dice, Face] of var Values: dice;
 
-% Counting faces by value makes "how many pairs of faces does A win" a sum over
-% values instead of over the n*n pairs of faces, which Gecode propagates much
-% better than the reified comparison of every pair (the direct form found no
-% dice within the time limit). Both arrays below are determined by dice, so they
-% add no freedom to the answer.
-%   faces_with[i, v] = number of faces of die i that show the value v
-%   faces_below[i, v] = number of faces of die i that show a value smaller than v
-array[0..m - 1, 1..f] of var 0..n: faces_with;
-array[0..m - 1, 1..f] of var 0..n: faces_below;
-constraint forall(i in 0..m - 1) (global_cardinality([dice[i, j] | j in 1..n], [v | v in 1..f], [faces_with[i, v] | v in 1..f]));
-constraint forall(i in 0..m - 1, v in 1..f) (faces_below[i, v] = sum(w in 1..v - 1) (faces_with[i, w]));
+% helper counts, determined by dice: how many faces of die d show value v, and how many show less than v
+array[Dice, Values] of var 0..faces: faces_with;
+array[Dice, Values] of var 0..faces: faces_below;
 
-% for every relation "winner beats loser", the number of pairs of faces where the
-% winner's face is larger must be more than half of all n*n pairs of faces; the
-% faces of the winner showing the value v each beat faces_below[loser, v] faces
-constraint forall(k in 1..n_beats)
-    (sum(v in 1..f) (faces_with[beats[k, 1], v] * faces_below[beats[k, 2], v]) > (n * n) div 2);
+constraint forall(d in Dice)(global_cardinality([dice[d, f] | f in Face], Values, [faces_with[d, v] | v in Values]));
+constraint forall(d in Dice, v in Values)(faces_below[d, v] = sum(w in 1..v-1)(faces_with[d, w]));
+
+% each beats relation holds: the winner has a strictly larger face in more than half of the 36 face pairs
+constraint forall(k in 1..num_beats)(
+    sum(v in Values)(faces_with[beats[k, 1], v] * faces_below[beats[k, 2], v]) > (faces * faces) div 2);
 
 solve satisfy;
-
-output ["{\"dice\": [", join(", ", ["[" ++ join(", ", [show(dice[i, j]) | j in 1..n]) ++ "]" | i in 0..m - 1]), "]}"];
+output ["{\"dice\": ", showJSON(dice), "}"];

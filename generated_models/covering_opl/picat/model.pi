@@ -1,20 +1,46 @@
-% Covering (OPL): hire a set of workers so that every task is done by at least one hired
-% worker who is qualified for it, at the smallest total hiring cost.
+% covering_opl: a Picat model from DCP Rosetta.
+%
+% Select a set of workers to perform all the tasks, while minimizing the cost. Each worker can perform
+% certain tasks and has a hiring cost. Ensure that all tasks are performed.
+%
+% Save this file as model.pi. Download `covering_opl.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/covering_opl.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py covering_opl.json
+%   picat model.pi covering_opl_1.dat
+%
+% Data.get(nb_workers): the number of workers; Data.get('Qualified'): for each task, the workers (numbered
+% from 1) who can perform it; Data.get('Cost'): the hiring cost of each worker (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NbWorkers = Data.get(nb_workers),
-    Qualified = Data.get('Qualified'),    % Qualified[t] = the workers (numbered from 1) who can do task t
-    Cost = Data.get('Cost'),              % hiring cost of each worker
-    % Workers[w] = 1 if worker w is hired
+    Qualified = Data.get('Qualified'),
+    Cost = Data.get('Cost'),
+    % Workers[W] = 1 when worker W is hired
     Workers = new_list(NbWorkers),
     Workers :: 0..1,
-    % every task has at least one hired worker among those qualified for it
+    % every task is performed by at least one hired worker who is qualified for it
     foreach (Task in Qualified)
         sum([Workers[W] : W in Task]) #>= 1
     end,
-    % the total cost of the hired workers
+    % the total hiring cost of the hired workers
     TotalCost #= sum([Cost[W] * Workers[W] : W in 1..NbWorkers]),
     Vars = Workers,
     Outputs = [total_cost = TotalCost, workers = Workers],
+    % minimize the total cost
     Options = [$min(TotalCost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

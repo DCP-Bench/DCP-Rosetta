@@ -5,5 +5,5 @@ FROM python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f14
 COPY solvers/idp_z3/idp/requirements.txt /opt/requirements.txt
 RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt
 COPY runner/runtime.py /opt/runner/runtime.py
-COPY solvers/idp_z3/idp/run.py /opt/runner/run.py
+COPY solvers/idp_z3/idp/run.py solvers/idp_z3/idp/dcp_convert_idp.py /opt/runner/
 ENTRYPOINT ["python", "/opt/runner/run.py"]

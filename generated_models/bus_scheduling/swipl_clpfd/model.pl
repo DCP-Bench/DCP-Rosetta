@@ -1,29 +1,57 @@
+% bus_scheduling: a SWI-Prolog model from DCP Rosetta.
+%
+% A city plans a mass-transit bus system. The demand for buses is taken as constant over successive 4-hour intervals of
+% the day, which is cyclic: the first interval follows the last. Each bus works 8 successive hours, so a bus that starts
+% in one interval also works in the next. In each interval, the buses available there (those starting in it and those
+% that started in the interval before) must meet the demand for that interval. Find the minimum number of buses needed.
+%
+% Save this file as model.pl. Download `bus_scheduling.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bus_scheduling.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('bus_scheduling.json')" -t halt model.pl
+%
+% Data fields: demands (the number of buses needed in each 4-hour interval, lists indexed from 0).
 :- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Bus scheduling: the day is cut into equal time slots and a bus works two
-% consecutive slots. Choose how many buses start in each slot so that every
-% slot's demand is met with as few buses as possible.
 model(Instance, [Total|X], [x-X], min(Total)) :-
-    Demands = Instance.demands,      % buses needed in each slot
+    Demands = Instance.demands,
     length(Demands, Slots),
-    sum_list(Demands, AllDemand),
-
-    % X[i] = number of buses that start working in slot i
-    length(X, Slots),
-    X ins 0..AllDemand,
-
-    % a bus covers its starting slot and the next one (the day wraps around),
-    % so slot i+1 is served by the buses starting in slots i and i+1
+    length(X, Slots),                       % X[I]: the number of buses starting in interval I, counted from 0
+    sum_list(Demands, Largest),
+    X ins 0..Largest,
     Last is Slots - 1,
-    numlist(0, Last, Slot),
-    maplist({X, Demands, Slots}/[I]>>(J is (I + 1) mod Slots,
-                                      nth0(I, X, Xi), nth0(J, X, Xj), nth0(J, Demands, Dj),
-                                      Xi + Xj #>= Dj), Slot),
+    numlist(0, Last, Intervals),
+    maplist(covered(X, Demands, Slots), Intervals),
+    sum(X, #=, Total).                      % the buses in all, to be made as few as possible
 
-    % use as few buses as possible
-    Bound is AllDemand * Slots,
-    Total in 0..Bound,
-    sum(X, #=, Total).
+% The interval I has enough buses: those starting in it and those that started in the interval before (cyclically).
+covered(X, Demands, Slots, I) :-
+    Previous is (I + Slots - 1) mod Slots,
+    nth0(I, X, Starting),
+    nth0(Previous, X, Started),
+    nth0(I, Demands, Demand),
+    Starting + Started #>= Demand.
+
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

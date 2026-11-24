@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791989999.7522833,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793742703.3375926,
     "problem_id": "session5_grocery",
     "profile": {
       "compilation_timeout": 120,
@@ -14,34 +18,55 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "c51724b280bf4e14d6ab15e560341d8cedb51583",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.004240064008627087,
-        "execution_wall_seconds": 2.062882902973797,
+        "checking_seconds": 0.002151805005269125,
+        "execution_wall_seconds": 1.739478984993184,
         "first_solution": {
           "prices": [
-            125,
             316,
+            125,
             150,
             120
           ]
@@ -55,9 +80,12 @@
           "prices"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.5792341089691035,
+        "reference_setup_seconds": 1.1766405230155215,
         "runner_status": {
+          "build_seconds": 0.005443994014058262,
           "detail": "",
+          "main_seconds": 1.099816080997698,
+          "read_seconds": 0.00013094799942336977,
           "status": "limit",
           "type": "status"
         },
@@ -67,8 +95,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.002289355034008622,
-        "execution_wall_seconds": 0.8068954889895394,
+        "checking_seconds": 0.0012705429980996996,
+        "execution_wall_seconds": 0.739485878002597,
         "first_solution": {
           "prices": [
             200,
@@ -84,9 +112,12 @@
           "prices"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.626286837970838,
+        "reference_setup_seconds": 0.2789754109981004,
         "runner_status": {
+          "build_seconds": 0.005864308011950925,
           "detail": "",
+          "main_seconds": 0.007999298017239198,
+          "read_seconds": 0.00013851901167072356,
           "status": "complete",
           "type": "status"
         },
@@ -96,13 +127,13 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004078505968209356,
-        "execution_wall_seconds": 0.7998515060171485,
+        "checking_seconds": 0.0021394249924924225,
+        "execution_wall_seconds": 0.6329760130029172,
         "first_solution": {
           "prices": [
+            200,
             150,
-            175,
-            200
+            175
           ]
         },
         "id": "json:2",
@@ -114,9 +145,12 @@
           "prices"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6390926300082356,
+        "reference_setup_seconds": 0.3210676010057796,
         "runner_status": {
+          "build_seconds": 0.005430021992651746,
           "detail": "",
+          "main_seconds": 0.04203823397983797,
+          "read_seconds": 0.00012817198876291513,
           "status": "limit",
           "type": "status"
         },
@@ -126,14 +160,14 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004173047025687993,
-        "execution_wall_seconds": 2.10700849496061,
+        "checking_seconds": 0.0024016019888222218,
+        "execution_wall_seconds": 1.2351025920070242,
         "first_solution": {
           "prices": [
             125,
+            184,
             175,
-            160,
-            184
+            160
           ]
         },
         "id": "json:3",
@@ -145,9 +179,12 @@
           "prices"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1209527140017599,
+        "reference_setup_seconds": 0.6309502179792617,
         "runner_status": {
+          "build_seconds": 0.005106288997922093,
           "detail": "",
+          "main_seconds": 0.6108059010002762,
+          "read_seconds": 0.00012668699491769075,
           "status": "limit",
           "type": "status"
         },
@@ -157,14 +194,14 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0039027530001476407,
-        "execution_wall_seconds": 1.652017254033126,
+        "checking_seconds": 0.002604838984552771,
+        "execution_wall_seconds": 1.5453591529803816,
         "first_solution": {
           "prices": [
-            100,
-            120,
-            200,
-            300
+            320,
+            150,
+            150,
+            100
           ]
         },
         "id": "json:4",
@@ -176,9 +213,12 @@
           "prices"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.013623453967739,
+        "reference_setup_seconds": 0.5510073710174765,
         "runner_status": {
+          "build_seconds": 0.006056964019080624,
           "detail": "",
+          "main_seconds": 0.8834445270185824,
+          "read_seconds": 0.00012989802053198218,
           "status": "limit",
           "type": "status"
         },
@@ -196,15 +236,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "efb2d43a93906b58b7b7bb3e4c2fc09acf0cd702012f0e3851068c708e14fb5d",
+    "model_hash": "7e8decc8365d7eeae8b6503f819d7e3b027b0327420f7722be9c70e853bf92c7",
     "problem_id": "session5_grocery",
     "reason": "accepted",
     "reference_hash": "d4721fe291f0f86b3b9e0a549edc8f0df22096c7b97cdfe816efd1a677246e73",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -215,11 +255,11 @@
     "skipped_instances": [],
     "solutions_checked": 9,
     "solver_id": "scip_python",
-    "total_wall_seconds": 13.691970647021662,
+    "total_wall_seconds": 10.095134244009387,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

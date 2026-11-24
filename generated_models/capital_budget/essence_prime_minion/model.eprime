@@ -1,17 +1,33 @@
 language ESSENCE' 1.0
-$ Capital budgeting: choose a set of investments, each with a cash outflow and a net present value, so that the total cash outflow stays within the budget and the total net present value is maximised.
-given cash_flow_dim1 : int
-letting n = cash_flow_dim1
-given budget : int
-given cash_flow : matrix indexed by [int(1..n)] of int
-given npv : matrix indexed by [int(1..n)] of int
-find x : matrix indexed by [int(1..n)] of bool
-find z : int(0..sum(npv))
+$ capital_budget: an Essence' model from DCP Rosetta.
+$
+$ A company is considering a number of investments. Each investment will yield a net present value (NPV). Each investment requires a certain cash outflow at the present time. There is a total budget available for investment. How to maximise the NPV obtained from the investments?
+$
+$ Save this file as model.eprime. Download `capital_budget.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/capital_budget.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `capital_budget_1.param.solution`:
+$   python dcp_convert_essence.py capital_budget.json
+$   savilerow model.eprime capital_budget_1.param -run-solver
 
-branching on [x]
+$ number of investments, derived from the data: the length of cash_flow (not a field of the reader's JSON)
+given cash_flow_dim1 : int(1..)
+$ total budget available for investment
+given budget : int
+$ cash_flow[i]: cash outflow at the present time of investment i, indices 1-based
+given cash_flow : matrix indexed by [int(1..cash_flow_dim1)] of int
+$ npv[i]: net present value yielded by investment i, indices 1-based
+given npv : matrix indexed by [int(1..cash_flow_dim1)] of int
+
+$ x[i]: investment i is chosen
+find x : matrix indexed by [int(1..cash_flow_dim1)] of bool
+$ z: the total net present value of the chosen investments
+find z : int(-(sum i : int(1..cash_flow_dim1) . |npv[i]|)..(sum i : int(1..cash_flow_dim1) . |npv[i]|))
+
 maximising z
 such that
-$ the sum of all chosen investments must not exceed the budget (cash outflow of each investment taken when chosen)
-(sum i : int(1..n) . x[i] * cash_flow[i]) <= budget,
-$ the total NPV z is the sum of the NPVs of the chosen investments
-z = (sum i : int(1..n) . x[i] * npv[i])
+$ the cash outflows of the chosen investments do not exceed the total budget
+(sum i : int(1..cash_flow_dim1) . toInt(x[i]) * cash_flow[i]) <= budget,
+$ the total NPV is the sum of the NPVs of the chosen investments
+z = (sum i : int(1..cash_flow_dim1) . toInt(x[i]) * npv[i])

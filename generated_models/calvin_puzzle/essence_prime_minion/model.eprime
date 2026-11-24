@@ -1,19 +1,33 @@
 language ESSENCE' 1.0
-$ Calvin puzzle: fill an n by n grid with the numbers 1 to n*n, each once, so that consecutive numbers are placed by the movement rules.
-given n : int(1..)
-$ the allowed moves between two squares, with each square numbered (row-1)*n+column
-letting MovesC = [ [(r1-1)*n+c1, (r2-1)*n+c2] | r1 : int(1..n), c1 : int(1..n), r2 : int(1..n), c2 : int(1..n), ((|r1 - r2| = 3) /\ (c1 = c2)) \/ ((r1 = r2) /\ (|c1 - c2| = 3)) \/ ((|r1 - r2| = 2) /\ (|c1 - c2| = 2)) ]
+$ calvin_puzzle: an Essence' model from DCP Rosetta.
+$
+$ Fill an n by n grid with the numbers 1 to n^2, each used once, starting from any square. The next number in the sequence is placed either vertically or horizontally exactly three squares away from the previous number (a two square gap between them), or diagonally exactly two squares away from the previous number (a one square gap between them).
+$
+$ Save this file as model.eprime. Download `calvin_puzzle.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/calvin_puzzle.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `calvin_puzzle_1.param.solution`:
+$   python dcp_convert_essence.py calvin_puzzle.json
+$   savilerow model.eprime calvin_puzzle_1.param -run-solver
+
+$ n: the grid is n rows by n columns
+given n : int
+
+$ squares are numbered by position: square (row r, column c) is number (r-1)*n+c
+$ moves: the allowed pairs of squares [from, to] for a move between consecutive numbers: three squares straight up, down, left or right, or two squares diagonally
+letting moves = [ [(r1-1)*n+c1, (r2-1)*n+c2] | r1 : int(1..n), c1 : int(1..n), r2 : int(1..n), c2 : int(1..n), ((|r1 - r2| = 3) /\ (c1 = c2)) \/ ((r1 = r2) /\ (|c1 - c2| = 3)) \/ ((|r1 - r2| = 2) /\ (|c1 - c2| = 2)) ]
+
+$ x[r,c]: the number written in the square at row r, column c, indices 1-based
 find x : matrix indexed by [int(1..n), int(1..n)] of int(1..n*n)
-find rowOf : matrix indexed by [int(1..n*n)] of int(1..n)
-find colOf : matrix indexed by [int(1..n*n)] of int(1..n)
-find cell : matrix indexed by [int(1..n*n)] of int(1..n*n)
-branching on [cell]
+$ square[k]: the position (numbered as above) of the square holding the number k (auxiliary)
+find square : matrix indexed by [int(1..n*n)] of int(1..n*n)
+
+branching on [square]
 such that
-$ every number from 1 to n*n is placed in exactly one square
+$ every number from 1 to n^2 is written in exactly one square
 allDiff(flatten(x)),
-allDiff(cell),
-$ each square holds the number that rowOf and colOf give for it
-forAll k : int(1..n*n) . ((cell[k] = (rowOf[k] - 1) * n + colOf[k]) /\ (x[rowOf[k], colOf[k]] = k)),
-$ the next number is placed vertically or horizontally exactly three squares away (a two square gap)
-$ or diagonally exactly two squares away (a one square gap)
-forAll k : int(1..n*n-1) . table([cell[k], cell[k+1]], MovesC)
+$ the square found for each number holds that number: square[x[r,c]] is the position of square (r,c)
+forAll r : int(1..n) . forAll c : int(1..n) . square[x[r,c]] = (r-1)*n+c,
+$ the positions of consecutive numbers are related by one of the allowed moves
+forAll k : int(1..n*n-1) . table([square[k], square[k+1]], moves)

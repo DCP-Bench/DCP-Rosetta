@@ -1,0 +1,50 @@
+language ESSENCE' 1.0
+$ csplib_008_vessel_loading: an Essence' model from DCP Rosetta.
+$
+$ Supply vessels carry containers between sites. The deck is a rectangle, and the containers are cuboids laid out in a single layer, all parallel to the sides of the deck. Each container occupies a rectangle on the deck, with its width across the deck and its length along it, in either orientation. The containers of certain classes must keep minimum distances from each other, in at least one of the two directions. Decide whether all the containers can be placed on the deck without overlapping and without breaking any of the separation constraints; containers may touch.
+$
+$ Save this file as model.eprime. Download `csplib_008_vessel_loading.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_008_vessel_loading.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_008_vessel_loading_1.param.solution`:
+$   python dcp_convert_essence.py csplib_008_vessel_loading.json
+$   savilerow model.eprime csplib_008_vessel_loading_1.param -run-solver
+
+$ width of the deck (its size across the vessel)
+given deck_width : int
+$ length of the deck (its size along the vessel)
+given deck_length : int
+$ number of containers
+given n_containers : int
+$ width[c]: width of container c, indices 1-based (the data's index 0 is width[1])
+given width : matrix indexed by [int(1..n_containers)] of int
+$ length[c]: length of container c, indices 1-based
+given length : matrix indexed by [int(1..n_containers)] of int
+$ separation_dim1: the number of classes, derived from the data (the size of separation; not a field of the reader's JSON)
+given separation_dim1 : int
+$ classes[c]: class of container c, classes numbered from 1 as in the data
+given classes : matrix indexed by [int(1..n_containers)] of int(1..separation_dim1)
+$ separation[a, b]: distance that containers of classes a and b must keep in at least one of the two directions (classes 1-based, the data's separation[0][0] is separation[1, 1])
+given separation : matrix indexed by [int(1..separation_dim1), int(1..separation_dim1)] of int
+
+$ left[c], right[c]: the container c occupies the deck from left[c] to right[c] across the width of the deck
+find left : matrix indexed by [int(1..n_containers)] of int(0..deck_width)
+find right : matrix indexed by [int(1..n_containers)] of int(0..deck_width)
+$ bottom[c], top[c]: the container c occupies the deck from bottom[c] to top[c] along the length of the deck
+find bottom : matrix indexed by [int(1..n_containers)] of int(0..deck_length)
+find top : matrix indexed by [int(1..n_containers)] of int(0..deck_length)
+
+branching on [left, bottom]
+
+such that
+$ each container is placed in one of its two orientations: its width across the deck and its length along it, or the reverse
+forAll c : int(1..n_containers) . ((right[c] - left[c] = width[c] /\ top[c] - bottom[c] = length[c]) \/ (right[c] - left[c] = length[c] /\ top[c] - bottom[c] = width[c])),
+$ two containers do not overlap: one lies beside the other across the deck or along it, and in that direction they keep the separation their classes require (both separations are respected, so the larger one applies)
+forAll c : int(1..n_containers) . forAll d : int(1..n_containers) . (c < d) -> (
+    (right[c] + separation[classes[c], classes[d]] <= left[d] /\ right[c] + separation[classes[d], classes[c]] <= left[d]) \/
+    (left[c] >= right[d] + separation[classes[c], classes[d]] /\ left[c] >= right[d] + separation[classes[d], classes[c]]) \/
+    (top[c] + separation[classes[c], classes[d]] <= bottom[d] /\ top[c] + separation[classes[d], classes[c]] <= bottom[d]) \/
+    (bottom[c] >= top[d] + separation[classes[c], classes[d]] /\ bottom[c] >= top[d] + separation[classes[d], classes[c]])),
+$ symmetry breaking: of two containers that are identical (same width, length and class), the earlier one lies no further across the deck than the later one
+forAll c : int(1..n_containers) . forAll d : int(1..n_containers) . (c < d /\ width[c] = width[d] /\ length[c] = length[d] /\ classes[c] = classes[d]) -> left[c] <= left[d]

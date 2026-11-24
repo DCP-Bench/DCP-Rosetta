@@ -28,7 +28,16 @@ Set on the model with `model.objective = expr` (a variable, a linear expression,
 
 The objective reported with each solution is `model.objective.x`: Python-MIP evaluates the
 objective expression on the solution, constant included (CBC itself never sees the
-constant), in the model's own sense. The runner reports no incumbents.
+constant), in the model's own sense.
+
+The runner reports no incumbents: with mip 2.0.0 and cbcbox 2.935 there is no exact source for them
+that leaves the search as it is (checked 2026-11-24). `mip.IncumbentUpdater` exists but mip 2.0.0
+never registers it with CBC (its CBC incumbent callback is an empty stub, and `Model` has no
+`incumbent_updater`). Registering a callback with CBC directly fails: through cffi (mip's own
+`store_search_progress_log = True`, or `Cbc_addIncCallback`), `Cbc_solve` dies with SIGSEGV; through
+ctypes it does not crash but is never called, although the log shows improving solutions. CBC's log
+(`verbose = 1`) marks each new solution with a `★` row, flushed as it is found, but prints its value to
+six significant digits (`3.94376e+07` for an eight-digit value), so the objective cannot be read exactly from it.
 
 ## Solving
 

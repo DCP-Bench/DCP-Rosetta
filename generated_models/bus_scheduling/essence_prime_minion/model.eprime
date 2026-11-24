@@ -1,11 +1,27 @@
 language ESSENCE' 1.0
-$ Minimum number of 8-hour bus shifts over six 4-hour time slots of a day, cyclic, so that each slot's demand is met.
-given demands : matrix indexed by [int(1..6)] of int(0..)
-find x : matrix indexed by [int(1..6)] of int(0..100)
+$ bus_scheduling: an Essence' model from DCP Rosetta.
+$
+$ Progress City wants a mass-transit bus system with as few buses as possible. The day is split into six successive 4-hour time slots, and the demand for buses is constant over each slot. Each bus works 8 successive hours, so a bus that starts in one slot also works in the next one. The day is cyclic: the first slot follows the last. In each slot, the buses working in it (those starting in that slot and those that started in the slot before) must meet the demand for that slot. Find the minimum total number of buses.
+$
+$ Save this file as model.eprime. Download `bus_scheduling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/bus_scheduling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `bus_scheduling_1.param.solution`:
+$   python dcp_convert_essence.py bus_scheduling.json
+$   savilerow model.eprime bus_scheduling_1.param -run-solver
 
-branching on [x]
-minimising (sum i : int(1..6) . x[i])
+$ demands_dim1: the number of 4-hour time slots in the day (derived from the data: the length of demands, not a field of the reader's JSON)
+given demands_dim1 : int(1..)
+$ demands[i]: the number of buses needed in time slot i (4 hours each), indices 1-based
+given demands : matrix indexed by [int(1..demands_dim1)] of int
+
+$ the sum of all demands, an upper bound on the number of buses starting in one slot
+letting top = sum(demands)
+$ x[i]: the number of buses that start in time slot i
+find x : matrix indexed by [int(1..demands_dim1)] of int(0..top)
+
+minimising (sum i : int(1..demands_dim1) . x[i])
 such that
-$ each bus works 8 successive hours, so it covers its start slot and the next slot (the day wraps around)
-$ the number of buses available in each 4-hour interval meets the demand for that interval
-forAll i : int(1..6) . ((x[i] + x[(i+4)%6+1]) >= demands[i])
+$ in every slot i, the buses working (those starting in slot i and those that started in the slot before, cyclically: slot 1 follows the last slot) meet the demand
+forAll i : int(1..demands_dim1) . x[i] + x[(i + demands_dim1 - 2) % demands_dim1 + 1] >= demands[i]

@@ -1,14 +1,46 @@
-% Among: exactly m of the values in x lie in the set v; every value is 0..7.
+% among: a Picat model from DCP Rosetta.
+%
+% Find an array x of n integers between 0 and 7, inclusive, such that exactly m of them take one of
+% the values in v. The other elements may take any other value in that range.
+%
+% Save this file as model.pi. Download `among.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/among.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py among.json
+%   picat model.pi among_1.dat
+%
+% Data.get(n): the length of x; Data.get(m): how many elements of x take a value in v;
+% Data.get(v): the list of values (lists, indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),
-    M = Data.get(m),
-    V = Data.get(v),
+    N = Data.get(n),                       % the number of elements of x
+    M = Data.get(m),                       % how many of them take a value in v
+    Values = remove_dups(Data.get(v)),     % the distinct values of v
     X = new_list(N),
-    X :: 0..7,
-    % the number of (position, value of v) pairs where x takes that value is m
-    sum([X[I] #= J : I in 1..N, J in V]) #= M,
+    X :: 0..7,                             % each element is an integer between 0 and 7
+    % Hit[I] = 1 when element I takes one of the values in v
+    Hit = new_list(N),
+    Hit :: 0..1,
+    foreach (I in 1..N)
+        Hit[I] #<=> (sum([X[I] #= V : V in Values]) #> 0)
+    end,
+    % exactly m elements take a value in v
+    sum(Hit) #= M,
     Vars = X,
     Outputs = [x = X],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

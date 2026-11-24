@@ -1,22 +1,39 @@
-% Progressive party: some boats are hosts and keep their crew on board; the crews of the
-% other boats visit one host per period. Capacities must hold, a guest never visits a
-% host twice, two crews meet at most once, and the number of hosts is minimised.
-% Encoded with 0/1 variables and sat: a clause-learning solver proves the optimum far
-% faster than cp's search on this tightly packed problem.
+% csplib_013_progressive_party_problem: a Picat model from DCP Rosetta.
+%
+% A yacht club timetables a party. Certain boats are designated hosts, and the crews of the
+% remaining boats (the guests) in turn visit the host boats over several successive half-hour
+% periods. The crew of a host boat stays on board to act as host, while the crew of a guest boat
+% visits several hosts. Every boat holds a limited number of people at a time (its capacity), and
+% crew sizes differ. The total number of people aboard a boat, including the host crew and the
+% guest crews, must not exceed its capacity. A guest boat cannot revisit a host, and two crews
+% cannot meet more than once. Minimise the number of host boats.
+%
+% Save this file as model.pi. Download `csplib_013_progressive_party_problem.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_013_progressive_party_problem.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_013_progressive_party_problem.json
+%   picat model.pi csplib_013_progressive_party_problem_1.dat
+%
+% Data.get(n_boats): the number of boats; Data.get(n_periods): the number of periods;
+% Data.get(capacity): the capacity of each boat (a list indexed from 1); Data.get(crew_size): the
+% number of people in the crew of each boat (a list indexed from 1).
+% Encoded with 0/1 variables and sat: a clause-learning solver proves the optimum far faster
+% than cp's search on this tightly packed problem.
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
     NBoats = Data.get(n_boats),
     NPeriods = Data.get(n_periods),
-    Capacity = Data.get(capacity),     % number of people each boat can hold at a time
+    Capacity = Data.get(capacity),
     CrewSize = Data.get(crew_size),
-    % IsHost[b] = 1 if boat b is a host
+    % IsHost[B] = 1 if boat B is a host
     IsHost = new_list(NBoats),
     IsHost :: 0..1,
-    % At[p, c, b] = 1 if the crew of boat c is aboard boat b in period p
+    % At[P, C, B] = 1 if the crew of boat C is aboard boat B in period P
     At = new_array(NPeriods, NBoats, NBoats),
     At :: 0..1,
-    % in each period every crew is aboard exactly one boat
+    % in every period each crew is aboard exactly one boat
     foreach (P in 1..NPeriods, C in 1..NBoats)
         sum([At[P, C, B] : B in 1..NBoats]) #= 1
     end,
@@ -24,31 +41,31 @@ model(Data, Vars, Outputs, Options) =>
     foreach (B in 1..NBoats, P in 1..NPeriods)
         IsHost[B] #=> At[P, B, B]
     end,
-    % a boat that is not a host is never visited
+    % only host boats are visited
     foreach (P in 1..NPeriods, C in 1..NBoats, B in 1..NBoats)
         At[P, C, B] #=> IsHost[B]
     end,
-    % in each period, the crews aboard a boat never exceed its capacity
+    % in every period the people aboard a boat never exceed its capacity
     foreach (P in 1..NPeriods, B in 1..NBoats)
         sum([CrewSize[C] * At[P, C, B] : C in 1..NBoats]) #=< Capacity[B]
     end,
-    % a crew does not visit the same other boat twice
+    % a guest boat does not visit the same host twice
     foreach (C in 1..NBoats, B in 1..NBoats, C != B)
         sum([At[P, C, B] : P in 1..NPeriods]) #=< 1
     end,
-    % two crews are together (on the same boat) in at most one period
+    % two crews meet (are aboard the same boat) in at most one period
     foreach (C1 in 1..NBoats - 1, C2 in C1 + 1..NBoats)
         sum([At[P, C1, B] #/\ At[P, C2, B] : P in 1..NPeriods, B in 1..NBoats]) #=< 1
     end,
-    % implied: in every period all crews are aboard hosts, so the hosts' capacities
-    % must add up to the total crew size
+    % implied: all crews aboard hosts in a period, so the hosts' capacities must add up to
+    % at least the total crew size
     sum([Capacity[B] * IsHost[B] : B in 1..NBoats]) #>= sum(CrewSize),
-    % the number of hosts to minimise
+    % the number of hosts, to be minimised
     NHosts #= sum(IsHost),
-    % implied: a guest visits a different host in every period, so with any guest there
-    % are at least as many hosts as periods
+    % implied: a guest visits a different host in every period, so if there is a guest there
+    % are at least as many hosts as periods; with no guest every boat is a host
     (NHosts #>= NPeriods) #\/ (NHosts #= NBoats),
-    % Visits[p, c] = the boat (numbered from 0) that the crew of boat c is on in period p
+    % Visits[P, C] = the boat, numbered from 0, that the crew of boat C is aboard in period P
     Visits = new_array(NPeriods, NBoats),
     Visits :: 0..NBoats - 1,
     foreach (P in 1..NPeriods, C in 1..NBoats)
@@ -56,4 +73,18 @@ model(Data, Vars, Outputs, Options) =>
     end,
     Vars = [IsHost, At, Visits],
     Outputs = [is_host = IsHost, visits = Visits],
+    % minimise the number of host boats
     Options = [$min(NHosts)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

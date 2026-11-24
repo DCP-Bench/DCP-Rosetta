@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791952143.2515426,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794645781.5358002,
     "problem_id": "bin_packing",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.011207653034944087,
-        "execution_wall_seconds": 0.9997630889993161,
+        "checking_seconds": 0.037009214982390404,
+        "execution_wall_seconds": 5.283813452988397,
         "first_solution": {
           "bins": [
             0,
@@ -58,9 +88,12 @@
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6998033829731867,
+        "reference_setup_seconds": 2.5277599960099906,
         "runner_status": {
+          "build_seconds": 1.7494895458221436,
           "detail": "",
+          "main_seconds": 1.9292743080295622,
+          "read_seconds": 0.008117933000903577,
           "status": "limit",
           "type": "status"
         },
@@ -70,8 +103,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015675569011364132,
-        "execution_wall_seconds": 0.9498135829926468,
+        "checking_seconds": 0.013833829027134925,
+        "execution_wall_seconds": 4.994220182008576,
         "first_solution": {
           "bins": [
             0,
@@ -88,9 +121,12 @@
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6694721360108815,
+        "reference_setup_seconds": 2.1261038729571737,
         "runner_status": {
+          "build_seconds": 1.570561408996582,
           "detail": "",
+          "main_seconds": 1.9136106990044937,
+          "read_seconds": 0.0007518230122514069,
           "status": "limit",
           "type": "status"
         },
@@ -100,8 +136,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02401106496108696,
-        "execution_wall_seconds": 6.933863411017228,
+        "checking_seconds": 0.11888416396686807,
+        "execution_wall_seconds": 37.161161449039355,
         "first_solution": {
           "bins": [
             0,
@@ -135,9 +171,12 @@
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7409623599960469,
+        "reference_setup_seconds": 2.012840975949075,
         "runner_status": {
+          "build_seconds": 2.1598806381225586,
           "detail": "",
+          "main_seconds": 34.115347255952656,
+          "read_seconds": 0.0007570039597339928,
           "status": "limit",
           "type": "status"
         },
@@ -147,8 +186,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.010012041951995343,
-        "execution_wall_seconds": 1.000263296009507,
+        "checking_seconds": 0.04945786501048133,
+        "execution_wall_seconds": 4.7401304130326025,
         "first_solution": {
           "bins": [
             0,
@@ -172,9 +211,12 @@
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6976297399960458,
+        "reference_setup_seconds": 2.2996054079849273,
         "runner_status": {
+          "build_seconds": 1.445781946182251,
           "detail": "",
+          "main_seconds": 1.6873855530284345,
+          "read_seconds": 0.0075269140070304275,
           "status": "limit",
           "type": "status"
         },
@@ -184,8 +226,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.069459630001802,
-        "execution_wall_seconds": 1.5120919549954124,
+        "checking_seconds": 0.35928723705001175,
+        "execution_wall_seconds": 6.148043391003739,
         "first_solution": {
           "bins": [
             0,
@@ -239,9 +281,12 @@
           "bins"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7675147589761764,
+        "reference_setup_seconds": 2.471560037054587,
         "runner_status": {
+          "build_seconds": 2.822021245956421,
           "detail": "",
+          "main_seconds": 3.1987909979652613,
+          "read_seconds": 0.006663067964836955,
           "status": "limit",
           "type": "status"
         },
@@ -253,21 +298,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "bcbc1cc2823bcf38a87c4fcbd9e368aaf49c9c161e7ec46f25c2aeefd0a986f7",
+    "model_hash": "6b7c11c83554d2e0bf004771ff9cacd22c813641d1aa5b40342754447c45b398",
     "problem_id": "bin_packing",
     "reason": "accepted",
-    "reference_hash": "18da9eb726f68ee79c3618601a078962d0dfa967f3d50ad1c4e40343bbf29fe2",
+    "reference_hash": "dd1c60eac4b60c786a431293d8ff3dd1d5163aea4d732a842b21fd99ce36fe83",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -278,11 +323,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 15.46141056198394,
+    "total_wall_seconds": 72.25249151804019,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.eprime",

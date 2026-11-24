@@ -1,23 +1,43 @@
-vocabulary {
-    group_size: () -> Int
-    n_groups: () -> Int
-    n_weeks: () -> Int
-    type Golfer <: Int
-    Golfer_size: () -> Int
-    type Range_n_weeks <: Int
-    assign: Golfer * Range_n_weeks -> Int
+// csplib_010_social_golfers_problem: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The coordinator of a local golf club has n_groups * group_size golfers, each of whom plays golf once a week, and always
+// in n_groups groups of group_size golfers. Make a schedule of play for these golfers over n_weeks weeks, such that no
+// golfer plays in the same group as any other golfer on more than one occasion.
+//
+// Save this file as model.idp. Download `csplib_010_social_golfers_problem.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_010_social_golfers_problem.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_010_social_golfers_problem.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_n_weeks <: Int             // the weeks, numbered 1 to n_weeks
+    type Golfer <: Int                    // the golfers, numbered 1 to n_groups * group_size
+    type Group <: Int                     // the groups of each week, numbered 1 to n_groups
+    Golfer_size: () -> Int                // the number of golfers: n_groups * group_size (auxiliary)
+    Group_size: () -> Int                 // the number of groups: n_groups (auxiliary)
+    n_groups: () -> Int                   // the number of groups in each week
+    group_size: () -> Int                 // the number of golfers in each group
+    grp: Golfer * Range_n_weeks -> Group  // grp(g, w): the group of golfer g in week w, numbered from 1 (auxiliary)
+    assign: Golfer * Range_n_weeks -> Int // assign(g, w): the group of golfer g in week w, numbered from 0
 }
 
-theory {
-    // there are groups of a specific number of golfers, n_groups groups of group_size each
-    Golfer_size() = group_size() * n_groups().
+theory T:V {
+    Golfer_size() = n_groups() * group_size().
+    Group_size() = n_groups().
 
-    // assign[i][j] is the group number of golfer i in week j, 0-indexed
-    ! p in Golfer, w in Range_n_weeks: 0 =< assign(p, w) & assign(p, w) =< n_groups() - 1.
+    // the golfers are in n_groups groups of group_size golfers each week
+    ! w in Range_n_weeks, k in Group: #{ g in Golfer: grp(g, w) = k } = group_size().
 
-    // each group in each week holds exactly group_size golfers
-    ! p in Golfer, w in Range_n_weeks: #{ q in Golfer: assign(q, w) = assign(p, w) } = group_size().
+    // no two golfers are in the same group on more than one week
+    ! g, h in Golfer: g < h => #{ w in Range_n_weeks: grp(g, w) = grp(h, w) } =< 1.
 
-    // no golfer plays in the same group as any other golfer on more than one occasion
-    ! p, q in Golfer: p ~= q => #{ w in Range_n_weeks: assign(p, w) = assign(q, w) } =< 1.
+    // the output numbers the groups from 0
+    ! g in Golfer, w in Range_n_weeks: assign(g, w) = grp(g, w) - 1.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

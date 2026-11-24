@@ -1,23 +1,41 @@
 language ESSENCE' 1.0
-$ Revenue maximisation: choose how many units of each itinerary package to sell so that the seats reserved on each flight leg stay within its capacity, and total revenue is as large as possible.
-given demand_dim1 : int
-letting n_packages = demand_dim1
-given demand : matrix indexed by [int(1..n_packages)] of int
-given revenue : matrix indexed by [int(1..n_packages)] of int
-given available_seats_dim1 : int
-letting n_legs = available_seats_dim1
-given available_seats : matrix indexed by [int(1..n_legs)] of int
-given delta_dim1, delta_dim2 : int
-given delta : matrix indexed by [int(1..delta_dim1), int(1..delta_dim2)] of int
-find packages_to_sell : matrix indexed by [int(1..n_packages)] of int(0..sum(demand))
-find max_revenue : int(0..1000000000)
+$ revenue_maximization: an Essence' model from DCP Rosetta.
+$
+$ We have a set of flight legs, each one-way non-stop, with a limited passenger capacity. A set of flight
+$ itineraries is sold as packages, each at a given price, with an estimated demand. Each package uses some of the legs and
+$ reserves seats on them. Find how many units of each package to sell so that the total revenue is as large as possible.
+$
+$ Save this file as model.eprime. Download `revenue_maximization.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/revenue_maximization.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `revenue_maximization_1.param.solution`:
+$   python dcp_convert_essence.py revenue_maximization.json
+$   savilerow model.eprime revenue_maximization_1.param -run-solver
 
-branching on [packages_to_sell]
+$ demand_dim1: the number of packages (derived from the data)
+given demand_dim1 : int
+$ available_seats_dim1: the number of flight legs (derived from the data)
+given available_seats_dim1 : int
+$ demand[p]: the estimated demand for package p (indices from 1)
+given demand : matrix indexed by [int(1..demand_dim1)] of int(0..)
+$ revenue[p]: the price of package p
+given revenue : matrix indexed by [int(1..demand_dim1)] of int(0..)
+$ available_seats[l]: the passenger seats on leg l
+given available_seats : matrix indexed by [int(1..available_seats_dim1)] of int(0..)
+$ delta[p,l]: 1 when package p uses leg l, else 0 (indices from 1)
+given delta : matrix indexed by [int(1..demand_dim1), int(1..available_seats_dim1)] of int(0..1)
+
+$ packages_to_sell[p]: the number of units of package p to sell (indices from 1)
+find packages_to_sell : matrix indexed by [int(1..demand_dim1)] of int(0..max(demand))
+$ max_revenue: the total revenue of the units sold
+find max_revenue : int(0..(sum p : int(1..demand_dim1) . revenue[p] * demand[p]))
+
 maximising max_revenue
 such that
-$ the number of units sold of each package cannot exceed its estimated demand
-forAll p : int(1..n_packages) . packages_to_sell[p] <= demand[p],
-$ the seats reserved on each flight leg, summed over the packages that use the leg, cannot exceed the seats available on it
-forAll l : int(1..n_legs) . (sum p : int(1..n_packages) . delta[p, l] * packages_to_sell[p]) <= available_seats[l],
-$ the total revenue is the price of each package times the units sold, summed over the packages
-max_revenue = (sum p : int(1..n_packages) . revenue[p] * packages_to_sell[p])
+$ no more units of a package are sold than its estimated demand
+forAll p : int(1..demand_dim1) . packages_to_sell[p] <= demand[p],
+$ the seats reserved on each leg do not exceed the seats available on it
+forAll l : int(1..available_seats_dim1) . (sum p : int(1..demand_dim1) . delta[p,l] * packages_to_sell[p]) <= available_seats[l],
+$ the revenue is the price of each package times the units sold
+max_revenue = (sum p : int(1..demand_dim1) . revenue[p] * packages_to_sell[p])

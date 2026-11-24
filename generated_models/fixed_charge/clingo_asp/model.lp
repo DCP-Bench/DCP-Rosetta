@@ -1,40 +1,52 @@
-% Fixed charge production: a company makes shirts, shorts and pants. Each product uses labor and
-% cloth, of which the company has a limited capacity, and can be made only on a rented machine.
-% Choose which machines to rent and how many of each product to make so that the profit, after
-% paying the rent, is as large as possible.
-% Instance facts: num_products(P), num_machines(M), renting_cost(M, C): rent of machine M,
-% capacity(R, C): available amount of resource R (labor, cloth), max_production(Q),
-% product(P, 0, Profit) and product(P, 1, Machine): profit of product P and the machine it needs,
-% use(P, R, U): amount of resource R one unit of product P uses.
-prod(0..P-1) :- num_products(P).
-machine(0..M-1) :- num_machines(M).
-resource(R) :- capacity(R,_).
+% fixed_charge: a clingo model from DCP Rosetta.
+%
+% A company manufactures shirts, shorts, and pants. Each product requires a number of hours of labor and a certain amount of cloth, and the company has a limited capacity of both. In addition, all of these products can be manufactured only by renting an appropriate machine, each product having its own machine type. The renting cost of a machine is paid once, however much is made on it. The profit on the products (excluding the cost of renting the equipment) is also known, per unit, and each product is made in a whole number of units. The company would like to maximize its profit: the profit on the units made, less the cost of the machines rented.
+%
+% Save this file as model.lp. Download `fixed_charge.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/fixed_charge.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py fixed_charge.json
+%   python -m clingo model.lp fixed_charge_1.lp
 
-% rent(M): machine M is rented.
-{ rent(M) : machine(M) }.
+% Input: shirt(P), shorts(P), pants(P) hold the index P of each product; shirtM(M), shortM(M), pantM(M)
+% hold the index M of the machine type each product needs; renting_cost(M, C) holds the renting cost C of
+% machine M; product(P, 0, V) holds the profit V per unit of product P (the other column is not used);
+% use(P, R, U) holds the amount U of resource R (0 labor, 1 cloth) per unit of product P; capacity(R, C)
+% holds the capacity C of resource R; max_production(B) holds the largest number B of units of one product.
 
-% made(P, V): at least V units of product P are made, for V up to the production limit. The
-% number made is written in unary, so that the sums below are propagated tightly.
-{ made(P,V) } :- prod(P), max_production(Q), V = 1..Q.
-:- made(P,V), V > 1, not made(P,V - 1).
+% the products are those that have a profit per unit
+prod(P) :- product(P, 0, _).
 
-% The resources used by all products stay within the capacity of each resource.
-:- resource(R), capacity(R,C), #sum { U,P,V : made(P,V), use(P,R,U) } > C.
+% the machine type each product needs
+machine_of(P, M) :- shirt(P), shirtM(M).
+machine_of(P, M) :- shorts(P), shortM(M).
+machine_of(P, M) :- pants(P), pantM(M).
 
-% A product can be made only if the machine it needs is rented.
-:- made(P,1), product(P,1,M), not rent(M).
+% the profit per unit of each product
+profit(P, V) :- product(P, 0, V).
 
-% z: the profit of the products made minus the rent of the machines rented, to be maximised.
-% The problem declares z between 0 and 10000. The value is chosen and tied to the profit and
-% rent by one sum, because defining it with a sum assignment would ground one atom for every
-% possible total. The tags p, r and z keep the three kinds of terms apart in the sum.
-1 { z(Z) : Z = 0..10000 } 1.
-:- #sum { Profit,p,P,V : made(P,V), product(P,0,Profit) ;
-          -C,r,M : rent(M), renting_cost(M,C) ;
-          -Z,z,Z : z(Z) } != 0.
-#maximize { Z,z : z(Z) }.
+% the number of units made of each product is between 0 and the largest production
+1 { made(P, X) : X = 0..B } 1 :- prod(P), max_production(B).
 
-% The production plan and the rented machines are not part of the answer, so solutions are
-% projected onto z.
-#project z/1.
+% a machine is rented when a product that needs it is made
+rented(M) :- machine_of(P, M), made(P, X), X > 0.
+
+% the labor and cloth used by the units made do not exceed the capacity of each resource
+:- capacity(R, C), #sum { U*X, P : made(P, X), use(P, R, U) } > C.
+
+% the total profit less the renting cost of the machines rented, which is to be maximized
+#maximize { V*X, product, P : made(P, X), profit(P, V); -C, machine, M : rented(M), renting_cost(M, C) }.
+
+% the bounds of the value z: the largest profit when every product is made at the largest production,
+% and the largest renting cost paid, which is the sum of all the machines' renting costs
+top(S) :- S = #sum { V*B, P : profit(P, V), max_production(B) }.
+bottom(-R) :- R = #sum { C, M : renting_cost(M, C) }.
+
+% z is the maximum profit: it is the total profit less the renting cost of the machines rented. The bounded
+% choice and check constraint below are an encoding chosen on purpose: writing z as one #sum assignment over
+% the choice atoms exhausts grounding (timeouts).
+1 { z(Z) : Z = L..T } 1 :- bottom(L), top(T).
+:- z(Z), Z != #sum { V*X, product, P : made(P, X), profit(P, V); -C, machine, M : rented(M), renting_cost(M, C) }.
+
 #show z/1.

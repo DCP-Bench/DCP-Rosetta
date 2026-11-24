@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-sonnet-5-5 (Claude Code, model-generator campaign)",
-    "attempt_id": "attempt-001",
-    "created_at": 1790710863.7098532,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794442333.6983173,
     "problem_id": "bus_scheduling",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,41 +18,153 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20260929T1914Z-hermax-exact-pysat-clingo-c5e1",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "f2327fe7157844dee393279f9fd649d0a0dacbb2",
+      "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "0aa4dc1d5ddd85d7c3908d82d21908249be9c71b",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.014069000026211143,
-        "execution_wall_seconds": 2.585906599997543,
+        "checking_seconds": 0.0036451140185818076,
+        "execution_wall_seconds": 0.6948477400001138,
         "first_solution": {
           "x": [
             4,
-            6,
-            4,
             7,
-            5,
+            3,
+            6,
+            6,
             0
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0005572290101554245,
+            89
+          ],
+          [
+            0.0006858390115667135,
+            88
+          ],
+          [
+            0.0008099369879346341,
+            58
+          ],
+          [
+            0.0009303829865530133,
+            57
+          ],
+          [
+            0.0010705699969548732,
+            55
+          ],
+          [
+            0.0011982959986198694,
+            54
+          ],
+          [
+            0.0012699269864242524,
+            52
+          ],
+          [
+            0.0013124450051691383,
+            51
+          ],
+          [
+            0.001355165004497394,
+            41
+          ],
+          [
+            0.0014937249943614006,
+            40
+          ],
+          [
+            0.0015657480107620358,
+            38
+          ],
+          [
+            0.001963911985512823,
+            36
+          ],
+          [
+            0.002011604985455051,
+            34
+          ],
+          [
+            0.0021330940071493387,
+            33
+          ],
+          [
+            0.0025822200113907456,
+            32
+          ],
+          [
+            0.0027426420128904283,
+            31
+          ],
+          [
+            0.002784776996122673,
+            30
+          ],
+          [
+            0.0028500529879238456,
+            29
+          ],
+          [
+            0.002904917986597866,
+            28
+          ],
+          [
+            0.0029861080111004412,
+            27
+          ],
+          [
+            0.0040762629942037165,
+            26
+          ]
+        ],
         "instance_hash": "c2ef71348e71b4df32c4e4ff71c6d65696a20509701e7fa2f8934f7e3a5aa148",
         "is_optimization": true,
         "oom_killed": false,
@@ -57,9 +173,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7711457000114024,
+        "reference_setup_seconds": 0.32668796900543384,
         "runner_status": {
+          "build_seconds": 0.0019046489906031638,
           "detail": "",
+          "main_seconds": 0.028592073009349406,
+          "read_seconds": 0.00010198101517744362,
           "status": "limit",
           "type": "status"
         },
@@ -69,19 +188,157 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.012580300099216402,
-        "execution_wall_seconds": 1.6044291999423876,
+        "checking_seconds": 0.0035845139937009662,
+        "execution_wall_seconds": 0.5965894489781931,
         "first_solution": {
           "x": [
+            5,
+            4,
+            8,
             1,
-            6,
-            6,
             1,
-            1,
-            9
+            5
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0005697650194633752,
+            105
+          ],
+          [
+            0.0007043720106594265,
+            90
+          ],
+          [
+            0.0008469799940939993,
+            89
+          ],
+          [
+            0.0009556279983371496,
+            82
+          ],
+          [
+            0.001058754016412422,
+            81
+          ],
+          [
+            0.0011675660207401961,
+            80
+          ],
+          [
+            0.0012714129989035428,
+            79
+          ],
+          [
+            0.0013241000124253333,
+            78
+          ],
+          [
+            0.001352326013147831,
+            77
+          ],
+          [
+            0.001397982006892562,
+            76
+          ],
+          [
+            0.0014824440004304051,
+            75
+          ],
+          [
+            0.0015259520150721073,
+            74
+          ],
+          [
+            0.0015659120108466595,
+            63
+          ],
+          [
+            0.0016087290132418275,
+            62
+          ],
+          [
+            0.0016761860169935971,
+            61
+          ],
+          [
+            0.001704976020846516,
+            60
+          ],
+          [
+            0.0017280540196225047,
+            58
+          ],
+          [
+            0.0018352570186834782,
+            48
+          ],
+          [
+            0.0018722870154306293,
+            47
+          ],
+          [
+            0.0019004640053026378,
+            46
+          ],
+          [
+            0.0019398290023673326,
+            45
+          ],
+          [
+            0.001971737015992403,
+            44
+          ],
+          [
+            0.0020041330135427415,
+            37
+          ],
+          [
+            0.002035848010564223,
+            36
+          ],
+          [
+            0.0020861600060015917,
+            35
+          ],
+          [
+            0.002133008005330339,
+            34
+          ],
+          [
+            0.002174563007429242,
+            33
+          ],
+          [
+            0.002211917017120868,
+            30
+          ],
+          [
+            0.0022662749979645014,
+            29
+          ],
+          [
+            0.0023024420079309493,
+            28
+          ],
+          [
+            0.002340895007364452,
+            27
+          ],
+          [
+            0.0023810660059098154,
+            26
+          ],
+          [
+            0.002881229011109099,
+            25
+          ],
+          [
+            0.0029276639979798347,
+            24
+          ]
+        ],
         "instance_hash": "058e7990e3bcf9137036587c7be5ad8f595d135235f38fd1b09e892d242647e4",
         "is_optimization": true,
         "oom_killed": false,
@@ -90,9 +347,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9132579999277368,
+        "reference_setup_seconds": 0.3135100990184583,
         "runner_status": {
+          "build_seconds": 0.0024932600208558142,
           "detail": "",
+          "main_seconds": 0.016746770997997373,
+          "read_seconds": 0.0001149999734479934,
           "status": "limit",
           "type": "status"
         },
@@ -102,19 +362,173 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015844899928197265,
-        "execution_wall_seconds": 1.7057197999674827,
+        "checking_seconds": 0.003454838995821774,
+        "execution_wall_seconds": 0.6490337070135865,
         "first_solution": {
           "x": [
-            5,
+            4,
             0,
-            13,
-            2,
+            12,
+            3,
             0,
-            2
+            3
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0005310580017976463,
+            84
+          ],
+          [
+            0.0006088170048315078,
+            83
+          ],
+          [
+            0.0006790320039726794,
+            82
+          ],
+          [
+            0.0008090170158538967,
+            81
+          ],
+          [
+            0.0008483109995722771,
+            75
+          ],
+          [
+            0.0008904550049919635,
+            73
+          ],
+          [
+            0.0009210339921992272,
+            72
+          ],
+          [
+            0.0009575060103088617,
+            70
+          ],
+          [
+            0.0009903899917844683,
+            68
+          ],
+          [
+            0.001022312993882224,
+            67
+          ],
+          [
+            0.0010533030144870281,
+            65
+          ],
+          [
+            0.0010846290097106248,
+            64
+          ],
+          [
+            0.0011133670050185174,
+            63
+          ],
+          [
+            0.0013377350114751607,
+            62
+          ],
+          [
+            0.0013800500018987805,
+            60
+          ],
+          [
+            0.0014311610138975084,
+            59
+          ],
+          [
+            0.0014777409960515797,
+            58
+          ],
+          [
+            0.0015144390054047108,
+            57
+          ],
+          [
+            0.0015577950107399374,
+            55
+          ],
+          [
+            0.0016147260030265898,
+            51
+          ],
+          [
+            0.0016529790009371936,
+            50
+          ],
+          [
+            0.0016854550049174577,
+            49
+          ],
+          [
+            0.0017163369921036065,
+            48
+          ],
+          [
+            0.0017518140084575862,
+            44
+          ],
+          [
+            0.0018211780115962029,
+            43
+          ],
+          [
+            0.002312510012416169,
+            40
+          ],
+          [
+            0.002362778002861887,
+            36
+          ],
+          [
+            0.002404764003586024,
+            35
+          ],
+          [
+            0.002450458996463567,
+            34
+          ],
+          [
+            0.00249365100171417,
+            31
+          ],
+          [
+            0.002528579003410414,
+            30
+          ],
+          [
+            0.0025647300062701106,
+            29
+          ],
+          [
+            0.0031603480165358633,
+            28
+          ],
+          [
+            0.003942370996810496,
+            27
+          ],
+          [
+            0.003989399003330618,
+            26
+          ],
+          [
+            0.004052456992212683,
+            24
+          ],
+          [
+            0.00449477499932982,
+            23
+          ],
+          [
+            0.0068210189929232,
+            22
+          ]
+        ],
         "instance_hash": "ce5ace1ba688ab87a54a00756f88430dcd0cd7dba4ad50cad0b0cdacd821d239",
         "is_optimization": true,
         "oom_killed": false,
@@ -123,9 +537,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8936452000634745,
+        "reference_setup_seconds": 0.30865119499503635,
         "runner_status": {
+          "build_seconds": 0.002233489998616278,
           "detail": "",
+          "main_seconds": 0.011446726974099874,
+          "read_seconds": 0.00010839299648068845,
           "status": "limit",
           "type": "status"
         },
@@ -135,19 +552,113 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015593299991451204,
-        "execution_wall_seconds": 1.7655752000864595,
+        "checking_seconds": 0.004566706018522382,
+        "execution_wall_seconds": 0.6973260740051046,
         "first_solution": {
           "x": [
-            8,
-            3,
-            5,
             9,
+            2,
+            2,
+            12,
             1,
             0
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0005603140161838382,
+            76
+          ],
+          [
+            0.000691037013893947,
+            64
+          ],
+          [
+            0.0008469730091746897,
+            58
+          ],
+          [
+            0.0009606560051906854,
+            53
+          ],
+          [
+            0.0011272570118308067,
+            52
+          ],
+          [
+            0.0012566040095407516,
+            50
+          ],
+          [
+            0.0013708010083064437,
+            48
+          ],
+          [
+            0.0014057850057724863,
+            45
+          ],
+          [
+            0.0014429200091399252,
+            44
+          ],
+          [
+            0.00206511199939996,
+            43
+          ],
+          [
+            0.003065105003770441,
+            41
+          ],
+          [
+            0.003532754024490714,
+            39
+          ],
+          [
+            0.0035921520029660314,
+            36
+          ],
+          [
+            0.013438918016618118,
+            35
+          ],
+          [
+            0.015740065020509064,
+            34
+          ],
+          [
+            0.01912763700238429,
+            33
+          ],
+          [
+            0.01950375101296231,
+            32
+          ],
+          [
+            0.019857228006003425,
+            31
+          ],
+          [
+            0.026575777010293677,
+            30
+          ],
+          [
+            0.03630420900299214,
+            29
+          ],
+          [
+            0.03924089000793174,
+            28
+          ],
+          [
+            0.04575782502070069,
+            27
+          ],
+          [
+            0.04592730701551773,
+            26
+          ]
+        ],
         "instance_hash": "f5a3a34dfd1907a02718de9eacc575107fe66404074e437d8e87e754371289ca",
         "is_optimization": true,
         "oom_killed": false,
@@ -156,9 +667,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0968681999947876,
+        "reference_setup_seconds": 0.3013437609770335,
         "runner_status": {
+          "build_seconds": 0.002237266016891226,
           "detail": "",
+          "main_seconds": 0.060630717023741454,
+          "read_seconds": 0.00010667400783859193,
           "status": "limit",
           "type": "status"
         },
@@ -168,19 +682,53 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013797700055874884,
-        "execution_wall_seconds": 1.815442500053905,
+        "checking_seconds": 0.003509122005198151,
+        "execution_wall_seconds": 0.6963615249842405,
         "first_solution": {
           "x": [
-            3,
             2,
             3,
             2,
             3,
-            2
+            2,
+            3
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.00047022700891830027,
+            30
+          ],
+          [
+            0.0005611370143014938,
+            29
+          ],
+          [
+            0.0006095220160204917,
+            21
+          ],
+          [
+            0.0006625509995501488,
+            19
+          ],
+          [
+            0.0010748979984782636,
+            18
+          ],
+          [
+            0.0012050220102537423,
+            17
+          ],
+          [
+            0.0013178870140109211,
+            16
+          ],
+          [
+            0.0023280940076801926,
+            15
+          ]
+        ],
         "instance_hash": "a8c7579476ea5dc145a89614b1fef33116e178b0f5821d5d2a1a2d320e73bb4d",
         "is_optimization": true,
         "oom_killed": false,
@@ -189,9 +737,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1128637000219896,
+        "reference_setup_seconds": 0.3085631310241297,
         "runner_status": {
+          "build_seconds": 0.002125306986272335,
           "detail": "",
+          "main_seconds": 0.013043478975305334,
+          "read_seconds": 0.0001188429887406528,
           "status": "limit",
           "type": "status"
         },
@@ -203,21 +754,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a8cc2e48354b09efb490cd47b76f96ac9f5328ef662ab0f68f1a7d21bf3de33b",
+    "model_hash": "bd824ac8a210da65b0757b8a3a84acef9915846709bad5c936c72a21e332663f",
     "problem_id": "bus_scheduling",
     "reason": "accepted",
-    "reference_hash": "d6d127d470a55bcfa3cca6fb1f132f77b1ec31fe790684bd354a7cc441c735d4",
+    "reference_hash": "ebe5d1353fc5e55e0b2b79671ab178eea4f8727254c0a14dae8bfe259c4827cb",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -228,11 +779,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 21.512521700002253,
+    "total_wall_seconds": 5.373725362995174,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-sonnet-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.lp",

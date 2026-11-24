@@ -1,0 +1,57 @@
+language ESSENCE' 1.0
+$ tsp: an Essence' model from DCP Rosetta.
+$
+$ The travelling salesman problem, also known as the travelling salesperson problem (TSP), asks the following
+$ question: "Given a list of cities and the distances between each pair of cities (or the locations of the cities),
+$ what is the shortest possible route that visits each city exactly once and returns to the origin city?" The
+$ distance is defined as the Euclidean distance between the points rounded to an integer.
+$
+$ Save this file as model.eprime. Download `tsp.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/tsp.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `tsp_1.param.solution`:
+$   python dcp_convert_essence.py tsp.json
+$   savilerow model.eprime tsp_1.param -run-solver
+
+$ locations_dim1: the number of cities (the length of the locations list, derived from the data)
+given locations_dim1 : int
+$ locations[c, 1], locations[c, 2]: the x and y coordinates of city c (indices 1-based)
+given locations : matrix indexed by [int(1..locations_dim1), int(1..2)] of int
+
+$ n: the number of cities
+letting n = locations_dim1
+$ sumsq: the sum over all cities of the squared coordinates; no distance exceeds twice this value
+letting sumsq = sum c : int(1..n) . (locations[c, 1] * locations[c, 1] + locations[c, 2] * locations[c, 2])
+
+$ dist[i, j]: the Euclidean distance between cities i and j, rounded to an integer
+find dist : matrix indexed by [int(1..n), int(1..n)] of int(0..2 * sumsq)
+$ succ[i]: the city visited right after city i on the route
+find succ : matrix indexed by [int(1..n)] of int(1..n)
+$ pos[i]: the position of city i on the route, city 1 at position 1 (used to rule out subtours)
+find pos : matrix indexed by [int(1..n)] of int(1..n)
+$ travel_distance: the length of the route, the sum of the distances of its legs
+find travel_distance : int(0..n * 2 * sumsq)
+
+minimising travel_distance
+such that
+  $ the rounded distance between two cities is the Euclidean distance rounded to an integer
+  forAll i : int(1..n) . forAll j : int(1..n) .
+    ((locations[i, 1] - locations[j, 1]) * (locations[i, 1] - locations[j, 1])
+       + (locations[i, 2] - locations[j, 2]) * (locations[i, 2] - locations[j, 2]) = 0 /\ dist[i, j] = 0)
+    \/ ((2 * dist[i, j] - 1) * (2 * dist[i, j] - 1)
+          <= 4 * ((locations[i, 1] - locations[j, 1]) * (locations[i, 1] - locations[j, 1])
+                  + (locations[i, 2] - locations[j, 2]) * (locations[i, 2] - locations[j, 2]))
+        /\ 4 * ((locations[i, 1] - locations[j, 1]) * (locations[i, 1] - locations[j, 1])
+                  + (locations[i, 2] - locations[j, 2]) * (locations[i, 2] - locations[j, 2]))
+          < (2 * dist[i, j] + 1) * (2 * dist[i, j] + 1)),
+  $ every city is visited exactly once: the successors are all different
+  allDiff(succ),
+  $ no city is its own successor
+  forAll i : int(1..n) . succ[i] != i,
+  $ city 1 is at position 1 of the route
+  pos[1] = 1,
+  $ the route is one single circuit through all cities: each leg that does not return to city 1 goes to the next position
+  forAll i : int(1..n) . (succ[i] = 1 \/ pos[succ[i]] = pos[i] + 1),
+  $ the travel distance is the sum of the distances of the legs of the route
+  travel_distance = sum i : int(1..n) . dist[i, succ[i]]

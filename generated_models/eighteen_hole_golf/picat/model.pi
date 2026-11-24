@@ -1,15 +1,27 @@
-% Eighteen-hole golf course: choose the length of each hole, 3, 4 or 5, so that the whole
-% course adds up to 72.
+% eighteen_hole_golf: a Picat model from DCP Rosetta.
+%
+% Generate an 18-hole golf course where each hole has a length of 3, 4, or 5, and the total length of the course
+% is 72.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/eighteen_hole_golf.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    NumHoles = 18,                   % holes on the course (fixed by the problem statement)
-    TotalLength = 72,                % required length of the whole course (same)
-    % each hole is 3, 4 or 5 long
-    Holes = new_list(NumHoles),
+model(_Data, Vars, Outputs, Options) =>
+    Holes = new_list(18),                  % Holes[I] = the length of hole I
     Holes :: 3..5,
-    % the hole lengths add up to the course length
-    sum(Holes) #= TotalLength,
+    % the total length of the course is 72
+    sum(Holes) #= 72,
     Vars = Holes,
     Outputs = [holes = Holes],
+    % a satisfaction problem: no objective
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,17 +1,42 @@
 language ESSENCE' 1.0
-$ Thick as thieves: six suspects, each guilty (true) or innocent (false); innocent suspects tell the truth, guilty ones lie; at least four are innocent, so at most two are guilty; decide who is guilty.
-$ each suspect is guilty or not
-find artie, bill, crackitt, dodgy, edgy, fingers : bool
-branching on [artie, bill, crackitt, dodgy, edgy, fingers]
+$ session1_thick_as_thieves: an Essence' model from DCP Rosetta.
+$
+$ Following a robbery, six suspects (Artie, Bill, Crackitt, Dodgy, Edgy and Fingers) are interviewed. The getaway car was barely big enough to hold two, so at least four of them are innocent. Innocent suspects tell the truth and guilty ones lie, and at least one suspect is guilty. The statements are: Artie: "It wasn't me." Bill: "Crackitt was in it up to his neck." Crackitt: "No I wasn't." Dodgy: "If Crackitt did it, Bill did it with him." Edgy: "Nobody did it alone." Fingers: "That's right: it was Artie and Dodgy together." Who is guilty?
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ artie: Artie is guilty (true) or innocent (false)
+find artie : bool
+$ bill: Bill is guilty or innocent
+find bill : bool
+$ crackitt: Crackitt is guilty or innocent
+find crackitt : bool
+$ dodgy: Dodgy is guilty or innocent
+find dodgy : bool
+$ edgy: Edgy is guilty or innocent
+find edgy : bool
+$ fingers: Fingers is guilty or innocent
+find fingers : bool
+$ guilty_count: auxiliary, the number of guilty suspects
+find guilty_count : int(0..6)
+
 such that
-$ at least one suspect is guilty, and at most two, since the getaway car held only two
-(toInt(artie) + toInt(bill) + toInt(crackitt) + toInt(dodgy) + toInt(edgy) + toInt(fingers)) >= 1,
-(toInt(artie) + toInt(bill) + toInt(crackitt) + toInt(dodgy) + toInt(edgy) + toInt(fingers)) <= 2,
-$ Bill says "Crackitt was in it up to his neck": Bill is innocent exactly when that statement is true
+$ the number of guilty suspects is the number of suspects marked guilty
+guilty_count = toInt(artie) + toInt(bill) + toInt(crackitt) + toInt(dodgy) + toInt(edgy) + toInt(fingers),
+$ at least one suspect is guilty
+guilty_count >= 1,
+$ at least four suspects are innocent, so at most two are guilty (the car held only two)
+guilty_count <= 2,
+$ Artie says "It wasn't me": an innocent Artie tells the truth and a guilty Artie lies, so the rule holds for either value and needs no constraint
+$ Crackitt says "No I wasn't": the same holds for Crackitt, so no constraint is needed
+$ Bill says "Crackitt was in it up to his neck": Bill is innocent exactly when this statement is true
 !bill <-> crackitt,
-$ Dodgy says "If Crackitt did it, Bill did it with him": Dodgy is innocent exactly when that statement is true
+$ Dodgy says "If Crackitt did it, Bill did it with him": Dodgy is innocent exactly when this statement is true
 !dodgy <-> (crackitt -> bill),
 $ Edgy says "Nobody did it alone": Edgy is innocent exactly when the number of guilty suspects is not one
-!edgy <-> ((toInt(artie) + toInt(bill) + toInt(crackitt) + toInt(dodgy) + toInt(edgy) + toInt(fingers)) != 1),
-$ Fingers says "it was Artie and Dodgy together": Fingers is innocent exactly when Artie and Dodgy are the only guilty suspects
-!fingers <-> (artie /\ dodgy /\ ((toInt(artie) + toInt(bill) + toInt(crackitt) + toInt(dodgy) + toInt(edgy) + toInt(fingers)) = 2))
+!edgy <-> (guilty_count != 1),
+$ Fingers says "That's right: it was Artie and Dodgy together": Fingers is innocent exactly when Artie and Dodgy are the only guilty suspects
+!fingers <-> (artie /\ dodgy /\ guilty_count = 2)

@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5)",
+    "agent": "claude-code (claude-opus-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1792127780.7731266,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/choco/java/CONTRACT.md": "ee2d9462a45dace178d22c2d692b5ab4af8145f84c756711765d350b1e011757"
+    },
+    "created_at": 1794252161.1823304,
     "problem_id": "fancy_dress",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fe31cd05caf096d2ff44c728be66afb11db40c0b7313572d3e664d3130f187a0",
-    "run_id": "20261016-choco-java-models",
-    "schema": 2,
-    "skill_bundle_hash": "05db45f523c987e31372371bbfc742bb8532feceff8b79fd1248120072575fc2",
-    "skill_source": "solvers/choco_java/skills/choco-java",
+    "readiness_hash": "0e7ff35d7e4f7c3ba3c366f04af4d5aba88bd97ca13f1a3bdc4c7c2df24f2ec5",
+    "run_id": "wording-20261109t191601z-d18d",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "98cda7d65cf3901c16ed377e2a295b7e33497efd",
+      "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
       "modified": false,
-      "path": "solvers/choco_java/skills/choco-java"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "e303cc8342a940509a9be5b14f01f4715d876fdca79964cc2237f33a2ec92321",
+        "source": "solvers/choco/skills/dcp-choco",
+        "version": {
+          "commit": "65a2a9dab7e29b6376450e5dbb4489d97f68982b",
+          "modified": false,
+          "path": "solvers/choco/skills/dcp-choco"
+        }
+      }
+    ],
     "solver_id": "choco_java"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "Docker version 29.9.2, build a82e528"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b027aefb064f6a7f9a307ab4334cb80af2d6aa7e6396671bda2461f32823c3e8",
+      "id": "sha256:e596e6078bb9adb5cd7b5307d35323f5004cedcd3c3ef06c0cba6975876a6559",
+      "recipe": "sha256:85d474164bc4d358430f86ea05149b8b2d1a5f2ddc3e328e5bf11ce18998d614",
       "tag": "dcp-eval/choco_java:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.006028885021805763,
-        "execution_wall_seconds": 2.0543284290470183,
+        "checking_seconds": 0.006745700025931001,
+        "execution_wall_seconds": 3.6585710998624563,
         "first_solution": {
           "h": false,
           "n": false,
@@ -46,6 +76,16 @@
           "t": true
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.083759531,
+            11
+          ],
+          [
+            0.103472925,
+            10
+          ]
+        ],
         "instance_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "is_optimization": true,
         "oom_killed": false,
@@ -58,16 +98,19 @@
           "n"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6475197229883634,
+        "reference_setup_seconds": 1.974893300095573,
         "runner_status": {
+          "build_seconds": 0.385134401,
           "detail": "",
-          "solve_seconds": 0.421281737,
+          "main_seconds": 0.608880583,
+          "read_seconds": 0.012220831,
+          "solve_seconds": 0.608873408,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "Compilation: 1.002s\n"
+        "stderr": "Compilation: 1.321s\n"
       }
     ],
     "instances_available": 1,
@@ -79,15 +122,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "3ae952a34d5880dbf5a51b0b36632876e589ffe3a1b3b20afcb3274325adbbdd",
+    "model_hash": "751ae74b319b2c67de630dba3b240bce949dcac5bb5e1b5d364e07c8ff63d164",
     "problem_id": "fancy_dress",
     "reason": "accepted",
-    "reference_hash": "86169158b6b2a390d8ac4a54b6feb9605b492390396382e60fe2b9c1097a12c0",
+    "reference_hash": "123c139c8c816688ff177b5603c76b682c2a36c864385f6d87426adef8cff42c",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.10"
     },
     "requested": {
       "instance_count": 99,
@@ -98,11 +141,11 @@
     "skipped_instances": [],
     "solutions_checked": 1,
     "solver_id": "choco_java",
-    "total_wall_seconds": 2.8372959110420197,
+    "total_wall_seconds": 6.73194140009582,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5)"
+    "base_llm": "claude-code (claude-opus-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.java",

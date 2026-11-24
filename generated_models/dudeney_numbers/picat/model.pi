@@ -1,20 +1,44 @@
-% Dudeney numbers: a positive integer, larger than 1 and with at most n digits,
-% that is a perfect cube whose digits add up to its cube root.
+% dudeney_numbers: a Picat model from DCP Rosetta.
+%
+% A Dudeney Number is a positive integer that is a perfect cube such that the sum of its digits is equal to the
+% cube root of the number. Find such a number that is also larger than 1 and has at most n digits.
+%
+% Save this file as model.pi. Download `dudeney_numbers.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/dudeney_numbers.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py dudeney_numbers.json
+%   picat model.pi dudeney_numbers_1.dat
+%
+% Data.get(n): the largest number of digits.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),
-    % digits[i] = the i-th digit from the left, with leading zeros
-    Digits = new_list(N),
+    N = Data.get(n),                       % the largest number of digits
+    Number :: 0..10**N - 1,                % the Dudeney number, with at most N digits
+    CubeRoot :: 2..10**N,                  % the cube root of the number; 2 or more makes the number larger than 1
+    Digits = new_list(N),                  % Digits[I] = the digit worth 10**(I-1) in the number
     Digits :: 0..9,
-    Number :: 0..10 ** N - 1,
-    CubeRoot :: 1..9 * N,
-    Number #= CubeRoot * CubeRoot * CubeRoot,
-    % the digits add up to the cube root, and spell the number
+    % the number is a perfect cube
+    CubeRoot * CubeRoot * CubeRoot #= Number,
+    % the number is the sum of its digits times their place values
+    Number #= sum([Digits[I] * 10**(I - 1) : I in 1..N]),
+    % the sum of its digits is equal to its cube root
     sum(Digits) #= CubeRoot,
-    Place = [10 ** (N - I) : I in 1..N],
-    Number #= sum([Digits[I] * Place[I] : I in 1..N]),
-    Number #> 1,
-    Vars = [CubeRoot] ++ Digits,
+    Vars = [CubeRoot, Number, Digits],
     Outputs = [number = Number],
+    % a satisfaction problem: no objective
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

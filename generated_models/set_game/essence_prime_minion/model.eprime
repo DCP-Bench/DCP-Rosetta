@@ -1,15 +1,30 @@
 language ESSENCE' 1.0
-$ Find three cards that form a set: for each of the four features, the three cards show that feature either all the same or all different. Print the indices of the three cards (0-based), in increasing order.
-given cards_data_dim1, cards_data_dim2 : int(1..)
-given cards_data : matrix indexed by [int(1..cards_data_dim1), int(1..cards_data_dim2)] of int
-find winning_cards : matrix indexed by [int(1..3)] of int(0..cards_data_dim1-1)
+$ set_game: an Essence' model from DCP Rosetta.
+$
+$ Set is a card game. The deck has 81 cards, each with a number of shapes (one, two or three), a shape (diamond, squiggle or oval), a shading (solid, striped or open) and a colour (red, green or purple). Three cards form a set when, for each of the four features, the three cards show that feature either all the same or all different. Given a list of cards, each written as [number, shading, color, shape], find three different cards that form a set.
+$
+$ Save this file as model.eprime. Download `set_game.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/set_game.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `set_game_1.param.solution`:
+$   python dcp_convert_essence.py set_game.json
+$   savilerow model.eprime set_game_1.param -run-solver
 
-branching on [winning_cards]
+$ number of cards on the table, derived from the data: the length of cards_data (not a field of the reader's JSON)
+given cards_data_dim1 : int
+letting ncards = cards_data_dim1
+$ cards_data[c, f]: feature f of card c, indices 1-based (the data's index 0 is cards_data[1, 1]); feature 1 is the number, 2 the shading, 3 the colour, 4 the shape, each as a code of that feature
+given cards_data : matrix indexed by [int(1..ncards), int(1..4)] of int
+
+$ winning_cards[k]: 0-based index of the k-th card of the set, so cards_data row winning_cards[k] + 1
+find winning_cards : matrix indexed by [int(1..3)] of int(0..ncards-1)
 
 such that
-$ the three cards are different cards, listed in increasing order (a set of three cards)
+$ the three cards are different cards
 allDiff(winning_cards),
-(winning_cards[1] < winning_cards[2]),
-(winning_cards[2] < winning_cards[3]),
-$ for every feature, the three cards are all the same or all different in that feature
-forAll f : int(1..cards_data_dim2) . (((cards_data[winning_cards[1] + 1, f] = cards_data[winning_cards[2] + 1, f]) /\ (cards_data[winning_cards[2] + 1, f] = cards_data[winning_cards[3] + 1, f])) \/ allDiff([cards_data[winning_cards[1] + 1, f], cards_data[winning_cards[2] + 1, f], cards_data[winning_cards[3] + 1, f]]))
+$ for each of the four features, the three cards show that feature either all the same or all different
+forAll f : int(1..4) .
+  ((cards_data[winning_cards[1] + 1, f] = cards_data[winning_cards[2] + 1, f] /\
+    cards_data[winning_cards[2] + 1, f] = cards_data[winning_cards[3] + 1, f]) \/
+   allDiff([cards_data[winning_cards[1] + 1, f], cards_data[winning_cards[2] + 1, f], cards_data[winning_cards[3] + 1, f]]))

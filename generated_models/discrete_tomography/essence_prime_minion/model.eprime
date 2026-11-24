@@ -1,15 +1,30 @@
 language ESSENCE' 1.0
-$ Discrete tomography: reconstruct a 0/1 matrix from the number of ones in each row and in each column.
-given row_sums_dim1 : int(1..)
-given col_sums_dim1 : int(1..)
-given row_sums : matrix indexed by [int(1..row_sums_dim1)] of int(0..)
-given col_sums : matrix indexed by [int(1..col_sums_dim1)] of int(0..)
-$ the 0/1 matrix to reconstruct (matrix_ is the output named matrix)
+$ discrete_tomography: an Essence' model from DCP Rosetta.
+$
+$ A matrix which contains zeroes and ones gets x-rayed vertically and horizontally, giving the total number of ones in each row and column. The problem is to reconstruct the contents of the matrix from this information: a matrix of zeroes and ones whose row sums and column sums are the given totals.
+$
+$ Save this file as model.eprime. Download `discrete_tomography.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/discrete_tomography.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `discrete_tomography_1.param.solution`:
+$   python dcp_convert_essence.py discrete_tomography.json
+$   savilerow model.eprime discrete_tomography_1.param -run-solver
+
+$ row_sums_dim1: the number of rows of the matrix (derived from the data; not a field of the reader's JSON)
+given row_sums_dim1 : int
+$ col_sums_dim1: the number of columns of the matrix (derived from the data; not a field of the reader's JSON)
+given col_sums_dim1 : int
+$ row_sums[r]: the number of ones in row r, indices 1-based (the data's index 0 is row_sums[1])
+given row_sums : matrix indexed by [int(1..row_sums_dim1)] of int
+$ col_sums[c]: the number of ones in column c, indices 1-based (the data's index 0 is col_sums[1])
+given col_sums : matrix indexed by [int(1..col_sums_dim1)] of int
+
+$ matrix[r, c]: the cell in row r and column c, 0 or 1 (the output, indices 1-based)
 find matrix_ : matrix indexed by [int(1..row_sums_dim1), int(1..col_sums_dim1)] of int(0..1)
 
-branching on [matrix_]
 such that
 $ each row contains as many ones as its row sum
-forAll r : int(1..row_sums_dim1) . ((sum c : int(1..col_sums_dim1) . matrix_[r,c]) = row_sums[r]),
+forAll r : int(1..row_sums_dim1) . (sum c : int(1..col_sums_dim1) . matrix_[r, c]) = row_sums[r],
 $ each column contains as many ones as its column sum
-forAll c : int(1..col_sums_dim1) . ((sum r : int(1..row_sums_dim1) . matrix_[r,c]) = col_sums[c])
+forAll c : int(1..col_sums_dim1) . (sum r : int(1..row_sums_dim1) . matrix_[r, c]) = col_sums[c]

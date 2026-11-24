@@ -1,10 +1,32 @@
 language ESSENCE' 1.0
-$ Guards and apples: the boy passes num_gates gates; at each gate he gives the guard half his apples plus one, and the boy then gives his last apple to the girl.
-given num_gates : int
-$ apples[i] is the number of apples before gate i, and apples[num_gates+1] is the number left after the last gate; the reference bounds apples to 0..100
-find apples : matrix indexed by [int(1..num_gates+1)] of int(0..100)
+$ session1_guards_and_apples: an Essence' model from DCP Rosetta.
+$
+$ A boy wants to give an apple to a girl. He passes through a number of gates, each with a guard. At each
+$ gate he bribes the guard with half of his apples plus one, giving an integer number of apples. After the last
+$ gate he has exactly one apple left for the girl. Find the number of apples before each gate, and the number after
+$ the last gate, so that the list has num_gates + 1 numbers.
+$
+$ Save this file as model.eprime. Download `session1_guards_and_apples.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_guards_and_apples.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session1_guards_and_apples_1.param.solution`:
+$   python dcp_convert_essence.py session1_guards_and_apples.json
+$   savilerow model.eprime session1_guards_and_apples_1.param -run-solver
+
+$ num_gates: the number of gates, each with a guard
+given num_gates : int(1..)
+
+$ implied bound: working back from one apple after the last gate, the count before the first gate is 3 * 2^num_gates - 2, the largest of all
+letting max_apples = 3 * 2 ** num_gates
+
+$ apples[i]: the number of apples before gate i for i up to num_gates; apples[num_gates+1]: the number after the last
+$ gate (index from 1)
+find apples : matrix indexed by [int(1..num_gates+1)] of int(0..max_apples)
+
 such that
-$ one apple is left after the last gate; he gives it to the girl
-apples[num_gates + 1] = 1,
-$ at each gate the guard receives half the apples plus one, a whole number, so the apples before the gate are even; the apples after the gate are the apples before minus that bribe
-forAll i : int(1..num_gates) . (apples[i] = 2 * apples[i + 1] + 2)
+$ after the last gate the boy has exactly one apple
+apples[num_gates+1] = 1,
+$ at each gate the boy has an even number of apples (he gives half plus one, so half must be whole) and is left with
+$ half of them minus one
+forAll i : int(1..num_gates) . apples[i] = 2 * (apples[i+1] + 1)

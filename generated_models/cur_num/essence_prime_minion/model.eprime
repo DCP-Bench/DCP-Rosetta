@@ -1,9 +1,21 @@
 language ESSENCE' 1.0
-$ Find a number between 1 and 10000, other than 48, whose successor is a square and whose half plus one is a square.
-find peculiar : int(1..10000)
-$ square roots of peculiar + 1 and of peculiar / 2 + 1
-find root1 : int(1..101)
-find root2 : int(1..101)
+$ cur_num: an Essence' model from DCP Rosetta.
+$
+$ The number 48 has this peculiarity: adding 1 to it gives a square number, and adding 1 to its half also gives a square number. Find another number with this peculiarity between 1 and 10000.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ peculiar: a number between 1 and 10000, other than 48, with the peculiarity
+letting limit = 10000
+find peculiar : int(1..limit)
+$ root1: the square root of peculiar + 1 (at most 101, since 101 * 101 > limit + 1)
+letting root_limit = 101
+find root1 : int(1..root_limit)
+$ root2: the square root of peculiar / 2 + 1
+find root2 : int(1..root_limit)
 
 branching on [peculiar, root1, root2]
 

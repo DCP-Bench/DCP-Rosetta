@@ -1,21 +1,28 @@
-// Maximum clique: find a largest set of vertices in a simple undirected graph where every two
-// distinct vertices are adjacent.
-vocabulary {
-    // a vertex index; the number of vertices comes from the size of adj
-    type V <: Int
-
-    // adjacency matrix of the graph (1 if the two vertices are adjacent)
-    adj: V * V -> Int
-
-    // c[i] is true if vertex i is in the clique
-    c: V -> Bool
-
-    maximize: () -> Int
+// csplib_074_maximum_clique: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given a simple undirected graph G = (V, E), a clique is a subset of vertices where every two distinct vertices in the
+// subset are adjacent (connected by an edge). Find a clique of the largest possible size in the graph.
+//
+// Save this file as model.idp. Download `csplib_074_maximum_clique.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_074_maximum_clique.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_074_maximum_clique.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type I <: Int                      // the vertices, numbered from 0, sized from adj
+    adj: I * I -> Int                  // adj(i, j): 1 if vertices i and j are adjacent, 0 otherwise
+    c: I -> Bool                       // c(i): vertex i is in the clique (declared output)
+    maximize: () -> Int                // the number of vertices in the clique
 }
-theory {
-    // a clique is a subset of vertices in which every two distinct vertices are adjacent
-    ! u, v in V: u ~= v & c(u) & c(v) => adj(u, v) = 1.
+theory T:V {
+    // every two distinct vertices of the clique are adjacent
+    ! i, j in I: (i ~= j & c(i) & c(j)) => adj(i, j) = 1.
 
-    // the objective is the number of vertices in the clique
-    maximize() = #{ v in V: c(v) }.
+    // the size of the clique is the number of its vertices
+    maximize() = #{ i in I: c(i) }.
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

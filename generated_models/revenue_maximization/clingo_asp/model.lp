@@ -1,32 +1,29 @@
-% Revenue maximisation for flight packages: decide how many units of each package (a bundle of
-% flight legs) to sell, no more than its demand, without selling more seats on a leg than are
-% available, so that the total revenue is largest.
-% Instance facts: available_seats(J,S): seats on leg J; demand(I,D): estimated demand for package I;
-% revenue(I,R): revenue of one unit of package I; delta(I,J,1): package I uses leg J.
-package(I) :- demand(I,_).
+% revenue_maximization: a clingo model from DCP Rosetta.
+%
+% We have a set of flight legs (one-way non-stop flight) with a limited passenger capacity. According to market research, we defined a set of flight itineraries to sell as a package with a given price. For each package, we have an estimated demand. How many units of each package should we sell to maximize the revenue? We reserve the passenger seats according to the number of packages we want to sell.
+%
+% Save this file as model.lp. Download `revenue_maximization.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/revenue_maximization.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py revenue_maximization.json
+%   python -m clingo model.lp revenue_maximization_1.lp
 
-% Units sold use an order encoding: sold(I,V) holds when at least V units of package I are sold,
-% V in 1..demand(I) (the reference allows 0..max demand and also bounds each package by its own
-% demand). Unary threshold atoms keep the sums below easy to propagate.
-{ sold(I,V) : V = 1..D } :- demand(I,D).
-:- sold(I,V+1), not sold(I,V), V >= 1.
+% Input: available_seats(J, S): the seats S available on flight leg J; demand(I, D): the estimated
+% demand D for package I; revenue(I, R): the price R of one unit of package I; delta(I, J, K): the seats K that one unit of package I
+% uses on flight leg J (indices are 0-based, as in the data).
 
-% packages_to_sell(I,V): exactly V units of package I are sold.
-packages_to_sell(I,0) :- package(I), not sold(I,1).
-packages_to_sell(I,V) :- sold(I,V), not sold(I,V+1).
+% the units of each package sold are between 0 and its estimated demand
+1 { packages_to_sell(I, V) : V = 0..D } 1 :- demand(I, D).
 
-% Capacity: the units sold of all packages using a leg must not exceed the seats available on it.
-:- available_seats(J,S), #sum { 1,I,V : sold(I,V), delta(I,J,1) } > S.
+% the seats reserved on each flight leg do not exceed the seats available on it
+:- available_seats(J, S), #sum { V*K,I : packages_to_sell(I, V), delta(I, J, K) } > S.
 
-% The revenue to maximise is the revenue per unit times the units sold, over all packages.
-#maximize { R,I,V : sold(I,V), revenue(I,R) }.
+% the total revenue is the price of each unit times the units sold, summed over the packages
+max_revenue(Z) :- Z = #sum { V*R,I : packages_to_sell(I, V), revenue(I, R) }.
 
-% max_revenue reports that revenue. It is added up package by package: partial(I,Z) says the
-% packages 0..I-1 bring in Z. A single "Z = #sum {...}" over all packages would make the grounder
-% build one large sum constraint for every possible total, which is far too slow to solve.
-partial(0,0).
-partial(I+1,Z+R*V) :- partial(I,Z), packages_to_sell(I,V), revenue(I,R).
-max_revenue(Z) :- partial(N,Z), N = #count { I : package(I) }.
+% maximize the total revenue
+#maximize { V*R,I : packages_to_sell(I, V), revenue(I, R) }.
 
 #show packages_to_sell/2.
 #show max_revenue/1.
