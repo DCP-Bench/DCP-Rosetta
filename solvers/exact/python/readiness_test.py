@@ -23,7 +23,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -162,6 +162,46 @@ def build(instance):
 '''
 
 
+# incumbents, incumbents_maximize: a strongly correlated knapsack, on which Exact's first solution is far from
+# the optimum, so the runner must report several improving solutions, read from Exact's log of toOptimum.
+# The minimisation is the value left behind (an offset, sum(values), minus the value packed).
+KNAPSACK_DATA = """weights = [6305, 3471, 7468, 1791, 2186, 9779, 2542, 6991, 1950, 9313, 4517, 1614, 2408, 8104, 7851, 2144, 4943, 2486, 7955, 1968, 3028, 4657, 2013, 7499, 1812, 4622, 1763, 3181, 5744, 7867]
+values = [6333, 3550, 7493, 1874, 2235, 9860, 2639, 7024, 1973, 9397, 4600, 1705, 2442, 8161, 7873, 2224, 4961, 2568, 7972, 2057, 3064, 4730, 2110, 7577, 1876, 4672, 1832, 3265, 5812, 7923]
+capacity = 68986
+"""
+KNAPSACK_MAXIMUM = f"""
+# Data
+{KNAPSACK_DATA}# End of data
+import cpmpy as cp
+import json
+x = cp.boolvar(shape=len(weights), name="x")
+model = cp.Model(cp.sum(x * weights) <= capacity)
+model.maximize(cp.sum(x * values))
+model.solve()
+solution = {{"x": x.value().tolist()}}
+print(json.dumps(solution))
+"""
+KNAPSACK_MINIMUM = KNAPSACK_MAXIMUM.replace("model.maximize(cp.sum(x * values))",
+                                            "model.minimize(sum(values) - cp.sum(x * values))")
+KNAPSACK_MODEL = """from exact import Exact
+
+
+def create_model(instance):
+    weights, values = instance["weights"], instance["values"]
+    solver = Exact()
+    names = [f"x{i}" for i in range(len(weights))]
+    for name in names:
+        solver.addVariable(name, 0, 1)
+    solver.addConstraint(list(zip(weights, names)), False, 0, True, instance["capacity"])
+    OBJECTIVE
+    return solver, {"x": names}
+"""
+KNAPSACK_MAXIMIZING = KNAPSACK_MODEL.replace(
+    "OBJECTIVE", "solver.setObjective(list(zip(values, names)), minimize=False)")
+KNAPSACK_MINIMIZING = KNAPSACK_MODEL.replace(
+    "OBJECTIVE", "solver.setObjective([(-v, n) for v, n in zip(values, names)], minimize=True, offset=sum(values))")
+
+
 def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="dcp_readiness_") as directory:
@@ -191,6 +231,10 @@ def main():
               reference=OPTIMIZING.replace("model.minimize(x + y)", "model.minimize(5 + x + y)"))
         check("objective_on_solver_max", ON_SOLVER.replace("MINIMIZE", "False"),
               reference=MAXIMIZING.replace("model.maximize(x + y)", "model.maximize(5 + x + y)"))
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", KNAPSACK_MINIMIZING, reference=KNAPSACK_MINIMUM))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", KNAPSACK_MAXIMIZING, reference=KNAPSACK_MAXIMUM), minimize=False)
         check("native_api", NATIVE)
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})

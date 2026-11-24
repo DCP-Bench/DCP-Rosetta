@@ -42,3 +42,12 @@ No repair attempts were needed. The tester read only the declared instance keys 
 the skill did not guide that at the time. The run used the skill as it stood before the round-2
 additions (reading data, time limits, the job-shop, graph-colouring and cryptarithm examples).
 
+
+## Improving solutions of `toOptimum` (found 2026-11-24, while adding incumbents to exact)
+
+Undocumented; read from Exact's source (`interface/IntProg.cpp`) and checked on random minimise and maximise models with offsets
+and repeated terms. `toOptimum` runs its whole loop in C++ without a callback and holds the GIL. With `verbosity` 1 it logs
+`c bounds UB >= LB @ SECONDS` each time a bound moves (C stdio, block-buffered unless stdout is line-buffered). UB is on Exact's
+internal scale: the minimised objective plus a flag variable's weight, 1 + sum(|c| * (ub - lb)) over the objective's terms, which
+`toOptimum` adds. The exact_python runner reads its incumbents from these lines; its readiness checks `incumbents` and
+`incumbents_maximize` catch a change of either at the next upgrade.

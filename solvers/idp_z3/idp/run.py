@@ -447,10 +447,17 @@ def check(solver, deadline):
     return solver.check()
 
 
-def incumbents(target, goal, started):
+def incumbents(target, goal, started, read=None):
     """A z3 `set_on_model` callback: each strictly better model the optimiser reports while it searches is
-    emitted as an incumbent record, with the seconds since `started` (the end of the build)."""
+    emitted as an incumbent record, with the seconds since `started` (the end of the build). With `read`
+    (the request asked for incumbent_values), each carries `read(model)`: that model's declared outputs."""
     last = []
+
+    def report(value, model):
+        record = {"type": "incumbent", "objective": value, "seconds": time.monotonic() - started}
+        if read is not None and model is not None:
+            record["values"] = read(model)
+        emit(record)
 
     def improved(model):
         value = model.eval(target, model_completion=True)
@@ -460,13 +467,14 @@ def incumbents(target, goal, started):
         if last and not (value < last[-1] if goal == "minimize" else value > last[-1]):
             return
         last.append(value)
-        emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+        report(value, model)
 
-    def proven(value):
-        """z3 does not hand over every last model: the proven optimum ends the incumbents."""
+    def proven(value, model=None):
+        """z3 does not hand over every last model: the proven optimum (of `model`, the optimiser's
+        final one) ends the incumbents."""
         if not last or last[-1] != value:
             last.append(value)
-            emit({"type": "incumbent", "objective": value, "seconds": time.monotonic() - started})
+            report(value, model)
     improved.proven = proven
     return improved
 
@@ -494,6 +502,18 @@ def solve(request):
     theory._add_assignment(solver)
     BUILD_SECONDS = time.monotonic() - building
 
+    def read(model):
+        """The declared outputs of `model` as a solution record gives them, and the terms shown."""
+        def holds(atom):
+            return z3.is_true(model.eval(atom, model_completion=True))
+        shown = {name: {index: term for index, term in terms_.items()
+                        if domains[name] is None or all(map(holds, domains[name](index)))}
+                 for name, terms_ in outputs.items()}
+        values = {name: nest({index: python(model.eval(term, model_completion=True))
+                              for index, term in terms_.items()})
+                  for name, terms_ in shown.items()}
+        return values, [term for terms_ in shown.values() for term in terms_.values()]
+
     if goal is not None:
         target = output_terms(theory, goal)[()]
         optimizer = theory.optimize_solver
@@ -501,7 +521,8 @@ def solve(request):
         theory._add_assignment(optimizer)
         handle = (optimizer.minimize if goal == "minimize" else optimizer.maximize)(target)
         BUILD_SECONDS = time.monotonic() - building
-        reporter = incumbents(target, goal, time.monotonic())
+        wanted = bool(request.get("incumbent_values"))
+        reporter = incumbents(target, goal, time.monotonic(), (lambda model: read(model)[0]) if wanted else None)
         optimizer.set_on_model(reporter)
         status = check(optimizer, deadline)
         if status == z3.unsat:
@@ -512,13 +533,14 @@ def solve(request):
         # the witness model's value rather than the bound; only lower == upper,
         # both finite, is a proven optimum.
         low, high = optimizer.lower(handle), optimizer.upper(handle)
+        final = optimizer.model() if wanted else None
         optimizer.pop()
         if not (z3.is_int_value(low) and z3.is_int_value(high)):
             return finish("error", f"The objective is unbounded: between {low} and {high}")
         if low.as_long() != high.as_long():
             return finish("timeout", "Candidate optimum was not proven")
         best = low
-        reporter.proven(best.as_long())
+        reporter.proven(best.as_long(), final)
         # Enumerate only assignments achieving the proven optimum.
         solver.add(target == best)
 
@@ -530,16 +552,7 @@ def solve(request):
         if status != z3.sat:
             return finish("timeout")
         model = solver.model()
-
-        def holds(atom):
-            return z3.is_true(model.eval(atom, model_completion=True))
-        shown = {name: {index: term for index, term in terms_.items()
-                        if domains[name] is None or all(map(holds, domains[name](index)))}
-                 for name, terms_ in outputs.items()}
-        values = {name: nest({index: python(model.eval(term, model_completion=True))
-                              for index, term in terms_.items()})
-                  for name, terms_ in shown.items()}
-        terms = [term for terms_ in shown.values() for term in terms_.values()]
+        values, terms = read(model)
         record = {"type": "solution", "values": values}
         if goal is not None:
             # The objective symbol's value on this solution: the problem's own, as the theory defines it.

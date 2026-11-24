@@ -18,7 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate, improving_incumbents
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -318,6 +318,11 @@ theory {
 }
 """
 
+# incumbent_values: minimise x + y subject to x * y >= 30 (optimum 11, at 5 * 6), where z3's first model is
+# not optimal, so at least two improving models carry their values.
+PRODUCT_MINIMUM = OPTIMIZING.replace("n = 2", "n = 30").replace("x + y >= n", "x * y >= n")
+PRODUCT_OPTIMAL = OPTIMAL.replace("x() + y() >= n().", "x() * y() >= n().").replace("DIRECTION", "minimize")
+
 
 def main():
     results = {}
@@ -355,6 +360,9 @@ def main():
         results["incumbents_maximize"] = improving_incumbents(
             check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
             minimize=False)
+        # incumbent_values: asked for, each incumbent carries the declared outputs of that model.
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", PRODUCT_OPTIMAL, reference=PRODUCT_MINIMUM, incumbent_values=True))
         maximised = check("objective_values", OBJECTIVE_MAX, reference=OBJECTIVE_MAX_REF, solution_limit=3)
         minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
         results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
