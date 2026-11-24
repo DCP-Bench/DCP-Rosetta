@@ -43,7 +43,10 @@ The objective is the problem's own value: do not scale, offset or negate it. Eac
 solution record carries it as `objective`: the runner reads `model.objective_value()`
 after the proving solve, which CPMpy evaluates from the objective expression on the
 solution (constant and direction included). Solutions enumerated at the optimum carry
-the same value. No improving solutions are reported.
+the same value. The optimising solve reports each improving solution as an `incumbent`: a CP-SAT
+solution callback gives the solution's values to the CPMpy variables and the runner evaluates the
+objective expression on them; when the request says `incumbent_values`, each incumbent also carries the
+declared outputs of that solution, read as for a solution record.
 
 ## Solving
 

@@ -90,7 +90,10 @@ The objective is the problem's own value: do not scale, offset or negate it. Eac
 solution record carries it as `objective`: MiniZinc's reported objective
 (`Result.objective`, the value of the solve item's expression on the proven optimal
 solution), which is the `objective` variable, constant and direction included. Solutions
-enumerated at the optimum carry the same value. No improving solutions are reported.
+enumerated at the optimum carry the same value. The optimising solve asks for
+intermediate solutions (which only makes Gecode print each improving solution of its branch and
+bound) and reports each as an `incumbent` with its `Result.objective`, timed by MiniZinc's own
+solution time less its flattening time; incumbents carry no values.
 
 ## Solving
 

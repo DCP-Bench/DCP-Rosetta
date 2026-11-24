@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -253,6 +253,41 @@ OBJECTIVE_MAX = ("import cpmpy as cp\n"
 OBJECTIVE_MIN = OBJECTIVE_MAX.replace("x + y <= n", "x + y >= 1").replace(
     "model.maximize(3 + x + y)", "model.minimize(x - 2 * y - 4)")
 
+# incumbents, incumbents_maximize, incumbent_values: a small knapsack on which CP-SAT (one worker) finds
+# three improving solutions before its proof: packed value 6, 14, 19 maximised, and the value left behind
+# 19, 11, 6 minimised (sum(values) - packed). Each incumbent is strictly better and the last the optimum;
+# with incumbent_values every one carries the outputs of its own solution, which the evaluator checks.
+KNAPSACK_REF = """
+# Data
+capacity = 16
+# End of data
+import cpmpy as cp
+import json
+weights = [3, 10, 6, 13]
+values = [2, 7, 12, 4]
+x = cp.boolvar(shape=4, name="x")
+model = cp.Model(cp.sum(x * weights) <= capacity)
+model.DIRECTION(OBJECTIVE)
+model.solve()
+solution = {"x": [bool(v) for v in x.value()]}
+print(json.dumps(solution))
+"""
+KNAPSACK = ("import cpmpy as cp\n"
+            "def create_model(instance):\n"
+            "    weights = [3, 10, 6, 13]\n"
+            "    values = [2, 7, 12, 4]\n"
+            "    x = cp.boolvar(shape=4)\n"
+            "    model = cp.Model(cp.sum(x * weights) <= instance['capacity'])\n"
+            "    model.DIRECTION(OBJECTIVE)\n"
+            "    return model, {'x': x}\n")
+LEFT_BEHIND = ("minimize", "sum(values) - cp.sum(x * values)")
+PACKED = ("maximize", "cp.sum(x * values)")
+
+
+def knapsack(source, direction, objective):
+    return source.replace("DIRECTION", direction).replace("OBJECTIVE", objective)
+
+
 # standalone_block: the entrypoint named create_model, and a standalone run block at the
 # end that would fail if the runner executed it (it reads a file named on the command line).
 STANDALONE = GOOD.replace("def build(", "def create_model(") + (
@@ -315,6 +350,15 @@ def main():
         minimised = check("objective_values", OBJECTIVE_MIN, reference=OBJECTIVE_MIN_REF)
         results["objective_values"] = (maximised["accepted"] and maximised["solutions_checked"] == 3
                                        and minimised["accepted"])
+        # A CP-SAT solution callback reports each improving solution, on the model's objective expression.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", knapsack(KNAPSACK, *LEFT_BEHIND), reference=knapsack(KNAPSACK_REF, *LEFT_BEHIND)))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", knapsack(KNAPSACK, *PACKED), reference=knapsack(KNAPSACK_REF, *PACKED)),
+            minimize=False)
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", knapsack(KNAPSACK, *LEFT_BEHIND), reference=knapsack(KNAPSACK_REF, *LEFT_BEHIND),
+                  incumbent_values=True))
 
     try:
         image_identity({"id": SOLVER, "image": "dcp-eval/definitely-absent:readiness"})
