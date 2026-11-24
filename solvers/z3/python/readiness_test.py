@@ -12,7 +12,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate, improving_incumbents
+from evaluation import evaluate, improving_incumbents, incumbents_with_values
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -97,6 +97,11 @@ STANDALONE = GOOD.replace("def build(", "def create_model(") + (
 CONSTANT_OPTIMAL = OPTIMAL.replace("DIRECTION(x + y)", "maximize(3 + x + y)")
 NEGATIVE_OPTIMAL = OPTIMAL.replace("DIRECTION(x + y)", "minimize(x - y - 3)")
 
+# incumbent_values: minimise x + y subject to x * y >= 30 (optimum 11, at 5 * 6), where z3's first model is
+# not optimal, so at least two improving models carry their values.
+PRODUCT_MINIMUM = OPTIMIZING.replace("n = 2", "n = 30").replace("x + y >= n", "x * y >= n")
+PRODUCT_OPTIMAL = OPTIMAL.replace("x + y >= n)", "x * y >= n)").replace("DIRECTION", "minimize")
+
 
 def main():
     results = {}
@@ -129,6 +134,9 @@ def main():
         results["incumbents_maximize"] = improving_incumbents(
             check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
             minimize=False)
+        # incumbent_values: asked for, each incumbent carries the declared outputs of that model.
+        results["incumbent_values"] = incumbents_with_values(
+            check("incumbent_values", PRODUCT_OPTIMAL, reference=PRODUCT_MINIMUM, incumbent_values=True))
         check("isolation", ISOLATED)
         check("malformed_output", MALFORMED, expected={"execution_error", "invalid_output"})
         check("empty_output", UNSATISFIABLE, expected={"no_solution"})

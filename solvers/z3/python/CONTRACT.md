@@ -67,7 +67,9 @@ improving model z3's `on_model` callback hands over, and last the proven optimum
 - Optimisation: `check()` on the runner's `z3.Optimize`. `unsat` gives `unsat`; `unknown`,
   or `sat` with lower and upper bound apart, gives `timeout`. Each strictly better model
   Z3 hands to `set_on_model` during that `check()` is reported as an `incumbent` record,
-  `seconds` from right after `build`.
+  `seconds` from right after `build`. When the request asks (`incumbent_values`), each incumbent
+  carries `values`: the declared outputs read from the model the callback was handed, the way the
+  final solution's are (the closing proven-optimum incumbent reads the optimizer's final model).
 - Enumeration: a plain `z3.Solver` over the constraints (plus `objective == best`).
   `sat` reports a solution; `unsat` gives `unsat` on the first check and `complete`
   after; `unknown` gives `timeout`.
