@@ -1,18 +1,38 @@
-vocabulary {
-    type I <: Int                      // one index per square, sized from sides
-    base: () -> Int                    // side of the big square
-    sides: I -> Int                    // side length of each square
-    x_coords: I -> Int                 // declared output: left column of each square, 0-based
-    y_coords: I -> Int                 // declared output: bottom row of each square, 0-based
+// csplib_009_perfect_square_placement: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The perfect square placement problem (also called the squared square problem) is to pack a set of squares with given
+// integer sizes into a bigger square in such a way that no squares overlap each other and all square borders are
+// parallel to the border of the big square. The sum of the square surfaces is equal to the surface of the packing square,
+// so that there is no spare capacity. Place every square inside the big square, with its sides parallel to the sides of
+// the big square, so that no two squares overlap.
+//
+// Save this file as model.idp. Download `csplib_009_perfect_square_placement.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_009_perfect_square_placement.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_009_perfect_square_placement.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Sq <: Int                       // the squares, numbered from 0
+    base: () -> Int                      // the side of the big square
+    sides: Sq -> Int                     // sides(s): the side length of square s
+    x_coords: Sq -> Int                  // x_coords(s): the horizontal position of the left side of square s, from 0
+    y_coords: Sq -> Int                  // y_coords(s): the vertical position of the bottom side of square s, from 0
 }
 
-theory {
-    // every square lies inside the big square
-    ! i in I: 0 =< x_coords(i) & x_coords(i) + sides(i) =< base().
-    ! i in I: 0 =< y_coords(i) & y_coords(i) + sides(i) =< base().
+theory T:V {
+    // each square lies inside the big square
+    ! s in Sq: 0 =< x_coords(s) & x_coords(s) + sides(s) =< base().
+    ! s in Sq: 0 =< y_coords(s) & y_coords(s) + sides(s) =< base().
 
-    // no two squares overlap: for each pair, one lies left of, right of, below or above the other
-    ! i in I: ! j in I: i ~= j =>
-        (x_coords(i) + sides(i) =< x_coords(j) | x_coords(j) + sides(j) =< x_coords(i) |
-         y_coords(i) + sides(i) =< y_coords(j) | y_coords(j) + sides(j) =< y_coords(i)).
+    // no two squares overlap: for two different squares, one lies to the left of the other, or one lies below the other
+    ! s, t in Sq: s < t =>
+        x_coords(s) + sides(s) =< x_coords(t) | x_coords(t) + sides(t) =< x_coords(s) |
+        y_coords(s) + sides(s) =< y_coords(t) | y_coords(t) + sides(t) =< y_coords(s).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

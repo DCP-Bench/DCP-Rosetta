@@ -1,30 +1,37 @@
-% Ages of the sons: three sons whose ages multiply to 36; knowing only their
-% sum is not enough, so there is another triple with the same sum, and the
-% oldest son is unique (the "blue eyes" clue).
-% The puzzle is fixed by the problem; the instance carries no data.
-% a1(V), a2(V), a3(V): the ages of the sons, oldest first. b1(V), b2(V), b3(V): the
-% ages of the other triple with the same sum.
-1 { a1(V) : V = 0..36 } 1.
-1 { a2(V) : V = 0..36 } 1.
-1 { a3(V) : V = 0..36 } 1.
-1 { b1(V) : V = 0..36 } 1.
-1 { b2(V) : V = 0..36 } 1.
-1 { b3(V) : V = 0..36 } 1.
+% ages_of_the_sons: a clingo model from DCP Rosetta.
+%
+% An old man asked a mathematician to guess the ages of his three sons. The old man said: "The product of their ages is 36." The mathematician said: "I need more information." The old man said: "Over there you can see a building. The sum of their ages equals the number of the windows in that building." After a short while the mathematician said: "I need more information." The old man said: "The oldest son has blue eyes." The mathematician said: "I got it." What are the ages of the three sons of the old man?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/ages_of_the_sons.html
+% Save this file as model.lp and run it (clingo 5.8, e.g. `pip install clingo`) with:
+%   python -m clingo model.lp
 
-% Both triples have the product 36.
-:- a1(X), a2(Y), a3(Z), X*Y*Z != 36.
-:- b1(X), b2(Y), b3(Z), X*Y*Z != 36.
+age(1..36).
 
-% The actual triple has a strictly oldest son (A1 > A2 >= A3), the other one may
-% have twins first (B1 >= B2 >= B3).
-:- a1(X), a2(Y), X <= Y.
-:- a2(Y), a3(Z), Y < Z.
-:- b1(X), b2(Y), X < Y.
-:- b2(Y), b3(Z), Y < Z.
+% tri(X,Y,Z): the ages X >= Y >= Z of three sons (positive integers, oldest first) multiply to 36
+tri(X,Y,Z) :- age(X), age(Y), age(Z), X >= Y, Y >= Z, X*Y*Z == 36.
 
-% The other triple has the same sum, and a different oldest son.
-:- #sum { V,a1 : a1(V); V,a2 : a2(V); V,a3 : a3(V); -V,b1 : b1(V); -V,b2 : b2(V); -V,b3 : b3(V) } != 0.
-:- a1(V), b1(V).
+% the oldest son is unique in a triple: the oldest is strictly older than the second
+uniqueOldest(X,Y,Z) :- tri(X,Y,Z), X > Y.
+
+% the sum is not enough to know the ages: at least two different triples have that sum
+ambiguous(S) :- tri(X1,Y1,Z1), tri(X2,Y2,Z2), t(X1,Y1,Z1) != t(X2,Y2,Z2), X1+Y1+Z1 == S, X2+Y2+Z2 == S.
+
+% the sons' ages are one of the triples
+1 { actual(X,Y,Z) : tri(X,Y,Z) } 1.
+
+% the mathematician needed more information after the sum, so the sum is ambiguous
+:- actual(X,Y,Z), not ambiguous(X+Y+Z).
+
+% the mathematician got it after the blue eyes clue, so the oldest son of the actual triple is unique
+:- actual(X,Y,Z), not uniqueOldest(X,Y,Z).
+
+% the blue eyes clue settles it: no other triple with the same sum has a unique oldest son
+:- actual(X,Y,Z), tri(X2,Y2,Z2), t(X,Y,Z) != t(X2,Y2,Z2), X+Y+Z == X2+Y2+Z2, uniqueOldest(X2,Y2,Z2).
+
+a1(X) :- actual(X,_,_).
+a2(Y) :- actual(_,Y,_).
+a3(Z) :- actual(_,_,Z).
 
 #show a1/1.
 #show a2/1.

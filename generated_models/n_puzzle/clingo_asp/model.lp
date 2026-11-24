@@ -1,30 +1,44 @@
-% N-puzzle: slide tiles on a square grid, one move per step, to get from the start board to the
-% end board in exactly n_steps boards (start and end included). The board must change every step.
-% Instance facts: n_STEPS(N); puzzle_start(I,J,V) and puzzle_end(I,J,V): tile V (0 = empty) at row I, column J.
+% n_puzzle: a clingo model from DCP Rosetta.
+%
+% The N-Puzzle is a classic sliding puzzle game where the goal is to move tiles on a grid to achieve a specific end configuration. The puzzle consists of a grid with n+1 tiles, one of which is empty. The objective is to trace the steps to the original picture by moving the tiles into their correct positions. Input includes the start and end state of the puzzle, in which 0 is the empty tile, along with the number of steps to the solution, which includes the start and end states. Each step moves one tile that is horizontally or vertically next to the empty tile into the empty position. Also, "freezing" is not allowed, meaning that the state of the puzzle must change at each step.
+%
+% Save this file as model.lp. Download `n_puzzle.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/n_puzzle.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py n_puzzle.json
+%   python -m clingo model.lp n_puzzle_1.lp
+%
+% Input: n_STEPS(N) the number of steps N, start and end states included; puzzle_start(I, J, V) and
+% puzzle_end(I, J, V) the tile V in row I and column J of the start and end state, 0 being the empty tile
+% (indices are 0-based, as in the data).
+
 cell(I,J) :- puzzle_start(I,J,_).
 time(0..N-1) :- n_STEPS(N).
 
-% Two cells are neighbours when they are one row or one column apart.
-neighbour(I,J,I+DI,J+DJ) :- cell(I,J), cell(I+DI,J+DJ), |DI| + |DJ| == 1, DI = -1..1, DJ = -1..1.
+% neighbour(I,J,I2,J2): the cells (I,J) and (I2,J2) are horizontally or vertically next to each other
+neighbour(I,J,I2,J2) :- cell(I,J), cell(I2,J2), |I-I2| + |J-J2| == 1.
 
-% Start state: the board at step 0 is the start board.
-steps(0,I,J,V) :- puzzle_start(I,J,V).
-
-% blank(T,I,J): the empty tile is at (I,J) at step T.
+% blank(T,I,J): the empty tile is in row I and column J at step T
 blank(0,I,J) :- puzzle_start(I,J,0).
 
-% Transition: at every step the empty tile moves to one neighbouring cell (so the board always
-% changes and the empty tile never stays put).
+% each step after the first moves the empty tile into a neighbouring cell, so the state changes at every step
 1 { blank(T,I2,J2) : neighbour(I1,J1,I2,J2) } 1 :- time(T), T > 0, blank(T-1,I1,J1).
 
-% The tile that was in the cell the empty tile moves to takes the cell the empty tile leaves.
+% steps(T,I,J,V): the tile V is in row I and column J at step T
+% the state at step 0 is the start state
+steps(0,I,J,V) :- puzzle_start(I,J,V).
+
+% the tile in the cell the empty tile moves into goes to the cell the empty tile leaves
 steps(T,I1,J1,V) :- time(T), T > 0, blank(T-1,I1,J1), blank(T,I2,J2), steps(T-1,I2,J2,V).
-% The empty tile is in its new cell.
+
+% the empty tile is in its new cell
 steps(T,I,J,0) :- time(T), T > 0, blank(T,I,J).
-% Every other tile stays where it was.
+
+% every other tile stays where it was
 steps(T,I,J,V) :- time(T), T > 0, steps(T-1,I,J,V), not blank(T-1,I,J), not blank(T,I,J).
 
-% End state: the board at the last step is the end board.
+% the state at the last step is the end state
 :- n_STEPS(N), puzzle_end(I,J,V), not steps(N-1,I,J,V).
 
 #show steps/4.

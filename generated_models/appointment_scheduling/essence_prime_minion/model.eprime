@@ -1,14 +1,31 @@
 language ESSENCE' 1.0
-$ Schedule 4 people into 4 interview slots based on their free-busy schedules.
-given m : matrix indexed by [int(1..4), int(1..4)] of int(0..1)
-find x : matrix indexed by [int(1..4), int(1..4)] of bool
+$ appointment_scheduling: an Essence' model from DCP Rosetta.
+$
+$ Schedule 4 people into 4 interview slots based on their free-busy schedules, where m[i][j] is 1 if person i is free in slot j. Each person gets exactly one slot in which they are free, and each slot goes to exactly one person.
+$
+$ Save this file as model.eprime. Download `appointment_scheduling.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/appointment_scheduling.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `appointment_scheduling_1.param.solution`:
+$   python dcp_convert_essence.py appointment_scheduling.json
+$   savilerow model.eprime appointment_scheduling_1.param -run-solver
+
+$ the number of people, and the number of interview slots (both 4)
+letting people = 4
+letting slots = 4
+$ m[i,j]: 1 if person i is free in slot j, 0 if busy, indices 1-based
+given m : matrix indexed by [int(1..people), int(1..slots)] of int(0..1)
+
+$ x[i,j]: person i is assigned to slot j
+find x : matrix indexed by [int(1..people), int(1..slots)] of bool
 
 branching on [x]
 
 such that
-$ each person is assigned to exactly one interview slot
-forAll i : int(1..4) . (sum j : int(1..4) . x[i,j]) = 1,
+$ each person is assigned exactly one interview slot
+forAll i : int(1..people) . (sum j : int(1..slots) . toInt(x[i,j])) = 1,
 $ each interview slot is assigned to exactly one person
-forAll j : int(1..4) . (sum i : int(1..4) . x[i,j]) = 1,
-$ a person can only be assigned to a slot in which they are free
-forAll i : int(1..4) . forAll j : int(1..4) . (x[i,j] -> m[i,j] = 1)
+forAll j : int(1..slots) . (sum i : int(1..people) . toInt(x[i,j])) = 1,
+$ a person is assigned only to a slot in which they are free
+forAll i : int(1..people) . forAll j : int(1..slots) . (x[i,j] -> m[i,j] = 1)

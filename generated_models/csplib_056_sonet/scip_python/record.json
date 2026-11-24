@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791985245.3684156,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "690b20038277627960683d03eb7b921bc8a06c3ce3e59585a7739ded9cb4168f"
+    },
+    "created_at": 1794340939.2673185,
     "problem_id": "csplib_056_sonet",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "dec26fe97f27e47e605711c77916c053a4fdb9719d9739e8b03e82cf9ac87e6c",
+    "run_id": "scip-polish",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:ba8c4d07b6eb8ea203c2d797b6975ad656d98f740f9de8a609c87f1a58fedc9b",
+      "recipe": "sha256:d8e8a4b0ba3e1fb49869ba406d7ffe0d76e0d36fec698d04ec0116b2346507ed",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.04191492998506874,
-        "execution_wall_seconds": 1.7879167950013652,
+        "checking_seconds": 0.039758422994054854,
+        "execution_wall_seconds": 1.460780048975721,
         "first_solution": {
           "ring_config": [
             [
@@ -65,18 +95,6 @@
               false
             ],
             [
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              true,
-              true,
-              false
-            ],
-            [
               false,
               false,
               false,
@@ -87,11 +105,41 @@
               false,
               true,
               true
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false
             ]
           ],
           "total_adms": 14
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.004773496009875089,
+            17
+          ],
+          [
+            0.2144137200084515,
+            16
+          ],
+          [
+            0.2370627790223807,
+            15
+          ],
+          [
+            0.2679292329994496,
+            14
+          ]
+        ],
         "instance_hash": "1dc618b1592a89580771944dd3f1b2dbd364bf4a190d278fead8715a1857e957",
         "is_optimization": true,
         "oom_killed": false,
@@ -101,9 +149,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4191180350026116,
+        "reference_setup_seconds": 0.8146501459996216,
         "runner_status": {
+          "build_seconds": 0.015427790000103414,
           "detail": "",
+          "main_seconds": 0.49992601698613726,
+          "read_seconds": 0.0001461799838580191,
           "status": "limit",
           "type": "status"
         },
@@ -113,8 +164,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.020626002980861813,
-        "execution_wall_seconds": 0.9848515519988723,
+        "checking_seconds": 0.015868316986598074,
+        "execution_wall_seconds": 1.0112596389953978,
         "first_solution": {
           "ring_config": [
             [
@@ -157,6 +208,16 @@
           "total_adms": 8
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0033044840092770755,
+            16
+          ],
+          [
+            0.0036652279959525913,
+            8
+          ]
+        ],
         "instance_hash": "832103f37c45d165e7497f4b071eac51226bb49ad55e717b9d3d405246a1e1ac",
         "is_optimization": true,
         "oom_killed": false,
@@ -166,9 +227,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8594504100037739,
+        "reference_setup_seconds": 0.2854247360082809,
         "runner_status": {
+          "build_seconds": 0.007509635004680604,
           "detail": "",
+          "main_seconds": 0.086434258002555,
+          "read_seconds": 0.00013552402378991246,
           "status": "limit",
           "type": "status"
         },
@@ -178,21 +242,12 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0290847200085409,
-        "execution_wall_seconds": 1.052057116990909,
+        "checking_seconds": 0.016251949011348188,
+        "execution_wall_seconds": 1.1748735530127306,
         "first_solution": {
           "ring_config": [
             [
               false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
               false,
               false,
               false,
@@ -201,12 +256,12 @@
               false
             ],
             [
+              false,
+              true,
               true,
               false,
               false,
               false,
-              true,
-              true,
               false
             ],
             [
@@ -217,11 +272,38 @@
               false,
               false,
               true
+            ],
+            [
+              true,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false
             ]
           ],
           "total_adms": 9
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0037037309957668185,
+            13
+          ],
+          [
+            0.0041146730072796345,
+            12
+          ],
+          [
+            0.0041638459952082485,
+            10
+          ],
+          [
+            0.06316300001344644,
+            9
+          ]
+        ],
         "instance_hash": "41668951cfc7774dc247dd2ffaa9ec83622fe4fb909454510f4891ff46cd02fb",
         "is_optimization": true,
         "oom_killed": false,
@@ -231,9 +313,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8385723340325058,
+        "reference_setup_seconds": 0.29846992198145017,
         "runner_status": {
+          "build_seconds": 0.007455868006218225,
           "detail": "",
+          "main_seconds": 0.16606233798665926,
+          "read_seconds": 0.00013550100266002119,
           "status": "limit",
           "type": "status"
         },
@@ -243,29 +328,11 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.025427879998460412,
-        "execution_wall_seconds": 1.0028660570387729,
+        "checking_seconds": 0.01028312899870798,
+        "execution_wall_seconds": 0.8868424980028067,
         "first_solution": {
           "ring_config": [
             [
-              true,
-              false,
-              true,
-              true,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              true
-            ],
-            [
               false,
               false,
               false,
@@ -278,15 +345,47 @@
               true,
               true,
               false,
-              false,
+              true,
               false,
               false,
               true
+            ],
+            [
+              false,
+              false,
+              true,
+              false,
+              true,
+              false,
+              false
+            ],
+            [
+              true,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           ],
           "total_adms": 10
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0037280220130924135,
+            12
+          ],
+          [
+            0.012313337996602058,
+            11
+          ],
+          [
+            0.05462531399098225,
+            10
+          ]
+        ],
         "instance_hash": "1e673eaaa2fa0b71f5dbab8de8b8df08990af772765eff7927fe149674f11566",
         "is_optimization": true,
         "oom_killed": false,
@@ -296,9 +395,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9055430440348573,
+        "reference_setup_seconds": 0.3928992449946236,
         "runner_status": {
+          "build_seconds": 0.008706922002602369,
           "detail": "",
+          "main_seconds": 0.09880550298839808,
+          "read_seconds": 0.0001384599891025573,
           "status": "limit",
           "type": "status"
         },
@@ -308,8 +410,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02561166195664555,
-        "execution_wall_seconds": 1.0347233840147965,
+        "checking_seconds": 0.021040264022303745,
+        "execution_wall_seconds": 0.9099065439950209,
         "first_solution": {
           "ring_config": [
             [
@@ -322,36 +424,46 @@
               false
             ],
             [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
               true,
               false,
               false,
-              false,
-              false,
+              true,
               false,
               true
             ],
             [
-              true,
-              true,
-              false,
               false,
               true,
+              false,
+              false,
+              false,
               true,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
               false
             ]
           ],
           "total_adms": 10
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.002762950985925272,
+            11
+          ],
+          [
+            0.04763529897900298,
+            10
+          ]
+        ],
         "instance_hash": "72681923fdbddc22ecc14618bd244d2847cf13af2fedf355dbe597fc8859375e",
         "is_optimization": true,
         "oom_killed": false,
@@ -361,9 +473,12 @@
           "total_adms"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8736115409992635,
+        "reference_setup_seconds": 0.3282251479977276,
         "runner_status": {
+          "build_seconds": 0.007665785000426695,
           "detail": "",
+          "main_seconds": 0.10921681101899594,
+          "read_seconds": 0.0001332680112682283,
           "status": "limit",
           "type": "status"
         },
@@ -381,15 +496,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "af956a360b9ef33a3627e16cb8ef81a4a7a0570797b67718d343db715ea9b57f",
+    "model_hash": "3fa6615eb5bb111a2bfc9d5a841ece6de79c39683ab8132bc398494ac2de2363",
     "problem_id": "csplib_056_sonet",
     "reason": "accepted",
-    "reference_hash": "69346fb9abd091e290f5139e5b63f976eb3d677dd9ffb8b4d0adfee5c63c256c",
+    "reference_hash": "8b97b8b929f28213a252bc5736aaad7a859437dea402437395ade94757df86e3",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -400,11 +515,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "scip_python",
-    "total_wall_seconds": 11.403811950003728,
+    "total_wall_seconds": 8.244198553002207,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

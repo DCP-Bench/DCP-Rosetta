@@ -1,44 +1,65 @@
-# SEND + MORE = MONEY: assign a distinct digit 0-9 to each letter so that the sum holds.
-from pyscipopt import Model, quicksum
+# send_more_money: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/send_more_money.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python send_more_money.py
 
-LETTERS = ["s", "e", "n", "d", "m", "o", "r", "y"]
-DIGITS = range(10)
+import numpy as np
+from pyscipopt import Model
+
+# The rows of the digit table for the two letters that start a word: S (SEND) and M (MORE, MONEY).
+S, M = 0, 4
 
 
-def build(instance):
-    m = Model()
-    m.hideOutput()
+def create_model(instance):
+    """Send More Money: give each letter s, e, n, d, m, o, r, y a different digit
+    from 0 to 9 so that SEND + MORE = MONEY when the words are read in base ten,
+    with no word starting with 0. The instance file is empty ([]): the puzzle is
+    fixed by its statement, so the model reads no data.
 
-    # each letter takes one digit: one-hot binaries b[l, v], letter value is their weighted sum
-    val = {}
-    b = {}
-    for l in LETTERS:
-        val[l] = m.addVar(name=l, vtype="I", lb=0, ub=9)
-        for v in DIGITS:
-            b[l, v] = m.addVar(name=f"b_{l}_{v}", vtype="B")
-        # each letter has exactly one digit
-        m.addCons(quicksum(b[l, v] for v in DIGITS) == 1)
-        # the letter's value is the digit it selects
-        m.addCons(val[l] == quicksum(v * b[l, v] for v in DIGITS))
+    Returns the model and a dict from each letter to its digit."""
 
-    # the digits of different letters are all different
-    # each digit is used by at most one letter
-    for v in DIGITS:
-        m.addCons(quicksum(b[l, v] for l in LETTERS) <= 1)
+    model = Model("send_more_money")
 
-    # the first letter of each word cannot be zero
-    # s leads SEND and m leads MORE
-    m.addCons(b["s", 0] == 0)
-    m.addCons(b["m", 0] == 0)
+    # digit[l, v] is 1 when letter l stands for the digit v, and 0 when not.
+    # Rows are the letters S, E, N, D, M, O, R, Y; columns are the digits 0 to 9.
+    digit = model.addMatrixVar((8, 10), vtype="B", name="digit")
 
-    # the sum SEND + MORE = MONEY, column by column in one linear equation
-    # SEND + MORE = MONEY: 1000(s+m) + 100(e+o) + 10(n+r) + (d+e) = 10000m + 1000o + 100n + 10e + y
-    m.addCons(
-        1000 * val["s"] + 100 * val["e"] + 10 * val["n"] + val["d"]
-        + 1000 * val["m"] + 100 * val["o"] + 10 * val["r"] + val["e"]
-        == 10000 * val["m"] + 1000 * val["o"] + 100 * val["n"] + 10 * val["e"] + val["y"]
-    )
+    # Each letter stands for exactly one digit.
+    model.addMatrixCons(digit.sum(axis=1) == 1)
 
-    # the output gives the value of each letter
-    outputs = {l: val[l] for l in ["d", "e", "m", "n", "o", "r", "s", "y"]}
-    return m, outputs
+    # Different letters stand for different digits. SCIP has no all-different
+    # constraint, so this says that each digit is taken by at most one letter.
+    model.addMatrixCons(digit.sum(axis=0) <= 1)
+
+    # No word starts with 0: SEND starts with S, and MORE and MONEY both start
+    # with M, so S and M are not 0.
+    model.addCons(digit[S, 0] == 0)
+    model.addCons(digit[M, 0] == 0)
+
+    # value[l] is the digit that letter l stands for, a linear expression in digit.
+    value = digit @ np.arange(10)
+    s, e, n, d, m, o, r, y = value
+
+    # SEND + MORE = MONEY, each word read as its digits in base ten.
+    send = 1000 * s + 100 * e + 10 * n + d
+    more = 1000 * m + 100 * o + 10 * r + e
+    money = 10000 * m + 1000 * o + 100 * n + 10 * e + y
+    model.addCons(send + more == money)
+
+    # The digit of each letter; there is no objective, the puzzle asks for any solution.
+    return model, {"s": s, "e": e, "n": n, "d": d, "m": m, "o": o, "r": r, "y": y}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

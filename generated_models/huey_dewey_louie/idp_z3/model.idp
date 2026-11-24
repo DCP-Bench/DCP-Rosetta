@@ -1,15 +1,28 @@
-// Huey, Dewey and Louie are questioned about who is guilty. Print whether huey, dewey and louie are guilty.
-vocabulary {
-    huey: () -> Bool
-    dewey: () -> Bool
-    louie: () -> Bool
+// huey_dewey_louie: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Huey, Dewey and Louie are being questioned by their uncle. These are the statements they make:
+// Huey: Dewey and Louie have an equal share in it; if one is guilty, so is the other.
+// Dewey: If Huey is guilty, then so am I.
+// Louie: Dewey and I are not both guilty.
+// Their uncle, knowing that they are cub scouts, realises that they cannot tell a lie. Has he got sufficient information
+// to decide who (if any) are guilty?
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/huey_dewey_louie.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    huey: () -> Bool                   // huey(): Huey is guilty
+    dewey: () -> Bool                  // dewey(): Dewey is guilty
+    louie: () -> Bool                  // louie(): Louie is guilty
 }
-theory {
-    // They cannot tell a lie, so every statement they make is true.
-    // Huey: Dewey and Louie have equal share in it; if one is guilty, so is the other.
+theory T:V {
+    // Huey cannot tell a lie: Dewey and Louie have an equal share in it, so if one is guilty, so is the other.
     dewey() <=> louie().
-    // Dewey: if Huey is guilty, then so am I.
+    // Dewey cannot tell a lie: if Huey is guilty, then so am I.
     huey() => dewey().
-    // Louie: Dewey and I are not both guilty.
+    // Louie cannot tell a lie: Dewey and I are not both guilty.
     ~(dewey() & louie()).
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

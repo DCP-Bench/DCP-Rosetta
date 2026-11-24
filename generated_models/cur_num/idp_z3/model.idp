@@ -1,21 +1,29 @@
-// Curious number: find a number between 1 and 10000, other than 48, such that adding 1 to it
-// gives a square number and adding 1 to its half also gives a square number.
-vocabulary {
-    // square roots needed for a number up to 10000 plus one (the largest is 100)
-    type Root := {0..100}
-    peculiar: () -> Int
-    // the half of the number, which must be a whole number
-    half: () -> Int
+// cur_num: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The number 48 has this peculiarity: if you add 1 to it the result is a square number, and if you add 1 to its half
+// you also get a square number. Find another number with this peculiarity, between 1 and 10000.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/cur_num.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Peculiar := {1..10000}        // the candidate numbers, between 1 and 10000
+    type Root := {1..101}              // roots k of the square numbers up to 10001
+    peculiar: () -> Peculiar           // the number with the peculiarity (declared output)
 }
-theory {
-    // the number is between 1 and 10000
-    1 =< peculiar() & peculiar() =< 10000.
-    // the number is another number, not 48 itself
+theory T:V {
+    // the number is not 48, the number given as the example
     peculiar() ~= 48.
-    // the number is even, so that its half is a whole number
-    2 * half() = peculiar().
+
     // adding 1 to the number gives a square number
-    ? r in Root: r * r = peculiar() + 1.
-    // adding 1 to its half also gives a square number
-    ? s in Root: s * s = half() + 1.
+    ? k in Root: k * k = peculiar() + 1.
+
+    // the number is even, so that its half is a whole number
+    2 * (peculiar() / 2) = peculiar().
+
+    // adding 1 to the half of the number gives a square number
+    ? q in Root: q * q = peculiar() / 2 + 1.
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

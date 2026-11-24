@@ -1,44 +1,43 @@
-// Concert rehearsal: order the pieces so that the total time players spend waiting to play is minimal.
-vocabulary {
-    // pieces are numbered 0..num_pieces-1; sized from the duration array
-    type Piece <: Int
-    // players are numbered 0..num_players-1; sized from the rehearsal table
-    type Player <: Int
-
-    // duration of each piece
-    duration: Piece -> Int
-    // rehearsal[p][q] = 1 when player p takes part in piece q
-    rehearsal: Player * Piece -> Int
-
-    // declared output: rehearsal_order[s] is the piece rehearsed in slot s
-    rehearsal_order: Piece -> Piece
-
-    // plays(p, s): player p is involved in the piece rehearsed in slot s
-    plays: Player * Piece -> Bool
-    // early(p, s): player p plays in some slot up to and including s
-    early: Player * Piece -> Bool
-    // late(p, s): player p plays in some slot from s onward
-    late: Player * Piece -> Bool
-
-    // waiting time of player p during slot s
-    idle: Player * Piece -> Int
-
-    minimize: () -> Int
+// csplib_039_rehearsal: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A concert consists of a number of pieces of music of different durations, each involving a different combination of
+// the members of the orchestra. Players arrive at rehearsals immediately before the first piece in which they are
+// involved and depart immediately after the last piece in which they are involved. Devise an order in which the pieces
+// can be rehearsed so as to minimize the total time that players are waiting to play, that is, the total time when
+// players are present but not currently playing.
+//
+// Save this file as model.idp. Download `csplib_039_rehearsal.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_039_rehearsal.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_039_rehearsal.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Piece <: Int                     // the pieces, numbered from 0, sized from duration
+    type Player <: Int                    // the players, numbered from 0, sized from the rows of rehearsal
+    type Slot <: Int                      // the rehearsal slots, numbered 1..num_pieces, sized by Slot_size
+    Slot_size: () -> Int                  // the number of slots, which is the number of pieces
+    num_pieces: () -> Int                 // the number of pieces
+    duration: Piece -> Int                // duration(p): the duration of piece p
+    rehearsal: Player * Piece -> Int      // rehearsal(j, p) is 1 if player j plays in piece p, and 0 otherwise
+    rehearsal_order: Slot -> Piece        // rehearsal_order(s): the piece rehearsed in slot s
+    waiting: Player * Slot -> Bool        // waiting(j, s): player j is present but not playing in slot s
+    minimize: () -> Int                   // the total time the players spend waiting
 }
-theory {
-    // the rehearsal order is a permutation: every piece is rehearsed in exactly one slot
-    ! s1, s2 in Piece: s1 ~= s2 => rehearsal_order(s1) ~= rehearsal_order(s2).
+theory T:V {
+    // the number of slots is the number of pieces
+    Slot_size() = num_pieces().
 
-    // a player is involved in the piece rehearsed in slot s exactly when the instance says so
-    ! p in Player, s in Piece: plays(p, s) <=> rehearsal(p, rehearsal_order(s)) = 1.
+    // each piece is rehearsed in one slot only, so the rehearsal order lists every piece once
+    ! s1, s2 in Slot: rehearsal_order(s1) = rehearsal_order(s2) => s1 = s2.
 
-    // players arrive immediately before the first piece in which they are involved
-    // and depart immediately after the last piece in which they are involved
-    ! p in Player, s in Piece: early(p, s) <=> ? t in Piece: t =< s & plays(p, t).
-    ! p in Player, s in Piece: late(p, s) <=> ? t in Piece: s =< t & plays(p, t).
+    // a player is waiting in a slot when it plays in an earlier slot, plays in a later slot, and does not play in this slot
+    ! j in Player, s in Slot: waiting(j, s) <=> (?a in Slot: a < s & rehearsal(j, rehearsal_order(a)) = 1) & (?b in Slot: s < b & rehearsal(j, rehearsal_order(b)) = 1) & rehearsal(j, rehearsal_order(s)) ~= 1.
 
-    // the total time that players are waiting to play is the time they are present but not currently playing
-    // a player is present in slot s when they have arrived (early) and not yet departed (late)
-    ! p in Player, s in Piece: idle(p, s) = if early(p, s) & late(p, s) & ~plays(p, s) then duration(rehearsal_order(s)) else 0.
-    minimize() = sum{{ idle(p, s) | p in Player, s in Piece }}.
+    // the total waiting time is the sum of the durations of the slots in which a player is waiting
+    minimize() = sum{{ duration(rehearsal_order(s)) | j in Player, s in Slot: waiting(j, s) }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

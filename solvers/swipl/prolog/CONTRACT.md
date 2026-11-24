@@ -25,7 +25,8 @@ more to enumerate. `Vars` is the finite-domain variables to label; the driver la
 `term_variables(Vars-Outputs)`, so nesting is fine and output variables are always
 labelled. `labeling_options/1`, if defined, must give a list of clpfd `labeling/2`
 options without `min/1` or `max/1`. A `model/3`/`model/4` that fails is reported as
-`unsat`.
+`unsat`. A standalone model also defines `solve_file/1,2` and `solve_model/1` (see
+[Standalone run](#standalone-run)); the driver never calls them.
 
 ## Instance
 
@@ -124,6 +125,73 @@ entrypoint: `docker run --rm --network none --entrypoint sh dcp-eval/swipl_clpfd
   stderr, which typically surfaces as "defines neither model/3 nor model/4" or `unsat`.
 - An output value may be the atom `true` or `false`: `json_write_dict` writes it as a
   JSON Boolean, which is accepted. `0`/`1` works as well.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header comment: the problem
+statement, where the data comes from and the command that runs it. SWI-Prolog reads JSON itself, so there is no
+converter: the model ends with a run block that reads the problem's `<problem>.json` as the runner does (the
+dataset file is a list of instances; the model is built for the first, or the N-th with `solve_file/2`), solves it
+and prints the outputs:
+
+```prolog
+% <problem>: a SWI-Prolog model from DCP Rosetta.
+%
+% <the problem statement, as below>
+%
+% Save this file as model.pl. Download `<problem>.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('<problem>.json')" -t halt model.pl
+```
+
+```prolog
+:- use_module(library(http/json)).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).
+```
+
+`labeling/2` over the model's variables and its output variables, and under `min(Expr)`/`max(Expr)` the first
+solution of `labeling([min(Expr)|Options], ...)`, which clpfd reports in objective order, so it is the optimum: the
+driver does the same. **A problem with no instance data** (the instance is `{}`) has a shorter header with no
+download line, and runs the model with `swipl -g "solve_model(_{})" -t halt model.pl` (same block):
+
+```prolog
+% <problem>: a SWI-Prolog model from DCP Rosetta.
+%
+% <the problem statement>
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
+```
+
+The problem statement is the description's own words or a faithful short paraphrase of them (never a narrowing: "any
+two landings", not "consecutive landings"), no longer than needed: no instruction about printing and no remark about
+the instance. A comment after the header says what each field the model reads holds (`Instance.values`: the value of
+each item, a list indexed from 0), since the instance is a dict, not declared parameters. The run block is the same
+in every model apart from the no-data form. Do not name your own predicates `solve_file`, `solve_model` or after
+the driver's (see Traps).
 
 ## Example
 

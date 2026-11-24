@@ -1,0 +1,124 @@
+language ESSENCE' 1.0
+$ csplib_011_acc_basketball_schedule: an Essence' model from DCP Rosetta.
+$
+$ Find a double round-robin timetable for the 9 teams of the 1997/98 Atlantic Coast Conference (Clemson, Duke, Florida State, Georgia Tech, Maryland, North Carolina, North Carolina State, Virginia and Wake Forest), so that each team plays every other team once at home and once away over 18 dates. The odd dates are weekday fixtures and the even dates weekend fixtures. The timetable must also satisfy these rules. Mirroring: the dates are paired as (1,8), (2,9), (3,12), (4,13), (5,14), (6,15), (7,16), (10,17) and (11,18), and each team plays the same opponent on both dates of a pair, at home on one and away on the other. No team plays away on both of the last two dates. No team has more than two away matches in a row, more than two home matches in a row, more than three away matches or byes in a row, or more than four home matches or byes in a row. Over the weekends each team plays four home matches, four away matches and has one bye. Each team has a home match or a bye on at least two of the first five weekends. Every team except Florida State plays its traditional rival on the last date (Duke-North Carolina, Clemson-Georgia Tech, North Carolina State-Wake Forest and Maryland-Virginia), unless it plays Florida State or has a bye. Wake Forest and Georgia Tech each play North Carolina and Duke at least once on dates 11 to 18. No team plays away against North Carolina and Duke on two consecutive dates, in either order, and no team plays North Carolina, Duke and Wake Forest on three consecutive dates. The remaining fixed requirements are listed with their own entries below.
+$
+$ Save this file as model.eprime. Download `csplib_011_acc_basketball_schedule.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_011_acc_basketball_schedule_1.param.solution`:
+$   python dcp_convert_essence.py csplib_011_acc_basketball_schedule.json
+$   savilerow model.eprime csplib_011_acc_basketball_schedule_1.param -run-solver
+
+$ number of teams (9 in the problem)
+given n_teams : int
+$ number of dates (18 in the problem)
+given n_days : int
+
+$ team numbers, 1-based (the output numbers teams from 0 in the order listed above, so Clemson is 0 there and 1 here)
+letting CLEM = 1
+letting DUKE = 2
+letting FSU = 3
+letting GT = 4
+letting UMD = 5
+letting UNC = 6
+letting NCSt = 7
+letting UVA = 8
+letting WAKE = 9
+$ venue codes of the output (where): home, bye, away
+letting HOME = 0
+letting BYE = 1
+letting AWAY = 2
+$ MIRROR[d]: the date paired with date d under the mirroring scheme (dates 1-based)
+letting MIRROR = [8, 9, 12, 13, 14, 15, 16, 1, 2, 17, 18, 3, 4, 5, 6, 7, 10, 11]
+$ VENUE_PATTERNS: the 54 venue patterns of one team over the nine dates that are not mirrors (dates 1 to 7, 10 and 11, in that order),
+$ each of which satisfies rules 2 to 5 once the mirror dates are filled in (found by enumerating them; used by the table below)
+letting VENUE_PATTERNS = [[0, 0, 2, 0, 0, 2, 0, 0, 1], [0, 0, 2, 0, 2, 2, 0, 1, 0], [0, 0, 2, 1, 0, 2, 0, 0, 2], [0, 1, 0, 2, 0, 0, 2, 0, 2], [0, 1, 2, 0, 0, 2, 0, 0, 2], [0, 1, 2, 0, 2, 0, 0, 2, 0], [0, 2, 0, 0, 2, 0, 2, 1, 0], [0, 2, 0, 2, 1, 0, 2, 0, 2], [0, 2, 0, 2, 2, 0, 1, 0, 2], [0, 2, 0, 2, 2, 0, 2, 0, 1], [0, 2, 0, 2, 2, 0, 2, 1, 2], [0, 2, 1, 0, 2, 0, 2, 2, 0], [0, 2, 1, 0, 2, 2, 0, 0, 2], [0, 2, 1, 2, 0, 0, 2, 0, 2], [0, 2, 2, 0, 0, 2, 1, 0, 2], [0, 2, 2, 0, 1, 0, 2, 2, 0], [0, 2, 2, 0, 1, 2, 0, 0, 2], [0, 2, 2, 0, 2, 0, 0, 2, 1], [0, 2, 2, 0, 2, 0, 1, 2, 0], [0, 2, 2, 0, 2, 1, 0, 2, 2], [0, 2, 2, 0, 2, 2, 0, 0, 1], [0, 2, 2, 0, 2, 2, 0, 1, 2], [1, 0, 2, 0, 2, 2, 0, 2, 0], [1, 0, 2, 2, 0, 2, 0, 0, 2], [1, 2, 0, 0, 2, 0, 2, 2, 0], [1, 2, 0, 2, 0, 0, 2, 0, 2], [1, 2, 2, 0, 0, 2, 0, 0, 2], [1, 2, 2, 0, 2, 0, 0, 2, 0], [1, 2, 2, 0, 2, 2, 0, 2, 2], [2, 0, 0, 2, 0, 0, 2, 1, 0], [2, 0, 0, 2, 0, 2, 1, 0, 2], [2, 0, 0, 2, 0, 2, 2, 0, 1], [2, 0, 0, 2, 1, 0, 2, 2, 0], [2, 0, 0, 2, 1, 2, 0, 0, 2], [2, 0, 0, 2, 2, 0, 1, 2, 0], [2, 0, 1, 0, 2, 2, 0, 2, 0], [2, 0, 1, 2, 0, 0, 2, 2, 0], [2, 0, 1, 2, 0, 2, 0, 0, 2], [2, 0, 2, 0, 0, 2, 0, 1, 0], [2, 0, 2, 0, 0, 2, 0, 2, 1], [2, 0, 2, 0, 0, 2, 1, 2, 0], [2, 0, 2, 0, 1, 2, 0, 2, 0], [2, 0, 2, 2, 0, 2, 0, 0, 1], [2, 0, 2, 2, 0, 2, 0, 1, 2], [2, 1, 0, 2, 0, 2, 2, 0, 2], [2, 1, 0, 2, 2, 0, 2, 2, 0], [2, 1, 2, 0, 0, 2, 0, 2, 2], [2, 1, 2, 0, 2, 2, 0, 2, 0], [2, 2, 0, 0, 2, 0, 1, 2, 0], [2, 2, 0, 0, 2, 1, 2, 2, 0], [2, 2, 0, 1, 2, 0, 2, 2, 0], [2, 2, 0, 2, 0, 0, 2, 1, 2], [2, 2, 0, 2, 2, 0, 2, 1, 0], [2, 2, 0, 2, 2, 0, 2, 2, 1]]
+
+$ opp[d, t]: the team that team t plays on date d (its own number if it has a bye); internal, with 1-based team numbers
+find opp : matrix indexed by [int(1..n_days), int(1..n_teams)] of int(1..n_teams)
+$ where_[d, t]: whether team t plays at home (0), has a bye (1) or plays away (2) on date d
+find where_ : matrix indexed by [int(1..n_days), int(1..n_teams)] of int(0..2)
+$ config[d, i]: the team that team i plays on day d, numbered from 0 (the team itself for a bye); the output
+find config : matrix indexed by [int(1..n_days), int(1..n_teams)] of int(0..n_teams - 1)
+
+branching on [opp, where_]
+
+such that
+$ the output config is the opponent numbered from 0
+forAll d : int(1..n_days) . forAll t : int(1..n_teams) . config[d, t] = opp[d, t] - 1,
+$ a match pairs two teams: if t plays o then o plays t on the same date (a bye pairs a team with itself)
+forAll d : int(1..n_days) . forAll t : int(1..n_teams) . opp[d, opp[d, t]] = t,
+$ a team with a bye has itself as opponent, and a team that plays has one team at home and the other away
+forAll d : int(1..n_days) . forAll t : int(1..n_teams) . ((where_[d, t] = BYE <-> opp[d, t] = t) /\ (where_[d, t] = HOME <-> (opp[d, t] != t /\ where_[d, opp[d, t]] = AWAY)) /\ (where_[d, t] = AWAY <-> (opp[d, t] != t /\ where_[d, opp[d, t]] = HOME))),
+$ double round robin: each team plays each other team exactly once at home
+forAll t : int(1..n_teams) . forAll o : int(1..n_teams) . (t != o) -> ((sum d : int(1..n_days) . toInt(opp[d, t] = o /\ where_[d, t] = HOME)) = 1),
+$ redundant: each team meets each other team exactly twice, so it has exactly two byes over the 18 dates (18 - 2 * 8)
+forAll t : int(1..n_teams) . forAll o : int(1..n_teams) . (t != o) -> ((sum d : int(1..n_days) . toInt(opp[d, t] = o)) = 2),
+forAll t : int(1..n_teams) . (sum d : int(1..n_days) . toInt(where_[d, t] = BYE)) = 2,
+$ redundant: with an odd number of teams each date has at least one bye, and there are only two byes per team, so each date has exactly one bye
+forAll d : int(1..n_days) . (sum t : int(1..n_teams) . toInt(where_[d, t] = BYE)) = 1,
+$ redundant table: each team's venue pattern over the nine non-mirror dates is one of VENUE_PATTERNS (this encodes rules 2 to 5 again, for propagation)
+forAll t : int(1..n_teams) . table([where_[1, t], where_[2, t], where_[3, t], where_[4, t], where_[5, t], where_[6, t], where_[7, t], where_[10, t], where_[11, t]], VENUE_PATTERNS),
+$ mirroring: the dates of a pair repeat the same opponents, with home and away swapped
+forAll d : int(1..n_days) . forAll t : int(1..n_teams) . (opp[d, t] = opp[MIRROR[d], t] /\ where_[d, t] = 2 - where_[MIRROR[d], t]),
+$ no two final aways: no team plays away on both of the last two dates
+forAll t : int(1..n_teams) . !(where_[n_days - 1, t] = AWAY /\ where_[n_days, t] = AWAY),
+$ no more than two away matches in a row
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 2) . (sum k : int(0..2) . toInt(where_[d + k, t] = AWAY)) <= 2,
+$ no more than two home matches in a row
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 2) . (sum k : int(0..2) . toInt(where_[d + k, t] = HOME)) <= 2,
+$ no more than three away matches or byes in a row
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 3) . (sum k : int(0..3) . toInt(where_[d + k, t] != HOME)) <= 3,
+$ no more than four home matches or byes in a row
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 4) . (sum k : int(0..4) . toInt(where_[d + k, t] != AWAY)) <= 4,
+$ weekend pattern: over the nine weekends (the even dates) each team plays four home matches, four away matches and has one bye
+forAll t : int(1..n_teams) . (sum w : int(1..n_days / 2) . toInt(where_[2 * w, t] = HOME)) = 4,
+forAll t : int(1..n_teams) . (sum w : int(1..n_days / 2) . toInt(where_[2 * w, t] = AWAY)) = 4,
+forAll t : int(1..n_teams) . (sum w : int(1..n_days / 2) . toInt(where_[2 * w, t] = BYE)) = 1,
+$ first weekends: each team has a home match or a bye on at least two of the first five weekends
+forAll t : int(1..n_teams) . (sum w : int(1..5) . toInt(where_[2 * w, t] != AWAY)) >= 2,
+$ rival matches on the last date: every team except Florida State plays its rival, unless it plays Florida State or has a bye
+(opp[n_days, CLEM] = GT \/ opp[n_days, CLEM] = FSU \/ where_[n_days, CLEM] = BYE),
+(opp[n_days, GT] = CLEM \/ opp[n_days, GT] = FSU \/ where_[n_days, GT] = BYE),
+(opp[n_days, DUKE] = UNC \/ opp[n_days, DUKE] = FSU \/ where_[n_days, DUKE] = BYE),
+(opp[n_days, UNC] = DUKE \/ opp[n_days, UNC] = FSU \/ where_[n_days, UNC] = BYE),
+(opp[n_days, NCSt] = WAKE \/ opp[n_days, NCSt] = FSU \/ where_[n_days, NCSt] = BYE),
+(opp[n_days, WAKE] = NCSt \/ opp[n_days, WAKE] = FSU \/ where_[n_days, WAKE] = BYE),
+(opp[n_days, UMD] = UVA \/ opp[n_days, UMD] = FSU \/ where_[n_days, UMD] = BYE),
+(opp[n_days, UVA] = UMD \/ opp[n_days, UVA] = FSU \/ where_[n_days, UVA] = BYE),
+$ constrained matches: Wake Forest and UNC, Wake Forest and Duke, Georgia Tech and UNC, and Georgia Tech and Duke each meet at least once on dates 11 to 18 (played by the first team, at home or away)
+(sum d : int(11..n_days) . toInt(opp[d, WAKE] = UNC)) >= 1,
+(sum d : int(11..n_days) . toInt(opp[d, WAKE] = DUKE)) >= 1,
+(sum d : int(11..n_days) . toInt(opp[d, GT] = UNC)) >= 1,
+(sum d : int(11..n_days) . toInt(opp[d, GT] = DUKE)) >= 1,
+$ opponent sequences: no team plays away against UNC and then Duke, or Duke and then UNC, on two consecutive dates
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 1) . !(opp[d, t] = UNC /\ where_[d, t] = AWAY /\ opp[d + 1, t] = DUKE /\ where_[d + 1, t] = AWAY),
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 1) . !(opp[d, t] = DUKE /\ where_[d, t] = AWAY /\ opp[d + 1, t] = UNC /\ where_[d + 1, t] = AWAY),
+$ opponent sequences: no team plays UNC, Duke and Wake Forest on three consecutive dates, home or away, in any order
+forAll t : int(1..n_teams) . forAll d : int(1..n_days - 2) . !((exists k : int(0..2) . opp[d + k, t] = UNC) /\ (exists k : int(0..2) . opp[d + k, t] = DUKE) /\ (exists k : int(0..2) . opp[d + k, t] = WAKE)),
+$ UNC plays Duke on date 11 and on the last date, and plays Clemson on date 2
+opp[11, UNC] = DUKE,
+opp[n_days, UNC] = DUKE,
+opp[2, UNC] = CLEM,
+$ Duke has a bye on date 16
+where_[16, DUKE] = BYE,
+$ Wake Forest does not play at home on date 17 and has a bye on date 1
+where_[17, WAKE] != HOME,
+where_[1, WAKE] = BYE,
+$ Clemson, Duke, Maryland and Wake Forest do not play away on the last date
+where_[n_days, CLEM] != AWAY,
+where_[n_days, DUKE] != AWAY,
+where_[n_days, UMD] != AWAY,
+where_[n_days, WAKE] != AWAY,
+$ Clemson, Florida State, Georgia Tech and Wake Forest do not play away on date 1
+where_[1, CLEM] != AWAY,
+where_[1, FSU] != AWAY,
+where_[1, GT] != AWAY,
+where_[1, WAKE] != AWAY,
+$ neither Florida State nor North Carolina State has a bye on the last date
+where_[n_days, FSU] != BYE,
+where_[n_days, NCSt] != BYE,
+$ North Carolina does not have a bye on date 1
+where_[1, UNC] != BYE

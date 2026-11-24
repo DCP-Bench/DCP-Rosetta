@@ -1,43 +1,54 @@
-% Thick as thieves: six suspects were interviewed after a robbery. The getaway
-% car held at most two, so at most two are guilty. The innocent tell the truth
-% and the guilty lie; each suspect made one statement. Find who is guilty.
+% session1_thick_as_thieves: a MiniZinc model from DCP Rosetta.
+%
+% Following a robbery at Sparkles the Jeweller's, Inspector Korner of the Yard interviewed six of the usual suspects. He
+% knew that the getaway car had been barely big enough to hold two, so he reckoned that at least four of them were
+% innocent - but which ones? He also supposed that the innocent ones would tell the truth, while the guilty one or ones
+% would lie. What they actually said was:
+% - ARTIE: "It wasn't me."
+% - BILL: "Crackitt was in it up to his neck."
+% - CRACKITT: "No I wasn't."
+% - DODGY: "If Crackitt did it, Bill did it with him."
+% - EDGY: "Nobody did it alone."
+% - FINGERS: "That's right: it was Artie and Dodgy together."
+% If the good inspector's suppositions were correct, who is guilty?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% guilty status of each suspect
-var bool: artie;
-var bool: bill;
-var bool: crackitt;
-var bool: dodgy;
-var bool: edgy;
-var bool: fingers;
-array[1..6] of var bool: suspects = [artie, bill, crackitt, dodgy, edgy, fingers];
+var bool: artie;      % Artie is guilty
+var bool: bill;       % Bill is guilty
+var bool: crackitt;   % Crackitt is guilty
+var bool: dodgy;      % Dodgy is guilty
+var bool: edgy;       % Edgy is guilty
+var bool: fingers;    % Fingers is guilty
 
-% at most two are guilty because the getaway car was barely big enough for two
-constraint sum(s in suspects) (bool2int(s)) <= 2;
+var 0..6: num_guilty = bool2int(artie) + bool2int(bill) + bool2int(crackitt)
+                     + bool2int(dodgy) + bool2int(edgy) + bool2int(fingers);
 
-% A suspect is guilty exactly when his statement is false (the guilty lie, the innocent
-% tell the truth), so each suspect below is equated with the negation of his statement.
+% the getaway car could hold only two, so at least four of them are innocent
+constraint num_guilty <= 2;
 
-% Artie: "It wasn't me." (his statement is "not guilty", so the equation says guilty = guilty
-% and leaves him free; the clues about the others and the car size decide)
-constraint artie = not (not artie);
+% the innocent ones tell the truth and the guilty ones lie: Artie's words are true exactly when he is innocent
+constraint (not artie) <-> (not artie);
 
-% Bill: "Crackitt was in it up to his neck."
-constraint bill = not crackitt;
+% Bill's words ("Crackitt was in it up to his neck") are true exactly when Bill is innocent
+constraint (not bill) <-> crackitt;
 
-% Crackitt: "No I wasn't." (same shape as Artie's statement, so again no restriction by itself)
-constraint crackitt = not (not crackitt);
+% Crackitt's words ("No I wasn't") are true exactly when Crackitt is innocent
+constraint (not crackitt) <-> (not crackitt);
 
-% Dodgy: "If Crackitt did it, Bill did it with him."
-constraint dodgy = not (crackitt -> bill);
+% Dodgy's words ("If Crackitt did it, Bill did it with him") are true exactly when Dodgy is innocent
+constraint (not dodgy) <-> (crackitt -> bill);
 
-% Edgy: "Nobody did it alone." (more than one person is guilty)
-constraint edgy = not (sum(s in suspects) (bool2int(s)) > 1);
+% Edgy's words ("Nobody did it alone") are true exactly when Edgy is innocent
+constraint (not edgy) <-> (num_guilty != 1);
 
-% Fingers: "That's right: it was Artie and Dodgy together."
-constraint fingers = not (artie /\ dodgy);
+% Fingers' words ("it was Artie and Dodgy together") are true exactly when Fingers is innocent
+constraint (not fingers) <-> (artie /\ dodgy /\ num_guilty = 2);
 
 solve satisfy;
-
-output ["{\"artie\": ", show(artie), ", \"bill\": ", show(bill), ", \"crackitt\": ", show(crackitt),
-        ", \"dodgy\": ", show(dodgy), ", \"edgy\": ", show(edgy), ", \"fingers\": ", show(fingers), "}"];
+output ["{\"artie\": ", showJSON(artie), ", \"bill\": ", showJSON(bill), ", \"crackitt\": ", showJSON(crackitt),
+        ", \"dodgy\": ", showJSON(dodgy), ", \"edgy\": ", showJSON(edgy), ", \"fingers\": ", showJSON(fingers), "}"];

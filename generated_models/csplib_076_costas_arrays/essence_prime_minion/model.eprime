@@ -1,12 +1,25 @@
 language ESSENCE' 1.0
-$ Place n marks on an n x n grid, one per row and column, so that the vectors between all pairs of marks are different (Costas array).
+$ csplib_076_costas_arrays: an Essence' model from DCP Rosetta.
+$
+$ A Costas array is a pattern of n marks on an n x n grid, one mark in each row and one in each column, in which the n(n-1)/2 vectors between pairs of marks are all different. Find such a pattern for the given n.
+$
+$ Save this file as model.eprime. Download `csplib_076_costas_arrays.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_076_costas_arrays.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_076_costas_arrays_1.param.solution`:
+$   python dcp_convert_essence.py csplib_076_costas_arrays.json
+$   savilerow model.eprime csplib_076_costas_arrays_1.param -run-solver
+
+$ n: the side of the grid, and the number of marks
 given n : int(1..)
+
+$ costas[i]: the column of the mark in row i (indices 1-based, so the data's index 0 is row 1); a value from 1 to n
 find costas : matrix indexed by [int(1..n)] of int(1..n)
 
 branching on [costas]
-
 such that
-$ the marks use each row (value) exactly once: the columns carry a permutation of 1..n
+$ each column holds exactly one mark: the entries of costas are a permutation of 1..n
 allDiff(costas),
-$ for each distance l, the differences between marks l apart are all different (the difference triangle has no repeated value in any line)
+$ for each distance l, the differences between entries l apart (the difference triangle line for l) are all different
 forAll l : int(1..n-1) . allDiff([costas[i] - costas[i+l] | i : int(1..n-l)])

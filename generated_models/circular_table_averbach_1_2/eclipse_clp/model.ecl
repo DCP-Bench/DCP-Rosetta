@@ -1,37 +1,58 @@
-% Circular table (Averbach 1_2): three players X, Y, Z of different nationalities
-% (American, English, French) are seated around a circular table playing Hearts.
-% Each passed three cards to the person on their right. Y passed three hearts to the
-% American, X passed the queen of spades and two diamonds to the person who passed
-% their cards to the Frenchwoman. Determine the nationality of each person.
-% Output: x, y, z, american, english, french; the same value denotes the matching
-% between a person and their nationality, values 0, 1, 2; 1 is right of 0, 2 is right
-% of 1, and so on (circular, so 0 is right of 2).
-
+% circular_table_averbach_1_2: an ECLiPSe model from DCP Rosetta.
+%
+% Three players, X, Y and Z, of different nationalities (American, English, French) sit around a circular table playing
+% a game of Hearts. Each passes three cards to the person on their right. Y passed three hearts to the American. X
+% passed the queen of spades and two diamonds to the person who passed their cards to the Frenchwoman. Determine the
+% nationality of each person.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/circular_table_averbach_1_2.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
+%
+% This problem has no data fields: the clues above are part of the model. Seats are numbered 0, 1, 2 around the table,
+% with seat 1 to the right of seat 0, seat 2 to the right of seat 1, and seat 0 to the right of seat 2.
 :- lib(ic).
+:- lib(branch_and_bound).
 
-model(_Instance, [X, Y, Z, American, English, French],
-      [american-American, english-English, french-French, x-X, y-Y, z-Z]) :-
-    % Players X, Y, Z are three different people, numbered 0..2 around the table.
-    [X, Y, Z] #:: 0..2,
+% Outputs: x, y and z (the seat of each player X, Y and Z), and american, english and french (the seat of the player of
+% each nationality), so that equal values denote the same person.
+model(_Instance, [X, Y, Z, American, English, French, Passer],
+      [x-X, y-Y, z-Z, american-American, english-English, french-French]) :-
+    % the three players sit in three different seats
+    [X, Y, Z] :: 0..2,
     alldifferent([X, Y, Z]),
-    % Nationalities American, English, French are a permutation of the people.
-    [American, English, French] #:: 0..2,
+    % the nationalities belong to three different players
+    [American, English, French] :: 0..2,
     alldifferent([American, English, French]),
+    % the seat to the right of seat p is seat (p + 1) mod 3
+    % Y passed hearts to the American, so the American sits on Y's right
+    Y1 #= Y + 1,
+    element(Y1, [1, 2, 0], American),
+    % X passed to the person on X's right (Passer), who passed to the Frenchwoman, so the Frenchwoman sits on Passer's right
+    X1 #= X + 1,
+    element(X1, [1, 2, 0], Passer),
+    P1 #= Passer + 1,
+    element(P1, [1, 2, 0], French).
 
-    % Each passed three cards to the person on their right (the person numbered one higher, circularly).
-    % Y passed three hearts to the American: the person on Y's right is the American.
-    % The person on the right of person I is (I + 1) mod 3, written without mod on variables:
-    % I + 1 - 3 * (I = 2).
-    RightOfY #= Y + 1 - 3 * YIs2,
-    YIs2 #= (Y #= 2),
-    American #= RightOfY,
+run :- solve_model([]).
 
-    % X passed the queen of spades and two diamonds to the person who passed their cards to the Frenchwoman.
-    % Let P be the person X passed to; P passed to the Frenchwoman, so the Frenchwoman is on P's right.
-    P #:: 0..2,
-    RightOfX #= X + 1 - 3 * XIs2,
-    XIs2 #= (X #= 2),
-    P #= RightOfX,
-    RightOfP #= P + 1 - 3 * PIs2,
-    PIs2 #= (P #= 2),
-    French #= RightOfP.
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

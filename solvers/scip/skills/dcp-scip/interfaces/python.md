@@ -9,6 +9,7 @@ outcomes and enumeration strategy: [SKILL.md](../SKILL.md).
 - [Modelling](#modelling)
 - [Solving](#solving)
 - [All solutions](#all-solutions)
+- [Readable models](#readable-models)
 - [Common issues](#common-issues)
 - Encodings (`!=`, `abs`, min/max, `//`, `%`, logic, products, symmetry): [references/python/encodings.md](../references/python/encodings.md)
 - Examples: [n-queens](../assets/python/n-queens/README.md) (satisfy), [n-queens-all](../assets/python/n-queens-all/README.md) (all solutions), [all-optimal](../assets/python/all-optimal/README.md), [knapsack](../assets/python/knapsack/README.md) (maximise), [assignment](../assets/python/assignment/README.md) (minimise), [infeasible](../assets/python/infeasible/README.md), [scheduling](../assets/python/scheduling/README.md), [json-input](../assets/python/json-input/README.md) (data from a JSON file)
@@ -55,12 +56,14 @@ Reference: [Model API](https://pyscipopt.readthedocs.io/en/latest/api/model.html
 | Need | API |
 |---|---|
 | variable | [`m.addVar(name=, vtype="B"\|"I"\|"C", lb=, ub=)`](https://pyscipopt.readthedocs.io/en/latest/api/model.html); `lb` defaults to **0**, `ub=None` is infinity. Give every integer tight finite bounds from the data |
+| array of variables | [`x = m.addMatrixVar((n, k), vtype="B", name="x")`](https://pyscipopt.readthedocs.io/en/latest/tutorials/matrix.html): a NumPy-shaped array (also `lb=`, `ub=`, a number or a nested list with one bound per entry, e.g. `ub=free` to forbid the cells where `free` is 0). Constraints over whole rows or columns in one call: `m.addMatrixCons(x.sum(axis=1) == 1)` (one row each), `m.addMatrixCons(x <= limits)`; products with data `(w * x).sum()`, `x @ v`. Once a table is a matrix variable, post its row and column constraints this way rather than in index loops. A plain list of `addVar` works as well; use the matrix form where the problem is a grid or table |
 | linear constraint | `m.addCons(expr <= rhs)`, `>=`, `==`; sums with `quicksum(c * x[i] for i in I)` |
 | ranged `lo <= e <= hi` | `m.addCons((lo <= e) <= hi)` with the parentheses, or two constraints; without them `TypeError: Can't evaluate constraints as booleans` |
 | discrete choice, all-different, element | one-hot binaries: [encodings](../references/python/encodings.md#discrete-choices-and-all-different) |
+| strict `x < y` | not supported on linear constraints; on integers write `x <= y - 1` |
 | `x != y` | not supported (`NotImplementedError`); [encoding](../references/python/encodings.md#not-equal) |
 | conditional constraint | [`m.addConsIndicator(ineq, binvar=b, activeone=True)`](https://pyscipopt.readthedocs.io/en/latest/tutorials/constypes.html): `<=`/`>=` only, **always pass `binvar`** |
-| and / or / xor | `addConsAnd(bs, r)`, `addConsOr(bs, r)`, `addConsXor(bs, True)` (rhs a Python bool) |
+| and / or / xor | `addConsAnd(bs, r)`, `addConsOr(bs, r)`, `addConsXor(bs, True)` (rhs a Python bool); `r` equals the and/or in both directions, unlike a hand-written `r >= a + b - 1`, which only forces `r` up |
 | at most k nonzero, SOS | `addConsCardinality(xs, k)`, `addConsSOS1(xs)`, `addConsSOS2(xs)` |
 | scheduling | `addConsCumulative(starts, durations, demands, capacity)`: integer starts, constant durations and demands ([example](../assets/python/scheduling/README.md)) |
 | no-overlap (one machine, disjunctive) | `addConsCumulative(starts, durations, [1] * k, 1)` per machine; no big-M pairwise disjunctions needed |
@@ -70,7 +73,7 @@ Reference: [Model API](https://pyscipopt.readthedocs.io/en/latest/api/model.html
 
 Not available on variables: Python `min`/`max` and `!=` (`NotImplementedError: can only
 support with '<=', '>=', or '=='`), `//` and `%` (`TypeError`). Encodings for all of
-them: [references/encodings.md](../references/python/encodings.md).
+them: [references/python/encodings.md](../references/python/encodings.md).
 
 
 ## Solving
@@ -96,6 +99,10 @@ Parameters: [SCIP parameter list](https://www.scipopt.org/doc/html/PARAMETERS.ph
   `inforunbd`, and presolve off gives `infeasible`. With `m.addCons(2 * z == 2 * x + 1)`
   for an integer `z` instead, presolve off gives `unbounded`.
 - Read values with `m.getVal(var)` and `m.getObjVal()`; round integers (`round(...)`).
+  `m.getVal(x)` on a matrix variable or matrix expression returns an array of dtype
+  `object`, so `np.round` fails on it: use `m.getVal(x).astype(float).round().astype(int)`,
+  or `np.vectorize(lambda v: round(m.getVal(v)))`, which also reads nested lists of
+  variables and expressions. `getVal` refuses a plain list, `int` or `bool` (`TypeError`).
   `m.getBestSol()[expr]` evaluates any expression in the best solution.
 - **Check the status first.** With no solution `getVal` raises `Warning: No solution
   available` and `getBestSol()` returns `None` (6.3.0); after `freeTransform()` it still
@@ -136,11 +143,67 @@ within SCIP's feasibility tolerance (`numerics/feastol`, 1e-6), but the one-side
 not rely on it.
 
 **Cost**: each solution is a full re-solve after `freeTransform()`, so time grows with the
-number of solutions (92 n-queens solutions at n = 8: about 9 to 12 s, against about 1 s for
+number of solutions (92 n-queens solutions at n = 8: a few seconds, against well under 1 s for
 one). Cap the list when a few are enough: stop the loop once `len(solutions)` reaches the
 cap. When only the **number** of solutions is needed and the model is pure
 linear over binaries (no indicators), `m.count()` then `m.getNCountedSols()` is much faster
 (92 in under 1 s), but it does not return the solutions.
+
+## Readable models
+
+Write for a student reading the model for the first time, in the words of the problem
+statement, not of the API:
+
+- a docstring that states the problem in a sentence or two;
+- a comment on each input field, saying what it holds (`weights[i]: the weight of item i`);
+- a comment on each decision variable, saying what it means (`x[i] is 1 when item i is packed`);
+- a comment on each group of constraints and on the objective;
+- a sentence wherever an encoding stands in for something SCIP lacks, naming it: one-hot
+  binaries because there is no all-different, two indicators on one binary because an
+  indicator takes no equality, `x <= y - 1` because there is no strict `<`;
+- a comment that stays true for every input: sizes taken from the data are not "six" or
+  "9 x 9" in the text, and a bound says where it comes from (the data, the statement, or
+  an assumption, said as such);
+- the plainest expression that says it: a general constraint where SCIP has one
+  (`addConsIndicator`, `addConsAnd`, `addConsCumulative`, ...), `quicksum` over the data,
+  or a matrix variable with `addMatrixCons` for a grid; variables kept as lists, nested
+  lists or matrices so they print as a whole. A one-hot sum such as
+  `quicksum(v * b[i, v] for v in values)` can be printed as it is, with no extra integer
+  variable tied to it by `==`.
+
+For example:
+
+```python
+from pyscipopt import Model, quicksum
+
+# A hiker chooses which items to pack: as much total value as possible,
+# without the items weighing more than the backpack can carry.
+values = [6, 10, 12]   # values[i]: the value of item i
+weights = [1, 2, 3]    # weights[i]: the weight of item i
+capacity = 5           # the most weight the backpack can carry
+
+model = Model("knapsack")
+
+# x[i] is 1 when the hiker packs item i, and 0 when not
+x = [model.addVar(f"x_{i}", vtype="B") for i in range(len(values))]
+
+# The packed items weigh no more than the backpack can carry.
+model.addCons(quicksum(w * xi for w, xi in zip(weights, x)) <= capacity)
+
+# Pack the most valuable selection.
+model.setObjective(quicksum(v * xi for v, xi in zip(values, x)), "maximize")
+
+model.hideOutput()
+model.optimize()
+if model.getStatus() == "optimal":  # proven: the default gap is 0
+    print("Value:", round(model.getObjVal()))
+    print("x =", [round(model.getVal(xi)) for xi in x])
+else:
+    print("Status:", model.getStatus())
+```
+
+Expected output: `Value: 22`, then `x = [0, 1, 1]`. For a grid or matrix of variables,
+`np.vectorize(lambda v: round(model.getVal(v)))(x)` prints it whole.
 
 ## Common issues
 
@@ -148,6 +211,7 @@ linear over binaries (no indicators), `m.count()` then `m.getNCountedSols()` is 
 |---|---|---|
 | Segmentation fault (exit 139) at `optimize()` | `addConsIndicator` without `binvar=` | always pass `binvar=b` |
 | `ValueError: expected inequality that has either only a left or right hand side` | equality in `addConsIndicator` | two indicators (`<=`, `>=`) on the same binary |
+| `AssertionError` from `addMatrixVar(3, ..., ub=np.array([...]))` | an integer shape together with an array bound | give the shape as a tuple: `addMatrixVar((3,), vtype="I", lb=0, ub=np.array([...]))` |
 | `NotImplementedError: can only support with '<=', '>=', or '=='` | `!=`, or `max`/`min` over variables | [encodings](../references/python/encodings.md) |
 | `TypeError: Can't evaluate constraints as booleans` | ranged `lo <= e <= hi` | `(lo <= e) <= hi`, or two constraints |
 | `TypeError: unsupported operand type(s) for //` or `%` | integer division on a variable | `x == d * q + r`, `0 <= r <= d - 1` |

@@ -3,16 +3,16 @@ ships inside the pycsp3 wheel. Runs inside the pycsp3_ace image only.
 
 Submission contract (one plain PyCSP3 script, model.py):
 
-- `from pycsp3 import *` gives the instance as `data`, with every field of the
-  instance JSON. A field is an attribute, `data.n`, or an item, `data["n"]`, which
-  is the only form for a name such as `_SHIP`. Values are plain Python: lists of
-  lists may be ragged, and nothing is converted to a named tuple. Metadata such as
-  `name` or `note` is passed, and a model that never reads it is unaffected.
-- Every declared output is a module-level name equal to the output name, bound to a
-  `Var`, a `VarArray`, or a nested list of them. Integer and Boolean values are
-  reported as integers 0/1.
-- The model posts constraints with `satisfy(...)`, optionally one `minimize(...)`
-  or `maximize(...)`, and never calls `solve()`. The runner calls solve.
+- `create_model(instance)` receives the instance as a plain dict (lists of lists may be
+  ragged, nothing is converted to a named tuple), posts constraints with `satisfy(...)`
+  and at most one `minimize(...)` or `maximize(...)`, never calls `solve()`, and returns
+  a dict mapping each declared output name to a `Var`, a `VarArray`, or a nested list of
+  them. The runner calls solve. Integer and Boolean values are reported as integers 0/1.
+  The file runs as module `candidate`, so a `__main__` block (a standalone run) does
+  not execute.
+- Models retained earlier define no function: the instance is `data` after
+  `from pycsp3 import *` (`data.n` or `data["n"]`, the only form for a name such as
+  `_SHIP`), and every declared output is a module-level name.
 
 The model is run in a child process per round, because pycsp3 keeps global state.
 A round is one compile and one ACE run. The first round finds the solutions (up to
@@ -209,12 +209,19 @@ def _child(spec, result):
     if fixed is None:
         report_incumbents(spec["incumbents"], recorded)
 
-    pycsp3.data = Instance(json.loads(Path(spec["instance"]).read_text(encoding="utf-8")))
-    namespace = runpy.run_path(spec["model"], run_name="__main__")
+    instance = json.loads(Path(spec["instance"]).read_text(encoding="utf-8"))
+    pycsp3.data = Instance(instance)
+    # Not "__main__": a model's standalone run block must not run here.
+    namespace = runpy.run_path(spec["model"], run_name="candidate")
+    if "create_model" in namespace:
+        namespace = namespace["create_model"](instance)
+        if not isinstance(namespace, dict):
+            raise TypeError("create_model must return a dict mapping each output name to its variables, "
+                            f"not {type(namespace).__name__}")
     outputs = spec["outputs"]
     for name in outputs:
         if name not in namespace:
-            raise NameError(f"the model does not define the declared output {name!r}")
+            raise NameError(f"the model does not provide the declared output {name!r}")
     for nogood in spec["nogoods"]:
         literals = []
         for name, value in nogood.items():

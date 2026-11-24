@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791958347.0619912,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ca37e2d464e28bfa3c834efb90c42fc26dafae4ed339fe036e945931ef50801c"
+    },
+    "created_at": 1794388404.2199342,
     "problem_id": "csplib_015_schurs_lemma",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,44 +18,70 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b078659adab06263d373a86bbf94ce6ceaaaeb4ac0a344d54eaba97e6a4ba54d",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.05498071701731533,
-        "execution_wall_seconds": 3.6435653509688564,
+        "checking_seconds": 0.013662912009749562,
+        "execution_wall_seconds": 1.6983883070060983,
         "first_solution": {
           "balls": [
             1,
-            3,
-            3,
-            1,
-            2,
-            2,
-            1,
             2,
             2,
             1,
             3,
             3,
+            1,
+            3,
+            3,
+            1,
+            2,
+            2,
             1
           ]
         },
@@ -64,9 +94,12 @@
           "balls"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1151036210358143,
+        "reference_setup_seconds": 0.32053954200819135,
         "runner_status": {
+          "build_seconds": 0.1667335033416748,
           "detail": "",
+          "main_seconds": 1.0115451180026866,
+          "read_seconds": 0.0009903459867928177,
           "status": "limit",
           "type": "status"
         },
@@ -76,19 +109,19 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.020291087974328548,
-        "execution_wall_seconds": 2.968121826997958,
+        "checking_seconds": 0.00845205900259316,
+        "execution_wall_seconds": 1.695309406000888,
         "first_solution": {
           "balls": [
             1,
-            3,
+            2,
+            1,
             3,
             2,
             2,
-            2,
-            2,
             3,
-            3,
+            1,
+            2,
             1
           ]
         },
@@ -101,9 +134,12 @@
           "balls"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4406162649975158,
+        "reference_setup_seconds": 0.3119339870172553,
         "runner_status": {
+          "build_seconds": 0.20076298713684082,
           "detail": "",
+          "main_seconds": 1.006294513004832,
+          "read_seconds": 0.0005513129872269928,
           "status": "limit",
           "type": "status"
         },
@@ -113,15 +149,15 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01020799798425287,
-        "execution_wall_seconds": 2.6755226410459727,
+        "checking_seconds": 0.003754784003831446,
+        "execution_wall_seconds": 1.5534973359899595,
         "first_solution": {
           "balls": [
             1,
-            3,
-            3,
             2,
-            2
+            1,
+            3,
+            1
           ]
         },
         "id": "json:2",
@@ -133,9 +169,12 @@
           "balls"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0793935429537669,
+        "reference_setup_seconds": 0.270987113006413,
         "runner_status": {
+          "build_seconds": 0.08583188056945801,
           "detail": "",
+          "main_seconds": 0.8057971680245828,
+          "read_seconds": 0.0006990590190980583,
           "status": "limit",
           "type": "status"
         },
@@ -145,17 +184,17 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01899208500981331,
-        "execution_wall_seconds": 2.8077960400260054,
+        "checking_seconds": 0.007233176002046093,
+        "execution_wall_seconds": 1.3981451060099062,
         "first_solution": {
           "balls": [
             1,
+            2,
+            1,
             3,
-            3,
+            1,
             2,
-            2,
-            2,
-            3
+            1
           ]
         },
         "id": "json:3",
@@ -167,9 +206,12 @@
           "balls"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9195522990194149,
+        "reference_setup_seconds": 0.3070494959829375,
         "runner_status": {
+          "build_seconds": 0.0804445743560791,
           "detail": "",
+          "main_seconds": 0.7412382960028481,
+          "read_seconds": 0.0006519710004795343,
           "status": "limit",
           "type": "status"
         },
@@ -179,21 +221,21 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03520785499131307,
-        "execution_wall_seconds": 3.098937931994442,
+        "checking_seconds": 0.011136276996694505,
+        "execution_wall_seconds": 1.4999079699919093,
         "first_solution": {
           "balls": [
             1,
-            3,
-            3,
             2,
             1,
+            3,
             2,
-            2,
+            3,
+            3,
+            1,
+            3,
             1,
             2,
-            3,
-            3,
             1
           ]
         },
@@ -206,9 +248,12 @@
           "balls"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9764208999695256,
+        "reference_setup_seconds": 0.2753327299724333,
         "runner_status": {
+          "build_seconds": 0.09447312355041504,
           "detail": "",
+          "main_seconds": 0.9149946300021838,
+          "read_seconds": 0.0006489400111604482,
           "status": "limit",
           "type": "status"
         },
@@ -220,21 +265,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "db30045945f09d9d1f407f566f4f1049f224a26bfeadd0cbe93059564cd01d5b",
+    "model_hash": "390764ea5a2df8a7c4826363c73db29d084497eadc3da285280ab5bb15723b07",
     "problem_id": "csplib_015_schurs_lemma",
     "reason": "accepted",
-    "reference_hash": "723853d7477f2fefe25ea9c9ea712aaa0792778436acf9a22b0a4795a983ffff",
+    "reference_hash": "d8f57d15b5d8a65f6529f5fc22a4a649b7eed2e86eac7dba5be04a08bc7210e7",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -245,11 +290,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 21.285873727989383,
+    "total_wall_seconds": 9.845569985016482,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

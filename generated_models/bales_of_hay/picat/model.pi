@@ -1,28 +1,56 @@
-% Bales of hay: the bales were weighed in all combinations of two, and those
-% weights, in numerical order, are given. Find the weight of each bale.
+% bales_of_hay: a Picat model from DCP Rosetta.
+%
+% You have a number of bales of hay. For some reason, instead of being weighed individually, they were
+% weighed in all possible combinations of two. The weights of each of these combinations were written down
+% and arranged in numerical order, without keeping track of which weight matched which pair of bales. Given
+% these weights, find the weight of each bale.
+%
+% Save this file as model.pi. Download `bales_of_hay.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/bales_of_hay.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py bales_of_hay.json
+%   picat model.pi bales_of_hay_1.dat
+%
+% Data.get(n): the number of bales; Data.get(weights): the weights written down, one per pair of bales
+% (a list indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     N = Data.get(n),
     Weights = Data.get(weights),
-    Pairs = [{I, J} : I in 1..N-1, J in I+1..N],
-    % bales[i] = the weight of bale i
+    M = len(Weights),                      % the number of weights written down
     Bales = new_list(N),
-    Bales :: 0..50,
-    % pair_weight[p] = the weight of the p-th pair of bales
-    PairWeight = new_list(len(Pairs)),
-    PairWeight :: 0..100,
-    foreach (P in 1..len(Pairs))
-        Pair = Pairs[P],
-        PairWeight[P] #= Bales[Pair[1]] + Bales[Pair[2]]
+    Bales :: 0..max(Weights),              % the weight of bale I, from 0 up to the heaviest weight written down
+    % the pairs of bales, each given by the two bale numbers
+    Pairs = [{I, J} : I in 1..N-1, J in I+1..N],
+    % PairSum[P] = the total weight of the bales in the P-th pair
+    PairSum = new_list(M),
+    foreach (P in 1..M)
+        {A, B} = Pairs[P],
+        PairSum[P] #= Bales[A] + Bales[B]
     end,
-    % each written-down weight belongs to its own pair
-    WhichPair = new_list(len(Weights)),
-    WhichPair :: 1..len(Pairs),
+    % each weight written down belongs to exactly one pair of bales, and each pair has exactly one weight
+    WhichPair = new_list(M),
+    WhichPair :: 1..M,
     all_different(WhichPair),
-    foreach (K in 1..len(Weights))
-        element(WhichPair[K], PairWeight, Weights[K])
+    % the weight written down at position K is the total weight of the pair WhichPair[K]
+    foreach (K in 1..M)
+        element(WhichPair[K], PairSum, Weights[K])
     end,
     Vars = Bales ++ WhichPair,
     Outputs = [bales = Bales],
     Options = [ff].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

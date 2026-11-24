@@ -1,17 +1,28 @@
-% Jobs puzzle: four people hold eight different jobs, two each, subject to
-% clues about who is not what.
+% jobs_puzzle: a Picat model from DCP Rosetta.
+%
+% Four people, numbered 0 to 3, hold eight different jobs between them: chef, guard, nurse, clerk, police
+% officer, teacher, actor and boxer. Each person holds exactly two jobs. The clues are:
+% 1. The nurse is not a teacher, a police officer or a clerk.
+% 2. The clerk is not the chef.
+% 3. Person 0 is not the boxer.
+% 4. Person 3 is not the teacher, police officer or nurse.
+% 5. Person 0, the chef, and the police officer went golfing together.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/jobs_puzzle.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
+% The puzzle reads no data: the people and the clues are fixed in the model.
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    % Each job is the person, 0-3, who holds it.
+    % each job is the person, 0 to 3, who holds it
     Jobs = [Chef, Guard, Nurse, Clerk, PoliceOfficer, Teacher, Actor, Boxer],
     Jobs :: 0..3,
-    % every person holds exactly two jobs
+    % each person holds exactly two of the jobs
     foreach (Person in 0..3)
         count(Person, Jobs) #= 2
     end,
-    % 1. the nurse is not the teacher, the police officer or the clerk
+    % 1. the nurse is not a teacher, a police officer or a clerk
     Nurse #!= Teacher,
     Nurse #!= PoliceOfficer,
     Nurse #!= Clerk,
@@ -23,8 +34,7 @@ model(_Data, Vars, Outputs, Options) =>
     Teacher #!= 3,
     PoliceOfficer #!= 3,
     Nurse #!= 3,
-    % 5. person 0, the chef and the police officer went golfing together, so
-    % they are three different people
+    % 5. person 0, the chef and the police officer are three different people
     Chef #!= 0,
     PoliceOfficer #!= 0,
     Chef #!= PoliceOfficer,
@@ -32,3 +42,11 @@ model(_Data, Vars, Outputs, Options) =>
     Outputs = [chef = Chef, guard = Guard, nurse = Nurse, clerk = Clerk,
                police_officer = PoliceOfficer, teacher = Teacher, actor = Actor, boxer = Boxer],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,27 +1,43 @@
-% Arch friends: Harriet bought four pairs of shoes (ecru espadrilles, fuchsia flats, purple
-% pumps, suede sandals) at four different stores (Foot Farm, Heels in a Handcart, The Shoe
-% Palace, Tootsies), one pair per stop. Find the stop (1 to 4) at which she bought each pair
-% and the stop at which she visited each store.
+% arch_friends: a Picat model from DCP Rosetta.
+%
+% Harriet, upon returning from the mall, is happily describing her four shoe purchases to her
+% friend Aurora. Aurora just loves the four different kinds of shoes that Harriet bought (ecru
+% espadrilles, fuchsia flats, purple pumps, and suede sandals), but Harriet can't recall at which
+% different store (Foot Farm, Heels in a Handcart, The Shoe Palace, or Tootsies) she got each pair.
+% Can you help these two figure out the order in which Harriet bought each pair of shoes, and where
+% she bought each?
+%
+% 1. Harriet bought fuchsia flats at Heels in a Handcart.
+% 2. The store she visited just after buying her purple pumps was not Tootsies.
+% 3. The Foot Farm was Harriet's second stop.
+% 4. Two stops after leaving The Shoe Palace, Harriet bought her suede sandals.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/arch_friends.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The stops are numbered 1 to 4. Each output is the number of the stop at which that shoe was
+% bought or that store was visited.
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    N = 4,                           % four shoe pairs and four stores, as in the statement
-    % the stop number at which each pair of shoes was bought
+model(_Data, Vars, Outputs, Options) =>
+    N = 4,                                 % four stops, four pairs of shoes, four stores
+    % the stop at which each pair of shoes was bought
     Shoes = [EcruEspadrilles, FuchsiaFlats, PurplePumps, SuedeSandals],
     Shoes :: 1..N,
-    % the stop number at which each store was visited
+    % the stop at which each store was visited
     Stores = [FootFarm, HeelsInAHandcart, TheShoePalace, Tootsies],
     Stores :: 1..N,
-    % one pair of shoes per stop, one store per stop
+    % one pair of shoes is bought at each stop, and each store is visited at one stop
     all_different(Shoes),
     all_different(Stores),
-    % 1. Harriet bought fuchsia flats at Heels in a Handcart.
+    % 1. Harriet bought fuchsia flats at Heels in a Handcart
     FuchsiaFlats #= HeelsInAHandcart,
-    % 2. The store she visited just after buying her purple pumps was not Tootsies.
+    % 2. the store she visited just after buying her purple pumps was not Tootsies
     PurplePumps + 1 #!= Tootsies,
-    % 3. The Foot Farm was Harriet's second stop.
+    % 3. the Foot Farm was Harriet's second stop
     FootFarm #= 2,
-    % 4. Two stops after leaving The Shoe Palace, Harriet bought her suede sandals.
+    % 4. two stops after leaving The Shoe Palace, she bought her suede sandals
     TheShoePalace + 2 #= SuedeSandals,
     Vars = Shoes ++ Stores,
     Outputs = [ecruespadrilles = EcruEspadrilles, fuchsiaflats = FuchsiaFlats,
@@ -29,3 +45,11 @@ model(Data, Vars, Outputs, Options) =>
                footfarm = FootFarm, heelsinahandcart = HeelsInAHandcart,
                theshoepalace = TheShoePalace, tootsies = Tootsies],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

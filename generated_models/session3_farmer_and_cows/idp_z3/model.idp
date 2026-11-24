@@ -1,26 +1,33 @@
-vocabulary {
-    type Cow <: Int
-    Cow_size: () -> Int
-    num_cows: () -> Int
-    type Son <: Int
-    cows_per_son: Son -> Int
-    num_sons: () -> Int
-    cow_assignments: Cow -> Son
-    milk: Son -> Int
+// session3_farmer_and_cows: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A farmer has a number of cows, with each cow numbered from 1 up to the total number of cows. Each cow gives a quantity
+// of milk equal to its number. The farmer has a number of sons and wants to distribute his cows to them according to a
+// given distribution. The total quantity of milk produced should be the same for each son. How can he distribute the cows?
+//
+// Save this file as model.idp. Download `session3_farmer_and_cows.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_farmer_and_cows.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session3_farmer_and_cows.json
+//   idp-engine model_1.idp
+vocabulary V {
+    num_cows: () -> Int                // the total number of cows
+    num_sons: () -> Int                // the number of sons
+    type Son <: Int                    // the sons, numbered from 0
+    cows_per_son: Son -> Int           // cows_per_son(s): the number of cows son s receives
+    type Range_num_cows <: Int         // the cows, numbered 1 to num_cows
+    total_milk: () -> Int              // the milk of all the cows: the sum of the cow numbers (auxiliary)
+    cow_assignments: Range_num_cows -> Son  // cow_assignments(c): the son (numbered from 0) who receives cow c
 }
-theory {
-    // each cow numbered from 1 up to the total number of cows
-    Cow_size() = num_cows().
-
-    // each cow goes to a son that exists, i.e. one below num_sons
-    ! c in Cow: cow_assignments(c) < num_sons().
-
-    // the number of cows given to each son follows the given distribution; sons past num_sons get none
-    ! s in Son: s < num_sons() => #{ c in Cow: cow_assignments(c) = s } = cows_per_son(s).
-
-    // each cow gives milk equal to its number; milk(s) is the total milk of son s
-    ! s in Son: milk(s) = sum{{ (if cow_assignments(c) = s then c else 0) | c in Cow }}.
-
-    // the total milk is the same for each son: the total milk of all cows, divided equally
-    ! s in Son: s < num_sons() => num_sons() * milk(s) = num_cows() * (num_cows() + 1) / 2.
+theory T:V {
+    // the milk of all the cows is the sum of the numbers 1 to num_cows
+    total_milk() = num_cows() * (num_cows() + 1) / 2.
+    // each son receives the number of cows given for him
+    ! s in Son: #{ c in Range_num_cows: cow_assignments(c) = s } = cows_per_son(s).
+    // each son gets the same quantity of milk: the milk of his cows times the number of sons is the total milk
+    ! s in Son: sum{{ c | c in Range_num_cows: cow_assignments(c) = s }} * num_sons() = total_milk().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

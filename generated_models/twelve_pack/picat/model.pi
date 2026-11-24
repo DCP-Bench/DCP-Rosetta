@@ -1,17 +1,44 @@
-% Twelve pack: combine packs of the given sizes to reach at least the target
-% number of items, as close to it as possible.
+% twelve_pack: a Picat model from DCP Rosetta.
+%
+% Given a target number of items, find the combination of packs of different sizes whose total number
+% of items is at least the target and as close to it as possible.
+%
+% Save this file as model.pi. Download `twelve_pack.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/twelve_pack.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py twelve_pack.json
+%   picat model.pi twelve_pack_1.dat
+%
+% Data.get(target): the target number of items; Data.get(packs): the size of each pack (a list indexed
+% from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Target = Data.get(target),
-    Packs = Data.get(packs),
-    N = len(Packs),
-    MaxVal = Target * 2,
-    Counts = new_list(N),
-    Counts :: 0..MaxVal,
-    Total :: 0..MaxVal * N,
-    Total #= sum([Counts[I] * Packs[I] : I in 1..N]),
-    Total #>= Target,
-    Vars = Counts,
-    Outputs = [counts = Counts],
-    Options = [$min(Total)].
+    Sizes = Data.get(packs),
+    K = len(Sizes),                        % the number of pack sizes
+    % Count[I] = the number of packs of size Sizes[I] used; a count above target + 1 is never needed
+    Count = new_list(K),
+    Count :: 0..Target + 1,
+    % the total number of items in the packs used
+    Items #= sum([Count[I] * Sizes[I] : I in 1..K]),
+    % the total is at least the target number of items
+    Items #>= Target,
+    Vars = Count,
+    Outputs = [counts = Count],
+    % the total is as close to the target as possible
+    Options = [$min(Items)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

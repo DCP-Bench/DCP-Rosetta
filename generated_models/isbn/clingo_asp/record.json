@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790904189.9296055,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/clingo/asp/CONTRACT.md": "102af00de1128cc13d3d953947dd35693a138db6d6103afbeb2c88e717ff8d0b"
+    },
+    "created_at": 1794438082.9453218,
     "problem_id": "isbn",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "fa42d79df6a97dbe6ce3a4b540759dbf97bfe880bbe324e58308319a5d24d801",
-    "run_id": "20261001T1218Z-clingo-8f73",
-    "schema": 2,
-    "skill_bundle_hash": "440f8cdf237a1899b00bb0bcd4479d1f4cfc3ca88f740590cbc1f6fa74b423a5",
-    "skill_source": "solvers\\clingo_asp\\skills\\clingo-asp",
+    "readiness_hash": "5f809289af20260367c0124a70d887cb274f3aa957af470fb465b0e01eec6bbc",
+    "run_id": "20261112-clingo-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "4b2e014f59f1dc21942c76a0778fa7ac0baf421c",
+      "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
       "modified": false,
-      "path": "solvers/clingo_asp/skills/clingo-asp"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "ca129a2819611e9657034c67fb217fc6a57060aae3cc84a2b2e46322558aee06",
+        "source": "solvers/clingo/skills/dcp-clingo",
+        "version": {
+          "commit": "475a5e2fd55d76365b51f934c14e92e6127bda45",
+          "modified": false,
+          "path": "solvers/clingo/skills/dcp-clingo"
+        }
+      }
+    ],
     "solver_id": "clingo_asp"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:b81127693c3a8e8d037c13152ad15ad80bfa9b3ecd8764026511f354874d3805",
+      "id": "sha256:83943361cf80dafeab2d06bb7c4d3390b3f259f242162beded76c0cbffd9d41d",
+      "recipe": "sha256:34030aa8a9f1358fd1b13e00ddb6b23c07e8485e5401e11872b0a3ebeefadb66",
       "tag": "dcp-eval/clingo_asp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.0038153999485075474,
-        "execution_wall_seconds": 1.8053250000812113,
+        "checking_seconds": 0.0038094559859018773,
+        "execution_wall_seconds": 0.9961049669946078,
         "first_solution": {
           "isbn": [
             9,
@@ -64,9 +94,12 @@
           "isbn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9413972001057118,
+        "reference_setup_seconds": 0.5227480049943551,
         "runner_status": {
+          "build_seconds": 0.05154087199480273,
           "detail": "",
+          "main_seconds": 0.08702619999530725,
+          "read_seconds": 0.00023100801627151668,
           "status": "complete",
           "type": "status"
         },
@@ -76,8 +109,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.006467799888923764,
-        "execution_wall_seconds": 1.4306461999658495,
+        "checking_seconds": 0.00777977702091448,
+        "execution_wall_seconds": 0.8005856609961484,
         "first_solution": {
           "isbn": [
             9,
@@ -104,9 +137,12 @@
           "isbn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.040981400059536,
+        "reference_setup_seconds": 0.5614231450017542,
         "runner_status": {
+          "build_seconds": 0.05082320698420517,
           "detail": "",
+          "main_seconds": 0.08662224697764032,
+          "read_seconds": 0.00022769899806007743,
           "status": "complete",
           "type": "status"
         },
@@ -116,8 +152,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01273760013282299,
-        "execution_wall_seconds": 1.5134477000683546,
+        "checking_seconds": 0.006158679985674098,
+        "execution_wall_seconds": 1.094630261999555,
         "first_solution": {
           "isbn": [
             9,
@@ -144,9 +180,12 @@
           "isbn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.0979512000922114,
+        "reference_setup_seconds": 0.5257797710073646,
         "runner_status": {
+          "build_seconds": 0.055208688019774854,
           "detail": "",
+          "main_seconds": 0.0986479829880409,
+          "read_seconds": 0.00022515800083056092,
           "status": "limit",
           "type": "status"
         },
@@ -156,8 +195,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.011161899892613292,
-        "execution_wall_seconds": 1.4390352999325842,
+        "checking_seconds": 0.010026064002886415,
+        "execution_wall_seconds": 0.7945298739941791,
         "first_solution": {
           "isbn": [
             9,
@@ -184,9 +223,12 @@
           "isbn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7551294001750648,
+        "reference_setup_seconds": 0.6513903280138038,
         "runner_status": {
+          "build_seconds": 0.0588653449958656,
           "detail": "",
+          "main_seconds": 0.09907460800604895,
+          "read_seconds": 0.00022983201779425144,
           "status": "limit",
           "type": "status"
         },
@@ -196,8 +238,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013368499930948019,
-        "execution_wall_seconds": 1.7330031001474708,
+        "checking_seconds": 0.006237215973669663,
+        "execution_wall_seconds": 0.8965108710108325,
         "first_solution": {
           "isbn": [
             9,
@@ -224,9 +266,12 @@
           "isbn"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.821673900121823,
+        "reference_setup_seconds": 0.5151869870023802,
         "runner_status": {
+          "build_seconds": 0.057982383004855365,
           "detail": "",
+          "main_seconds": 0.10469475900754333,
+          "read_seconds": 0.0002389530127402395,
           "status": "limit",
           "type": "status"
         },
@@ -238,21 +283,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "42d2f5712e374c5cf810cb0347e2c5c3dc06386e73c51fc2f058fe0b6422061f",
+    "model_hash": "ddccdf0175a1adf11222ea71ca31172252b69fb9f4507480fe282fea3071a805",
     "problem_id": "isbn",
     "reason": "accepted",
-    "reference_hash": "2821860b8c3726daedcc2c0adf4ded49e78dffd433290296dc88b579b89dc8f3",
+    "reference_hash": "5f710be24dbbc8a37d815564dd849e5e77c72ae2cd015df6a391b8e924ea559a",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -263,11 +308,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "clingo_asp",
-    "total_wall_seconds": 20.050388099858537,
+    "total_wall_seconds": 7.86401620999095,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.lp",

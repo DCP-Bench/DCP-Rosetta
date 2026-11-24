@@ -1,24 +1,41 @@
 language ESSENCE' 1.0
-$ Farmer and cows: distribute cows numbered 1 to num_cows among the sons so that each son gets the given number of cows and every son gets the same total milk (a cow gives milk equal to its number).
-given num_cows : int
-given num_sons : int
-$ the number of cows each son must receive, one entry per son
-given cows_per_son : matrix indexed by [int(1..num_sons)] of int
-$ gives[s,i] is true when son s receives cow i
+$ session3_farmer_and_cows: an Essence' model from DCP Rosetta.
+$
+$ A farmer has cows numbered 1 up to the total number of cows, and each cow gives a quantity of milk equal to its number. He has several sons and gives each son a given number of cows. The total milk each son receives must be the same for every son. How can he distribute the cows?
+$
+$ Save this file as model.eprime. Download `session3_farmer_and_cows.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_farmer_and_cows.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session3_farmer_and_cows_1.param.solution`:
+$   python dcp_convert_essence.py session3_farmer_and_cows.json
+$   savilerow model.eprime session3_farmer_and_cows_1.param -run-solver
+
+$ num_cows: the total number of cows, numbered 1 to num_cows (cow i gives i units of milk)
+given num_cows : int(1..)
+$ num_sons: the number of sons, numbered 1 to num_sons
+given num_sons : int(1..)
+$ cows_per_son[s]: the number of cows son s must receive (indices 1-based)
+given cows_per_son : matrix indexed by [int(1..num_sons)] of int(0..)
+
+$ gives[s,i]: son s receives cow i
 find gives : matrix indexed by [int(1..num_sons), int(1..num_cows)] of bool
-$ cow_assignments[i] is the son (0-based) that receives cow i, read off from gives
+$ cow_assignments[i]: the son receiving cow i, counted from 0 (so 0 is the first son), read off from gives
 find cow_assignments : matrix indexed by [int(1..num_cows)] of int(0..num_sons-1)
-$ milk_each is the total milk each son receives
-find milk_each : int(0..num_cows * (num_cows + 1) / 2)
+$ milk_each: auxiliary, the total milk each son receives
+find milk_each : int(0..num_cows * (num_cows + 1))
+
+$ search hint: branch on the gives assignments first (speeds up the search)
 branching on [gives]
+
 such that
-$ the milk of all cows, 1 + 2 + ... + num_cows, is shared equally among the sons
+$ implied by the rules below (every cow goes to one son, equal milk each): the milk of all cows, 1 + 2 + ... + num_cows, is shared equally among the sons; it fixes milk_each
 milk_each * num_sons = num_cows * (num_cows + 1) / 2,
-$ the son of each cow is the one whose entry in gives is true
-forAll i : int(1..num_cows) . (cow_assignments[i] = (sum s : int(1..num_sons) . toInt(gives[s,i]) * (s - 1))),
 $ every cow goes to exactly one son
-forAll i : int(1..num_cows) . ((sum s : int(1..num_sons) . toInt(gives[s,i])) = 1),
+forAll i : int(1..num_cows) . (sum s : int(1..num_sons) . toInt(gives[s,i])) = 1,
+$ cow_assignments records, for each cow, the (0-based) son that receives it
+forAll i : int(1..num_cows) . cow_assignments[i] = (sum s : int(1..num_sons) . toInt(gives[s,i]) * (s - 1)),
 $ each son receives exactly the number of cows given for him
-forAll s : int(1..num_sons) . ((sum i : int(1..num_cows) . toInt(gives[s,i])) = cows_per_son[s]),
-$ each son's cows give him exactly milk_each litres of milk in total, the milk of a cow being its number
-forAll s : int(1..num_sons) . ((sum i : int(1..num_cows) . toInt(gives[s,i]) * i) = milk_each)
+forAll s : int(1..num_sons) . (sum i : int(1..num_cows) . toInt(gives[s,i])) = cows_per_son[s],
+$ each son's cows give him exactly milk_each units of milk in total, the milk of a cow being its number
+forAll s : int(1..num_sons) . (sum i : int(1..num_cows) . toInt(gives[s,i]) * i) = milk_each

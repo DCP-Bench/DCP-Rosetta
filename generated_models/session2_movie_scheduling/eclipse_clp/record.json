@@ -3,10 +3,10 @@
     "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/eclipse_clp/CONTRACT.md": "0a79c7a17d3b244f132814712c15a00181e75914afd3c2027f68f49d7de06183"
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/eclipse/prolog/CONTRACT.md": "bd8681cdc92c400eaed7117cc1d9767452aba4a687b7610fcdcb35e8035cc9e1"
     },
-    "created_at": 1792316862.8976984,
+    "created_at": 1794511910.3776155,
     "problem_id": "session2_movie_scheduling",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1752abeb97f393db6abeed5d8072314cb019e53ea6cdba6c28e3a7b9f59b8a7c",
-    "run_id": "20261018-eclipse-clp-models",
+    "readiness_hash": "cfdfb4e580d8d8dfb1111022e28e9d77b76a10a62784db90514048871aa99737",
+    "run_id": "20261115-eclipse-standalone",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+      "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "8f2254ed868f92f072796f1a85e20c99a430b5cc47a199e9b804654539cfcc7d",
-        "source": "solvers/eclipse_clp/skills/eclipse-clp",
+        "bundle_hash": "ad3e03eeb677b4fd2fe741fd2c0684c5aa831478c51aa96c18a3266d4ac134b5",
+        "source": "solvers/eclipse/skills/dcp-eclipse",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "solvers/eclipse_clp/skills/eclipse-clp"
+          "path": "solvers/eclipse/skills/dcp-eclipse"
         }
       }
     ],
@@ -52,16 +52,22 @@
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:cb05be3a8ccfa25074fb0739a6fbaa95e7671afbe485c0e2bd825f148cfc1318",
+      "id": "sha256:21e1098608489d31b38d61fd56da549e69e85203e7d8d972164662d7bd30653d",
+      "recipe": "sha256:cf52576ba60077b18b4ccd6f4f723da5eb9baab7ea2bff593be2f6bfe67cffdc",
       "tag": "dcp-eval/eclipse_clp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.017264810972847044,
-        "execution_wall_seconds": 1.6158589420374483,
+        "checking_seconds": 0.008101568964775652,
+        "execution_wall_seconds": 0.993995938973967,
         "first_solution": {
           "selected_movies": [
             false,
@@ -76,6 +82,28 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            6.9e-05,
+            0
+          ],
+          [
+            0.000116,
+            1
+          ],
+          [
+            0.000139,
+            2
+          ],
+          [
+            0.000157,
+            3
+          ],
+          [
+            0.000174,
+            4
+          ]
+        ],
         "instance_hash": "c63f2604ca46c4ef39e0bce4b08278b51fffa7aab5afe5d606c067b304a4f65a",
         "is_optimization": true,
         "oom_killed": false,
@@ -84,10 +112,13 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1290123520884663,
+        "reference_setup_seconds": 0.5158461339888163,
         "runner_status": {
+          "build_seconds": 0.0750770568847656,
           "detail": "",
-          "solve_seconds": 0.1,
+          "main_seconds": 0.0756821632385254,
+          "read_seconds": 8.79764556884766e-05,
+          "solve_seconds": 0.08,
           "status": "limit",
           "type": "status"
         },
@@ -97,8 +128,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008649862953461707,
-        "execution_wall_seconds": 1.4418627540580928,
+        "checking_seconds": 0.003489211027044803,
+        "execution_wall_seconds": 0.9934993059723638,
         "first_solution": {
           "selected_movies": [
             true,
@@ -111,6 +142,28 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            6.3e-05,
+            0
+          ],
+          [
+            0.000108,
+            1
+          ],
+          [
+            0.000138,
+            2
+          ],
+          [
+            0.000172,
+            3
+          ],
+          [
+            0.000222,
+            4
+          ]
+        ],
         "instance_hash": "04f1898508f4a50c2bfba57b91a7081ff3a825d00601067d19a9a0a4829ac98c",
         "is_optimization": true,
         "oom_killed": false,
@@ -119,10 +172,13 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8554100999608636,
+        "reference_setup_seconds": 0.4140968869905919,
         "runner_status": {
+          "build_seconds": 0.0754959583282471,
           "detail": "",
-          "solve_seconds": 0.09,
+          "main_seconds": 0.0760810375213623,
+          "read_seconds": 9.20295715332031e-05,
+          "solve_seconds": 0.08,
           "status": "complete",
           "type": "status"
         },
@@ -132,8 +188,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016550779924727976,
-        "execution_wall_seconds": 1.1056811730377376,
+        "checking_seconds": 0.0029856120236217976,
+        "execution_wall_seconds": 0.9942190949805081,
         "first_solution": {
           "selected_movies": [
             false,
@@ -146,6 +202,36 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            6.3e-05,
+            0
+          ],
+          [
+            0.000112,
+            1
+          ],
+          [
+            0.000134,
+            2
+          ],
+          [
+            0.00015,
+            3
+          ],
+          [
+            0.000166,
+            4
+          ],
+          [
+            0.000181,
+            5
+          ],
+          [
+            0.000195,
+            6
+          ]
+        ],
         "instance_hash": "3f57efec9da8d38622fca9fb1650ea74b3d65af6a1f8b66fffac489d8cec2a52",
         "is_optimization": true,
         "oom_killed": false,
@@ -154,10 +240,13 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7719762660562992,
+        "reference_setup_seconds": 0.4043921540142037,
         "runner_status": {
+          "build_seconds": 0.0752420425415039,
           "detail": "",
-          "solve_seconds": 0.09,
+          "main_seconds": 0.0757961273193359,
+          "read_seconds": 9.10758972167969e-05,
+          "solve_seconds": 0.07,
           "status": "complete",
           "type": "status"
         },
@@ -167,8 +256,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.026282917940989137,
-        "execution_wall_seconds": 1.5769271979806945,
+        "checking_seconds": 0.008588192984461784,
+        "execution_wall_seconds": 0.9937962599797174,
         "first_solution": {
           "selected_movies": [
             false,
@@ -186,6 +275,28 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            5.1e-05,
+            0
+          ],
+          [
+            8.1e-05,
+            1
+          ],
+          [
+            0.0001,
+            2
+          ],
+          [
+            0.000115,
+            3
+          ],
+          [
+            0.000139,
+            4
+          ]
+        ],
         "instance_hash": "c1e542bd06340d90a89e43c534ab976e60725b8b821afef32e862749d2849b42",
         "is_optimization": true,
         "oom_killed": false,
@@ -194,10 +305,13 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.913584602996707,
+        "reference_setup_seconds": 0.49237672600429505,
         "runner_status": {
+          "build_seconds": 0.0530071258544922,
           "detail": "",
-          "solve_seconds": 0.29,
+          "main_seconds": 0.0535001754760742,
+          "read_seconds": 5.60283660888672e-05,
+          "solve_seconds": 0.06,
           "status": "limit",
           "type": "status"
         },
@@ -207,8 +321,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.040971218957565725,
-        "execution_wall_seconds": 1.1555264140479267,
+        "checking_seconds": 0.012075472041033208,
+        "execution_wall_seconds": 0.994462505041156,
         "first_solution": {
           "selected_movies": [
             false,
@@ -230,6 +344,28 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            9.9e-05,
+            0
+          ],
+          [
+            0.000155,
+            1
+          ],
+          [
+            0.000182,
+            2
+          ],
+          [
+            0.000213,
+            3
+          ],
+          [
+            0.000367,
+            4
+          ]
+        ],
         "instance_hash": "570c4f9d69f17b80f741a52364dba8592aecac4cd8f38d4591fe99baa74382ee",
         "is_optimization": true,
         "oom_killed": false,
@@ -238,10 +374,13 @@
           "selected_movies"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4889623699709773,
+        "reference_setup_seconds": 0.41507945500779897,
         "runner_status": {
+          "build_seconds": 0.0728611946105957,
           "detail": "",
-          "solve_seconds": 0.08,
+          "main_seconds": 0.074462890625,
+          "read_seconds": 9.08374786376953e-05,
+          "solve_seconds": 0.07,
           "status": "limit",
           "type": "status"
         },
@@ -259,15 +398,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "7008651b4f44bb2dd041ebfa6fd427d5f4feee1ae1d340eb17a1b881f42da428",
+    "model_hash": "e230eec9f2b44203ab786bbf575a139e529ff850003d88df3adae8f266f209b2",
     "problem_id": "session2_movie_scheduling",
     "reason": "accepted",
-    "reference_hash": "eb02bc105582c59cb4f25137b0b809721e386cbaab2b7b27be60dbe019e7022f",
+    "reference_hash": "199fe76f148351eb105482a9412a4ccbe6f85fa6a6773c61e22ac20fb5a181a9",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -278,7 +417,7 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "eclipse_clp",
-    "total_wall_seconds": 12.848327287007123,
+    "total_wall_seconds": 7.646292008983437,
     "unperformed_instances": []
   },
   "generated_by": {

@@ -1,56 +1,90 @@
-# Who killed Aunt Agatha in Dreadsbury Mansion: the killer is one of Agatha, the
-# butler and Charles, hates the victim and is no richer than the victim.
-# People are indexed as in the instance: 0 Agatha, 1 the butler, 2 Charles.
+# who_killed_agatha: a SCIP (Python) model from DCP Rosetta.
+# Download the `who_killed_agatha.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/who_killed_agatha.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python who_killed_agatha.py who_killed_agatha.json
+
 from pyscipopt import Model, quicksum
 
-AGATHA, BUTLER, CHARLES = 0, 1, 2
+
+def create_model(instance):
+    """Someone in Dreadsbury Mansion killed Aunt Agatha. Agatha, the butler and
+    Charles are the only residents of the mansion. A killer always hates the
+    victim and is no richer than the victim. The statements about hating and
+    wealth fix who the killer is: the output is the 0-based index of the killer
+    among the residents."""
+    # The residents, in the order the instance lists them: names[0] is Agatha
+    # herself, names[1] the butler, names[2] Charles.
+    names = instance["names"]  # the residents of the mansion
+    n = len(names)             # the number of residents: three, as the statement names
+    AGATHA, BUTLER, CHARLES = 0, 1, 2
+
+    model = Model("who_killed_agatha")
+
+    # hates[x, y] is 1 when resident x hates resident y. "Everybody" is read as
+    # every resident, the person themself included, so hates[x, x] is a real entry.
+    hates = model.addMatrixVar((n, n), vtype="B", name="hates")
+
+    # richer[y] is 1 when resident y is richer than Agatha. The statement only
+    # compares wealth with Agatha, so this is the only richness fact modelled:
+    # no other ordering between residents is assumed. Agatha is not richer than
+    # herself, so her entry is 0.
+    richer = model.addMatrixVar(n, vtype="B", name="richer")
+
+    # killer[x] is 1 when resident x killed Agatha. The statement says someone
+    # killed her, and it speaks of a single killer, so exactly one entry is 1.
+    killer = model.addMatrixVar(n, vtype="B", name="killer")
+
+    # Agatha is not richer than herself.
+    model.addCons(richer[AGATHA] == 0)
+
+    # Exactly one resident killed Agatha.
+    model.addCons(quicksum(killer) == 1)
+
+    # A killer always hates the victim: killer[x] = 1 forces hates[x, AGATHA]
+    # to 1, and killer[x] = 0 leaves it free. Written as the linear form of
+    # that implication between two binaries.
+    model.addMatrixCons(hates[:, AGATHA] >= killer)
+
+    # A killer is no richer than the victim: killer[x] = 1 forces richer[x] to 0.
+    model.addMatrixCons(richer + killer <= 1)
+
+    # Agatha hates everybody except the butler.
+    model.addMatrixCons(hates[AGATHA] == [0 if y == BUTLER else 1 for y in range(n)])
+
+    # Charles hates no one that Agatha hates: for no resident y are both
+    # hates[AGATHA, y] and hates[CHARLES, y] 1.
+    model.addMatrixCons(hates[CHARLES] + hates[AGATHA] <= 1)
+
+    # The butler hates everyone not richer than Agatha: for each resident y,
+    # either y is richer than Agatha or the butler hates y.
+    model.addMatrixCons(hates[BUTLER] + richer >= 1)
+
+    # The butler hates everyone whom Agatha hates.
+    model.addMatrixCons(hates[BUTLER] >= hates[AGATHA])
+
+    # Nobody hates everyone: each resident hates at most n - 1 of the n residents.
+    model.addMatrixCons(hates.sum(axis=1) <= n - 1)
+
+    # The killer is the resident whose killer entry is 1: its index is the output.
+    return model, {"killer": quicksum(x * killer[x] for x in range(n))}
 
 
-def build(instance):
-    names = instance["names"]
-    n = len(names)
-    people = range(n)
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
 
-    m = Model()
-    # hates[i, j] = 1 if person i hates person j
-    hates = {(i, j): m.addVar(name=f"hates_{i}_{j}", vtype="B") for i in people for j in people}
-    # wealth[i] = relative wealth of person i; only the order matters, so n levels suffice
-    wealth = [m.addVar(name=f"wealth_{i}", vtype="I", lb=0, ub=n) for i in people]
-    # richer[j] = 1 if person j is richer than Agatha
-    richer = {j: m.addVar(name=f"richer_{j}", vtype="B") for j in people}
-    # killed[i] = 1 if person i killed Agatha (exactly one killer)
-    killed = [m.addVar(name=f"killed_{i}", vtype="B") for i in people]
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
 
-    # wealth ordering that defines richer[j]
-    for j in people:
-        m.addConsIndicator(wealth[j] - wealth[AGATHA] >= 1, binvar=richer[j])
-        m.addConsIndicator(wealth[j] - wealth[AGATHA] <= 0, binvar=richer[j], activeone=False)
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-    # someone in the mansion killed Agatha
-    m.addCons(quicksum(killed) == 1)
-
-    # a killer always hates his victim, and is no richer than the victim
-    for i in people:
-        m.addCons(killed[i] <= hates[i, AGATHA])
-        m.addConsIndicator(wealth[i] - wealth[AGATHA] <= 0, binvar=killed[i])
-
-    # Agatha hates everybody except the butler
-    for j in people:
-        m.addCons(hates[AGATHA, j] == (1 if j != BUTLER else 0))
-
-    # the butler hates everyone not richer than Agatha, and everyone whom Agatha hates
-    for j in people:
-        m.addCons(hates[BUTLER, j] == 1 - richer[j])
-        m.addCons(hates[BUTLER, j] >= hates[AGATHA, j])
-
-    # Charles hates noone that Agatha hates
-    for j in people:
-        m.addCons(hates[CHARLES, j] + hates[AGATHA, j] <= 1)
-
-    # noone hates everyone
-    for i in people:
-        m.addCons(quicksum(hates[i, j] for j in people) <= n - 1)
-
-    # the output is the 0-based index of the killer
-    killer = quicksum(i * killed[i] for i in people)
-    return m, {"killer": killer}
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

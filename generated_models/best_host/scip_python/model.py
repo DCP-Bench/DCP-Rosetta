@@ -1,54 +1,75 @@
-# Best host: seat six guests around a round table so that as few neighbours
-# as possible do not get along.
+# best_host: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/best_host.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python best_host.py
+
 from pyscipopt import Model, quicksum
 
-# Guests are numbered 0 Andrew, 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank.
-# Each guest's list of the only people they will sit next to (from the statement).
-# This is a fixed fact of the problem, not part of the instance.
-GETS_ALONG = {
-    0: {3, 5},  # Andrew: Dave, Frank
-    1: {2, 4},  # Betty: Cara, Erica
-    2: {1, 5},  # Cara: Betty, Frank
-    3: {0, 4},  # Dave: Andrew, Erica
-    4: {1, 3},  # Erica: Betty, Dave
-    5: {0, 2},  # Frank: Andrew, Cara
-}
+
+def create_model(instance):
+    """Seat six dinner guests around a round table so that as few guests as
+    possible who do not get along sit next to each other. Each guest will only
+    sit next to the guests the statement lists for them. The answer is the
+    seating order: x[p] is the guest in seat p, seats 0 to 5 going round the
+    table, with seat 5 next to seat 0."""
+
+    # The statement fixes all the data, so the instance has no fields to read.
+    # Guests are numbered 0 Andrew, 1 Betty, 2 Cara, 3 Dave, 4 Erica, 5 Frank.
+    N = 6  # six guests and six seats, both from the statement
+
+    # Who each guest will sit next to, straight from the statement.
+    will_sit_next_to = {
+        0: [3, 5],  # Andrew will only sit next to Dave and Frank
+        1: [2, 4],  # Betty will only sit next to Cara and Erica
+        2: [1, 5],  # Cara will only sit next to Betty and Frank
+        3: [0, 4],  # Dave will only sit next to Andrew and Erica
+        4: [1, 3],  # Erica will only sit next to Betty and Dave
+        5: [0, 2],  # Frank will only sit next to Andrew and Cara
+    }
+
+    model = Model("best_host")
+
+    # seat[p, g] is 1 when guest g sits in seat p, and 0 when not.
+    # The table is a grid: one row per seat, one column per guest.
+    seat = model.addMatrixVar((N, N), vtype="B", name="seat")
+
+    # Every seat holds exactly one guest.
+    model.addMatrixCons(seat.sum(axis=1) == 1)
+
+    # Every guest sits in exactly one seat.
+    model.addMatrixCons(seat.sum(axis=0) == 1)
+
+    # Seating rule: whoever sits next to a guest must be someone that guest will
+    # sit next to. Seat q is the seat next to seat p (clockwise), and seat 5 is
+    # next to seat 0, which is why q wraps round with the modulo.
+    for p in range(N):
+        q = (p + 1) % N
+        for g in range(N):
+            # if guest g is in seat p, the guest in seat q is someone g will sit next to
+            model.addCons(seat[p, g] <= quicksum(seat[q, h] for h in will_sit_next_to[g]))
+            # and the other way round: if g is in seat q, the guest in seat p is someone g will sit next to
+            model.addCons(seat[q, g] <= quicksum(seat[p, h] for h in will_sit_next_to[g]))
+
+    # No objective: a seating with no conflict exists (for example Andrew, Dave,
+    # Erica, Betty, Cara, Frank round the table), so the least possible conflict is
+    # zero, and the model asks for a seating with no conflict.
+
+    # x[p] is the guest in seat p: the guest number of whoever holds seat p.
+    x = [quicksum(g * seat[p, g] for g in range(N)) for p in range(N)]
+
+    return model, {"x": x}
 
 
-def build(instance):
-    n = 6
-    m = Model()
+if __name__ == "__main__":
+    import numpy as np
 
-    # b[i, g] = 1 if seat i is taken by guest g
-    b = {(i, g): m.addVar(name=f"seat_{i}_guest_{g}", vtype="B")
-         for i in range(n) for g in range(n)}
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
 
-    # each seat holds exactly one guest, and each guest sits in exactly one seat
-    for i in range(n):
-        m.addCons(quicksum(b[i, g] for g in range(n)) == 1)
-    for g in range(n):
-        m.addCons(quicksum(b[i, g] for i in range(n)) == 1)
-
-    # neighbours: seat i and the next seat round the table (the last seat wraps to the first)
-    # p[i, g, h] = 1 if seat i has guest g and seat i+1 has guest h
-    p = {(i, g, h): m.addVar(name=f"pair_{i}_{g}_{h}", vtype="B")
-         for i in range(n) for g in range(n) for h in range(n)}
-    for i in range(n):
-        j = (i + 1) % n
-        for g in range(n):
-            m.addCons(quicksum(p[i, g, h] for h in range(n)) == b[i, g])
-        for h in range(n):
-            m.addCons(quicksum(p[i, g, h] for g in range(n)) == b[j, h])
-
-    # a conflict is a pair of neighbours who do not get along; minimise their number
-    # (each neighbouring pair of seats is counted once)
-    conflicts = quicksum(p[i, g, h]
-                         for i in range(n)
-                         for g in range(n)
-                         for h in range(n)
-                         if h not in GETS_ALONG[g])
-    m.setObjective(conflicts, "minimize")
-
-    # the output lists the guest in each seat, in seating order
-    x = [quicksum(g * b[i, g] for g in range(n)) for i in range(n)]
-    return m, {"x": x}
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

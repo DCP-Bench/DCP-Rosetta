@@ -4,7 +4,7 @@ The native binding: PyCSP3 is a Python library whose `solve()` writes XCSP3 and 
 Shared concepts, statuses and enumeration strategy: [SKILL.md](../SKILL.md).
 
 ## Contents
-- [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling) · [Reading data](#reading-data)
+- [Install](#install) · [Quick start](#quick-start) · [Modelling](#modelling) · [Readable models](#readable-models) · [Reading data](#reading-data)
 - [Solving](#solving) · [All solutions](#all-solutions) · [Common issues](#common-issues)
 - Examples: [satisfy](../assets/python/satisfy-queens/README.md), [all solutions](../assets/python/all-solutions-latin/README.md),
   [all optimal](../assets/python/all-optimal-permutation/README.md), [maximise](../assets/python/maximise-knapsack/README.md),
@@ -72,9 +72,11 @@ Every construct below was run; the full catalogue with failing forms is in
 Rules pycsp3 enforces (messages in [Common issues](#common-issues)):
 
 - **One declaration per line.** `a, b = Var(...), Var(...)` fails.
-- **Declare variables at module level, preferably as one `VarArray`.** A `Var` without `id=`
-  made in a loop, comprehension, helper function or dict fails. `VarArray` inside a function
-  works; with `id="x"` it is safe everywhere.
+- **Declare each variable as `name = Var(...)` or `name = VarArray(...)`, inside a function
+  too** (`x = Var(range(3))` in a function works: pycsp3 takes the id from the assignment).
+  A `Var` without `id=` made in a loop, comprehension or dict fails
+  (`The variable identifier [ is not valid`); with `id="x"` it is safe everywhere, and one
+  `VarArray` replaces a list of `Var`s.
 - **Reserved identifiers**: `E` and 57 XCSP words (`min`, `max`, `dist`, `in`, `set`, `sin`,
   `card`, ...; full list in [language.md](../references/python/language.md#variables-and-domains)).
   ACE stops with `The id E is a keyword`.
@@ -87,6 +89,61 @@ Rules pycsp3 enforces (messages in [Common issues](#common-issues)):
   `Sum`, `ANY`, ...: `min(..., key=...)` fails (use `builtins.min` after `import builtins`),
   and a data list called `values` hides the function.
 - `Not(c)` fails in 2.6.1: write the negated relation (`!=`, `>=`).
+
+## Readable models
+
+pycsp3 holds the model in the library, so a model can be a function that posts constraints and
+returns its variables, and a `__main__` block can then call `solve()`:
+
+```python
+def create_model(instance):
+    n = instance["n"]
+    x = VarArray(size=n, dom=range(n))   # a domain of 0..n-1 is range(n); 0..n is range(n + 1)
+    satisfy(AllDifferent(x))
+    return {"x": x}
+
+if __name__ == "__main__":
+    outputs = create_model({"n": 4})
+    if solve() is SAT:
+        print(values(outputs["x"]))      # a single Var is read with value(v), which returns a number
+```
+
+- Name a bound or a count once (`n_people = 100`) and write `range(n_people + 1)`, not `range(101)`.
+- Post each requirement of the problem as its own argument of `satisfy`, with a comment saying it
+  in the problem's words, rather than folding several into one expression.
+- Prefer the global (`AllDifferent`, `Cardinality`, `Table`, `Element` as `t[i]`, `Circuit`, ...) to
+  an encoding of it with sums and comparisons. One `Cardinality(x, occurrences={v: k, ...})` over
+  a variable whose domain is closed to the given values (`dom=sorted(set(values))`) says "each value
+  occurs k times" and propagates far better than one `Count` per value.
+- Direct forms, all tested: a clipped difference `e == Maximum(0, a - b)` (not `If` with numbers);
+  a count of true comparisons `Sum(a[i] > b[j] for i in range(n) for j in range(m)) >= k`;
+  `Hamming(x, y) >= 1` for "the two arrays differ"; a slice of a matrix `Sum(m[f:f + w, p]) <= 1`;
+  a table over a variable and an array `Table(scope=[c] + list(w), supports=[...])`; a Boolean that
+  mirrors a condition `m == (k == 3)`. A weighted sum is `Sum(c[i] * x[i] for i in range(n))`, as there
+  is no `coeffs=` argument.
+- `values(m)` flattens a matrix into one list: print a matrix row by row (`for row in m: print(values(row))`).
+- `Circuit(successor)` in ACE also accepts a node that is its own successor (`successor[i] == i` skips the node, subcircuit
+  semantics): when every node must be visited, forbid it (`successor[i] != i`, or leave `j == i` out of a Table of
+  successors and costs), or the model skips nodes and reports a shorter tour.
+- `minimize(Sum(c[i] * n[i]))` over integer variables with non-unit constant coefficients was compiled by ACE to minimise
+  the wrong quantity (the sum of the `n[i]`): link a variable, `total == Sum(...)`, and minimise `total`.
+- A matrix cannot be indexed by two variables in ACE (`ArrayIndexOutOfBoundsException`): flatten it into one array and
+  index it by a computed position. `Count(x, values=v) == 0` fails (`Bad value of k=0`): use
+  `Sum(x[i] == value for i in range(n) for value in sorted(set(v))) == m`. `NValues` over a scope that repeats a variable
+  fails. Inside `And`, `Or` and `imply` write `x.among(A, B)`, not `x in {A, B}`. Identical constraints posted twice in a
+  group can raise `A group with at least an empty argument list`: post each distinct constraint once.
+- Two-dimensional `NoOverlap(origins=[(x, y) ...], lengths=[(w, h) ...])` works; `AllDifferentList(rows)` works.
+- On flow-like or assignment models ACE can find the optimum quickly and then fail to prove it: an enumerated `Table`
+  that ties the shipments of one destination to its cost, or an implied dominance (exchange-argument) constraint, fixes
+  this. Equal shares as pairwise equalities of sums are weak on large instances: post each share as the constant total / n.
+- A per-index domain is accepted: `VarArray(size=n, dom=lambda i: range(lo[i], hi[i] + 1))`.
+- `Count(x, values=v) == 0` fails in ACE (`Bad value of k=0`, an exception in its log); when the
+  count can be 0, use `Sum(x[i] == value for i in range(n) for value in sorted(set(v))) == m` and
+  say why in a comment.
+- A product of four large-domain variables in one constraint can exhaust ACE's heap on the
+  optimisation search; introduce an auxiliary variable for the product of two and constrain it
+  (`a_times_b == a * b`, then `a_times_b == n * n`).
+- `solve()` writes `<script>.xml` and a log file next to the script.
 
 ## Reading data
 

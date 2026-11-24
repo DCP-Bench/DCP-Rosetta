@@ -1,14 +1,27 @@
 language ESSENCE' 1.0
-$ Place n queens on an n x n chessboard so that no two queens share a row, column or diagonal.
+$ csplib_054_n_queens: an Essence' model from DCP Rosetta.
+$
+$ Can n queens be placed on an n x n chessboard so that no queen attacks another? A queen attacks squares on the same row, column, or either diagonal. Find a set of n squares, no two of which share a row, column or diagonal.
+$
+$ Save this file as model.eprime. Download `csplib_054_n_queens.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_054_n_queens.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_054_n_queens_1.param.solution`:
+$   python dcp_convert_essence.py csplib_054_n_queens.json
+$   savilerow model.eprime csplib_054_n_queens_1.param -run-solver
+
+$ n: the size of the board (n x n) and the number of queens
 given n : int(1..)
+
+$ queens[i]: column of the queen in row i (indices 1-based, so the data's index 0 is queens[1]); a value 1..n
 find queens : matrix indexed by [int(1..n)] of int(1..n)
 
 branching on [queens]
-
 such that
 $ no two queens share a column
 allDiff(queens),
-$ no two queens share an ascending diagonal
+$ no two queens share an ascending diagonal (row + column is distinct)
 allDiff([queens[i] + i | i : int(1..n)]),
-$ no two queens share a descending diagonal
+$ no two queens share a descending diagonal (row - column is distinct)
 allDiff([queens[i] - i | i : int(1..n)])

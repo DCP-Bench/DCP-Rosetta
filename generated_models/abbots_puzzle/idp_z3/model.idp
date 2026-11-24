@@ -1,19 +1,34 @@
-// Abbot's puzzle: 100 bushels of corn are distributed among 100 people, find the number of men, women and children.
-vocabulary {
-    men: () -> Int
-    women: () -> Int
-    children: () -> Int
+// abbots_puzzle: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// If 100 bushels of corn were distributed among 100 people such that each man received three bushels, each woman two,
+// and each child half a bushel, and there are five times as many women as men, find the number of men, women, and
+// children.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    people: () -> Int                  // the number of people, 100
+    bushels: () -> Int                 // the bushels of corn distributed, 100
+    men: () -> Int                     // the number of men
+    women: () -> Int                   // the number of women
+    children: () -> Int                // the number of children
 }
-theory {
-    // there are 100 people in all
-    men() + women() + children() = 100.
-    // 100 bushels are distributed: each man gets three bushels, each woman two, each child half a bushel.
-    // Multiplied by 2 to keep the arithmetic in whole numbers: 6 half-bushels per man, 4 per woman, 1 per child.
-    6 * men() + 4 * women() + children() = 200.
+theory T:V {
+    // there are 100 people
+    people() = 100.
+    // 100 bushels of corn are distributed
+    bushels() = 100.
+    // the numbers of men, women and children are not negative
+    0 =< men() & 0 =< women() & 0 =< children().
+    // every person is a man, a woman or a child
+    men() + women() + children() = people().
     // there are five times as many women as men
     women() = 5 * men().
-    // counts are not negative
-    men() >= 0.
-    women() >= 0.
-    children() >= 0.
+    // all the corn is distributed; counted in half bushels, a man gets 3 bushels (6 halves), a woman 2 bushels
+    // (4 halves) and a child half a bushel (1 half), and the total is 2 times the bushels
+    6 * men() + 4 * women() + children() = 2 * bushels().
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

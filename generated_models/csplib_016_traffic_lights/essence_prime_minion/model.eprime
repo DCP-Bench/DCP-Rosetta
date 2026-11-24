@@ -1,17 +1,33 @@
 language ESSENCE' 1.0
-$ Traffic lights: the eight light states of a four-way junction, four vehicle lights V1..V4 then four pedestrian lights P1..P4, such that each pair (V_i, P_i), (V_i+1, P_i+1) is one of the safe combinations, with V5 = V1 and P5 = P1.
+$ csplib_016_traffic_lights: an Essence' model from DCP Rosetta.
+$
+$ Four-way traffic junction with eight traffic lights: four vehicle lights (V1 to V4) and four pedestrian lights (P1 to P4). Vehicle light states are 0 red, 1 red-yellow, 2 green, 3 yellow; pedestrian light states are 0 red, 1 green. The problem gives the safe combinations (V_i, P_i, V_i+1, P_i+1) for i = 1 to 4, with V5 = V1 and P5 = P1; every other combination is disallowed to prevent accidents. Find a valid set of light states.
+$
+$ Save this file as model.eprime. Download `csplib_016_traffic_lights.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_016_traffic_lights.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_016_traffic_lights_1.param.solution`:
+$   python dcp_convert_essence.py csplib_016_traffic_lights.json
+$   savilerow model.eprime csplib_016_traffic_lights_1.param -run-solver
+
+$ allowed_tuples_dim1: the number of safe combinations (derived from the data)
+$ allowed_tuples_dim2: the length of each combination, which is 4 (derived from the data)
 given allowed_tuples_dim1, allowed_tuples_dim2 : int(1..)
-$ the safe combinations (V_i, P_i, V_i+1, P_i+1) listed in the problem parameters
+$ allowed_tuples[t,k]: entry k of the t-th safe combination, in the order (V_i, P_i, V_i+1, P_i+1), indices 1-based
 given allowed_tuples : matrix indexed by [int(1..allowed_tuples_dim1), int(1..allowed_tuples_dim2)] of int(0..3)
-$ lights 1 to 4 are the vehicle lights, lights 5 to 8 are the pedestrian lights
+
+$ lights[1..4]: states of the vehicle lights V1 to V4; lights[5..8]: states of the pedestrian lights P1 to P4 (indices 1-based)
 find lights : matrix indexed by [int(1..8)] of int(0..3)
+
 branching on [lights]
+
 such that
-$ vehicle lights V1 and V2 with pedestrian lights P1 and P2 form a safe combination
+$ the lights V1, P1, V2, P2 form a safe combination
 table([lights[1], lights[5], lights[2], lights[6]], allowed_tuples),
-$ vehicle lights V2 and V3 with pedestrian lights P2 and P3 form a safe combination
+$ the lights V2, P2, V3, P3 form a safe combination
 table([lights[2], lights[6], lights[3], lights[7]], allowed_tuples),
-$ vehicle lights V3 and V4 with pedestrian lights P3 and P4 form a safe combination
+$ the lights V3, P3, V4, P4 form a safe combination
 table([lights[3], lights[7], lights[4], lights[8]], allowed_tuples),
-$ vehicle lights V4 and V1 with pedestrian lights P4 and P1 form a safe combination
+$ the lights V4, P4, V1, P1 form a safe combination (the junction wraps around from light 4 to light 1)
 table([lights[4], lights[8], lights[1], lights[5]], allowed_tuples)

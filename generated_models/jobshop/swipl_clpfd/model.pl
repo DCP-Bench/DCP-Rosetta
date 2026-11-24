@@ -1,79 +1,102 @@
+% jobshop: a SWI-Prolog model from DCP Rosetta.
+%
+% In the job shop, several jobs are processed on several machines. Each job consists of a sequence of tasks, which
+% must be performed in the given order, and each task must be processed on a specific machine. The problem is to
+% schedule the tasks on the machines so as to minimise the length of the schedule, the time it takes for all the
+% jobs to be completed. No task of a job starts before the previous task of that job is completed, a machine works
+% on one task at a time, and a task, once started, runs to completion. Find the optimal makespan, the total time
+% taken to complete all jobs.
+%
+% Save this file as model.pl. Download `jobshop.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/jobshop.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('jobshop.json')" -t halt model.pl
+%
+% Data fields: jobs_data (the jobs, indexed from 0; each job is its list of tasks in order, and each task is the
+% pair [machine, duration] with the machine and the duration of the task).
 :- use_module(library(clpfd)).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
+:- use_module(library(http/json)).
 
-% Job shop: every job is a sequence of tasks, each to be run on a given machine
-% for a given time. A task starts only after the previous task of its job has
-% finished, and a machine runs one task at a time. Minimise the makespan, the
-% time when the last task finishes.
-model(Instance, Orders, [makespan-Makespan], min(Makespan)) :-
-    JobsData = Instance.jobs_data,          % JobsData[j][k] = [machine, duration]
-
-    % No schedule needs to run longer than all the tasks one after the other;
-    % this is the upper bound on every time variable.
-    findall(Duration, (member(Job, JobsData), member([_, Duration], Job)), Durations),
-    sum_list(Durations, Horizon),
+model(Instance, Vars, [makespan-Makespan], min(Makespan)) :-
+    Jobs = Instance.jobs_data,
+    append(Jobs, Tasks),
+    maplist(task_duration, Tasks, Durations),
+    sum_list(Durations, Horizon),          % no schedule is longer than all the tasks run one after another
+    % StartLists[J][K] is the start time of task K of job J
+    maplist(job_starts(Horizon), Jobs, StartLists),
+    Vars = StartLists,
+    % the tasks of each job run one after another, in their order
+    maplist(job_order, Jobs, StartLists),
+    append(StartLists, Starts),
+    maplist(make_record, Tasks, Starts, Records),
+    % the makespan is at least the end of every task
     Makespan in 0..Horizon,
+    maplist(ends_before(Makespan), Records),
+    % a machine works on one task at a time
+    maplist(task_machine, Tasks, Machines),
+    sort(Machines, MachineIds),
+    maplist(machine_one_at_a_time(Records), MachineIds).
 
-    % task(Machine, Start, Duration) for every task of every job.
-    maplist({Horizon}/[Job, Tasks]>>job_tasks(Job, Horizon, Tasks), JobsData, JobTasks),
+% task_machine(+Task, -Machine) and task_duration(+Task, -Duration): the two fields of a task [machine, duration]
+task_machine([Machine, _], Machine).
+task_duration([_, Duration], Duration).
 
-    % a task starts after the previous task of its job is completed, and the
-    % makespan comes after the last task of each job
-    maplist({Makespan}/[Tasks]>>in_sequence(Tasks, Makespan), JobTasks),
+% job_starts(+Horizon, +Job, -Starts): one start time for each task of the job, within the horizon
+job_starts(Horizon, Job, Starts) :-
+    length(Job, K),
+    length(Starts, K),
+    Starts ins 0..Horizon.
 
-    % a machine can only work on one task at a time
-    findall(Machine, (member(Job, JobsData), member([Machine, _], Job)), Used),
-    sort(Used, Machines),
-    append(JobTasks, AllTasks),
-    maplist({AllTasks, Makespan}/[Machine, Order]>>
-                (include(on_machine(Machine), AllTasks, OnMachine),
-                 one_at_a_time(OnMachine, Makespan, Order)),
-            Machines, MachineOrders),
-    append(MachineOrders, Orders).
-
-% job_tasks(+Job, +Horizon, -Tasks): one task term per [Machine, Duration] pair.
-job_tasks([], _, []).
-job_tasks([[Machine, Duration]|Rest], Horizon, [task(Machine, Start, Duration)|Tasks]) :-
-    Start in 0..Horizon,
-    job_tasks(Rest, Horizon, Tasks).
-
-% in_sequence(+Tasks, +Makespan): the tasks of one job run in the given order,
-% and the last one finishes by the makespan.
-in_sequence([], _).
-in_sequence([task(_, Start, Duration)], Makespan) :- !,
-    Start + Duration #=< Makespan.
-in_sequence([task(_, Start, Duration), Next|Rest], Makespan) :-
-    Next = task(_, NextStart, _),
+% job_order(+Tasks, +Starts): each task ends before the next task of the job starts
+job_order([_], [_]).
+job_order([[_, Duration]|[Next|Rest]], [Start, NextStart|Starts]) :-
     Start + Duration #=< NextStart,
-    in_sequence([Next|Rest], Makespan).
+    job_order([Next|Rest], [NextStart|Starts]).
 
-on_machine(Machine, task(Machine, _, _)).
+% make_record(+Task, +Start, -Record): a task with its machine, duration and start time
+make_record([Machine, Duration], Start, record(Machine, Duration, Start)).
 
-% one_at_a_time(+Tasks, +Makespan, -Order): the tasks share a machine. For every
-% two of them one runs before the other; Order lists a 0/1 variable per pair
-% telling which, and these are the variables the search decides. The start
-% times are not decided directly: once every pair is ordered the constraints
-% left on them are differences between start times, so propagation either
-% fails or leaves a schedule. Deciding the order instead of the start times
-% also keeps the search from counting one schedule once per way of delaying
-% a task.
-one_at_a_time(Tasks, Makespan, Order) :-
-    % the machine needs the sum of its tasks' durations in any schedule
-    findall(Duration, member(task(_, _, Duration), Tasks), Durations),
-    sum_list(Durations, Load),
-    Makespan #>= Load,
-    pairwise_order(Tasks, Order).
+% ends_before(+Makespan, +Record): the task ends no later than the makespan
+ends_before(Makespan, record(_, Duration, Start)) :-
+    Start + Duration #=< Makespan.
 
-pairwise_order([], []).
-pairwise_order([Task|Tasks], Order) :-
-    maplist(first_or_second(Task), Tasks, Here),
-    pairwise_order(Tasks, There),
-    append(Here, There, Order).
+% machine_one_at_a_time(+Records, +Machine): the tasks on the machine do not overlap in time
+machine_one_at_a_time(Records, Machine) :-
+    include(on_machine(Machine), Records, Here),
+    no_overlap(Here).
 
-% first_or_second(+Task1, +Task2, -Before): Before is 1 when Task1 finishes
-% before Task2 starts and 0 when Task2 finishes before Task1 starts.
-first_or_second(task(_, Start1, Duration1), task(_, Start2, Duration2), Before) :-
-    Before in 0..1,
-    Before #= 1 #==> Start1 + Duration1 #=< Start2,
-    Before #= 0 #==> Start2 + Duration2 #=< Start1.
+on_machine(Machine, record(Machine, _, _)).
+
+% no_overlap(+Records): every pair of tasks is one before the other
+no_overlap([]).
+no_overlap([Record|Records]) :-
+    maplist(apart(Record), Records),
+    no_overlap(Records).
+
+% apart(+Record1, +Record2): one task ends before the other one starts
+apart(record(_, Duration1, Start1), record(_, Duration2, Start2)) :-
+    (Start1 + Duration1 #=< Start2) #\/ (Start2 + Duration2 #=< Start1).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

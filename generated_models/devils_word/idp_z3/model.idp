@@ -1,15 +1,29 @@
-// Devil's word: insert '+' or '-' before each integer of an array so that the signed sum is the given total.
-vocabulary {
-    type I <: Int                  // positions of the array, sized from arr
-    arr: I -> Int                  // the integers of the array (instance data)
-    total: () -> Int               // the target sum (instance data)
-    s: I -> Bool                   // true when the integer at position i gets a '+' sign
-    result: I -> Int               // the array with the correct signs
+// devils_word: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Given an array of integers, insert '+' or '-' operators before each integer in the array so that summing them up
+// results in the given total. For example, if the given array is [1, 2, 3] and the total is 4, then the result
+// [-1, 2, 3] is correct.
+//
+// Save this file as model.idp. Download `devils_word.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py devils_word.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type I <: Int                      // the positions of the array, numbered from 0, sized from arr
+    arr: I -> Int                      // arr(i): the integer at position i
+    total: () -> Int                   // the total that the signed sum must give
+    result: I -> Int                   // result(i): arr(i) with its sign, '+' or '-' before it (declared output)
 }
-theory {
-    // each integer gets a plus or a minus sign, and the signed value is the integer or its negation
-    ! i in I: result(i) = if s(i) then arr(i) else 0 - arr(i).
+theory T:V {
+    // each integer is taken with a '+' or with a '-' before it
+    ! i in I: result(i) = arr(i) | result(i) = -arr(i).
 
     // the signed integers sum to the total
     sum{{ result(i) | i in I }} = total().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

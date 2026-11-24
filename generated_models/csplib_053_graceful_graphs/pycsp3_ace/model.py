@@ -1,25 +1,49 @@
+# csplib_053_graceful_graphs: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_053_graceful_graphs.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_053_graceful_graphs.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_053_graceful_graphs.py csplib_053_graceful_graphs.json
+
 from pycsp3 import *
 
-# Graceful labelling: the graph has n nodes and m edges. Each node gets a distinct
-# label from 0 to m, and each edge xy is labelled with |f(x) - f(y)|, and these edge
-# labels must all be different.
 
-n = data.n
-m = data.m
-graph = data.graph
+def create_model(instance):
+    """A labelling of the nodes of a graph with q edges is graceful if each node gets
+    a different label from 0, 1, ..., q and, when each edge xy is labelled with the
+    difference |f(x) - f(y)| of its end nodes, all the edge labels are different.
+    Find a graceful labelling of the graph."""
+    graph = instance["graph"]   # graph[e] is the pair of nodes joined by edge e, nodes numbered from 0
+    n_nodes = instance["n"]     # number of nodes
+    n_edges = instance["m"]     # q, the number of edges, which is also the largest label
 
-# nodes[i] is the label f(i) of node i
-nodes = VarArray(size=n, dom=range(0, m + 1))
-# edges[k] is the label of edge k, which joins the nodes graph[k][0] and graph[k][1]
-edges = VarArray(size=m, dom=range(1, m + 1))
+    # nodes[x] is the label of node x, a number from 0 to q.
+    nodes = VarArray(size=n_nodes, dom=range(n_edges + 1))
+    # edges[e] is the label of edge e: the difference of the labels of its two end nodes.
+    # The domain starts at 1, since the end labels of an edge differ (a difference of 0 is impossible).
+    edges = VarArray(size=n_edges, dom=range(1, n_edges + 1))
 
-satisfy(
-    # each node has a unique label
-    AllDifferent(nodes),
+    satisfy(
+        # Each node has a different label.
+        AllDifferent(nodes),
+        # Each edge is labelled with the difference of the labels of its two end nodes.
+        [edges[e] == abs(nodes[x] - nodes[y]) for e, (x, y) in enumerate(graph)],
+        # The edge labels are all different.
+        AllDifferent(edges),
+    )
 
-    # the label of each edge is the difference of the labels of its two nodes
-    [edges[k] == abs(nodes[graph[k][0]] - nodes[graph[k][1]]) for k in range(m)],
+    return {"nodes": nodes, "edges": edges}
 
-    # the edge labels are all different
-    AllDifferent(edges),
-)
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

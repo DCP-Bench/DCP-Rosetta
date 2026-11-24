@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5-5 (Claude Code, model-generator campaign)",
-    "attempt_id": "attempt-001",
-    "created_at": 1790632979.3848338,
+    "agent": "claude-code (claude-sonnet-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/docplex/python/CONTRACT.md": "0eee53fcab85b36c5921abb68c1057e1c84caf77a4c1fee887ea4e67ed0b6028"
+    },
+    "created_at": 1794405353.6070611,
     "problem_id": "revenue_maximization",
     "profile": {
       "compilation_timeout": 300,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "3211425c281e6b48ef8dc97ce88d0142a565be19e690fc63a4b29d3d42c4b493",
-    "run_id": "20260928T2146Z-cplex-ee71",
-    "schema": 2,
-    "skill_bundle_hash": "454908cca933908ca47d701ac50039c07b0b4b7d9b63be3e482a19367d17bf21",
-    "skill_source": "solvers\\docplex_cplex\\skills\\docplex",
+    "readiness_hash": "904db7b0b8e5ff55036c355c0722bd6f981482482e949cf5058aa17322d067bd",
+    "run_id": "docplex-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "f0ed68d15755139fcec017e491ba4f6058ba1ef1",
+      "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
       "modified": false,
-      "path": "solvers/docplex_cplex/skills/docplex"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "486cd51897d926d23e72f9ad63d050ea64076563fca81ce6abb84a6b8ef92de7",
+        "source": "solvers/docplex/skills/dcp-docplex",
+        "version": {
+          "commit": "270dc4f8473eef8eb5326969c50d7330ba872a19",
+          "modified": true,
+          "path": "solvers/docplex/skills/dcp-docplex"
+        }
+      }
+    ],
     "solver_id": "docplex_cplex"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:770f3496791ae63eeaec1bf6d8122a38bb8cb841d34bce784ef90f02594e1464",
+      "id": "sha256:d3e433d12e33854b9f1ec9f868488f98de09255e9e6723392109d264f0df498b",
+      "recipe": "sha256:4c817ac7ee4346e516fd77c314a128f33872f7439d290a19ceabbd7139f90db0",
       "tag": "dcp-eval/docplex_cplex:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.005604300065897405,
-        "execution_wall_seconds": 1.1270468999864534,
+        "checking_seconds": 0.0019678980170283467,
+        "execution_wall_seconds": 1.0468689159897622,
         "first_solution": {
           "max_revenue": 8000,
           "packages_to_sell": [
@@ -46,6 +76,16 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.0017375949828419834,
+            0
+          ],
+          [
+            0.0021272189915180206,
+            8000
+          ]
+        ],
         "instance_hash": "0711271f105839cb9c8436d9963fbbfc9da557751f04e50a14a71848f0002430",
         "is_optimization": true,
         "oom_killed": false,
@@ -55,7 +95,7 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1777125999797136,
+        "reference_setup_seconds": 0.3416659240028821,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -67,8 +107,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004668300040066242,
-        "execution_wall_seconds": 1.2533978000283241,
+        "checking_seconds": 0.0020539330143947154,
+        "execution_wall_seconds": 1.087330300011672,
         "first_solution": {
           "max_revenue": 9664,
           "packages_to_sell": [
@@ -80,6 +120,16 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.001592735992744565,
+            0
+          ],
+          [
+            0.003015802998561412,
+            9664
+          ]
+        ],
         "instance_hash": "efafb6a000e9d38f15defd72114626e651e4987c240db9005c093aa9ff097d42",
         "is_optimization": true,
         "oom_killed": false,
@@ -89,7 +139,7 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3283207999775186,
+        "reference_setup_seconds": 0.3122870830120519,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -101,8 +151,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004700099932961166,
-        "execution_wall_seconds": 1.222486500046216,
+        "checking_seconds": 0.0020014850015286356,
+        "execution_wall_seconds": 1.3454598509997595,
         "first_solution": {
           "max_revenue": 24211,
           "packages_to_sell": [
@@ -115,6 +165,16 @@
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0015189230034593493,
+            0
+          ],
+          [
+            0.003122537018498406,
+            24211
+          ]
+        ],
         "instance_hash": "6a73fec3ee25dd19235b76f4e4fd3775f2b96627506229ce888efe8ff473ad4a",
         "is_optimization": true,
         "oom_killed": false,
@@ -124,7 +184,7 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1793144000694156,
+        "reference_setup_seconds": 0.2880155649909284,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -136,8 +196,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.004247999982908368,
-        "execution_wall_seconds": 1.1252602000022307,
+        "checking_seconds": 0.002042763982899487,
+        "execution_wall_seconds": 0.9553577580081765,
         "first_solution": {
           "max_revenue": 17856,
           "packages_to_sell": [
@@ -152,6 +212,16 @@
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.0014367830008268356,
+            0
+          ],
+          [
+            0.002826715004630387,
+            17856
+          ]
+        ],
         "instance_hash": "37e76642ed3e5129811e5cffef31ea66a29179f3278f9f2c2075e8f8327cede0",
         "is_optimization": true,
         "oom_killed": false,
@@ -161,7 +231,7 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.167357699945569,
+        "reference_setup_seconds": 0.3141257709939964,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -173,8 +243,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.00449949991889298,
-        "execution_wall_seconds": 1.8277486999286339,
+        "checking_seconds": 0.0017512640042696148,
+        "execution_wall_seconds": 0.8701664069958497,
         "first_solution": {
           "max_revenue": 2120,
           "packages_to_sell": [
@@ -184,6 +254,16 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.0020848209969699383,
+            0
+          ],
+          [
+            0.0024642979842610657,
+            2120
+          ]
+        ],
         "instance_hash": "41f7a05f667cc5a4e2c9270395da8272e32b2814442cd5e0dc489750d66a9a7b",
         "is_optimization": true,
         "oom_killed": false,
@@ -193,7 +273,7 @@
           "max_revenue"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4072565999813378,
+        "reference_setup_seconds": 0.339588314993307,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -213,15 +293,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "17d8d538073124cc62c35db368d5270c12d2c2ae597681dcb37a01fb2357cd81",
+    "model_hash": "f23de4dc33e5d35d22a2532fa77510f31611810479c7e97ed274525a686b8aa7",
     "problem_id": "revenue_maximization",
     "reason": "accepted",
-    "reference_hash": "6744285a8fd97a300d1075b8a41d22d7394438b3d0f4d7fc50ce4d808efc8ba1",
+    "reference_hash": "de9a521c0a01d23130a68aec4fae722d8b51e4340f0f135bb41128927f5f39b7",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -232,11 +312,11 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "docplex_cplex",
-    "total_wall_seconds": 14.67180309991818,
+    "total_wall_seconds": 7.324872230004985,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

@@ -1,66 +1,103 @@
-// Zebra puzzle: five houses in a row, numbered 0 (left) to 4 (right). Each house
-// has one colour, one nationality, one pet, one drink and one job. Output: for
-// each attribute value, the number of the house that has it.
-vocabulary {
-    // The five houses, numbered 0 (left) to 4 (right). The five houses are a
-    // fact of the problem statement, not of the instance.
-    type House := {0..4}
-    // Position of a value in its list, in the order the statement gives it.
-    type Idx := {0..4}
-
-    // Declared outputs: house of each colour, nationality, pet, drink and job.
-    colors: Idx -> House     // yellow, green, red, white, blue
-    nations: Idx -> House    // italy, spain, japan, england, norway
-    pets: Idx -> House       // cat, zebra, bear, snails, horse
-    drinks: Idx -> House     // milk, water, tea, coffee, juice
-    jobs: Idx -> House       // painter, sculptor, diplomat, pianist, doctor
+// zebra: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The Zebra puzzle (sometimes referred to as Einstein's puzzle) is defined as follows. There are five houses in a row,
+// numbered from left to right. Each of the five houses is painted a different color, and has one inhabitant. The
+// inhabitants are all of different nationalities, own different pets, drink different beverages and have different jobs.
+// We know that:
+//  - colors are yellow, green, red, white, and blue
+//  - nations of inhabitants are italy, spain, japan, england, and norway
+//  - pets are cat, zebra, bear, snails, and horse
+//  - drinks are milk, water, tea, coffee, and juice
+//  - jobs are painter, sculptor, diplomat, pianist, and doctor
+//  - the painter owns the horse
+//  - the diplomat drinks coffee
+//  - the one who drinks milk lives in the white house
+//  - the Spaniard is a painter
+//  - the Englishman lives in the red house
+//  - the snails are owned by the sculptor
+//  - the green house is immediately on the left of the red one
+//  - the Norwegian lives immediately on the right of the blue house
+//  - the doctor drinks milk
+//  - the diplomat is Japanese
+//  - the Norwegian owns the zebra
+//  - the green house is next to the white one
+//  - the horse is owned by the neighbor of the diplomat
+//  - the Italian either lives in the red, white or green house
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/zebra.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type House := {0..4}               // the five houses, numbered from 0 (left) to 4 (right)
+    type Color := {0..4}               // the colors, numbered from 0: 0 yellow, 1 green, 2 red, 3 white, 4 blue
+    type Nation := {0..4}              // the nations, numbered from 0: 0 italy, 1 spain, 2 japan, 3 england, 4 norway
+    type Pet := {0..4}                 // the pets, numbered from 0: 0 cat, 1 zebra, 2 bear, 3 snails, 4 horse
+    type Drink := {0..4}               // the drinks, numbered from 0: 0 milk, 1 water, 2 tea, 3 coffee, 4 juice
+    type Job := {0..4}                 // the jobs, numbered from 0: 0 painter, 1 sculptor, 2 diplomat, 3 pianist, 4 doctor
+    colors: Color -> House             // colors(c): the house painted in color c (declared output)
+    nations: Nation -> House           // nations(n): the house of the inhabitant of nation n (declared output)
+    pets: Pet -> House                 // pets(p): the house of the pet p (declared output)
+    drinks: Drink -> House             // drinks(d): the house of the inhabitant who drinks d (declared output)
+    jobs: Job -> House                 // jobs(j): the house of the inhabitant with job j (declared output)
 }
-theory {
-    // Each colour, nationality, pet, drink and job lies in one house, and
-    // the five values of each attribute are in different houses, so each
-    // house holds exactly one value per attribute.
-    // The five colours are in different houses.
-    ! i, j in Idx: i ~= j => colors(i) ~= colors(j).
-    // The five nationalities are in different houses.
-    ! i, j in Idx: i ~= j => nations(i) ~= nations(j).
-    // The five pets are in different houses.
-    ! i, j in Idx: i ~= j => pets(i) ~= pets(j).
-    // The five drinks are in different houses.
-    ! i, j in Idx: i ~= j => drinks(i) ~= drinks(j).
-    // The five jobs are in different houses.
-    ! i, j in Idx: i ~= j => jobs(i) ~= jobs(j).
+theory T:V {
+    // each color is painted in a different house, and each house has one color
+    ! c, d in Color: c ~= d => colors(c) ~= colors(d).
 
-    // Indices used below: yellow 0, green 1, red 2, white 3, blue 4;
-    // italy 0, spain 1, japan 2, england 3, norway 4; cat 0, zebra 1, bear 2,
-    // snails 3, horse 4; milk 0, water 1, tea 2, coffee 3, juice 4;
-    // painter 0, sculptor 1, diplomat 2, pianist 3, doctor 4.
+    // each nation is of a different house
+    ! n, m in Nation: n ~= m => nations(n) ~= nations(m).
 
-    // The painter owns the horse.
+    // each pet is owned in a different house
+    ! p, q in Pet: p ~= q => pets(p) ~= pets(q).
+
+    // each drink is drunk in a different house
+    ! d, e in Drink: d ~= e => drinks(d) ~= drinks(e).
+
+    // each job is held in a different house
+    ! j, k in Job: j ~= k => jobs(j) ~= jobs(k).
+
+    // the painter owns the horse
     jobs(0) = pets(4).
-    // The diplomat drinks coffee.
+
+    // the diplomat drinks coffee
     jobs(2) = drinks(3).
-    // The one who drinks milk lives in the white house.
+
+    // the one who drinks milk lives in the white house
     drinks(0) = colors(3).
-    // The Spaniard is a painter.
+
+    // the Spaniard is a painter
     nations(1) = jobs(0).
-    // The Englishman lives in the red house.
+
+    // the Englishman lives in the red house
     nations(3) = colors(2).
-    // The snails are owned by the sculptor.
+
+    // the snails are owned by the sculptor
     pets(3) = jobs(1).
-    // The green house is immediately on the left of the red one.
+
+    // the green house is immediately on the left of the red one
     colors(1) + 1 = colors(2).
-    // The Norwegian lives immediately on the right of the blue house.
+
+    // the Norwegian lives immediately on the right of the blue house
     nations(4) = colors(4) + 1.
-    // The doctor drinks milk.
+
+    // the doctor drinks milk
     jobs(4) = drinks(0).
-    // The diplomat is Japanese.
+
+    // the diplomat is Japanese
     jobs(2) = nations(2).
-    // The Norwegian owns the zebra.
+
+    // the Norwegian owns the zebra
     nations(4) = pets(1).
-    // The green house is next to the white one.
-    abs(colors(1) - colors(3)) = 1.
-    // The horse is owned by the neighbour of the diplomat.
-    abs(pets(4) - jobs(2)) = 1.
-    // The Italian either lives in the red, white or green house.
-    (nations(0) = colors(2)) | (nations(0) = colors(3)) | (nations(0) = colors(1)).
+
+    // the green house is next to the white one
+    (colors(1) = colors(3) + 1) | (colors(3) = colors(1) + 1).
+
+    // the horse is owned by the neighbor of the diplomat
+    (pets(4) = jobs(2) + 1) | (jobs(2) = pets(4) + 1).
+
+    // the Italian either lives in the red, white or green house
+    nations(0) = colors(2) | nations(0) = colors(3) | nations(0) = colors(1).
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

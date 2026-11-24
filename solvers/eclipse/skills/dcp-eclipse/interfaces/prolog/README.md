@@ -195,6 +195,49 @@ strings as strings. Unused keys are ignored with `memberchk`. `json_write/3` (wi
 Example: [data-assignment](../../assets/prolog/data-assignment/README.md). `gfd` prints `Loaded Gecode solver 6.2.0`
 on stdout at first use.
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader runs it on
+one instance as `eclipse -b model.ecl -e "run('data.dat'), halt"`; the model ends with a run block that reads the
+data file, solves and prints the answer.
+
+```prolog
+% Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+%
+% Data fields: capacity (the weight capacity), values and weights (value and weight of each item, lists indexed from 0).
+:- lib(ic).
+
+model(Instance, X, [x-X], max(Value)) :-
+    memberchk(capacity-Capacity, Instance),
+    memberchk(values-Values, Instance),
+    memberchk(weights-Weights, Instance),
+    length(Values, N),                     % the number of items
+    length(X, N),
+    X #:: 0..1,                            % X[I] = 1 when item I is taken
+    % the items taken weigh no more than the capacity of the backpack
+    Weight #= Weights * X,
+    Weight #=< Capacity,
+    % maximise the total value of the items taken
+    Value #= Values * X.
+```
+
+followed by the run block exactly as the contract gives it. (`Weights * X` is the scalar product of two lists in
+`ic`.)
+
+- Start with a comment that states the problem, then one that says what each field the model reads holds.
+- Name a size once (`length(Values, N)`) and give each requirement of the problem its own comment, in the problem's
+  words, rather than folding several into one.
+- Prefer the global constraints (`alldifferent`, `alldifferent_except_0`, `cumulative`, `circuit`, `element`, ...) to
+  hand-built encodings.
+- Put `:- lib(ic).` (or `gfd`) first and call `lib/1` as a directive only; the run block picks the solver library that
+  is loaded.
+- Say "data fields" in the field comment: the header's own words about the data avoid the word "instance".
+- In `ic`, `#=>`, `#\/` and `#/\` are not operators (a syntax error). Write a reified condition as a 0/1 variable, `B #= (X #= Y)`, and combine them with sums and `#=<`; `gfd` offers `and`, `or`, `=>`, `<=>`.
+- `between/3`, `append/2`, `member/2`, `last/2` and `nth0`/`nth1` live in libraries: load `lib(lists)` or `lib(listut)`, or use `flatten/2`, `foreach` and `for` loops instead.
+- A variable bound outside a `do` loop and used inside it needs `param(V)`; a loop variable must not be reused in a second loop of the same clause, which silently changes the model. `for(I, A, B)` needs `A` and `B` instantiated; `element/3` with a variable index is 1-based and needs the index variable's domain set first.
+- A search that is slow for a reader is slow for the evaluator: give every variable a finite domain, use a global constraint (`alldifferent`, `sequence`, `circuit`, `occurrences`, `bin_packing`, ...) instead of pairwise `#\=`, and a `search_goal/1` with `first_fail` or the `gfd` library when propagation is weak.
+- End with the run block: the driver never calls it, so one file serves both. It goes after `model/3|4` and `search_goal/1`.
+
 ## Examples
 
 Each folder holds `model.ecl` and a README with the command and measured time. All run in about 0.3 s wall.

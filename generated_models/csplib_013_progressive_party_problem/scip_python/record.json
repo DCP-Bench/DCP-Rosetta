@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791984447.5609124,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "690b20038277627960683d03eb7b921bc8a06c3ce3e59585a7739ded9cb4168f"
+    },
+    "created_at": 1794341543.381636,
     "problem_id": "csplib_013_progressive_party_problem",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "dec26fe97f27e47e605711c77916c053a4fdb9719d9739e8b03e82cf9ac87e6c",
+    "run_id": "scip-polish",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "253a70ce3c9fbebfc3754d8de455fcf331ab3f03",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:ba8c4d07b6eb8ea203c2d797b6975ad656d98f740f9de8a609c87f1a58fedc9b",
+      "recipe": "sha256:d8e8a4b0ba3e1fb49869ba406d7ffe0d76e0d36fec698d04ec0116b2346507ed",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.1060733440099284,
-        "execution_wall_seconds": 1.2902209319872782,
+        "checking_seconds": 0.03177939899615012,
+        "execution_wall_seconds": 0.7998148110054899,
         "first_solution": {
           "is_host": [
             false,
@@ -48,13 +78,6 @@
           ],
           "visits": [
             [
-              3,
-              1,
-              2,
-              3,
-              4
-            ],
-            [
               1,
               1,
               2,
@@ -63,6 +86,13 @@
             ],
             [
               2,
+              1,
+              2,
+              3,
+              4
+            ],
+            [
+              3,
               1,
               2,
               3,
@@ -78,6 +108,16 @@
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.023585529997944832,
+            5
+          ],
+          [
+            0.02393094901344739,
+            4
+          ]
+        ],
         "instance_hash": "00720cdfd6b954265248dd7bf17c2bac0bfcc8f547e55f0f3ed89bdf79d68beb",
         "is_optimization": true,
         "oom_killed": false,
@@ -87,9 +127,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7267326050205156,
+        "reference_setup_seconds": 0.3319149120070506,
         "runner_status": {
+          "build_seconds": 0.00848211400443688,
           "detail": "",
+          "main_seconds": 0.04253345198230818,
+          "read_seconds": 0.00011672600521706045,
           "status": "limit",
           "type": "status"
         },
@@ -99,61 +142,71 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.2670435829786584,
-        "execution_wall_seconds": 2.992490781005472,
+        "checking_seconds": 0.05200797799625434,
+        "execution_wall_seconds": 1.302151148993289,
         "first_solution": {
           "is_host": [
+            true,
+            true,
+            true,
+            true,
             false,
-            true,
-            true,
-            true,
-            true,
             true
           ],
           "visits": [
             [
+              0,
+              1,
+              2,
+              3,
+              3,
+              5
+            ],
+            [
+              0,
+              1,
+              2,
+              3,
               5,
-              1,
-              2,
-              3,
-              4,
               5
             ],
             [
-              2,
+              0,
               1,
               2,
               3,
-              4,
+              1,
               5
             ],
             [
-              4,
+              0,
               1,
               2,
               3,
-              4,
+              2,
               5
             ],
             [
-              3,
+              0,
               1,
               2,
               3,
-              4,
-              5
-            ],
-            [
-              1,
-              1,
-              2,
-              3,
-              4,
+              0,
               5
             ]
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.06304656298016198,
+            6
+          ],
+          [
+            0.067193150985986,
+            5
+          ]
+        ],
         "instance_hash": "317d9307253c82bb1662cb0c836cab36df9a9aab171139bb9b65424e7e18cfc3",
         "is_optimization": true,
         "oom_killed": false,
@@ -163,9 +216,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8769189799786545,
+        "reference_setup_seconds": 0.412579238996841,
         "runner_status": {
+          "build_seconds": 0.015386850980576128,
           "detail": "",
+          "main_seconds": 0.43656218497199006,
+          "read_seconds": 0.00013732697698287666,
           "status": "limit",
           "type": "status"
         },
@@ -175,76 +231,86 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.22074884100584313,
-        "execution_wall_seconds": 8.913287931995,
+        "checking_seconds": 0.08352732099592686,
+        "execution_wall_seconds": 1.7116471999906935,
         "first_solution": {
           "is_host": [
-            false,
             true,
             true,
             true,
             true,
             true,
-            true
+            true,
+            false
           ],
           "visits": [
             [
-              4,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              2
             ],
             [
-              6,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              4
             ],
             [
-              3,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              5
             ],
             [
-              1,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              1
             ],
             [
-              5,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              3
             ],
             [
-              2,
+              0,
               1,
               2,
               3,
               4,
               5,
-              6
+              0
             ]
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.21779885201249272,
+            7
+          ],
+          [
+            0.22498662999714725,
+            6
+          ]
+        ],
         "instance_hash": "80d5d9e03cab90d18634f534347666f2e6327f0385a79c45a999d76c7f336efb",
         "is_optimization": true,
         "oom_killed": false,
@@ -254,9 +320,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7374608410173096,
+        "reference_setup_seconds": 0.4575291789951734,
         "runner_status": {
+          "build_seconds": 0.022132231999421492,
           "detail": "",
+          "main_seconds": 0.9251910369785037,
+          "read_seconds": 0.00013858798774890602,
           "status": "limit",
           "type": "status"
         },
@@ -266,83 +335,97 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.3842483719927259,
-        "execution_wall_seconds": 12.280080911004916,
+        "checking_seconds": 0.09982245200080797,
+        "execution_wall_seconds": 2.204028007981833,
         "first_solution": {
           "is_host": [
             true,
+            true,
+            true,
+            true,
+            true,
             false,
             false,
-            true,
-            true,
-            true,
-            true,
             true
           ],
           "visits": [
             [
               0,
+              1,
+              2,
               3,
+              4,
+              4,
               7,
-              3,
-              4,
-              5,
-              6,
               7
             ],
             [
               0,
+              1,
+              2,
+              3,
+              4,
+              3,
+              4,
+              7
+            ],
+            [
+              0,
+              1,
+              2,
+              3,
+              4,
+              1,
+              3,
+              7
+            ],
+            [
+              0,
+              1,
+              2,
+              3,
+              4,
               7,
-              6,
-              3,
-              4,
-              5,
-              6,
+              0,
               7
             ],
             [
               0,
-              0,
-              5,
+              1,
+              2,
               3,
               4,
-              5,
-              6,
+              0,
+              2,
               7
             ],
             [
               0,
-              6,
-              4,
+              1,
+              2,
               3,
               4,
-              5,
-              6,
-              7
-            ],
-            [
-              0,
-              4,
-              3,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            [
-              0,
-              5,
-              0,
-              3,
-              4,
-              5,
-              6,
+              2,
+              1,
               7
             ]
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.30792920602834783,
+            8
+          ],
+          [
+            0.3187433920102194,
+            7
+          ],
+          [
+            1.204239287006203,
+            6
+          ]
+        ],
         "instance_hash": "b5040897ca942d8de20e59de6fc86f68859cf1ace94d64d6140e36f945c4d307",
         "is_optimization": true,
         "oom_killed": false,
@@ -352,9 +435,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.506949988019187,
+        "reference_setup_seconds": 0.5756168990046717,
         "runner_status": {
+          "build_seconds": 0.01800484099658206,
           "detail": "",
+          "main_seconds": 1.3829304910032079,
+          "read_seconds": 0.00011972300126217306,
           "status": "limit",
           "type": "status"
         },
@@ -364,79 +450,93 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.36779755097813904,
-        "execution_wall_seconds": 19.60569656599546,
+        "checking_seconds": 0.10482725102338009,
+        "execution_wall_seconds": 3.1039528410183266,
         "first_solution": {
           "is_host": [
             false,
             true,
-            true,
-            true,
-            true,
+            false,
             true,
             false,
             false,
-            false
+            true,
+            true,
+            true
           ],
           "visits": [
             [
-              3,
+              8,
               1,
-              2,
+              7,
               3,
-              4,
-              5,
-              4,
-              1,
-              5
+              3,
+              3,
+              6,
+              7,
+              8
             ],
             [
-              2,
-              1,
-              2,
               3,
-              4,
-              5,
               1,
+              8,
               3,
-              4
+              8,
+              6,
+              6,
+              7,
+              8
             ],
             [
-              5,
+              6,
               1,
-              2,
+              1,
               3,
-              4,
-              5,
-              3,
-              5,
-              2
+              6,
+              7,
+              6,
+              7,
+              8
             ],
             [
-              4,
+              7,
               1,
-              2,
               3,
-              4,
-              5,
-              2,
-              2,
-              3
+              3,
+              1,
+              8,
+              6,
+              7,
+              8
             ],
             [
               1,
               1,
-              2,
+              6,
               3,
-              4,
-              5,
-              5,
-              4,
-              1
+              7,
+              1,
+              6,
+              7,
+              8
             ]
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.5186258520116098,
+            9
+          ],
+          [
+            0.5298359890002757,
+            8
+          ],
+          [
+            0.5315730269940104,
+            5
+          ]
+        ],
         "instance_hash": "0351002b88d6347b54a4888cf20546edc96611874caaa33450a4ae510f0b22ab",
         "is_optimization": true,
         "oom_killed": false,
@@ -446,9 +546,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.89121651701862,
+        "reference_setup_seconds": 0.6143404780013952,
         "runner_status": {
+          "build_seconds": 0.018907904013758525,
           "detail": "",
+          "main_seconds": 2.339066400018055,
+          "read_seconds": 0.00012758301454596221,
           "status": "limit",
           "type": "status"
         },
@@ -458,85 +561,95 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.34569339000154287,
-        "execution_wall_seconds": 18.48619972297456,
+        "checking_seconds": 0.1732987439900171,
+        "execution_wall_seconds": 4.363130393001484,
         "first_solution": {
           "is_host": [
             false,
+            true,
             false,
-            false,
+            true,
             false,
             false,
             true,
-            true,
-            true,
+            false,
             true,
             true
           ],
           "visits": [
             [
-              7,
-              8,
-              6,
               9,
+              1,
               8,
-              5,
+              3,
+              3,
+              3,
               6,
-              7,
+              1,
               8,
               9
             ],
             [
+              3,
+              1,
               9,
+              3,
+              8,
+              6,
+              6,
               9,
-              8,
-              7,
-              5,
-              5,
-              6,
-              7,
-              8,
-              9
-            ],
-            [
-              6,
-              5,
-              7,
-              5,
-              6,
-              5,
-              6,
-              7,
-              8,
-              9
-            ],
-            [
-              5,
-              6,
-              5,
-              8,
-              7,
-              5,
-              6,
-              7,
               8,
               9
             ],
             [
               8,
-              7,
+              1,
+              1,
+              3,
               9,
+              1,
+              6,
+              3,
+              8,
+              9
+            ],
+            [
+              6,
+              1,
+              3,
+              3,
+              1,
+              8,
+              6,
+              6,
+              8,
+              9
+            ],
+            [
+              1,
+              1,
+              6,
+              3,
               6,
               9,
-              5,
               6,
-              7,
+              8,
               8,
               9
             ]
           ]
         },
         "id": "json:5",
+        "incumbents": [
+          [
+            0.6942441739956848,
+            10
+          ],
+          [
+            0.71535001299344,
+            5
+          ]
+        ],
         "instance_hash": "f80175e54af4a3765e58dad2f95003faa39adf315ff141653dc0ad790d64c709",
         "is_optimization": true,
         "oom_killed": false,
@@ -546,9 +659,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.116093088989146,
+        "reference_setup_seconds": 0.7858066269836854,
         "runner_status": {
+          "build_seconds": 0.024103617994114757,
           "detail": "",
+          "main_seconds": 3.5353757409902755,
+          "read_seconds": 0.00020231399685144424,
           "status": "limit",
           "type": "status"
         },
@@ -558,84 +674,84 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4852089839987457,
-        "execution_wall_seconds": 35.28820633201394,
+        "checking_seconds": 0.23438099000486545,
+        "execution_wall_seconds": 6.647499034006614,
         "first_solution": {
           "is_host": [
             false,
-            false,
+            true,
             false,
             false,
             false,
             false,
             true,
-            true,
+            false,
             true,
             true,
             true
           ],
           "visits": [
             [
-              6,
-              9,
-              7,
+              1,
+              1,
+              1,
+              1,
               8,
+              6,
               6,
               10,
-              6,
-              7,
-              8,
-              9,
-              10
-            ],
-            [
-              10,
-              7,
-              9,
-              7,
-              8,
-              6,
-              6,
-              7,
-              8,
-              9,
-              10
-            ],
-            [
-              7,
-              10,
-              10,
-              9,
-              9,
-              8,
-              6,
-              7,
               8,
               9,
               10
             ],
             [
               9,
-              6,
+              1,
               8,
               10,
-              7,
+              9,
+              8,
+              6,
+              9,
+              8,
+              9,
+              10
+            ],
+            [
+              6,
+              1,
+              10,
+              8,
+              10,
               9,
               6,
-              7,
+              8,
               8,
               9,
               10
             ],
             [
               8,
+              1,
+              9,
+              6,
+              6,
+              1,
+              6,
+              1,
               8,
-              6,
-              6,
+              9,
+              10
+            ],
+            [
               10,
-              7,
+              1,
               6,
-              7,
+              9,
+              1,
+              10,
+              6,
+              6,
               8,
               9,
               10
@@ -643,6 +759,24 @@
           ]
         },
         "id": "json:6",
+        "incumbents": [
+          [
+            0.7471190229989588,
+            11
+          ],
+          [
+            0.771671074006008,
+            10
+          ],
+          [
+            0.7751655530009884,
+            7
+          ],
+          [
+            0.7786329140071757,
+            5
+          ]
+        ],
         "instance_hash": "b9ac631af6fc7c779550175eb402aef29af889d11d2fa33262f91d21b2407824",
         "is_optimization": true,
         "oom_killed": false,
@@ -652,9 +786,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.238485421985388,
+        "reference_setup_seconds": 0.9094337439746596,
         "runner_status": {
+          "build_seconds": 0.07344698702218011,
           "detail": "",
+          "main_seconds": 5.932605927984696,
+          "read_seconds": 0.00014143998851068318,
           "status": "limit",
           "type": "status"
         },
@@ -664,8 +801,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6360817580134608,
-        "execution_wall_seconds": 87.07650620496133,
+        "checking_seconds": 0.1850361899996642,
+        "execution_wall_seconds": 9.983867301983992,
         "first_solution": {
           "is_host": [
             false,
@@ -673,88 +810,106 @@
             false,
             false,
             false,
+            true,
+            true,
+            true,
             false,
-            true,
-            true,
-            true,
             true,
             true,
             false
           ],
           "visits": [
             [
+              5,
+              9,
+              5,
               10,
-              7,
-              7,
-              8,
-              6,
-              6,
+              5,
+              5,
               6,
               7,
-              8,
+              6,
+              9,
+              10,
+              7
+            ],
+            [
+              9,
+              7,
+              6,
+              6,
+              10,
+              5,
+              6,
+              7,
+              5,
               9,
               10,
               9
             ],
             [
               6,
-              8,
-              10,
-              9,
-              9,
+              5,
               7,
+              5,
+              9,
+              5,
               6,
               7,
-              8,
-              9,
               10,
-              8
-            ],
-            [
-              9,
-              10,
-              6,
-              10,
-              7,
-              8,
-              6,
-              7,
-              8,
-              9,
-              10,
-              7
-            ],
-            [
-              7,
-              6,
-              9,
-              7,
-              8,
-              10,
-              6,
-              7,
-              8,
               9,
               10,
               10
             ],
             [
-              8,
-              9,
-              8,
-              6,
+              10,
               10,
               9,
+              7,
+              7,
+              5,
               6,
               7,
-              8,
+              9,
               9,
               10,
               6
+            ],
+            [
+              7,
+              6,
+              10,
+              9,
+              6,
+              5,
+              6,
+              7,
+              7,
+              9,
+              10,
+              5
             ]
           ]
         },
         "id": "json:7",
+        "incumbents": [
+          [
+            0.7823572400084231,
+            12
+          ],
+          [
+            0.8179447680013254,
+            11
+          ],
+          [
+            0.8225451649923343,
+            7
+          ],
+          [
+            1.595188937993953,
+            5
+          ]
+        ],
         "instance_hash": "0d1c6dbb95d8a3c0dc4b69c2c0c3e558b7888157f091953acb0f7f359e9ce4f7",
         "is_optimization": true,
         "oom_killed": false,
@@ -764,9 +919,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.8155355119961314,
+        "reference_setup_seconds": 1.2260746760002803,
         "runner_status": {
+          "build_seconds": 0.054066526994574815,
           "detail": "",
+          "main_seconds": 9.250232819991652,
+          "read_seconds": 0.00014436498167924583,
           "status": "limit",
           "type": "status"
         },
@@ -776,8 +934,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.6417051500175148,
-        "execution_wall_seconds": 94.7111341819982,
+        "checking_seconds": 0.27199230701080523,
+        "execution_wall_seconds": 16.647197751997737,
         "first_solution": {
           "is_host": [
             false,
@@ -796,42 +954,27 @@
           ],
           "visits": [
             [
+              9,
+              8,
+              8,
+              9,
               7,
-              6,
-              10,
               9,
-              9,
-              10,
               6,
               7,
               8,
               9,
               10,
-              6,
-              8
+              7,
+              6
             ],
             [
-              6,
-              9,
               7,
-              8,
+              7,
               10,
-              8,
               6,
-              7,
-              8,
-              9,
-              10,
-              10,
-              9
-            ],
-            [
-              8,
-              7,
-              8,
-              7,
               6,
-              9,
+              8,
               6,
               7,
               8,
@@ -841,8 +984,8 @@
               10
             ],
             [
-              10,
               8,
+              10,
               9,
               10,
               8,
@@ -852,27 +995,60 @@
               8,
               9,
               10,
-              7,
+              6,
               7
             ],
             [
+              6,
               9,
+              6,
+              7,
               10,
-              6,
-              6,
-              7,
-              7,
+              10,
               6,
               7,
               8,
               9,
               10,
               8,
-              6
+              8
+            ],
+            [
+              10,
+              6,
+              7,
+              8,
+              9,
+              7,
+              6,
+              7,
+              8,
+              9,
+              10,
+              10,
+              9
             ]
           ]
         },
         "id": "json:8",
+        "incumbents": [
+          [
+            1.3505106969969347,
+            13
+          ],
+          [
+            1.402116607001517,
+            12
+          ],
+          [
+            1.4080452759808395,
+            7
+          ],
+          [
+            2.2241135420044884,
+            5
+          ]
+        ],
         "instance_hash": "2106b2867bb48e0cf7ac10e69965588f2ee61aef8875cd4d8bf063dd73618160",
         "is_optimization": true,
         "oom_killed": false,
@@ -882,9 +1058,12 @@
           "is_host"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 3.858609416987747,
+        "reference_setup_seconds": 1.46899381102412,
         "runner_status": {
+          "build_seconds": 0.04211867900448851,
           "detail": "",
+          "main_seconds": 15.849600446992554,
+          "read_seconds": 0.00012233000597916543,
           "status": "limit",
           "type": "status"
         },
@@ -902,15 +1081,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "c8786a85bbaea9ec0259260f6f4679656fbdca89a596832e8427f6e71a5ebdf5",
+    "model_hash": "b125b0079c9362ab3bc9c2504c463e9199669cf671373ee365c28fc0fad110f1",
     "problem_id": "csplib_013_progressive_party_problem",
     "reason": "accepted",
-    "reference_hash": "4515c7a73120b62ff3d9c97292b5b93482355551bb6bda7d8476606feb489e64",
+    "reference_hash": "1b99db97164a1699aba10cee73c36a88cc92ef3fa4c10ad483fa9650c9c6990b",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -921,11 +1100,11 @@
     "skipped_instances": [],
     "solutions_checked": 18,
     "solver_id": "scip_python",
-    "total_wall_seconds": 304.730348158977,
+    "total_wall_seconds": 55.17440694299876,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

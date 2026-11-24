@@ -1,15 +1,27 @@
-% Devil's word: put a plus or minus sign in front of every number of a list so
-% that the signed numbers add up to the given total.
-% arr(I, A): the I-th number is A; total(T) is the sum to reach.
+% devils_word: a clingo model from DCP Rosetta.
+%
+% Given an array of integers, insert a plus or a minus sign before each integer so that the signed numbers
+% add up to a given total (666 for the devil's word).
+%
+% Save this file as model.lp. Download `devils_word.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py devils_word.json
+%   python -m clingo model.lp devils_word_1.lp
 
-% plus(I): the I-th number is added; otherwise it is subtracted.
+% Input: arr(I, A): the I-th number of the array is A (indices 0-based); total(T): the total T to reach.
+
+% each number is either added (plus(I)) or subtracted
 { plus(I) } :- arr(I,_).
 
-% result(I, S): the I-th number with its chosen sign.
-result(I,A) :- plus(I), arr(I,A).
-result(I,-A) :- arr(I,A), not plus(I).
+% signed(I, S): the I-th number with its sign applied, S
+signed(I,A) :- plus(I), arr(I,A).
+signed(I,-A) :- arr(I,A), not plus(I).
 
-% The signed numbers add up to the total.
-:- total(T), T != #sum { S,I : result(I,S) }.
+% the signed numbers add up to the total
+:- total(T), #sum { S,I : signed(I,S) } != T.
+
+result(I,S) :- signed(I,S).
 
 #show result/2.

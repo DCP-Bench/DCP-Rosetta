@@ -1,11 +1,15 @@
 {
   "attempt": {
     "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791021233.0867472,
+    "attempt_id": "attempt-003",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/gurobi/python/CONTRACT.md": "d66b7337061dfaac13146a34629ab91d4ea3fa901df79cc671d1e9cfd42edc70"
+    },
+    "created_at": 1794343012.9518523,
     "problem_id": "csplib_039_rehearsal",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,44 +18,120 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1402c8e3902b3c3b86e46b423febede5526140d30e18581dd6e0faf3de62c6f8",
-    "run_id": "20261001T1218Z-gurobi-a90c",
-    "schema": 2,
-    "skill_bundle_hash": "6a6e6df924a2c1bb358ef1a4722cbb1b4daa36e88d3a708fd8fa2645937e75ef",
-    "skill_source": "solvers\\gurobipy_python\\skills\\gurobipy",
+    "readiness_hash": "655762c7ccb36f81b6ef67bbd905e06048ca5a23128929b8785fddaf712ee390",
+    "run_id": "gurobi-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "f6dbc82dca0b9214bdeff889e9d53294b9d291d7",
+      "commit": "81417e02425df9a76bae2f98115668978010b97b",
       "modified": false,
-      "path": "solvers/gurobipy_python/skills/gurobipy"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "81417e02425df9a76bae2f98115668978010b97b",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "12a80d4cb4fb00748bece91524847daaefa9b272d36d616c8d2c89835a0d04e1",
+        "source": "solvers/gurobi/skills/dcp-gurobi",
+        "version": {
+          "commit": "81417e02425df9a76bae2f98115668978010b97b",
+          "modified": false,
+          "path": "solvers/gurobi/skills/dcp-gurobi"
+        }
+      }
+    ],
     "solver_id": "gurobipy_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:527fdcaef6c25d5c6452fd59bc01ebc79b913567ccf80bffbff88f9ce67ff9f0",
+      "id": "sha256:e6abdf661f89c98e6387b857afeab233d133caae296bbd994afa1714b24743ed",
+      "recipe": "sha256:abb188639535ad77d3b9ec38b8342f1c62568a4fbad47878e3f3f328ffd5bfd9",
       "tag": "dcp-eval/gurobipy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.5354296000004979,
-        "execution_wall_seconds": 2.833058299998811,
+        "checking_seconds": 0.14103890498518012,
+        "execution_wall_seconds": 1.301197693013819,
         "first_solution": {
           "rehearsal_order": [
-            8,
-            3,
-            5,
-            4,
-            0,
+            2,
+            7,
             1,
             6,
-            7,
-            2
+            0,
+            4,
+            5,
+            3,
+            8
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.000330423004925251,
+            55
+          ],
+          [
+            0.005489419010700658,
+            40
+          ],
+          [
+            0.011867612018249929,
+            37
+          ],
+          [
+            0.01230071799363941,
+            34
+          ],
+          [
+            0.03262384599656798,
+            29
+          ],
+          [
+            0.03269860101863742,
+            28
+          ],
+          [
+            0.04316516302060336,
+            26
+          ],
+          [
+            0.043234954006038606,
+            25
+          ],
+          [
+            0.05170046101557091,
+            23
+          ],
+          [
+            0.05961913801729679,
+            20
+          ],
+          [
+            0.15740940801333636,
+            19
+          ],
+          [
+            0.2057852029975038,
+            17
+          ]
+        ],
         "instance_hash": "b55d26a708b56c8602a29e9d6d66de149772a5e7caa78852f2d8952ad8058216",
         "is_optimization": true,
         "oom_killed": false,
@@ -60,7 +140,7 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.339194899999711,
+        "reference_setup_seconds": 0.6849959029932506,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -68,12 +148,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Restricted license - for non-production use only - expires 2027-11-29\n"
+        "stderr": "Set parameter TokenServer to value \"127.0.0.1\"\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.15640849999908824,
-        "execution_wall_seconds": 1.2674871000053827,
+        "checking_seconds": 0.057395310985157266,
+        "execution_wall_seconds": 0.7995295390137471,
         "first_solution": {
           "rehearsal_order": [
             3,
@@ -84,6 +164,24 @@
           ]
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            0.0005073010106571019,
+            22
+          ],
+          [
+            0.004720030992757529,
+            18
+          ],
+          [
+            0.005279436998534948,
+            4
+          ],
+          [
+            0.005398709996370599,
+            0
+          ]
+        ],
         "instance_hash": "1c99f551529297729c60d305e9b26edd1156d605bf244efe5318255cc941e5b9",
         "is_optimization": true,
         "oom_killed": false,
@@ -92,7 +190,7 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8841401000026963,
+        "reference_setup_seconds": 0.2734746450150851,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -100,23 +198,45 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Restricted license - for non-production use only - expires 2027-11-29\n"
+        "stderr": "Set parameter TokenServer to value \"127.0.0.1\"\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.2910450999988825,
-        "execution_wall_seconds": 1.217878199997358,
+        "checking_seconds": 0.07985773400287144,
+        "execution_wall_seconds": 0.7999301700037904,
         "first_solution": {
           "rehearsal_order": [
-            2,
-            0,
-            1,
-            4,
             3,
-            5
+            5,
+            4,
+            1,
+            0,
+            2
           ]
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            0.0006471249798778445,
+            23
+          ],
+          [
+            0.005636931979097426,
+            17
+          ],
+          [
+            0.007430110999848694,
+            13
+          ],
+          [
+            0.010407042980659753,
+            9
+          ],
+          [
+            0.014506473991787061,
+            5
+          ]
+        ],
         "instance_hash": "418a5d11289f6c4da8c2ddf448d26fd312833db34797500f4272e93c57cc61e6",
         "is_optimization": true,
         "oom_killed": false,
@@ -125,7 +245,7 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7848210000011022,
+        "reference_setup_seconds": 0.2967366380034946,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -133,12 +253,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Restricted license - for non-production use only - expires 2027-11-29\n"
+        "stderr": "Set parameter TokenServer to value \"127.0.0.1\"\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.21826210000290303,
-        "execution_wall_seconds": 1.3232987000010326,
+        "checking_seconds": 0.08603620500070974,
+        "execution_wall_seconds": 0.9004528450022917,
         "first_solution": {
           "rehearsal_order": [
             1,
@@ -146,12 +266,38 @@
             7,
             3,
             6,
-            2,
             0,
+            2,
             5
           ]
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            0.000327995017869398,
+            42
+          ],
+          [
+            0.003991567005869001,
+            34
+          ],
+          [
+            0.006327807001071051,
+            18
+          ],
+          [
+            0.006608349009184167,
+            17
+          ],
+          [
+            0.0100123260053806,
+            16
+          ],
+          [
+            0.010144575993763283,
+            9
+          ]
+        ],
         "instance_hash": "15bc46d57cce5197a76add522095bb1ab8d327939cceb934585870bb3bb57219",
         "is_optimization": true,
         "oom_killed": false,
@@ -160,7 +306,7 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.690434299998742,
+        "reference_setup_seconds": 0.30207669400260784,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -168,12 +314,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Restricted license - for non-production use only - expires 2027-11-29\n"
+        "stderr": "Set parameter TokenServer to value \"127.0.0.1\"\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.4157344999985071,
-        "execution_wall_seconds": 1.3140017000041553,
+        "checking_seconds": 0.12908604397671297,
+        "execution_wall_seconds": 0.9000195559929125,
         "first_solution": {
           "rehearsal_order": [
             2,
@@ -186,6 +332,32 @@
           ]
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            0.00031677199876867235,
+            67
+          ],
+          [
+            0.004721290984889492,
+            60
+          ],
+          [
+            0.00828112498857081,
+            27
+          ],
+          [
+            0.008412487979512662,
+            17
+          ],
+          [
+            0.008506768004735932,
+            15
+          ],
+          [
+            0.008695886994246393,
+            13
+          ]
+        ],
         "instance_hash": "aeae93493e5a9eecc00291f91a66ebec042222d49cadd322557640a5db9ce03d",
         "is_optimization": true,
         "oom_killed": false,
@@ -194,7 +366,7 @@
           "rehearsal_order"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6233869999996386,
+        "reference_setup_seconds": 0.3288930210110266,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -202,27 +374,28 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Restricted license - for non-production use only - expires 2027-11-29\n"
+        "stderr": "Set parameter TokenServer to value \"127.0.0.1\"\n"
       }
     ],
     "instances_available": 5,
     "instances_checked": 5,
+    "licence": "licensed",
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "ad2bfe2ed2d0a0252be22e95833b29b8b327c26a875bed6b72d56f58f2497d4f",
+    "model_hash": "c611391e97cd33ef23dc86ca00db0c63c78b9738a2878c67a0cebddcc25e0d5f",
     "problem_id": "csplib_039_rehearsal",
     "reason": "accepted",
-    "reference_hash": "6786341df2caae8f1180c2fbf2d77f729cec3a64991d81e0e1758cafa1a67147",
+    "reference_hash": "e2d6849aa765ad43185dc720c38d93604eaf686eebe81108322806852bad8d42",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -233,7 +406,7 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "gurobipy_python",
-    "total_wall_seconds": 20.539835600000515,
+    "total_wall_seconds": 7.557414076989517,
     "unperformed_instances": []
   },
   "generated_by": {

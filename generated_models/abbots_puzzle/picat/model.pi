@@ -1,15 +1,30 @@
-% The abbot's puzzle: 100 bushels of corn shared among 100 people, a man getting
-% three bushels, a woman two and a child half a bushel, with five times as many
-% women as men.
+% abbots_puzzle: a Picat model from DCP Rosetta.
+%
+% If 100 bushels of corn were distributed among 100 people such that each man received three
+% bushels, each woman two, and each child half a bushel, and there are five times as many women
+% as men, find the number of men, women, and children.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/abbots_puzzle.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
     [Men, Women, Children] :: 0..100,
+    % 100 people in all
     Men + Women + Children #= 100,
-    % the corn, counted in half bushels
+    % 100 bushels of corn, counted in half bushels: a man 6, a woman 4, a child 1
     Men * 6 + Women * 4 + Children #= 200,
-    Men * 5 #= Women,
+    % five times as many women as men
+    Women #= 5 * Men,
     Vars = [Men, Women, Children],
     Outputs = [men = Men, women = Women, children = Children],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

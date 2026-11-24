@@ -1,53 +1,42 @@
-// Flowshop scheduling: find one job sequence, the same for every machine, that minimizes the makespan, the time at which all jobs have finished on the last machine.
-vocabulary {
-    // Jobs, sized from the rows of the processing time table; also used for sequence positions.
-    type Job <: Int
-    // Machines, sized from the columns of the processing time table.
-    type Mach <: Int
-
-    // process_time(j, m): time needed to process job j on machine m.
-    process_time: Job * Mach -> Int
-
-    // seq(k): the job at position k of the common sequence.
-    seq: Job -> Job
-    // finish(k, m): time at which the job at position k completes on machine m.
-    finish: Job * Mach -> Int
-    // succ(k, k2): position k2 directly follows position k.
-    succ: Job * Job -> Bool
-    // msucc(m, m2): machine m2 directly follows machine m.
-    msucc: Mach * Mach -> Bool
-
-    // makespan: the time when all jobs have been processed.
-    makespan: () -> Int
-
-    minimize: () -> Int
+// flowshop_scheduling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A set of jobs needs to be processed on a set of machines in series. All jobs have the same processing order through
+// the machines, from machine 1 to machine M. The first job of the sequence goes to the first machine; meanwhile the other
+// jobs wait. When the first machine has processed the first job, that job goes to the second machine and the second job
+// of the sequence starts on the first machine, and so on. The time required to process job j on machine m is
+// process_time(j, m). The goal is to find a sequence of jobs that minimizes the makespan: the time when all jobs have
+// been processed.
+//
+// Save this file as model.idp. Download `flowshop_scheduling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/flowshop_scheduling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py flowshop_scheduling.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type J <: Int                      // the jobs, numbered from 0; also the positions in the sequence, from 0
+    type M <: Int                      // the machines, numbered from 0 in processing order
+    process_time: J * M -> Int         // process_time(j, m): the time job j needs on machine m
+    seq: J -> J                        // seq(k): the job in position k of the sequence
+    finish: J * M -> Int               // finish(k, m): the time the job in position k finishes on machine m
+    makespan: () -> Int                // the time when all jobs have been processed
+    minimize: () -> Int                // the makespan to minimize
 }
-theory {
-    // The sequence is a permutation: every job appears exactly once.
-    ! k, k2 in Job: k ~= k2 => seq(k) ~= seq(k2).
-
-    // Position and machine successor relations.
-    ! k, k2 in Job: succ(k, k2) <=> k2 = k + 1.
-    ! m, m2 in Mach: msucc(m, m2) <=> m2 = m + 1.
-
-    // A job cannot finish on a machine before its own processing time there.
-    ! k in Job, m in Mach: finish(k, m) >= process_time(seq(k), m).
-
-    // A job waits until the previous job in the sequence has left the same machine.
-    ! k, kp in Job, m in Mach: succ(kp, k) => finish(k, m) >= finish(kp, m) + process_time(seq(k), m).
-
-    // A job goes to the next machine only after it has finished on the previous one.
-    ! k in Job, m, mp in Mach: msucc(mp, m) => finish(k, m) >= finish(k, mp) + process_time(seq(k), m).
-
-    // The makespan is at least the completion time of every job on every machine.
-    ! k in Job, m in Mach: makespan() >= finish(k, m).
-
-    // The makespan cannot exceed the total processing time of all jobs on all machines.
-    makespan() =< sum{{ process_time(j, m) | j in Job, m in Mach }}.
-
-    // Every completion time is bounded by the makespan.
-    ! k in Job, m in Mach: finish(k, m) =< makespan().
-
-    // The objective is the makespan.
+theory T:V {
+    // the sequence lists each job exactly once: two positions holding the same job are the same position
+    ! k1 in J: ! k2 in J: seq(k1) = seq(k2) => k1 = k2.
+    // the job in position k takes at least its processing time on machine m to finish there
+    ! k in J: ! m in M: finish(k, m) >= process_time(seq(k), m).
+    // a machine works on one job at a time: the job in position k starts on machine m after the job before it has left
+    ! k in J: ! k2 in J: ! m in M: k2 + 1 = k => finish(k, m) >= finish(k2, m) + process_time(seq(k), m).
+    // a job goes to the next machine only after it has been processed on the machine before
+    ! k in J: ! m in M: ! m2 in M: m2 + 1 = m => finish(k, m) >= finish(k, m2) + process_time(seq(k), m).
+    // the makespan is at least the time every job finishes on every machine
+    ! k in J: ! m in M: finish(k, m) =< makespan().
+    // the makespan is the value to minimize
     minimize() = makespan().
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

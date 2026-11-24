@@ -1,14 +1,30 @@
-// Minesweeper: decide, from the numbers shown on the board, which cells hold a mine.
-vocabulary {
-    type Row <: Int
-    type Col <: Int
-    X: () -> Int                          // marks a cell that is not open yet
-    game_data: Row * Col -> Int           // the board: a number for an open cell, X otherwise
-    mines: Row * Col -> Bool              // declared output: True where a cell is a mine
+// minesweeper: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The board is divided into cells, with mines randomly distributed. To win, you need to open all the cells. The number
+// on a cell shows the number of mines adjacent to it. Using this information, you can determine cells that are safe,
+// and cells that contain mines. The task is to determine which 'X' fields contain mines based on the provided numerical
+// clues.
+//
+// Save this file as model.idp. Download `minesweeper.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/minesweeper.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py minesweeper.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Row <: Int                    // the board rows, numbered from 0, sized from game_data
+    type Col <: Int                    // the board columns, numbered from 0, sized from game_data
+    X: () -> Int                       // the value of game_data for a cell that is not open yet
+    game_data: Row * Col -> Int        // game_data(r, c): the number shown on cell (r, c), or X if the cell is not open
+    mines: Row * Col -> Bool           // mines(r, c): cell (r, c) contains a mine
 }
-theory {
-    // A cell whose number is shown is open, so it is not a mine.
+theory T:V {
+    // a cell whose number is shown is open, so it does not contain a mine
     ! r in Row, c in Col: game_data(r, c) ~= X() => ~mines(r, c).
-    // The number on a cell shows the number of mines adjacent to it.
+    // the number on an open cell is the number of mines in the cells adjacent to it
     ! r in Row, c in Col: game_data(r, c) ~= X() => #{ r2 in Row, c2 in Col: ~(r2 = r & c2 = c) & abs(r2 - r) =< 1 & abs(c2 - c) =< 1 & mines(r2, c2) } = game_data(r, c).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

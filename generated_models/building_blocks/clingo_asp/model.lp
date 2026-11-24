@@ -1,25 +1,32 @@
-% Building blocks: each of num_blocks alphabet blocks has one letter on each of its
-% num_sides sides. Place the letters on the blocks so that every word in the list can be
-% spelt, which needs the letters of a word to be on different blocks.
-% Output dice(L, B): letter number L (its position in alphabet, from 0) is on block B.
+% building_blocks: a clingo model from DCP Rosetta.
+%
+% Each of a number of alphabet blocks has a single letter of the alphabet on each of its sides. In all, the blocks contain every letter but Q and Z. By arranging the blocks in various ways, you can spell all of the words in a given list, using each block for at most one letter of a word, so the letters of a word are all on different blocks. Each letter is on exactly one block, and each block has the same given number of sides. Can you figure out how the letters are arranged on the blocks?
+%
+% Save this file as model.lp. Download `building_blocks.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/building_blocks.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py building_blocks.json
+%   python -m clingo model.lp building_blocks_1.lp
 
-% Letter numbers 0..num_letters-1 and block numbers 0..num_blocks-1, from the instance.
-letter(0..N-1) :- num_letters(N).
+% Input: num_blocks(B) holds the number B of blocks; num_sides(S) the number S of sides of each block;
+% num_letters(L) the number L of letters; alphabet(A) the letters A, and alphabet_char(P, C) the letter C at position P
+% of the alphabet (indices are 0-based); words_str(I, W) the word W at position I of the list, and
+% words_str_char(I, P, C) the letter C at position P of word I (indices are 0-based).
+
 block(0..B-1) :- num_blocks(B).
+letter(P, C) :- alphabet_char(P, C).
 
-% letter_code(L, C): letter number L is the character C, the L-th character of alphabet.
-letter_code(L,C) :- alphabet_char(L,C).
+% each letter is on exactly one block
+1 { dice(P, B) : block(B) } 1 :- letter(P, _).
 
-% word_letter(W, P, L): the P-th character of word W is letter number L.
-word_letter(W,P,L) :- words_str_char(W,P,C), letter_code(L,C).
+% each block has at most as many letters as it has sides
+:- num_sides(S), block(B), #count { P : dice(P, B) } > S.
 
-% Each letter is on exactly one block.
-1 { dice(L,B) : block(B) } 1 :- letter(L).
+% the letters of each word that are in the alphabet
+in_word(I, P) :- words_str_char(I, _, C), letter(P, C).
 
-% The letters in a word must be on different blocks.
-:- word_letter(W,P1,L1), word_letter(W,P2,L2), P1 < P2, dice(L1,B), dice(L2,B).
-
-% Every block carries exactly num_sides letters.
-:- block(B), num_sides(S), #count { L : dice(L,B) } != S.
+% the distinct letters of a word are on different blocks
+:- in_word(I, P1), in_word(I, P2), P1 < P2, dice(P1, B), dice(P2, B).
 
 #show dice/2.

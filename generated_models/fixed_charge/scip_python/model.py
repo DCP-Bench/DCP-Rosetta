@@ -1,46 +1,83 @@
-# Fixed-charge production planning: choose how much of each product to make and which machines to rent,
-# to maximise profit minus machine rental costs.
+# fixed_charge: a SCIP (Python) model from DCP Rosetta.
+# Download the `fixed_charge.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/fixed_charge.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python fixed_charge.py fixed_charge.json
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    n_prod = instance["num_products"]
-    n_mach = instance["num_machines"]
-    n_res = len(instance["resources"])
+def create_model(instance):
+    """A company makes shirts, shorts and pants from labour hours and cloth.
+    Each product can be made only on its own machine, and a machine can be
+    used only if it is rented, at a fixed rent. Choose which machines to rent
+    and how many units of each product to make, so that the profit from the
+    products minus the rent of the machines is as large as possible."""
+    products = instance["products"]              # the product indices: shirts, shorts, pants
+    resources = instance["resources"]            # the resource indices: labour hours and cloth
+    capacity = instance["capacity"]              # capacity[r]: how much of resource r the company has
+    use = instance["use"]                        # use[p][r]: how much of resource r one unit of product p takes
+    machines = instance["machines"]              # the machine indices that can be rented
+    renting_cost = instance["renting_cost"]      # renting_cost[m]: the rent for machine m
+    max_production = instance["max_production"]  # the most units of one product the company can make
 
-    # per product: profit per unit, and the machine that must be rented to make it
-    # (product[j] = [profit, machine]); per product and resource: use[j][r] units of resource r per unit
-    profit = [instance["product"][j][0] for j in range(n_prod)]
-    machine_of = [instance["product"][j][1] for j in range(n_prod)]
-    use = instance["use"]
-    capacity = instance["capacity"]
-    rent_cost = instance["renting_cost"]
-    max_prod = instance["max_production"]
+    # product[p] is [profit, machine]: profit[p] is the profit per unit of product p, and
+    # needs_machine[p] the machine that product p is made on (matching shirtM, shortM and
+    # pantM for shirts, shorts and pants in every instance)
+    profit = [row[0] for row in instance["product"]]
+    needs_machine = [row[1] for row in instance["product"]]
 
-    m = Model()
+    model = Model("fixed_charge")
 
-    # make[j] = number of units of product j produced, between 0 and max_production
-    make = [m.addVar(name=f"make_{j}", vtype="I", lb=0, ub=max_prod) for j in range(n_prod)]
-    # rent[i] = 1 if machine i is rented
-    rent = [m.addVar(name=f"rent_{i}", vtype="B") for i in range(n_mach)]
-    # profit z: the objective value, profit from products minus rental costs
-    z = m.addVar(name="z", vtype="I", lb=None, ub=None)
+    # made[p] is how many units of product p the company makes; the most is the instance's
+    # max_production, which is taken as the cap on one product (the statement names no other)
+    made = [model.addVar(f"made_{p}", vtype="I", lb=0, ub=max_production) for p in products]
 
-    # labor and cloth used by all products stay within the capacity of each resource
-    for r in range(n_res):
-        # resource capacity limit for resource r
-        m.addCons(quicksum(use[j][r] * make[j] for j in range(n_prod)) <= capacity[r])
+    # rent[m] is 1 when the company rents machine m, and 0 when it does not
+    rent = [model.addVar(f"rent_{m}", vtype="B") for m in machines]
 
-    # a product can be made only if the machine it needs is rented
-    for j in range(n_prod):
-        # if machine machine_of[j] is not rented, product j is not made
-        m.addConsIndicator(make[j] <= 0, binvar=rent[machine_of[j]], activeone=False)
+    # z is the company's profit after paying the rent of the machines. Its upper bound is the
+    # profit of every product made at its maximum, with no rent. Its lower bound 0 is only a
+    # bound on the optimum: making nothing and renting nothing is allowed and gives 0, so the
+    # best z is at least 0. A plan that loses money has a smaller z, which lb=0 excludes; that
+    # does not change the optimum.
+    z = model.addVar("z", vtype="I", lb=0,
+                     ub=sum(max(profit[p], 0) * max_production for p in products))
 
-    # profit is the product revenue minus the rental cost of the machines
-    # (the revenue of each product is its profit per unit times its quantity)
-    m.addCons(z == quicksum(profit[j] * make[j] for j in range(n_prod))
-              - quicksum(rent_cost[i] * rent[i] for i in range(n_mach)))
+    # The products made use no more labour hours, or cloth, than the company has.
+    for r in resources:
+        model.addCons(quicksum(use[p][r] * made[p] for p in products) <= capacity[r])
 
-    m.setObjective(z, "maximize")
+    # A product is made only on a rented machine: when its machine is not rented
+    # (rent = 0), no unit of that product is made.
+    for p in products:
+        model.addConsIndicator(made[p] <= 0, binvar=rent[needs_machine[p]], activeone=False)
 
-    return m, {"z": z}
+    # z is computed as the profit from the products made minus the rent of the machines rented.
+    model.addCons(z == quicksum(profit[p] * made[p] for p in products)
+                  - quicksum(renting_cost[m] * rent[m] for m in machines))
+
+    # The company wants the largest profit after rent, so maximise z.
+    model.setObjective(z, "maximize")
+
+    return model, {"z": z}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

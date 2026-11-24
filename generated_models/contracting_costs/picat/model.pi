@@ -1,18 +1,41 @@
-% Contracting costs: six tradesmen are paid in pairs, and the payment to each
-% pair is known. Find what each man charges.
+% contracting_costs: a Picat model from DCP Rosetta.
+%
+% A contractor planning the construction of a house would have to pay: $1,100 to the paper hanger and
+% the painter; $1,700 to the painter and the plumber; $1,100 to the plumber and the electrician; $3,300
+% to the electrician and the carpenter; $5,300 to the carpenter and the mason; and $3,200 to the mason
+% and the painter. Find what each man charges for his services.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/contracting_costs.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    Costs = [PaperHanger, Painter, Plumber, Electrician, Carpenter, Mason],
-    Costs :: 1..5300,
+    % each man charges a non-negative amount, at most the largest joint payment ($5,300)
+    [PaperHanger, Painter, Plumber, Electrician, Carpenter, Mason] :: 0..5300,
+    % the paper hanger and the painter together charge $1,100
     PaperHanger + Painter #= 1100,
+    % the painter and the plumber together charge $1,700
     Painter + Plumber #= 1700,
+    % the plumber and the electrician together charge $1,100
     Plumber + Electrician #= 1100,
+    % the electrician and the carpenter together charge $3,300
     Electrician + Carpenter #= 3300,
+    % the carpenter and the mason together charge $5,300
     Carpenter + Mason #= 5300,
+    % the mason and the painter together charge $3,200
     Mason + Painter #= 3200,
-    Vars = Costs,
+    Vars = [PaperHanger, Painter, Plumber, Electrician, Carpenter, Mason],
     Outputs = [paper_hanger = PaperHanger, painter = Painter, plumber = Plumber,
                electrician = Electrician, carpenter = Carpenter, mason = Mason],
+    % a satisfaction problem: no objective
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

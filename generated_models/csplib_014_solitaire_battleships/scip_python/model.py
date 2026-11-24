@@ -1,132 +1,130 @@
-# Solitaire battleships (CSPLib 014): fill the grid so that each cell is water, a submarine, or a
-# ship part (left, right, top, bottom, middle). Ships are straight, no two ships touch (not even
-# diagonally), the row and column sums give the number of occupied cells, the fleet gives the
-# number of ships of each length, and the hint cells are fixed.
+# csplib_014_solitaire_battleships: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_014_solitaire_battleships.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_014_solitaire_battleships.py csplib_014_solitaire_battleships.json
+
 from pyscipopt import Model, quicksum
+import numpy as np
 
-KINDS = ["WATER", "CIRCLE", "LEFT", "RIGHT", "TOP", "BOTTOM", "MIDDLE"]
 
+def create_model(instance):
+    """Solitaire battleships: place a fleet of straight ships on a rectangular grid.
 
-def build(instance):
-    nr, nc = instance["rows"], instance["cols"]
-    # grid value of each cell kind, taken from the instance
-    code = {k: instance[k] for k in KINDS}
-    kind_of = {v: k for k, v in code.items()}
-    # fleet_counts lists [ship length, number of ships of that length]
-    fleet = {length: count for length, count in instance["fleet_counts"]}
-    m = Model("battleships")
+    Each ship is a straight line of squares, and the fleet has the number of ships of
+    each length that the instance gives. No two ships touch, not even diagonally. Each
+    row and each column has as many ship squares as its clue says, and each hinted
+    square holds its given code. Every square holds one code: water, a submarine, or
+    one part of a ship (left, right, top, bottom or middle). The answer is the grid of
+    those codes.
+    """
+    rows = instance["rows"]           # the number of rows of the grid
+    cols = instance["cols"]           # the number of columns of the grid
+    rowsum = instance["rowsum"]       # rowsum[r]: the number of ship squares in row r
+    colsum = instance["colsum"]       # colsum[c]: the number of ship squares in column c
+    fleet = instance["fleet_counts"]  # fleet[i] = [length, count]: count ships of that length
+    hints = instance["hints"]         # hints[i] = [row, col, code]: square (row, col) holds code, counted from 0
+    WATER = instance["WATER"]         # the code of an empty square
+    CIRCLE = instance["CIRCLE"]       # the code of a submarine, a ship of length 1
+    LEFT = instance["LEFT"]           # the code of the left end of a horizontal ship
+    RIGHT = instance["RIGHT"]         # the code of the right end of a horizontal ship
+    TOP = instance["TOP"]             # the code of the top end of a vertical ship
+    BOTTOM = instance["BOTTOM"]       # the code of the bottom end of a vertical ship
+    MIDDLE = instance["MIDDLE"]       # the code of a square inside a ship, between its ends
 
-    def inside(r, c):
-        return 0 <= r < nr and 0 <= c < nc
+    model = Model("csplib_014_solitaire_battleships")
 
-    # x[r,c,k] = 1 if cell (r,c) has kind k (exactly one kind per cell)
-    x = {(r, c, k): m.addVar(name=f"x[{r},{c},{k}]", vtype="B")
-         for r in range(nr) for c in range(nc) for k in KINDS}
-    # a middle ship cell is either in a horizontal ship (mh) or a vertical one (mv)
-    mh = {(r, c): m.addVar(name=f"mh[{r},{c}]", vtype="B") for r in range(nr) for c in range(nc)}
-    mv = {(r, c): m.addVar(name=f"mv[{r},{c}]", vtype="B") for r in range(nr) for c in range(nc)}
-    # hs[r,c,L] = 1 if a horizontal ship of length L starts at (r,c); vs is the vertical analogue
-    hs, vs = {}, {}
-    for L in fleet:
-        if L < 2:
-            continue
-        for r in range(nr):
-            for c in range(nc):
-                if c + L - 1 < nc:
-                    hs[r, c, L] = m.addVar(name=f"hs[{r},{c},{L}]", vtype="B")
-                if r + L - 1 < nr:
-                    vs[r, c, L] = m.addVar(name=f"vs[{r},{c},{L}]", vtype="B")
+    # water[r, c] is 1 when square (r, c) is water, and 0 when a ship covers it
+    water = model.addMatrixVar((rows, cols), vtype="B", name="water")
 
-    def need(lhs, q, kinds):
-        # if lhs is 1, the neighbour q must be one of the kinds (off the grid it cannot be)
-        cells = [x[q[0], q[1], k] for k in kinds] if inside(*q) else []
-        m.addCons(lhs <= quicksum(cells))
+    # parts[r, c] lists (code, ship) for every candidate ship that could cover square (r, c),
+    # where code is the part of that ship the square would be
+    parts = {(r, c): [] for r in range(rows) for c in range(cols)}
 
-    def need_water(lhs, q):
-        # if lhs is 1, the neighbour q must be water (off the grid it is water already)
-        if inside(*q):
-            m.addCons(lhs <= x[q[0], q[1], "WATER"])
+    # Ship lengths cannot be counted from the squares alone, so each candidate ship is a
+    # variable: a straight line of the given length that fits on the grid. The fleet
+    # counts the candidates of each length that are placed.
+    for length, count in fleet:
+        placed = []  # the candidate ships of this length
+        # a submarine has no direction, so it is a candidate once
+        for horizontal in ((True,) if length == 1 else (True, False)):
+            for r in range(rows):
+                for c in range(cols):
+                    # the squares the candidate covers, from its first square to its last
+                    if horizontal:
+                        cells = [(r, c + k) for k in range(length)]
+                    else:
+                        cells = [(r + k, c) for k in range(length)]
+                    if any(pr >= rows or pc >= cols for pr, pc in cells):
+                        continue  # the ship would run off the grid
 
-    for r in range(nr):
-        for c in range(nc):
-            up, down, left, right = (r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)
-            # one kind per cell
-            m.addCons(quicksum(x[r, c, k] for k in KINDS) == 1)
-            # a middle cell is one of the two orientations
-            m.addCons(x[r, c, "MIDDLE"] == mh[r, c] + mv[r, c])
-            # a left end: the cell to its right continues the ship, everything else around it is water
-            need(x[r, c, "LEFT"], right, ["RIGHT", "MIDDLE"])
-            need_water(x[r, c, "LEFT"], left)
-            need_water(x[r, c, "LEFT"], up)
-            need_water(x[r, c, "LEFT"], down)
-            # a right end: the cell to its left continues the ship, everything else around it is water
-            need(x[r, c, "RIGHT"], left, ["LEFT", "MIDDLE"])
-            need_water(x[r, c, "RIGHT"], right)
-            need_water(x[r, c, "RIGHT"], up)
-            need_water(x[r, c, "RIGHT"], down)
-            # a top end: the cell below continues the ship
-            need(x[r, c, "TOP"], down, ["BOTTOM", "MIDDLE"])
-            need_water(x[r, c, "TOP"], up)
-            need_water(x[r, c, "TOP"], left)
-            need_water(x[r, c, "TOP"], right)
-            # a bottom end: the cell above continues the ship
-            need(x[r, c, "BOTTOM"], up, ["TOP", "MIDDLE"])
-            need_water(x[r, c, "BOTTOM"], down)
-            need_water(x[r, c, "BOTTOM"], left)
-            need_water(x[r, c, "BOTTOM"], right)
-            # a submarine is alone: all four neighbours are water
-            for q in (up, down, left, right):
-                need_water(x[r, c, "CIRCLE"], q)
-            # a horizontal middle cell has ship on both sides and water above and below
-            need(mh[r, c], left, ["LEFT", "MIDDLE"])
-            need(mh[r, c], right, ["RIGHT", "MIDDLE"])
-            need_water(mh[r, c], up)
-            need_water(mh[r, c], down)
-            # a vertical middle cell has ship above and below and water on both sides
-            need(mv[r, c], up, ["TOP", "MIDDLE"])
-            need(mv[r, c], down, ["BOTTOM", "MIDDLE"])
-            need_water(mv[r, c], left)
-            need_water(mv[r, c], right)
-            # ships do not touch diagonally: of two diagonal cells, at least one is water
-            for dr, dc in ((1, 1), (1, -1)):
-                if inside(r + dr, c + dc):
-                    m.addCons(x[r, c, "WATER"] + x[r + dr, c + dc, "WATER"] >= 1)
+                    # ship is 1 when this candidate ship is placed, and 0 when it is not
+                    ship = model.addVar(vtype="B", name=f"ship{length}_{r}_{c}_{'across' if horizontal else 'down'}")
+                    placed.append(ship)
 
-    # each left end starts exactly one horizontal ship, and each top end exactly one vertical ship
-    for r in range(nr):
-        for c in range(nc):
-            m.addCons(x[r, c, "LEFT"] == quicksum(v for (rr, cc, _), v in hs.items() if (rr, cc) == (r, c)))
-            m.addCons(x[r, c, "TOP"] == quicksum(v for (rr, cc, _), v in vs.items() if (rr, cc) == (r, c)))
+                    for k, (pr, pc) in enumerate(cells):
+                        if length == 1:
+                            code = CIRCLE
+                        elif k == 0:
+                            code = LEFT if horizontal else TOP
+                        elif k == length - 1:
+                            code = RIGHT if horizontal else BOTTOM
+                        else:
+                            code = MIDDLE
+                        parts[pr, pc].append((code, ship))
 
-    # a horizontal ship of length L starting at (r,c): its middle cells are horizontal middles, its
-    # last cell is a right end
-    for (r, c, L), v in hs.items():
-        for k in range(1, L - 1):
-            m.addCons(mh[r, c + k] >= v)
-        m.addCons(x[r, c + L - 1, "RIGHT"] >= v)
-    # a vertical ship of length L starting at (r,c): the same, vertically
-    for (r, c, L), v in vs.items():
-        for k in range(1, L - 1):
-            m.addCons(mv[r + k, c] >= v)
-        m.addCons(x[r + L - 1, c, "BOTTOM"] >= v)
+                    # a square next to this ship, even diagonally and not part of it, is water:
+                    # if the ship is placed, water[v] >= ship forces water[v] to 1, so no two ships touch
+                    touching = {(nr, nc) for pr, pc in cells
+                                for nr in range(pr - 1, pr + 2) for nc in range(pc - 1, pc + 2)
+                                if 0 <= nr < rows and 0 <= nc < cols} - set(cells)
+                    for nr, nc in touching:
+                        model.addCons(water[nr, nc] >= ship)
 
-    # the fleet: the number of submarines (length 1) and of ships of each longer length
-    for L, count in fleet.items():
-        if L == 1:
-            m.addCons(quicksum(x[r, c, "CIRCLE"] for r in range(nr) for c in range(nc)) == count)
+        # the fleet has exactly count ships of this length
+        model.addCons(quicksum(placed) == count)
+
+    # cover[r, c] is the sum of the candidate ships covering square (r, c)
+    cover = np.array([[quicksum(ship for _, ship in parts[r, c]) for c in range(cols)]
+                      for r in range(rows)], dtype=object)
+    # every square is either water or covered by exactly one ship
+    model.addMatrixCons(water + cover == 1)
+
+    # the ship squares of each row and column (the squares that are not water) match the clues
+    model.addMatrixCons((1 - water).sum(axis=1) == rowsum)
+    model.addMatrixCons((1 - water).sum(axis=0) == colsum)
+
+    # each hint fixes its square: it is water, or the one ship part with the hinted code
+    for r, c, code in hints:
+        if code == WATER:
+            model.addCons(water[r, c] == 1)
         else:
-            m.addCons(quicksum(v for (_, _, LL), v in hs.items() if LL == L)
-                      + quicksum(v for (_, _, LL), v in vs.items() if LL == L) == count)
+            model.addCons(quicksum(ship for part_code, ship in parts[r, c] if part_code == code) == 1)
 
-    # row and column sums: the number of occupied (non-water) cells in each row and column
-    for r in range(nr):
-        m.addCons(quicksum(x[r, c, k] for c in range(nc) for k in KINDS if k != "WATER") == instance["rowsum"][r])
-    for c in range(nc):
-        m.addCons(quicksum(x[r, c, k] for r in range(nr) for k in KINDS if k != "WATER") == instance["colsum"][c])
+    # there is no objective: any grid that meets every rule above is an answer
 
-    # hints: given cells, each as [row, col, kind code]
-    for r, c, k in instance["hints"]:
-        m.addCons(x[r, c, kind_of[k]] == 1)
+    # grid[r][c] is the code of square (r, c): the water code, or the code of the ship part covering it
+    grid = [[WATER * water[r, c] + quicksum(code * ship for code, ship in parts[r, c])
+             for c in range(cols)] for r in range(rows)]
 
-    grid = [[quicksum(code[k] * x[r, c, k] for k in KINDS) for c in range(nc)] for r in range(nr)]
-    return m, {"grid": grid}
+    return model, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

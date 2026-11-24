@@ -1,21 +1,51 @@
-% Broken weights: a weight of m pounds broke into n whole-pound pieces with which
-% every weight from 1 to m can be weighed on a balance scale, each piece going on
-% the object's pan, on the other pan, or staying off.
-import sat.
+% broken_weights: a Picat model from DCP Rosetta.
+%
+% A merchant had a measuring weight that broke into a number of pieces as the result of a fall. When the
+% pieces were subsequently weighed, it was found that the weight of each piece was a whole number of pounds
+% and that the pieces could be used to weigh every integral weight between 1 and the total weight. What
+% were the weights of the pieces? The merchant used a balance scale: a piece can be put on the object's pan,
+% on the other pan, or left off, so for example a 1-pound and a 4-pound weight weigh a 3-pound object, the
+% object and the 1-pound weight on one pan and the 4-pound weight on the other.
+%
+% Save this file as model.pi. Download `broken_weights.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py broken_weights.json
+%   picat model.pi broken_weights_1.dat
+%
+% Data.get(m): the total weight of the measuring weight, in pounds; Data.get(n): the number of pieces.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    M = Data.get(m),
-    N = Data.get(n),
-    Weights = new_list(N),
-    Weights :: 1..M,
-    % the pieces together weigh m
-    sum(Weights) #= M,
-    % side[t, j] = -1, 0 or 1: where piece j goes when weighing t pounds
-    Side = new_array(M, N),
+    TotalWeight = Data.get(m),
+    NumPieces = Data.get(n),
+    % Weights[J] = the weight, in whole pounds, of piece J
+    Weights = new_list(NumPieces),
+    Weights :: 1..TotalWeight,
+    % the pieces together weigh the total weight
+    sum(Weights) #= TotalWeight,
+    % Side[T, J] = -1, 0 or 1: whether piece J is on the object's pan (-1), left off (0) or on the other pan
+    % (1) when weighing T pounds
+    Side = new_array(TotalWeight, NumPieces),
     Side :: -1..1,
-    foreach (T in 1..M)
-        sum([Weights[J] * Side[T, J] : J in 1..N]) #= T
+    % every whole weight from 1 to the total weight can be weighed with the pieces
+    foreach (T in 1..TotalWeight)
+        sum([Weights[J] * Side[T, J] : J in 1..NumPieces]) #= T
     end,
-    Vars = Weights ++ vars(Side),
+    Vars = [Weights, Side],
     Outputs = [weights = Weights],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

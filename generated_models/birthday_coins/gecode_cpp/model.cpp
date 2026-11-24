@@ -1,37 +1,31 @@
 #include "dcp.h"
 
-// Birthday coins: 15 coins (half-crowns, shillings and sixpences) add up to
-// £1 5s 6d. How many half-crowns were given?
+// Birthday coins: Tommy was given 15 coins, each a half-crown (30 pence), a shilling (12 pence)
+// or a sixpence (6 pence), though not necessarily coins of all three kinds. Together they are
+// worth £1 5s 6d. How many half-crowns could he have been given?
 class BirthdayCoins : public dcp::Space {
  protected:
-  IntVar half_crowns;  // number of half-crowns
-  IntVar shillings;    // number of shillings
-  IntVar sixpences;    // number of sixpences
+  // How many coins of each kind he was given, in the order half-crowns, shillings,
+  // sixpences: a kind may be absent (0), and no kind can number more than the 15 coins.
+  IntVarArray coins;
 
  public:
-  explicit BirthdayCoins(const json& instance)
-      : half_crowns(*this, 1, 15), shillings(*this, 1, 15), sixpences(*this, 1, 15) {
-    (void)instance;  // the problem has no instance data; the figures below come from the statement
+  explicit BirthdayCoins(const json& instance) {
+    (void)instance;  // no fields: every number below is from the problem statement
+    coins = IntVarArray(*this, 3, 0, 15);
 
-    IntVarArgs coins;
-    coins << half_crowns << shillings << sixpences;
-
-    // he was given 15 coins in all
+    // He was given 15 coins.
     linear(*this, coins, IRT_EQ, 15);
 
-    // the coins add up to £1 5s 6d = 306 pence; a half-crown is 30 pence,
-    // a shilling 12 pence, a sixpence 6 pence
-    linear(*this, IntArgs({30, 12, 6}), coins, IRT_EQ, 306, IPL_DOM);
+    // They add up to £1 5s 6d = 240 + 5 * 12 + 6 = 306 pence; a half-crown is 30 pence, a
+    // shilling 12 and a sixpence 6.
+    linear(*this, IntArgs({30, 12, 6}), coins, IRT_EQ, 306);
 
-    branch(*this, coins, INT_VAR_SIZE_MIN(), INT_VAL_MIN());
-    output("half_crowns", half_crowns);
+    branch(*this, coins, INT_VAR_NONE(), INT_VAL_MIN());
+    output("half_crowns", coins[0]);
   }
 
-  BirthdayCoins(BirthdayCoins& s) : dcp::Space(s) {
-    half_crowns.update(*this, s.half_crowns);
-    shillings.update(*this, s.shillings);
-    sixpences.update(*this, s.sixpences);
-  }
+  BirthdayCoins(BirthdayCoins& other) : dcp::Space(other) { coins.update(*this, other.coins); }
   Gecode::Space* copy() override { return new BirthdayCoins(*this); }
 };
 

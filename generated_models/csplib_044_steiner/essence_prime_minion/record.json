@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791952570.7801268,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794648830.9751406,
     "problem_id": "csplib_044_steiner",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.03055823897011578,
-        "execution_wall_seconds": 1.7017554480116814,
+        "checking_seconds": 0.09565086802467704,
+        "execution_wall_seconds": 5.343435296963435,
         "first_solution": {
           "sets": [
             [
@@ -114,9 +144,12 @@
           "sets"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7952747920062393,
+        "reference_setup_seconds": 2.168616214999929,
         "runner_status": {
+          "build_seconds": 1.921051025390625,
           "detail": "",
+          "main_seconds": 2.178456499008462,
+          "read_seconds": 0.00509998295456171,
           "status": "limit",
           "type": "status"
         },
@@ -126,8 +159,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.15681649098405614,
-        "execution_wall_seconds": 2.4014719820115715,
+        "checking_seconds": 0.3407717720256187,
+        "execution_wall_seconds": 48.23108509700978,
         "first_solution": {
           "sets": [
             [
@@ -273,9 +306,12 @@
           "sets"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8154290919774212,
+        "reference_setup_seconds": 1.9406800550059415,
         "runner_status": {
+          "build_seconds": 2.366934061050415,
           "detail": "",
+          "main_seconds": 45.404021966969594,
+          "read_seconds": 0.0007394480053335428,
           "status": "limit",
           "type": "status"
         },
@@ -284,403 +320,10 @@
         "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 13..12 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\n"
       },
       {
-        "accepted": true,
-        "checking_seconds": 0.7309683130006306,
-        "execution_wall_seconds": 40.053665074985474,
-        "first_solution": {
-          "sets": [
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              false,
-              true,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false
-            ],
-            [
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false
-            ],
-            [
-              false,
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false
-            ],
-            [
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true
-            ],
-            [
-              true,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false
-            ],
-            [
-              true,
-              false,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false,
-              false
-            ],
-            [
-              true,
-              true,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              false,
-              true,
-              false
-            ]
-          ]
-        },
+        "accepted": false,
+        "checking_seconds": 3.6100391298532486e-07,
+        "detail": "",
+        "execution_wall_seconds": 183.31608661601786,
         "id": "json:2",
         "instance_hash": "47be4ac5a4037bf89b3e7681587afbf75c3d2ea6167953e8700d73adeaed5a3f",
         "is_optimization": false,
@@ -689,21 +332,25 @@
         "outputs": [
           "sets"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 5.8864168880390935,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 19.5322476309957,
         "runner_status": {
+          "build_seconds": 7.663074493408203,
           "detail": "",
-          "status": "limit",
+          "main_seconds": 180.14249456796097,
+          "read_seconds": 0.006225041986908764,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 27..26 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\n"
+        "skipped": true,
+        "solutions_checked": 0,
+        "solutions_received": 0,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 27..26 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.003365569980815053,
-        "execution_wall_seconds": 0.9504309990443289,
+        "checking_seconds": 0.007728074968326837,
+        "execution_wall_seconds": 4.888579617952928,
         "first_solution": {
           "sets": [
             [
@@ -722,35 +369,38 @@
           "sets"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8197645909967832,
+        "reference_setup_seconds": 2.253343323012814,
         "runner_status": {
+          "build_seconds": 1.449674367904663,
           "detail": "",
+          "main_seconds": 1.575256726006046,
+          "read_seconds": 0.010290678997989744,
           "status": "complete",
           "type": "status"
         },
         "solutions_checked": 1,
         "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 2..1 is out of order. Rewriting to empty interval.\nWARNING: interval 1..0 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nWARNING: interval 2..1 is out of order. Rewriting to empty interval.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
       }
     ],
     "instances_available": 4,
-    "instances_checked": 4,
+    "instances_checked": 3,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "06cfc343699abd1bb5a500c7b900d475076b51b499e682ec27c55733c1774d7a",
+    "model_hash": "403a5c71b58a552ad41c671f238362f533f8d04691e454687f2ca3105d49d4e2",
     "problem_id": "csplib_044_steiner",
     "reason": "accepted",
-    "reference_hash": "69ffc4d1b2de9fc1852cf8e85df6a01e22f916475c2ea8101cbfdbf897e15769",
+    "reference_hash": "876977cb142c14db0d490d1016f2b4ed85728f3fd163323d2125882a6bb5c4cf",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -758,14 +408,16 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 7,
+    "skipped_instances": [
+      "json:2"
+    ],
+    "solutions_checked": 5,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 54.65694558300311,
+    "total_wall_seconds": 269.95857697399333,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.eprime",

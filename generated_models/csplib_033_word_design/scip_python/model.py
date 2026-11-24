@@ -1,57 +1,86 @@
-# Word design: find num_words words of length n over {A, C, G, T}, each with exactly 4 symbols from {C, G},
-# pairwise differing in at least 4 positions, and with x^R and y^C differing in at least 4 positions for all x, y in the set.
+# csplib_033_word_design: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_033_word_design.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_033_word_design.py csplib_033_word_design.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
-# letters are numbered 1 = A, 2 = C, 3 = G, 4 = T; the Watson-Crick complement maps v to 5 - v (A<->T, C<->G)
-LETTERS = (1, 2, 3, 4)
-GC_LETTERS = (2, 3)
+# The letters are numbered 0 = A, 1 = C, 2 = G, 3 = T in the model. The output
+# prints them as 1, 2, 3, 4 (A, C, G, T), as the statement asks.
+# The Watson-Crick partner of a letter: A <-> T (0 <-> 3) and C <-> G (1 <-> 2).
+COMPLEMENT = [3, 2, 1, 0]
 
 
-def build(instance):
-    n = instance["n"]
-    num_words = instance["num_words"]
-    model = Model()
+def create_model(instance):
+    """Find a set S of num_words words of length n over the alphabet A, C, G, T such
+    that each word has exactly 4 letters from {C, G}, any two distinct words differ in
+    at least 4 positions, and for any two words x and y of S (possibly the same word)
+    the reverse of x and the Watson-Crick complement of y differ in at least 4 positions."""
+    n = instance["n"]                  # the length of every word
+    num_words = instance["num_words"]  # how many words the set S must contain
 
-    # b[k, i, v] = 1 if word k has letter v at position i (one-hot encoding of each letter)
-    b = {(k, i, v): model.addVar(name=f"b_{k}_{i}_{v}", vtype="B")
-         for k in range(num_words) for i in range(n) for v in LETTERS}
+    model = Model("csplib_033_word_design")
+
+    # x[k, i, l] is 1 when word k has letter l at position i, and 0 when not.
+    x = model.addMatrixVar((num_words, n, 4), vtype="B", name="x")
+
+    # Each position of each word holds exactly one letter.
+    model.addMatrixCons(x.sum(axis=2) == 1)
+
+    # Each word has exactly 4 letters from {C, G}, the letters with indices 1 and 2.
+    # The 4 is fixed by the statement, not by the instance.
+    model.addMatrixCons((x[:, :, 1] + x[:, :, 2]).sum(axis=1) == 4)
+
+    # Distinct words differ in at least 4 positions, so at most n - 4 positions agree.
+    # shared[i, l] is 1 when both words have letter l at position i. addConsAnd holds in
+    # both directions, so shared is exact; it is set one entry at a time because addConsAnd
+    # takes one resultant per call. Each position is one letter, so two words agree at
+    # position i in at most one letter, and the agreeing positions are the sum of shared.
+    # The 4 is fixed by the statement.
     for k in range(num_words):
-        for i in range(n):
-            # each position holds exactly one letter
-            model.addCons(quicksum(b[k, i, v] for v in LETTERS) == 1)
-
-    # each word has exactly 4 symbols from {C, G}
-    for k in range(num_words):
-        model.addCons(quicksum(b[k, i, v] for i in range(n) for v in GC_LETTERS) == 4)
-
-    # e[k, l, i] = 1 is forced when words k and l carry the same letter at position i
-    # (only the lower bound is needed, since the count of agreements is limited below)
-    for k in range(num_words):
-        for l in range(k + 1, num_words):
-            agree = []
+        for k2 in range(k + 1, num_words):
+            shared = model.addMatrixVar((n, 4), vtype="B")
             for i in range(n):
-                e = model.addVar(name=f"agree_{k}_{l}_{i}", vtype="B")
-                for v in LETTERS:
-                    model.addCons(e >= b[k, i, v] + b[l, i, v] - 1)
-                agree.append(e)
-            # distinct words differ in at least 4 positions, so at most n - 4 positions agree
-            # ("each pair of distinct words in S differ in at least 4 positions")
-            model.addCons(quicksum(agree) <= n - 4)
+                for l in range(4):
+                    model.addConsAnd([x[k, i, l], x[k2, i, l]], shared[i, l])
+            model.addCons(shared.sum() <= n - 4)
 
-    # for every ordered pair (k, l), including k == l: the reverse of word k and the complement of word l
-    # differ in at least 4 positions. f[k, l, i] = 1 is forced when x^R[i] equals y^C[i]
+    # For every ordered pair of words (k, k2), including k == k2: the reverse of word k and
+    # the Watson-Crick complement of word k2 differ in at least 4 positions, so at most n - 4
+    # positions agree. Position i of the reverse of word k is position n - 1 - i of word k.
+    # The complement of word k2 has letter l at position i when word k2 has letter
+    # COMPLEMENT[l] there, so shared[i, l] compares x[k, n - 1 - i, l] with x[k2, i, COMPLEMENT[l]].
     for k in range(num_words):
-        for l in range(num_words):
-            same = []
+        for k2 in range(num_words):
+            shared = model.addMatrixVar((n, 4), vtype="B")
             for i in range(n):
-                f = model.addVar(name=f"rc_{k}_{l}_{i}", vtype="B")
-                # x^R[i] = x[n - 1 - i]; y^C[i] = 5 - y[i]
-                for v in LETTERS:
-                    model.addCons(f >= b[k, n - 1 - i, v] + b[l, i, 5 - v] - 1)
-                same.append(f)
-            # x^R and y^C differ in at least 4 positions ("x^R and y^C differ in at least 4 positions")
-            model.addCons(quicksum(same) <= n - 4)
+                for l in range(4):
+                    model.addConsAnd([x[k, n - 1 - i, l], x[k2, i, COMPLEMENT[l]]], shared[i, l])
+            model.addCons(shared.sum() <= n - 4)
 
-    # the output gives each word as a list of letter codes 1..4
-    words = [[quicksum(v * b[k, i, v] for v in LETTERS) for i in range(n)] for k in range(num_words)]
+    # Output: word k as letter numbers 1..4 at each position (1 = A, 2 = C, 3 = G, 4 = T).
+    # Each entry is the one-hot sum of the letter numbers weighted by their binaries.
+    words = (x * np.array([1, 2, 3, 4])).sum(axis=2)
     return model, {"words": words}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

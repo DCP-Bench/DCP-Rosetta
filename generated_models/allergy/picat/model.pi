@@ -1,18 +1,32 @@
-% Allergy: four friends (Debra, Janet, Hugh, Rick) each have a different surname (Baxter,
-% Lemon, Malone, Fleet) and a different allergy (eggs, mold, nuts, ragweed). Match them up
-% from the clues. Friends are numbered Debra = 0, Janet = 1, Hugh = 2, Rick = 3; every
-% variable below holds the number of the friend it names.
+% allergy: a Picat model from DCP Rosetta.
+%
+% Four friends (two women named Debra and Janet, and two men named Hugh and Rick) found that each
+% of them is allergic to something different: eggs, mold, nuts and ragweed. We would like to match
+% each one's surname (Baxter, Lemon, Malone and Fleet) with his or her allergy.
+% We know that:
+%  - Rick is not allergic to mold
+%  - Baxter is allergic to eggs
+%  - Hugh is neither surnamed Lemon nor Fleet
+%  - Debra is allergic to ragweed
+%  - Janet (who isn't Lemon) is neither allergic to eggs nor to mold
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/allergy.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The friends are numbered Debra = 0, Janet = 1, Hugh = 2, Rick = 3. Each output names the friend
+% (a number) who has that allergy or that surname.
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    Debra = 0, Janet = 1, Hugh = 2, Rick = 3,    % the friends, as numbered by the puzzle
+model(_Data, Vars, Outputs, Options) =>
+    Debra = 0, Janet = 1, Hugh = 2, Rick = 3,
     % the friend allergic to each food
     Foods = [Eggs, Mold, Nuts, Ragweed],
     Foods :: 0..3,
     % the friend with each surname
     Surnames = [Baxter, Lemon, Malone, Fleet],
     Surnames :: 0..3,
-    % each food is someone's allergy and each surname is someone's, with no repeats
+    % each food is the allergy of exactly one friend, and each surname belongs to exactly one friend
     all_different(Foods),
     all_different(Surnames),
     % Rick is not allergic to mold
@@ -32,3 +46,11 @@ model(Data, Vars, Outputs, Options) =>
     Outputs = [eggs = Eggs, mold = Mold, nuts = Nuts, ragweed = Ragweed,
                baxter = Baxter, lemon = Lemon, malone = Malone, fleet = Fleet],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

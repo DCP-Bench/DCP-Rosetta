@@ -1,28 +1,31 @@
-% Curious set of integers: extend {1, 3, 8, 120}, where the product of any two
-% members is one less than a perfect square.
+% curious_set_of_integers: a MiniZinc model from DCP Rosetta.
 %
-% The reference states the property for every ordered pair i != j. It is
-% symmetric in i and j, so only the pairs with i < j are posted here; the
-% mirrored half is the same constraint and doubles the propagation work that
-% made a first attempt exceed the budget.
-include "globals.mzn";
+% The integers 1, 3, 8 and 120 form a set with a remarkable property: the product of any two integers is
+% one less than a perfect square. Find a fifth number (larger than or equal to 0) that can be added to the
+% set without destroying this property.
+%
+% Save this file as model.mzn. Download `curious_set_of_integers.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/curious_set_of_integers.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py curious_set_of_integers.json
+%   minizinc model.mzn curious_set_of_integers_1.json
 
-int: n;
-int: max_val;
+int: max_val;                                    % the largest value the fifth number may take
 
-array[1..n] of var 0..max_val: x;
+set of int: Known = {1, 3, 8, 120};              % the four members of the set
+int: max_product = max(Known) * max_val + 1;     % the largest product plus one that can occur
+int: max_root = ceil(sqrt(int2float(max_product)));  % the largest square root that can occur
 
-constraint all_different(x);
-% The four known members of the set are part of the problem statement.
-constraint x[1] = 1;
-constraint x[2] = 3;
-constraint x[3] = 8;
-constraint x[4] = 120;
+var 0..max_val: extra;                           % the fifth number
 
-constraint forall(i, j in 1..n where i < j) (
-    let { var 0..max_val: root } in root * root = x[i] * x[j] + 1
+% the fifth number is not already a member of the set
+constraint forall(k in Known)(extra != k);
+
+% the product of the fifth number and each member is one less than a perfect square
+constraint forall(k in Known)(
+    exists(r in 0..max_root)(r * r = extra * k + 1)
 );
 
 solve satisfy;
-
-output ["{\"number\": ", show(x[n]), "}"];
+output ["{\"number\": ", showJSON(extra), "}"];

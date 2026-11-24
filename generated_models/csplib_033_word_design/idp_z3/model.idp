@@ -1,41 +1,39 @@
-// Range_num_words design: find num_words words of length n over the alphabet {A,C,G,T}, coded 1,2,3,4.
-vocabulary {
-    // word length and number of words, from the instance
-    n: () -> Int
-
-    // word positions 1..n and word indices 1..num_words
-    type Range_n <: Int
-    type Range_num_words <: Int
-
-    // letters: 1 = A, 2 = C, 3 = G, 4 = T
-    type Letter := {1..4}
-
-    // declared output: words[w][p] is the letter at position p of word w
-    words: Range_num_words * Range_n -> Letter
-
-    // a letter is strong (C or G) when it is 2 or 3
-    is_cg: Letter -> Bool
-
-    // Watson-Crick complement: A<->T, C<->G
-    comp: Letter -> Letter
+// csplib_033_word_design: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find a set of num_words words of length n over the alphabet {A, C, G, T} such that each word has 4 symbols from {C, G};
+// each pair of distinct words differs in at least 4 positions; and for each pair of words x and y of the set (x and y may
+// be identical), the reverse of x and the Watson-Crick complement of y differ in at least 4 positions. The Watson-Crick
+// complement replaces each A by T, each T by A, each C by G and each G by C.
+//
+// Save this file as model.idp. Download `csplib_033_word_design.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_033_word_design.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_033_word_design.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_num_words <: Int           // the words of the set, numbered 1..num_words
+    type Range_n <: Int                   // the positions of a word, numbered 1..n
+    n: () -> Int                          // the length of each word
+    num_words: () -> Int                  // the number of words in the set
+    words: Range_num_words * Range_n -> Int  // words(w, i): the letter at position i of word w, 1 for A, 2 for C, 3 for G, 4 for T
 }
-theory {
-    // the Watson-Crick complement: each A is replaced by a T and vice versa, each C by a G and vice versa
-    comp(1) = 4.
-    comp(2) = 3.
-    comp(3) = 2.
-    comp(4) = 1.
+theory T:V {
+    // every letter of every word is one of the four letters A, C, G, T
+    ! w in Range_num_words, i in Range_n: 1 =< words(w, i) & words(w, i) =< 4.
 
-    // the letters C and G are the strong symbols
-    ! l in Letter: is_cg(l) <=> (l = 2 | l = 3).
+    // each word has 4 symbols from {C, G}
+    ! w in Range_num_words: #{ i in Range_n: (words(w, i) = 2 | words(w, i) = 3) } = 4.
 
-    // each word has 4 symbols from {C,G}
-    ! w in Range_num_words: #{ p in Range_n: is_cg(words(w, p)) } = 4.
+    // each pair of distinct words differs in at least 4 positions
+    ! w1, w2 in Range_num_words: w1 ~= w2 => 4 =< #{ i in Range_n: words(w1, i) ~= words(w2, i) }.
 
-    // each pair of distinct words differ in at least 4 positions
-    ! w1, w2 in Range_num_words: w1 < w2 => #{ p in Range_n: words(w1, p) ~= words(w2, p) } >= 4.
-
-    // for each pair of words x and y (x may equal y), the reverse of x and the complement of y differ in at least 4 positions
-    // the reverse of x at position i is the letter of x at position n+1-i
-    ! x, y in Range_num_words: #{ i in Range_n, j in Range_n: i + j = n() + 1 & words(x, j) ~= comp(words(y, i)) } >= 4.
+    // for each pair of words x and y (x may equal y), the reverse of x and the Watson-Crick complement of y differ in at
+    // least 4 positions: position p of the reverse of x is letter n + 1 - p of x, and the complement of letter p of y is
+    // 5 minus that letter (A and T are 1 and 4, C and G are 2 and 3)
+    ! x, y in Range_num_words: 4 =< #{ i, p in Range_n: i + p = n() + 1 & words(x, i) ~= 5 - words(y, p) }.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

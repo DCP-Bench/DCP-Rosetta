@@ -1,222 +1,229 @@
-:- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-:- use_module(library(yall)).
-
-% Solitaire battleships: fill a grid with a fleet of ships (battleships of 4
-% squares, cruisers of 3, destroyers of 2, submarines of 1), horizontal or
-% vertical, with no two ships touching, not even at the corners. The row and
-% column numbers give how many squares of each are occupied. Every square is
-% water, a submarine, or a ship part (left, right, top, bottom or middle).
+% csplib_014_solitaire_battleships: a SWI-Prolog model from DCP Rosetta.
 %
-% Each square is kept twice: as a number (its code) and as one 0/1 flag per
-% code. The rules about neighbouring squares are written on the flags, as small
-% sums of 0/1 values, which the solver propagates much faster than implications
-% between several equalities of the codes.
+% Solitaire battleships is played on a grid. The fleet consists of battleships (four squares long), cruisers (three
+% squares), destroyers (two squares) and submarines (one square). Ships lie horizontally or vertically, and no two ships
+% touch, not even diagonally. The numbers at the right of and below the grid give the number of squares of each row and
+% column that are occupied by vessels. Some squares may be given as hints: water, a submarine, a part of a longer vessel
+% (of unknown kind, not a submarine), or a particular part of a ship (left, right, top, bottom or middle).
+%
+% Save this file as model.pl. Download `csplib_014_solitaire_battleships.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_014_solitaire_battleships.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('csplib_014_solitaire_battleships.json')" -t halt model.pl
+%
+% Data fields: rows and cols (the number of rows and columns), rowsum and colsum (the occupied squares of each row and
+% column), fleet_counts (for each ship length, the length and the number of ships of that length), hints (for each
+% given square, its row, column and code, rows and columns indexed from 0), and the codes of the squares: WATER, CIRCLE
+% (a submarine), LEFT, RIGHT, TOP, BOTTOM, MIDDLE (the parts of a ship) and _SHIP (any part of a longer vessel).
+:- use_module(library(clpfd)).
+
 model(Instance, Vars, [grid-Grid]) :-
-    Rows = Instance.rows,
-    Cols = Instance.cols,
-    RowSum = Instance.rowsum,              % occupied squares in each row
-    ColSum = Instance.colsum,              % occupied squares in each column
-    FleetCounts = Instance.fleet_counts,   % [ship size, how many ships of it]
-    Hints = Instance.hints,                % [row, col, code] squares known at the start
-    % the codes a square can hold, as fixed by the instance
-    get_dict('WATER', Instance, Water),
-    get_dict('CIRCLE', Instance, Circle),  % a submarine
-    get_dict('LEFT', Instance, Left),
-    get_dict('RIGHT', Instance, Right),
-    get_dict('TOP', Instance, Top),
-    get_dict('BOTTOM', Instance, Bottom),
-    get_dict('MIDDLE', Instance, Middle),
-    max_list([Water, Circle, Left, Right, Top, Bottom, Middle], MaxCode),
-    Codes = c(Water, Circle, Left, Right, Top, Bottom, Middle),
+    NR = Instance.rows,
+    NC = Instance.cols,
+    RowSum = Instance.rowsum,
+    ColSum = Instance.colsum,
+    Fleet = Instance.fleet_counts,
+    Hints = Instance.hints,
+    get_dict('WATER', Instance, W),
+    get_dict('_SHIP', Instance, Ship),
+    get_dict('CIRCLE', Instance, Ci),
+    get_dict('LEFT', Instance, Le),
+    get_dict('RIGHT', Instance, Ri),
+    get_dict('TOP', Instance, To),
+    get_dict('BOTTOM', Instance, Bo),
+    get_dict('MIDDLE', Instance, Mi),
+    Codes = codes(W, Ci, Le, Ri, To, Bo, Mi),
+    % Grid[R][C] is the code of the square in row R and column C
+    length(Grid, NR),
+    maplist(grid_row(NC), Grid),
+    term_variables(Grid, Vars),
+    % a square holds water, a submarine or a part of a ship, never the generic _SHIP code
+    Codes =.. [_|CodeList],
+    maplist(one_of_codes(CodeList), Vars),
+    maplist(#\=(Ship), Vars),
+    % the shape of the ships: the squares around each square fit the square's own part
+    cross_table(Codes, Table),
+    numlist(1, NR, Rs),
+    maplist(cross_rules(Grid, Codes, Table, NC), Rs),
+    % no two ships touch, not even diagonally: the diagonal neighbours of a ship square are water
+    maplist(diagonal_rules(Grid, Codes, NC), Rs),
+    % the number of occupied squares in each row and column
+    maplist(occupied_row(W), Grid, RowSum),
+    transpose(Grid, Columns),
+    maplist(occupied_row(W), Columns, ColSum),
+    % the fleet: ships of each length
+    maplist(fleet_rule(Grid, Codes), Fleet),
+    % the fleet is all the ships: its squares are all the occupied squares, so no ship of another length (e.g. 5) exists
+    findall(S, (member([Len, Num], Fleet), S is Len * Num), FleetSquares),
+    sum_list(FleetSquares, Occupied),
+    sum_list(RowSum, Occupied),
+    % the hints
+    maplist(hint_rule(Grid, Codes, Ship), Hints).
 
-    % Grid[r][c] = the code of the square in row r, column c (both from 0)
-    length(Grid, Rows),
-    maplist({Cols, MaxCode}/[Row]>>(length(Row, Cols), Row ins 0..MaxCode), Grid),
+grid_row(NC, Row) :- length(Row, NC).
 
-    % Is[r][c][k] is 1 when the square holds code k
-    numlist(0, MaxCode, CodeNumbers),
-    maplist({CodeNumbers}/[Row, IsRow]>>maplist({CodeNumbers}/[Cell, Flags]>>
-                maplist({Cell}/[Code, Flag]>>(Flag #<==> (Cell #= Code)), CodeNumbers, Flags),
-                Row, IsRow),
-            Grid, Is),
+one_of_codes(Codes, V) :- element(_, Codes, V).
 
-    % Occupied[r][c] is 1 when the square holds any part of a ship (not water)
-    maplist({Water}/[IsRow, OccupiedRow]>>maplist({Water}/[Flags, Occupied]>>
-                (nth0(Water, Flags, IsWater), Occupied #= 1 - IsWater),
-                IsRow, OccupiedRow),
-            Is, Occupied),
-    Board = board(Is, Occupied),
-
-    % squares known at the start
-    maplist(hint(Grid), Hints),
-
-    % the row and column numbers: occupied squares in each row and column
-    maplist([OccupiedRow, Sum]>>sum(OccupiedRow, #=, Sum), Occupied, RowSum),
-    transpose(Occupied, OccupiedByColumn),
-    maplist([OccupiedColumn, Sum]>>sum(OccupiedColumn, #=, Sum), OccupiedByColumn, ColSum),
-
-    % each square constrains its surroundings: ships do not touch and the parts
-    % of a ship fit together
-    LastRow is Rows - 1,
-    LastCol is Cols - 1,
-    findall(R-C, (between(0, LastRow, R), between(0, LastCol, C)), Squares),
-    maplist(surroundings(Board, Codes), Squares),
-
-    % the fleet: as many submarines as listed ...
-    memberchk([1, Submarines], FleetCounts),
-    flags_of_code(Board, Squares, Circle, CircleFlags),
-    sum(CircleFlags, #=, Submarines),
-    % ... and as many ships of each longer size as listed
-    maplist(ships_of_size(Board, Rows, Cols, Codes), FleetCounts),
-    % every longer ship has exactly one left or top end, so there is no ship
-    % of a size the fleet does not list
-    findall(Count, (member([Size, Count], FleetCounts), Size > 1), LongCounts),
-    sum_list(LongCounts, LongShips),
-    flags_of_code(Board, Squares, Left, LeftFlags),
-    flags_of_code(Board, Squares, Top, TopFlags),
-    append(LeftFlags, TopFlags, Ends),
-    sum(Ends, #=, LongShips),
-
-    % The search first decides which squares are occupied (the row and column
-    % numbers act on those flags directly), then what each occupied square
-    % holds. The orientation flags of the middle parts follow from the squares.
-    append(Occupied, OccupiedFlags),
-    append(Grid, Cells),
-    append(OccupiedFlags, Cells, Vars).
-
-% The square at the hint holds the given code.
-hint(Grid, [R, C, Code]) :-
-    nth0(R, Grid, Row),
-    nth0(C, Row, Cell),
-    Cell #= Code.
-
-% The flags "square (R,C) holds Code" of all the squares.
-flags_of_code(Board, Squares, Code, Flags) :-
-    maplist({Board, Code}/[R-C, Flag]>>holds(Board, R, C, Code, Flag), Squares, Flags).
-
-% Flag is the 0/1 value "square (R,C) holds Code"; 0 off the grid, where no
-% square holds anything.
-holds(board(Is, _), R, C, Code, Flag) :-
-    (   R >= 0, C >= 0, nth0(R, Is, Row), nth0(C, Row, Flags)
-    ->  nth0(Code, Flags, Flag)
-    ;   Flag = 0
+% the code of the square in row R and column C, water outside the grid
+at(Grid, W, R, C, V) :-
+    length(Grid, NR), Grid = [G1|_], length(G1, NC),
+    (   R >= 1, R =< NR, C >= 1, C =< NC
+    ->  cell(Grid, R, C, V)
+    ;   V = W
     ).
 
-% Flag is the 0/1 value "square (R,C) holds some ship part"; 0 off the grid.
-occupied(board(_, Occupied), R, C, Flag) :-
-    (   R >= 0, C >= 0, nth0(R, Occupied, Row), nth0(C, Row, Flag0)
-    ->  Flag = Flag0
-    ;   Flag = 0
+cell(Grid, R, C, V) :- nth1(R, Grid, Row), nth1(C, Row, V).
+
+% the allowed combinations of a square and its four orthogonal neighbours (up, down, left, right)
+cross_table(codes(W, Ci, Le, Ri, To, Bo, Mi), Table) :-
+    Codes = [W, Ci, Le, Ri, To, Bo, Mi],
+    findall([X, U, D, L, R],
+            ( member(X, Codes), member(U, Codes), member(D, Codes), member(L, Codes), member(R, Codes),
+              cross_ok(codes(W, Ci, Le, Ri, To, Bo, Mi), X, U, D, L, R) ),
+            Table).
+
+cross_ok(codes(W, Ci, Le, Ri, To, Bo, Mi), X, U, D, L, R) :-
+    (   X == W -> true
+    ;   X == Ci -> U == W, D == W, L == W, R == W
+    ;   X == Le -> memberchk(R, [Mi, Ri]), U == W, D == W, L == W
+    ;   X == Ri -> memberchk(L, [Le, Mi]), U == W, D == W, R == W
+    ;   X == To -> memberchk(D, [Mi, Bo]), U == W, L == W, R == W
+    ;   X == Bo -> memberchk(U, [To, Mi]), D == W, L == W, R == W
+    ;   X == Mi ->
+        (   memberchk(L, [Le, Mi]), memberchk(R, [Ri, Mi]), U == W, D == W
+        ;   memberchk(U, [To, Mi]), memberchk(D, [Bo, Mi]), L == W, R == W
+        )
     ).
 
-% What the square (R,C) requires of its surroundings, depending on what it holds.
-surroundings(Board, c(_, Circle, Left, Right, Top, Bottom, Middle), R-C) :-
-    Up is R - 1, Down is R + 1, West is C - 1, East is C + 1,
-    occupied(Board, R, C, Here),
-    occupied(Board, Up, C, UpOccupied),
-    occupied(Board, Down, C, DownOccupied),
-    occupied(Board, R, West, WestOccupied),
-    occupied(Board, R, East, EastOccupied),
-    % no ship part touches another ship at a corner
-    maplist({Board, Here}/[Row, Col]>>(occupied(Board, Row, Col, Corner), Here + Corner #=< 1),
-            [Up, Up, Down, Down], [West, East, West, East]),
-    % a submarine is surrounded by water
-    holds(Board, R, C, Circle, IsCircle),
-    maplist({IsCircle}/[Neighbour]>>(IsCircle + Neighbour #=< 1),
-            [UpOccupied, DownOccupied, WestOccupied, EastOccupied]),
-    % the left end of a horizontal ship: a middle or right part to its right,
-    % water on the other three sides
-    holds(Board, R, C, Left, IsLeft),
-    holds(Board, R, East, Middle, EastMiddle),
-    holds(Board, R, East, Right, EastRight),
-    IsLeft #=< EastMiddle + EastRight,
-    maplist({IsLeft}/[Neighbour]>>(IsLeft + Neighbour #=< 1),
-            [WestOccupied, UpOccupied, DownOccupied]),
-    % the right end: a middle or left part to its left, water on the other three
-    holds(Board, R, C, Right, IsRight),
-    holds(Board, R, West, Middle, WestMiddle),
-    holds(Board, R, West, Left, WestLeft),
-    IsRight #=< WestMiddle + WestLeft,
-    maplist({IsRight}/[Neighbour]>>(IsRight + Neighbour #=< 1),
-            [EastOccupied, UpOccupied, DownOccupied]),
-    % the top end of a vertical ship: a middle or bottom part below it
-    holds(Board, R, C, Top, IsTop),
-    holds(Board, Down, C, Middle, DownMiddle),
-    holds(Board, Down, C, Bottom, DownBottom),
-    IsTop #=< DownMiddle + DownBottom,
-    maplist({IsTop}/[Neighbour]>>(IsTop + Neighbour #=< 1),
-            [UpOccupied, WestOccupied, EastOccupied]),
-    % the bottom end: a middle or top part above it
-    holds(Board, R, C, Bottom, IsBottom),
-    holds(Board, Up, C, Middle, UpMiddle),
-    holds(Board, Up, C, Top, UpTop),
-    IsBottom #=< UpMiddle + UpTop,
-    maplist({IsBottom}/[Neighbour]>>(IsBottom + Neighbour #=< 1),
-            [DownOccupied, WestOccupied, EastOccupied]),
-    % a middle part lies in a horizontal ship (a left or middle part to its
-    % left, a right or middle part to its right, water above and below) or in a
-    % vertical one (a top or middle part above, a bottom or middle part below,
-    % water on both sides): Horizontal and Vertical say which, exactly one of
-    % them for a middle part and neither otherwise
-    holds(Board, R, C, Middle, IsMiddle),
-    Horizontal in 0..1,
-    Vertical in 0..1,
-    IsMiddle #= Horizontal + Vertical,
-    holds(Board, R, West, Left, WestLeftPart),
-    holds(Board, R, East, Right, EastRightPart),
-    Horizontal #=< WestLeftPart + WestMiddle,
-    Horizontal #=< EastRightPart + EastMiddle,
-    Horizontal + UpOccupied #=< 1,
-    Horizontal + DownOccupied #=< 1,
-    holds(Board, Up, C, Top, UpTopPart),
-    holds(Board, Down, C, Bottom, DownBottomPart),
-    Vertical #=< UpTopPart + UpMiddle,
-    Vertical #=< DownBottomPart + DownMiddle,
-    Vertical + WestOccupied #=< 1,
-    Vertical + EastOccupied #=< 1.
+% the squares of row R, with their orthogonal neighbours, fit the table
+cross_rules(Grid, Codes, Table, NC, R) :-
+    Codes = codes(W, _, _, _, _, _, _),
+    numlist(1, NC, Cs),
+    maplist(cross_rule(Grid, W, Table, R), Cs).
 
-% FleetCounts entry [Size, Count]: exactly Count ships of that size lie on the
-% grid. A ship of Size squares is an end part, Size-2 middle parts and the other
-% end part in a line. Submarines (size 1) are counted separately.
-ships_of_size(Board, Rows, Cols, c(_, _, Left, Right, Top, Bottom, Middle), [Size, Count]) :-
-    (   Size < 2
-    ->  true
-    ;   Span is Size - 1,
-        LastRow is Rows - 1,
-        LastCol is Cols - 1,
-        LastHorizontalStart is Cols - Size,
-        LastVerticalStart is Rows - Size,
-        findall(r(R, C, 0, 1), (between(0, LastRow, R), between(0, LastHorizontalStart, C)),
-                Horizontal),
-        findall(r(R, C, 1, 0), (between(0, LastVerticalStart, R), between(0, LastCol, C)),
-                Vertical),
-        append(Horizontal, Vertical, Placements),
-        maplist(ship_here(Board, Span, Left, Right, Top, Bottom, Middle), Placements, Flags),
-        sum(Flags, #=, Count)
+cross_rule(Grid, W, Table, R, C) :-
+    cell(Grid, R, C, X),
+    R1 is R - 1, R2 is R + 1, C1 is C - 1, C2 is C + 1,
+    at(Grid, W, R1, C, U),
+    at(Grid, W, R2, C, D),
+    at(Grid, W, R, C1, L),
+    at(Grid, W, R, C2, Rt),
+    tuples_in([[X, U, D, L, Rt]], Table).
+
+% a square that is not water has water on each of its four diagonal neighbours
+diagonal_rules(Grid, Codes, NC, R) :-
+    Codes = codes(W, _, _, _, _, _, _),
+    numlist(1, NC, Cs),
+    maplist(diagonal_rule(Grid, W, R), Cs).
+
+diagonal_rule(Grid, W, R, C) :-
+    cell(Grid, R, C, X),
+    R1 is R - 1, R2 is R + 1, C1 is C - 1, C2 is C + 1,
+    at(Grid, W, R1, C1, D1), at(Grid, W, R1, C2, D2),
+    at(Grid, W, R2, C1, D3), at(Grid, W, R2, C2, D4),
+    (X #\= W) #==> (D1 #= W),
+    (X #\= W) #==> (D2 #= W),
+    (X #\= W) #==> (D3 #= W),
+    (X #\= W) #==> (D4 #= W).
+
+% the number of squares of a line that are not water
+occupied_row(W, Line, Count) :-
+    maplist(nonwater(W), Line, Ps),
+    sum(Ps, #=, Count).
+
+nonwater(W, X, P) :- P #<==> (X #\= W).
+
+% the ships of a length, horizontal or vertical, and the submarines for length 1
+fleet_rule(Grid, codes(W, Ci, Le, Ri, To, Bo, Mi), [Size, Count]) :-
+    (   Size =:= 1
+    ->  all_cells(Grid, Cells),
+        maplist(code_is(Ci), Cells, Ps),
+        sum(Ps, #=, Count)
+    ;   starts(Grid, Size, codes(W, Ci, Le, Ri, To, Bo, Mi), Bs),
+        sum(Bs, #=, Count)
     ).
 
-% Flag is 1 when a ship starts at the square (R,C) and extends Span more
-% squares, by (DR, DC) per square: first end, middle parts, last end.
-ship_here(Board, Span, Left, Right, Top, Bottom, Middle, r(R, C, DR, DC), Flag) :-
-    (   DR =:= 0
-    ->  FirstCode = Left, LastCode = Right
-    ;   FirstCode = Top, LastCode = Bottom
+all_cells(Grid, Cells) :- append(Grid, Cells).
+
+code_is(Code, X, P) :- P #<==> (X #= Code).
+
+% the start flags of the ships of length Size: horizontal from left to right, then vertical from top to bottom
+starts(Grid, Size, Codes, Bs) :-
+    length(Grid, NR), Grid = [G1|_], length(G1, NC),
+    HMax is NC - Size + 1,
+    VMax is NR - Size + 1,
+    numlist(1, NR, Rs),
+    numlist(1, NC, Cs),
+    numlist(1, HMax, HCs),
+    numlist(1, VMax, VRs),
+    maplist(h_row_starts(Grid, Size, Codes, HCs), Rs, HBs),
+    maplist(v_col_starts(Grid, Size, Codes, VRs), Cs, VBs),
+    append(HBs, HFlags),
+    append(VBs, VFlags),
+    append(HFlags, VFlags, Bs).
+
+h_row_starts(Grid, Size, Codes, HCs, R, Bs) :-
+    maplist(h_start(Grid, Size, Codes, R), HCs, Bs).
+
+v_col_starts(Grid, Size, Codes, VRs, C, Bs) :-
+    maplist(v_start(Grid, Size, Codes, C), VRs, Bs).
+
+h_start(Grid, Size, codes(_, _, Le, Ri, _, _, Mi), R, C, B) :-
+    Last is C + Size - 1,
+    numlist(C, Last, Cs),
+    maplist(cell(Grid, R), Cs, Cells),
+    Mids is Size - 2,
+    length(MidCodes, Mids),
+    maplist(=(Mi), MidCodes),
+    append([[Le], MidCodes, [Ri]], Want),
+    maplist(code_is_flag, Cells, Want, Ps),
+    sum(Ps, #=, Sum),
+    B #<==> (Sum #= Size).
+
+v_start(Grid, Size, codes(_, _, _, _, To, Bo, Mi), C, R, B) :-
+    Last is R + Size - 1,
+    numlist(R, Last, Rs),
+    maplist(cell_in_col(Grid, C), Rs, Cells),
+    Mids is Size - 2,
+    length(MidCodes, Mids),
+    maplist(=(Mi), MidCodes),
+    append([[To], MidCodes, [Bo]], Want),
+    maplist(code_is_flag, Cells, Want, Ps),
+    sum(Ps, #=, Sum),
+    B #<==> (Sum #= Size).
+
+cell_in_col(Grid, C, R, V) :- cell(Grid, R, C, V).
+
+code_is_flag(X, Code, P) :- P #<==> (X #= Code).
+
+% the hint square has the given code; the generic _SHIP code means any part of a longer vessel (not water, not a submarine)
+hint_rule(Grid, codes(W, Ci, _, _, _, _, _), Ship, [R, C, Code]) :-
+    R1 is R + 1, C1 is C + 1,
+    cell(Grid, R1, C1, V),
+    (   Code =:= Ship
+    ->  V #\= W, V #\= Ci
+    ;   V #= Code
+    ).
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+:- use_module(library(http/json)).
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
     ),
-    EndR is R + DR * Span, EndC is C + DC * Span,
-    holds(Board, R, C, FirstCode, First),
-    holds(Board, EndR, EndC, LastCode, Last),
-    Inner is Span - 1,
-    findall(K, between(1, Inner, K), Steps),
-    maplist({Board, R, C, DR, DC, Middle}/[K, Part]>>(
-                MR is R + DR * K, MC is C + DC * K,
-                holds(Board, MR, MC, Middle, Part)),
-            Steps, Middles),
-    sum([First, Last|Middles], #=, Total),
-    Length is Span + 1,
-    Flag #<==> (Total #= Length).
-
-% Smallest domain first, ties broken by the most constraints: the squares in the
-% rows and columns that are nearly full or empty are settled first.
-labeling_options([ffc]).
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

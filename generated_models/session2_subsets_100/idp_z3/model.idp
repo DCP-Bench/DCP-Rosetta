@@ -1,21 +1,32 @@
-// Given a set A of distinct integers, find two disjoint non-empty subsets S and T
-// of A whose elements sum to the same value. S and T need not cover all of A.
-vocabulary {
-    type I <: Int                      // positions of A, sized from the data
-    A: I -> Int                        // the given integers
-    in_S: I -> Bool                    // in_S(i) = true if element i is in S
-    in_T: I -> Bool                    // in_T(i) = true if element i is in T
+// session2_subsets_100: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Out of a set of integers, you are given a list of different integers. From this set A of integers you can always find
+// two disjoint non-empty subsets, S and T, such that the sum of elements in S equals the sum of elements in T. Note:
+// S union T does not need to be all the elements of A. Find sets S and T for the given set A.
+//
+// Save this file as model.idp. Download `session2_subsets_100.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_subsets_100.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session2_subsets_100.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Elem <: Int                   // the elements of A, numbered from 0
+    A: Elem -> Int                     // A(i): the i-th integer of the set
+    in_S: Elem -> Bool                 // in_S(i): element i is in the subset S
+    in_T: Elem -> Bool                 // in_T(i): element i is in the subset T
 }
-theory {
+theory T:V {
+    // S is not empty
+    ?i in Elem: in_S(i).
+    // T is not empty
+    ?i in Elem: in_T(i).
     // S and T are disjoint
-    ! i in I: ~(in_S(i) & in_T(i)).
-
-    // S is non-empty
-    ? i in I: in_S(i).
-
-    // T is non-empty
-    ? i in I: in_T(i).
-
+    ! i in Elem: ~(in_S(i) & in_T(i)).
     // the sum of the elements of S equals the sum of the elements of T
-    sum{{ (A(i)) | i in I: in_S(i) }} = sum{{ (A(i)) | i in I: in_T(i) }}.
+    sum{{ A(i) | i in Elem: in_S(i) }} = sum{{ A(i) | i in Elem: in_T(i) }}.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

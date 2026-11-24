@@ -1,20 +1,30 @@
-// Tommy's 15 coins (half-crowns, shillings and sixpences) add up to 306 pence,
-// that is one pound, five shillings and sixpence. How many half-crowns?
-// Money is counted in pence: a half-crown is 30 pence, a shilling 12 pence,
-// a sixpence 6 pence, and the 15 coins and 306 pence are from the problem statement.
-vocabulary {
-    type Count := {0..15}           // number of coins of one kind, at most the 15 coins
-    half_crowns: () -> Count        // declared output: number of half-crowns
-    shillings: () -> Count          // number of shillings
-    sixpences: () -> Count          // number of sixpences
+// birthday_coins: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Tommy was given 15 coins for his birthday. Each coin is a half-crown, a shilling or a sixpence, but he was not
+// necessarily given coins of all three kinds. When he added it up he had one pound, five shillings and six pence.
+// How many half-crowns could he have been given? A pound is 20 shillings and a shilling is 12 pence, so a pound is 240
+// pence; a half-crown is 2 shillings and sixpence, which is 30 pence.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/birthday_coins.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+
+vocabulary V {
+    half_crowns: () -> Int             // the number of half-crowns Tommy was given (the output)
+    shillings: () -> Int               // the number of shillings Tommy was given
+    sixpences: () -> Int               // the number of sixpences Tommy was given
 }
-theory {
-    // he was given 15 coins in total
+
+theory T:V {
+    // Tommy was given 15 coins in all
     half_crowns() + shillings() + sixpences() = 15.
-    // the coins add up to 306 pence
+    // the number of coins of each kind is not negative
+    0 =< half_crowns() & 0 =< shillings() & 0 =< sixpences().
+    // the coins add up to one pound, five shillings and six pence, which is 306 pence:
+    // a half-crown is 30 pence, a shilling 12 pence and a sixpence 6 pence
     30 * half_crowns() + 12 * shillings() + 6 * sixpences() = 306.
-    // he was given coins of all three kinds
-    half_crowns() >= 1.
-    shillings() >= 1.
-    sixpences() >= 1.
+}
+
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

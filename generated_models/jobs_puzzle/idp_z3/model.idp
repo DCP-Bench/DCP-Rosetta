@@ -1,28 +1,45 @@
-// Jobs puzzle: four people (0-3) hold eight different jobs, each person holds exactly two; find who holds which job.
-vocabulary {
-    // the four people, numbered 0 to 3
-    type Person := {0..3}
-    // the person holding each job
-    chef: () -> Person
-    guard: () -> Person
-    nurse: () -> Person
-    clerk: () -> Person
-    police_officer: () -> Person
-    teacher: () -> Person
-    actor: () -> Person
-    boxer: () -> Person
+// jobs_puzzle: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Four people hold eight different jobs. Each person holds exactly two jobs. The jobs are: chef, guard, nurse, clerk,
+// police officer, teacher, actor, and boxer.
+//
+// Clues:
+// 1. The nurse is not a teacher, police officer, or clerk.
+// 2. The clerk is not the chef.
+// 3. Person 0 is not the boxer.
+// 4. Person 3 is not the teacher, police officer, or nurse.
+// 5. Person 0, the chef, and the police officer went golfing together.
+//
+// Determine which person holds which two jobs.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/jobs_puzzle.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Person := {0..3}              // the four people, numbered from 0
+    chef: () -> Person                 // the person holding the job of chef
+    guard: () -> Person                // the person holding the job of guard
+    nurse: () -> Person                // the person holding the job of nurse
+    clerk: () -> Person                // the person holding the job of clerk
+    police_officer: () -> Person       // the person holding the job of police officer
+    teacher: () -> Person              // the person holding the job of teacher
+    actor: () -> Person                // the person holding the job of actor
+    boxer: () -> Person                // the person holding the job of boxer
 }
-theory {
-    // Four people hold eight different jobs. Each person holds exactly two jobs.
+theory T:V {
+    // each person holds exactly two of the eight jobs
     ! p in Person: (if chef() = p then 1 else 0) + (if guard() = p then 1 else 0) + (if nurse() = p then 1 else 0) + (if clerk() = p then 1 else 0) + (if police_officer() = p then 1 else 0) + (if teacher() = p then 1 else 0) + (if actor() = p then 1 else 0) + (if boxer() = p then 1 else 0) = 2.
-    // The nurse is not a teacher, police officer, or clerk.
+    // the nurse is not a teacher, a police officer or a clerk
     nurse() ~= teacher() & nurse() ~= police_officer() & nurse() ~= clerk().
-    // The clerk is not the chef.
+    // the clerk is not the chef
     clerk() ~= chef().
-    // Person 0 is not the boxer.
+    // person 0 is not the boxer
     boxer() ~= 0.
-    // Person 3 is not the teacher, police officer, or nurse.
+    // person 3 is not the teacher, a police officer or the nurse
     teacher() ~= 3 & police_officer() ~= 3 & nurse() ~= 3.
-    // Person 0, the chef, and the police officer went golfing together: three different people.
+    // person 0, the chef and the police officer are three different people who went golfing together
     chef() ~= 0 & police_officer() ~= 0 & chef() ~= police_officer().
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

@@ -1,21 +1,39 @@
 language ESSENCE' 1.0
-$ Maximum density still life: a stable pattern of live cells on an n x m grid, maximising the number of live cells.
+$ csplib_032_max_density_still_life: an Essence' model from DCP Rosetta.
+$
+$ Find the most densely populated still life on an n x m active grid, that is a stable pattern of live and dead cells that does not change from one generation to the next in Conway's Game of Life, and maximise the number of live cells in the grid. Cells outside the active grid are dead, but they are still part of the board. A live cell must have exactly 2 or 3 live neighbours to remain alive, and a dead cell, including a dead cell just outside the active grid, must not have exactly 3 live neighbours, otherwise it would become alive.
+$
+$ Save this file as model.eprime. Download `csplib_032_max_density_still_life.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_032_max_density_still_life_1.param.solution`:
+$   python dcp_convert_essence.py csplib_032_max_density_still_life.json
+$   savilerow model.eprime csplib_032_max_density_still_life_1.param -run-solver
+
+$ n: number of rows of the active grid
 given n : int(1..)
+$ m: number of columns of the active grid
 given m : int(1..)
-$ the active grid is padded with two rings of dead cells so every neighbour index is in range
+
+$ P[r,c]: cell (r,c) of the board is live. The active grid is rows 2..n+1 and columns 2..m+1; the two rings of cells around it are dead, so every neighbour lookup is in range
 find P : matrix indexed by [int(0..n+3), int(0..m+3)] of bool
-$ the output grid is the active n x m area of the padded board
+$ grid[i,j]: cell (i,j) of the active grid is live (indices 1-based)
 find grid : matrix indexed by [int(1..n), int(1..m)] of bool
+$ nb[r,c]: number of live neighbours of board cell (r,c), for the cells rows 1..n+2 and columns 1..m+2 (auxiliary, a function of P)
+find nb : matrix indexed by [int(1..n+2), int(1..m+2)] of int(0..8)
 
 branching on [grid]
 maximising (sum i : int(1..n) . sum j : int(1..m) . toInt(grid[i,j]))
 such that
-$ the cells outside the padded area and in the outer ring are dead
-forAll c : int(0..m+3) . (P[0,c] = false /\ P[1,c] = false /\ P[n+2,c] = false /\ P[n+3,c] = false),
-forAll r : int(2..n+1) . (P[r,0] = false /\ P[r,1] = false /\ P[r,m+2] = false /\ P[r,m+3] = false),
-$ the output grid is the active area of the padded board
+$ the cells outside the active grid are dead: the two rings around it
+forAll c : int(0..m+3) . (!P[0,c] /\ !P[1,c] /\ !P[n+2,c] /\ !P[n+3,c]),
+forAll r : int(2..n+1) . (!P[r,0] /\ !P[r,1] /\ !P[r,m+2] /\ !P[r,m+3]),
+$ the active grid is the central part of the board
 forAll i : int(1..n) . forAll j : int(1..m) . (grid[i,j] = P[i+1,j+1]),
-$ a live cell must have exactly 2 or 3 live neighbours to remain alive
-forAll r : int(1..n+2) . forAll c : int(1..m+2) . (P[r,c] -> (((toInt(P[r-1,c-1]) + toInt(P[r-1,c]) + toInt(P[r-1,c+1]) + toInt(P[r,c-1]) + toInt(P[r,c+1]) + toInt(P[r+1,c-1]) + toInt(P[r+1,c]) + toInt(P[r+1,c+1])) = 2) \/ ((toInt(P[r-1,c-1]) + toInt(P[r-1,c]) + toInt(P[r-1,c+1]) + toInt(P[r,c-1]) + toInt(P[r,c+1]) + toInt(P[r+1,c-1]) + toInt(P[r+1,c]) + toInt(P[r+1,c+1])) = 3))),
-$ a dead cell, including any dead cell just outside the active grid, must not have exactly 3 live neighbours
-forAll r : int(1..n+2) . forAll c : int(1..m+2) . ((!P[r,c]) -> ((toInt(P[r-1,c-1]) + toInt(P[r-1,c]) + toInt(P[r-1,c+1]) + toInt(P[r,c-1]) + toInt(P[r,c+1]) + toInt(P[r+1,c-1]) + toInt(P[r+1,c]) + toInt(P[r+1,c+1])) != 3))
+$ nb counts the live cells among the eight neighbours of each cell
+forAll r : int(1..n+2) . forAll c : int(1..m+2) . (nb[r,c] = (sum a : int(-1..1) . sum b : int(-1..1) . toInt((a != 0 \/ b != 0) /\ P[r+a,c+b]))),
+$ a live cell has exactly 2 or 3 live neighbours, so it stays alive
+forAll r : int(1..n+2) . forAll c : int(1..m+2) . (P[r,c] -> (nb[r,c] = 2 \/ nb[r,c] = 3)),
+$ a dead cell does not have exactly 3 live neighbours, so it does not become alive
+forAll r : int(1..n+2) . forAll c : int(1..m+2) . ((!P[r,c]) -> (nb[r,c] != 3))

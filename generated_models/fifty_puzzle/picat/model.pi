@@ -1,13 +1,41 @@
-% Fifty puzzle: knock over dummies whose numbers add up to exactly the target.
+% fifty_puzzle: a Picat model from DCP Rosetta.
+%
+% A side show: there were a number of little dummies which you were to knock over with baseballs. Add up the
+% numbers on all the dummies that you knock down and when the sum amounts to exactly a given target sum, neither
+% more nor less, you get a genuine prize. The numbers on the dummies are given as a list of integers.
+%
+% Save this file as model.pi. Download `fifty_puzzle.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/fifty_puzzle.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py fifty_puzzle.json
+%   picat model.pi fifty_puzzle_1.dat
+%
+% Data.get(values): the number on each dummy (a list indexed from 1); Data.get(target_sum): the target sum.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Target = Data.get(target_sum),
     Values = Data.get(values),
-    N = len(Values),
-    Dummies = new_list(N),
+    TargetSum = Data.get(target_sum),
+    N = len(Values),                       % the number of dummies
+    Dummies = new_list(N),                 % Dummies[I] = 1 when dummy I is knocked over, 0 otherwise
     Dummies :: 0..1,
-    sum([Values[I] * Dummies[I] : I in 1..N]) #= Target,
+    % the numbers on the dummies knocked over add up to exactly the target sum
+    sum([Values[I] * Dummies[I] : I in 1..N]) #= TargetSum,
     Vars = Dummies,
     Outputs = [dummies = Dummies],
+    % a satisfaction problem: no objective
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

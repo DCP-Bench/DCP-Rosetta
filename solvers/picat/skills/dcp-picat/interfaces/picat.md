@@ -93,6 +93,55 @@ pair(X, [X, X]) :- true.
 
 **Reading files and JSON.** Picat 3.9 has no JSON library: `json_decode` and `parse_json` are undefined (`Undefined procedure`). Read the text with `read_file_chars(Path)` and parse it in Picat. `../assets/picat/read-json-instance/model.pi` is a working reader for objects, arrays, integers and strings, with a `main(Args)` that reads the file given on the command line; copy it into a model.
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader runs it on
+one instance as `picat model.pi data.dat`; the model ends with a run block that reads the data file and prints the
+answer.
+
+```picat
+% Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+%
+% Data.get(capacity): the weight capacity; Data.get(values), Data.get(weights): value and weight of each item
+% (lists, indexed from 1).
+import cp.
+
+model(Data, Vars, Outputs, Options) =>
+    Capacity = Data.get(capacity),
+    Values = Data.get(values),
+    Weights = Data.get(weights),
+    N = len(Values),                       % the number of items
+    X = new_list(N),
+    X :: 0..1,                             % X[I] = 1 when item I is taken
+    % the items taken weigh no more than the capacity of the backpack
+    sum([Weights[I] * X[I] : I in 1..N]) #=< Capacity,
+    Vars = X,
+    Outputs = [x = X],
+    % maximise the total value of the items taken
+    Options = [$max(sum([Values[I] * X[I] : I in 1..N]))].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.
+```
+
+- Start with a comment that states the problem, then one that says what each field the model reads holds.
+- Name a size once (`N = len(Values)`) and give each requirement of the problem its own comment, in the problem's
+  words, rather than folding several into one.
+- Prefer the global constraints (`all_different`, `all_distinct`, `cumulative`, `circuit`, `table_in`, ...) and list
+  comprehensions to hand-built encodings.
+- Index a matrix `X[I,J]` (not `X[I][J]`); a variable index needs `element/3`; a `table_in` tuple is `{A,B}`.
+- End with the run block exactly as the contract gives it: the driver never calls it, so one file serves both.
+
 ## Common issues
 
 | Symptom | Likely cause | Fix |

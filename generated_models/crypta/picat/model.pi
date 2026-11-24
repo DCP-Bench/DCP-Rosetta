@@ -1,36 +1,56 @@
-% Crypta: a cryptarithmetic addition of two 20-digit numbers. Each letter is a
-% different digit from 0 to 9, and no number starts with a zero.
+% crypta: a Picat model from DCP Rosetta.
+%
+% Cryptarithmetic puzzle, solve the operation:
+%
+% ```text
+%     B A I J J A J I I A H F C F E B B J E A
+%   + D H F G A B C D I D B I F F A G F E J E
+%   -----------------------------------------
+%   = G J E G A C D D H F A F J B F I H E E F
+% ```
+%
+% where all letters are distinct digits from 0 to 9, and the first letter of each number cannot be zero.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+%
+% The puzzle has no data file: the three numbers are written in the model, one letter per digit, from the
+% most significant digit on.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    First = "BAIJJAJIIAHFCFEBBJEA",
-    Second = "DHFGABCDIDBIFFAGFEJE",
-    Total = "GJEGACDDHFAFJBFIHEEF",
-    Letters = "ABCDEFGHIJ",
-    Index = new_map([Letters[I] = I : I in 1..len(Letters)]),
-    D = new_list(len(Letters)),
-    D :: 0..9,
-    % every letter stands for a different digit
-    all_different(D),
-    % no number starts with a zero
-    foreach (Word in [First, Second, Total])
-        D[Index.get(Word[1])] #> 0
-    end,
-    % The addition column by column, units first; carry[k] comes into column k.
-    Width = len(Total),
-    Carry = new_list(Width + 1),
+    Num1 = [B, A, I, J, J, A, J, I, I, A, H, F, C, F, E, B, B, J, E, A],
+    Num2 = [D, H, F, G, A, B, C, D, I, D, B, I, F, F, A, G, F, E, J, E],
+    Sum = [G, J, E, G, A, C, D, D, H, F, A, F, J, B, F, I, H, E, E, F],
+    % each letter stands for a digit from 0 to 9, and different letters for different digits
+    Letters = [A, B, C, D, E, F, G, H, I, J],
+    Letters :: 0..9,
+    all_distinct(Letters),
+    % the first letter of each number is not zero
+    B #!= 0,
+    D #!= 0,
+    G #!= 0,
+    % Carry[K] = the carry into the column K places from the right (column 1 is the units column)
+    N = len(Num1),                        % the number of columns
+    Carry = new_list(N + 1),
     Carry :: 0..1,
     Carry[1] #= 0,
-    Carry[Width + 1] #= 0,
-    foreach (K in 1..Width)
-        P = Width - K + 1,
-        X = D[Index.get(First[P])],
-        Y = D[Index.get(Second[P])],
-        Z = D[Index.get(Total[P])],
-        X + Y + Carry[K] #= Z + 10 * Carry[K + 1]
+    Carry[N + 1] #= 0,
+    % the columns, from the units on, add up: the two numbers' digits and the carry make the sum's digit
+    % plus ten times the carry out
+    foreach (K in 1..N)
+        Num1[N + 1 - K] + Num2[N + 1 - K] + Carry[K] #= Sum[N + 1 - K] + 10 * Carry[K + 1]
     end,
-    Vars = D ++ Carry,
-    % one output per letter, named by the letter itself
-    Outputs = [Letters[I] = D[I] : I in 1..len(Letters)],
-    Options = [ff].
+    Vars = Letters,
+    Outputs = ['A' = A, 'B' = B, 'C' = C, 'D' = D, 'E' = E, 'F' = F, 'G' = G, 'H' = H, 'I' = I, 'J' = J],
+    % any solution will do
+    Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

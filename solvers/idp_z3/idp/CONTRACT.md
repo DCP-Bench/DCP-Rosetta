@@ -1,7 +1,8 @@
 # idp_z3: how this integration realises the submission contract
 
 Read [the submission contract](../../CONTRACT.md) first; this file only says how FO(.) on
-IDP-Z3 expresses it. Runner: [run.py](run.py), self-contained (it does not use
+IDP-Z3 expresses it. Runner: [run.py](run.py), which imports its instance binding from [dcp_convert_idp.py](dcp_convert_idp.py)
+(it does not use
 `runner/runtime.py`, although the image carries a copy): it parses the model exactly as
 written, binds the instance into a generated structure, and drives z3 itself.
 [metadata.json](metadata.json) declares `instance_binding: reshaped`: the runner's own
@@ -11,7 +12,8 @@ written, binds the instance into a generated structure, and drives z3 itself.
 
 One FO(.) knowledge base, `model.idp`: exactly one `vocabulary`, a `theory`, and
 optionally a `structure` of your own. It is not a program: the runner
-never calls a `procedure` or `main` block, and no other file of yours is staged.
+never calls a `procedure` or `main` block (a standalone model ends with a `main` for a reader, see
+[Standalone run](#standalone-run); the runner ignores it), and no other file of yours is staged.
 
 ## Entrypoint
 
@@ -128,20 +130,31 @@ in run.py):
 
 Each piece and each `_len` is bound only if the model declares a symbol of that name.
 
+**Strings are bound as ids**, before the rules above (`string_ids` in the converter), by four rules that cover
+what the dataset's string data is used for: a list of distinct strings is a *vocabulary*, whose items become the
+ids `0, 1, ...` in order (a list of device names binds as `0..n-1`); a string equal to an item of a vocabulary
+(the endpoints in rows such as `["A", "H", 1]`) becomes that item's id; a list of words over an *alphabet* (a
+string of distinct letters) becomes a ragged list of letter ids, the position of the letter in the alphabet
+counted from 0, padded with `0` and with `<field>_len` (rule 2), and the alphabet itself becomes the ids
+`0..k-1`; an ISO date such as `2024-05-01` becomes its day number, the days since 1970-01-01. Only a vocabulary
+that is used (an alphabet, or items some other field refers to) is rewritten; a string field no rule covers
+(`name`) stays a string and is ignored unless declared. A padding `0` can equal a real letter id: read a word
+only up to its `_len`.
+
 **Refusals.** A refusal of the data is status `unsupported` (evaluator reason
 `unsupported_capability`), and happens only for a declared name:
 
 - a declared field of rule-5 shape;
-- a declared string or float value: "instance values of type str cannot be bound into
-  FO(.)" (an undeclared string field or column is ignored: bind only the integer columns
-  of a mixed row, such as `movies_2`, `movies_3`);
+- a declared float value, or a declared string no id rule below covers: "instance values of type str
+  cannot be bound into FO(.)" (an undeclared string field or column is ignored: bind only the integer
+  columns of a mixed row, such as `movies_2`, `movies_3`);
 - two instance fields that bind under one declared name (`` instance fields `F` and `G`
   both bind as `F_len` ``).
 
 **Which problems are withheld.** `generation.next_work` withholds a problem for this
 integration only when run.py's `refusal(name, value)` rejects a field (other than `name`
 and `note`) in some instance, i.e. a rule-5 shape no model could bind. Strings and floats
-are not a shape problem and withhold nothing.
+are not a shape problem and withhold nothing (strings are bound as ids, as above).
 
 ## Outputs
 
@@ -249,6 +262,11 @@ entrypoint is the runner (`python /opt/runner/run.py`); for an ad hoc run overri
 
 ## Traps
 
+- **A product inside an aggregate is parenthesised**: `sum{{ (a(i) * b(i)) | i in I }}` parses, `sum{{ a(i) * b(i) | i in I }}`
+  is a parse error. A binary structure is written `{ (0,3), (3,0) }`, not `{ 0,3; 3,0 }`.
+- **Products of two decision symbols and an all-different over `Int` are what time out** (z3's nonlinear search):
+  type the symbols with a finite range (`type Digit := {0..9}`) or index a constant factor instead.
+
 - **Two reasons for "refused" data.** Rule-5 shapes, declared strings and floats, and
   name clashes are `unsupported_capability`, not `execution_error`; type sizing conflicts,
   arity mismatches and unsizable `Range_`/`T_size` types are `execution_error`.
@@ -285,6 +303,70 @@ entrypoint is the runner (`python /opt/runner/run.py`); for an ad hoc run overri
   error naming line and column, a declared output that is not a symbol, a `Range_` type
   with no matching field, or data that does not fit its declaration. `execution_timeout` usually means nonlinear
   arithmetic or a type left far larger than the problem needs.
+
+## Standalone run
+
+A model is also a file a person downloads and runs on its own, so it opens with a header comment: the problem
+statement, where the data comes from and the commands that run it. The binding of [Instance](#instance) is
+[dcp_convert_idp.py](dcp_convert_idp.py), the same file the runner imports, which the model's page offers beside the
+instances. FO(.) data goes in a `structure` over the model's own vocabulary, so the converter takes the model too: it
+writes `model_1.idp`, `model_2.idp`, ... (the model followed by `structure S:V` with that instance's data, for the
+vocabulary `V`), and the reader runs the first with `idp-engine`:
+
+```
+// <problem>: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// <the problem statement, as below>
+//
+// Save this file as model.idp. Download `<problem>.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py <problem>.json
+//   idp-engine model_1.idp
+```
+
+`model_2.idp`, ... are the other instances. **A problem with no instance data** (the instance is `{}`) has a
+shorter header with no download or convert line, and is run with `idp-engine model.idp`:
+
+```
+// <problem>: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// <the problem statement>
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/<problem>.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+```
+
+**The model names its blocks and ends with a `main`**: `vocabulary V { ... }`, `theory T:V { ... }`, and, last, a
+procedure over the theory `T` and the structure `S` the converter adds. A satisfaction problem prints one model, an
+optimisation problem the optimum (a plain `model_expand` would print any model, not the best one):
+
+```
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))      // or maximize(T, S, term="maximize()")
+}
+```
+
+A problem with no instance data has no `S`: `model_expand(T, max=1)`, `minimize(T, term="minimize()")`. A model
+with a `structure` of its own names it too and passes it before `S`. The runner ignores `main`.
+
+`model_expand` stops after 10 seconds by default ("No model found in 10 seconds"): a satisfaction model whose search
+needs longer passes `timeout_seconds`, `model_expand(T, S, max=1, timeout_seconds=300)`. `minimize` and `maximize`
+take no timeout. Writing the model so that a reader's run is quick (finite types, no product of two decision
+symbols) matters more than the timeout.
+
+The problem statement is the description's own words or a faithful short paraphrase of them (never a narrowing: "any
+two landings", not "consecutive landings"), no longer than needed: no instruction about printing and no remark about
+the instance. Every symbol of the vocabulary has a short `//` comment saying what it holds, indices 0-based as in the
+data; a symbol the conversion creates (`<field>_len`, `<field>_1`, ...) says so, since the reader's JSON has no such
+field.
 
 ## Example
 

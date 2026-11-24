@@ -1,45 +1,38 @@
-// N-fractions puzzle: find distinct non-zero digits A..I such that A/BC + D/EF + G/HI = 1,
-// where BC, EF and HI are two-digit numbers formed by B and C, E and F, and H and I.
-vocabulary {
-    // the digits are non-zero, so each digit is 1..9
-    type Digit := {1..9}
-    A: () -> Digit
-    B: () -> Digit
-    C: () -> Digit
-    D: () -> Digit
-    E: () -> Digit
-    F: () -> Digit
-    G: () -> Digit
-    H: () -> Digit
-    I: () -> Digit
-    // the two-digit numbers BC, EF and HI
-    bc: () -> Int
-    ef: () -> Int
-    hi: () -> Int
-    // positions of the nine digits, used to state that they are distinct
-    type Pos := {1..9}
-    digit: Pos -> Digit
+// csplib_041_n_fractions: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find distinct non-zero digits such that A / BC + D / EF + G / HI = 1, where BC, EF and HI are the two-digit numbers
+// formed by the digits B and C, E and F, and H and I, respectively.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_041_n_fractions.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Digit := {1..9}              // a non-zero digit
+    A: () -> Digit                   // the digit the letter A stands for
+    B: () -> Digit                   // the digit the letter B stands for
+    C: () -> Digit                   // the digit the letter C stands for
+    D: () -> Digit                   // the digit the letter D stands for
+    E: () -> Digit                   // the digit the letter E stands for
+    F: () -> Digit                   // the digit the letter F stands for
+    G: () -> Digit                   // the digit the letter G stands for
+    H: () -> Digit                   // the digit the letter H stands for
+    I: () -> Digit                   // the digit the letter I stands for
+    BC: () -> Int                      // the two-digit number formed by B and C
+    EF: () -> Int                      // the two-digit number formed by E and F
+    HI: () -> Int                      // the two-digit number formed by H and I
 }
-theory {
-    // the two-digit numbers
-    bc() = 10 * B() + C().
-    ef() = 10 * E() + F().
-    hi() = 10 * H() + I().
+theory T:V {
+    // the nine letters stand for nine different digits
+    A() ~= B() & A() ~= C() & A() ~= D() & A() ~= E() & A() ~= F() & A() ~= G() & A() ~= H() & A() ~= I() & B() ~= C() & B() ~= D() & B() ~= E() & B() ~= F() & B() ~= G() & B() ~= H() & B() ~= I() & C() ~= D() & C() ~= E() & C() ~= F() & C() ~= G() & C() ~= H() & C() ~= I() & D() ~= E() & D() ~= F() & D() ~= G() & D() ~= H() & D() ~= I() & E() ~= F() & E() ~= G() & E() ~= H() & E() ~= I() & F() ~= G() & F() ~= H() & F() ~= I() & G() ~= H() & G() ~= I() & H() ~= I().
 
-    // the nine digits are the values at positions 1..9
-    digit(1) = A().
-    digit(2) = B().
-    digit(3) = C().
-    digit(4) = D().
-    digit(5) = E().
-    digit(6) = F().
-    digit(7) = G().
-    digit(8) = H().
-    digit(9) = I().
+    // BC, EF and HI are the two-digit numbers formed by their digits
+    BC() = 10 * B() + C().
+    EF() = 10 * E() + F().
+    HI() = 10 * H() + I().
 
-    // distinct digits
-    ! p, q in Pos: p ~= q => digit(p) ~= digit(q).
-
-    // A / BC + D / EF + G / HI = 1, with the denominators cleared
-    A() * ef() * hi() + D() * bc() * hi() + G() * bc() * ef() = bc() * ef() * hi().
+    // A / BC + D / EF + G / HI = 1, multiplied through by BC * EF * HI
+    A() * EF() * HI() + D() * BC() * HI() + G() * BC() * EF() = BC() * EF() * HI().
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1, timeout_seconds=300))
 }

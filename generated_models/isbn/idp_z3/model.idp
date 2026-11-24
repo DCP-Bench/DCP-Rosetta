@@ -1,25 +1,36 @@
-// ISBN-13 check digit completion: fill the unknown (-1) digits so the number is a valid ISBN-13.
-vocabulary {
-    // the 13 positions of the ISBN, sized from the instance field isbn_init
-    type I <: Int
-    // a single digit
-    type Digit := {0..9}
-    // the given digits, -1 marks an unknown digit
-    isbn_init: I -> Int
-    // the completed ISBN, one digit per position
-    isbn: I -> Digit
-    // weighted sum of the first 12 digits (weights 1 and 3 alternately, starting with 1)
-    total: () -> Int
+// isbn: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// ISBN-13 (International Standard Book Number) is a 13-digit number where the last digit is a check digit calculated from
+// the first 12 digits. The check digit is calculated as follows: multiply the first 12 digits alternately by 1 and 3
+// (starting with 1); sum the products; the check digit is (10 - (sum % 10)) % 10. Given a list of 13 integers
+// representing an ISBN-13, where -1 represents an unknown digit, find the values of the unknown digits such that the
+// resulting number is a valid ISBN-13. An ISBN-13 must start with 978 or 979.
+//
+// Save this file as model.idp. Download `isbn.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/isbn.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py isbn.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type I <: Int                      // the 13 digit positions of the ISBN, numbered from 0
+    isbn_init: I -> Int                // isbn_init(i): the given digit at position i, -1 if unknown
+    isbn: I -> Int                     // isbn(i): the digit at position i of the completed ISBN
+    total: () -> Int                   // the weighted sum of the first 12 digits
 }
-theory {
-    // the first 12 digits are multiplied alternately by 1 and 3, starting with 1
-    total() = sum{{ isbn(i) | i in I: i % 2 = 0 & i =< 11 }} + 3 * sum{{ isbn(i) | i in I: i % 2 = 1 & i =< 11 }}.
-    // the sum is bounded by 6 * (9 * 1 + 9 * 3) = 216 since every digit is at most 9
-    0 =< total() & total() =< 216.
-    // the check digit is (10 - (sum % 10)) % 10
+theory T:V {
+    // every digit of the completed ISBN is a digit from 0 to 9
+    ! i in I: 0 =< isbn(i) & isbn(i) =< 9.
+    // the sum of the first 12 digits multiplied alternately by 1 and 3, starting with 1
+    total() = sum{{ isbn(i) | i in I: i < 12 & i % 2 = 0 }} + 3 * sum{{ isbn(i) | i in I: i < 12 & i % 2 = 1 }}.
+    // the check digit (the 13th digit) is (10 - (sum % 10)) % 10
     isbn(12) = (10 - total() % 10) % 10.
-    // the number starts with 978 or 979
+    // an ISBN-13 starts with 978 or 979
     isbn(0) = 9 & isbn(1) = 7 & (isbn(2) = 8 | isbn(2) = 9).
-    // every given digit is kept, unknown digits are free
+    // every given digit is kept, the unknown digits are free
     ! i in I: isbn_init(i) ~= -1 => isbn(i) = isbn_init(i).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

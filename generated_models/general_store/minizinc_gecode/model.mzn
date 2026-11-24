@@ -1,37 +1,55 @@
-% General store: a cryptarithm. Each different letter stands for a different
-% digit; the sixteen words above the line, read as numbers, add up to the number
-% ALLWOOL. Find the digit of every letter. This problem has no instance data: the
-% words are part of the problem statement.
+% general_store: a MiniZinc model from DCP Rosetta.
+%
+% The owner of a general store, who is something of a puzzlist, has put up a sign: the words above
+% the horizontal line, read as numbers, add up to the total ALL WOOL. Each different letter stands
+% for a different digit. Change all the letters to the correct digits. Leading zeros are allowed: a
+% word may start with the digit 0. The sixteen words above the line are
+%   CHESS CASH BOWWOW CHOPS ALSOPS PALEALE COOL BASS HOPS ALES HOES APPLES COWS CHEESE CHSOAP SHEEP
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% the ten letters, in the order of the answer (C, H, E, S, A, B, O, W, P, L)
-array[1..10] of string: letter = ["C", "H", "E", "S", "A", "B", "O", "W", "P", "L"];
+enum Letter = {A, B, C, E, H, L, O, P, S, W};   % the letters of the puzzle
 
-% digit[i] = the digit that letter i stands for
-array[1..10] of var 0..9: digit;
+% digit[l]: the digit that letter l stands for
+array[Letter] of var 0..9: digit;
 
-% different letters stand for different digits
-constraint all_different(digit);
+% each letter stands for a different digit
+constraint all_different([digit[l] | l in Letter]);
 
-% the digit of a letter, looked up by its name
-function var int: digit_of(string: c) = digit[min([i | i in 1..10 where letter[i] = c])];
+% the number a word stands for: its letters, read as decimal digits, most significant first
+function var int: value(array[int] of Letter: word) =
+    sum(i in index_set(word))(pow(10, card(index_set(word)) - i) * digit[word[i]]);
 
-% the number a word stands for: its letters are its decimal digits
-function var int: number(string: word) =
-    let { array[int] of string: chars = string_split(word, "") }
-    in sum(i in index_set(chars)) (pow(10, length(chars) - i) * digit_of(chars[i]));
+array[int] of Letter: CHESS = [C, H, E, S, S];
+array[int] of Letter: CASH = [C, A, S, H];
+array[int] of Letter: BOWWOW = [B, O, W, W, O, W];
+array[int] of Letter: CHOPS = [C, H, O, P, S];
+array[int] of Letter: ALSOPS = [A, L, S, O, P, S];
+array[int] of Letter: PALEALE = [P, A, L, E, A, L, E];
+array[int] of Letter: COOL = [C, O, O, L];
+array[int] of Letter: BASS = [B, A, S, S];
+array[int] of Letter: HOPS = [H, O, P, S];
+array[int] of Letter: ALES = [A, L, E, S];
+array[int] of Letter: HOES = [H, O, E, S];
+array[int] of Letter: APPLES = [A, P, P, L, E, S];
+array[int] of Letter: COWS = [C, O, W, S];
+array[int] of Letter: CHEESE = [C, H, E, E, S, E];
+array[int] of Letter: CHSOAP = [C, H, S, O, A, P];
+array[int] of Letter: SHEEP = [S, H, E, E, P];
+array[int] of Letter: ALLWOOL = [A, L, L, W, O, O, L];
 
-% the words that are added up (above the line)
-array[1..16] of string: addends = [
-    "CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
-    "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"];
-
-% the words above the line add up to ALLWOOL
-constraint sum(w in 1..16) (number(addends[w])) = number("ALLWOOL");
+% the sixteen words above the line add up to ALL WOOL
+constraint value(CHESS) + value(CASH) + value(BOWWOW) + value(CHOPS) + value(ALSOPS) + value(PALEALE)
+         + value(COOL) + value(BASS) + value(HOPS) + value(ALES) + value(HOES) + value(APPLES)
+         + value(COWS) + value(CHEESE) + value(CHSOAP) + value(SHEEP) = value(ALLWOOL);
 
 solve satisfy;
 
-output ["{\"C\": ", show(digit[1]), ", \"H\": ", show(digit[2]), ", \"E\": ", show(digit[3]),
-        ", \"S\": ", show(digit[4]), ", \"A\": ", show(digit[5]), ", \"B\": ", show(digit[6]),
-        ", \"O\": ", show(digit[7]), ", \"W\": ", show(digit[8]), ", \"P\": ", show(digit[9]),
-        ", \"L\": ", show(digit[10]), "}"];
+output ["{\"C\": ", showJSON(digit[C]), ", \"H\": ", showJSON(digit[H]), ", \"E\": ", showJSON(digit[E]),
+        ", \"S\": ", showJSON(digit[S]), ", \"A\": ", showJSON(digit[A]), ", \"B\": ", showJSON(digit[B]),
+        ", \"O\": ", showJSON(digit[O]), ", \"W\": ", showJSON(digit[W]), ", \"P\": ", showJSON(digit[P]),
+        ", \"L\": ", showJSON(digit[L]), "}"];

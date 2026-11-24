@@ -1,49 +1,65 @@
-# Futoshiki: fill an n x n grid with the digits 1..n so that every row and every column
-# holds each digit once, the given digits stay, and each inequality sign between two
-# neighbouring squares holds.
-from pyscipopt import Model, quicksum
+# futoshiki: a SCIP (Python) model from DCP Rosetta.
+# Download the `futoshiki.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/futoshiki.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python futoshiki.py futoshiki.json
+
+import numpy as np
+from pyscipopt import Model
 
 
-def build(instance):
-    values = instance["values"]
-    lt = instance["lt"]
-    n = len(values)
-    m = Model()
+def create_model(instance):
+    """A futoshiki puzzle on an n x n grid, where n is the size of the instance's board: fill every
+    cell with a digit from 1 to n so that each row and each column holds every digit
+    exactly once, keep the digits already given, and honour every inequality sign
+    between two neighbouring cells. The puzzle has no objective; any grid that obeys
+    these rules is a solution."""
+    values = instance["values"]  # n x n list of the given digits, 0 where the cell is empty
+    lt = instance["lt"]  # each [r1, c1, r2, c2] (1-based) says the digit in (r1, c1) is less than the one in (r2, c2)
+    n = len(values)  # the board is n x n
 
-    # b[i, j, v]: the square in row i, column j (0-based) holds the digit v
-    b = {(i, j, v): m.addVar(name=f"b_{i}_{j}_{v}", vtype="B")
-         for i in range(n) for j in range(n) for v in range(1, n + 1)}
-    # the square holds exactly one digit
-    for i in range(n):
-        for j in range(n):
-            m.addCons(quicksum(b[i, j, v] for v in range(1, n + 1)) == 1)
+    model = Model("futoshiki")
 
-    # the digit of each square, as an integer
-    grid = {}
-    for i in range(n):
-        for j in range(n):
-            grid[i, j] = m.addVar(name=f"grid_{i}_{j}", vtype="I", lb=1, ub=n)
-            m.addCons(grid[i, j] == quicksum(v * b[i, j, v] for v in range(1, n + 1)))
+    # one[r, c, d] is 1 when cell (r, c) holds digit d + 1, and 0 otherwise; the digits are 1 to n, as the statement says.
+    # SCIP has no all-different constraint, so each digit is counted in every row and column
+    # with binaries. A given digit fixes its binary to 1 through the lower bound.
+    lb = [[[1 if v == d + 1 else 0 for d in range(n)] for v in row] for row in values]
+    one = model.addMatrixVar((n, n, n), vtype="B", lb=lb, name="one")
 
-    # each row contains each digit once
-    for i in range(n):
-        for v in range(1, n + 1):
-            m.addCons(quicksum(b[i, j, v] for j in range(n)) == 1)
-    # each column contains each digit once
-    for j in range(n):
-        for v in range(1, n + 1):
-            m.addCons(quicksum(b[i, j, v] for i in range(n)) == 1)
+    # Every cell holds exactly one digit.
+    model.addMatrixCons(one.sum(axis=2) == 1)
+    # Every row holds each digit exactly once.
+    model.addMatrixCons(one.sum(axis=1) == 1)
+    # Every column holds each digit exactly once.
+    model.addMatrixCons(one.sum(axis=0) == 1)
 
-    # the digits given at the start of the puzzle (0 marks an empty square)
-    for i in range(n):
-        for j in range(n):
-            if values[i][j] > 0:
-                m.addCons(b[i, j, values[i][j]] == 1)
+    # The digit in each cell, the output: the sum of digit * binary over the digits.
+    grid = (one * np.arange(1, n + 1)).sum(axis=2)
 
-    # each inequality sign: the first square is smaller than its neighbour
-    # the instance gives 1-based row and column numbers
+    # Each inequality sign of the puzzle. The coordinates are 1-based (the data reaches row n),
+    # so they are shifted to 0-based indices. SCIP has no strict <, so "less than" is written
+    # as "at most one less", which is the same for integers.
     for r1, c1, r2, c2 in lt:
-        m.addCons(grid[r1 - 1, c1 - 1] + 1 <= grid[r2 - 1, c2 - 1])
+        model.addCons(grid[r1 - 1, c1 - 1] <= grid[r2 - 1, c2 - 1] - 1)
 
-    out = [[grid[i, j] for j in range(n)] for i in range(n)]
-    return m, {"grid": out}
+    return model, {"grid": grid}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

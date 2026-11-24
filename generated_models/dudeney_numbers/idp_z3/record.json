@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
-    "attempt_id": "attempt-007",
-    "created_at": 1792563443.8109584,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/idp_z3/idp/CONTRACT.md": "ebca9737305e27cb9d7617977058286ddcb46fd7453879246cc10f18731df610"
+    },
+    "created_at": 1794649928.9324017,
     "problem_id": "dudeney_numbers",
     "profile": {
       "compilation_timeout": 120,
@@ -14,32 +18,59 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "c3a705132180ff2c1865cabce3653b73edfeac524ce06663e267a1c6526782ed",
-    "run_id": "20261020-idp-structure",
-    "schema": 2,
-    "skill_bundle_hash": "55f7122bd74fbb64436a1850d3f66355094c049f030db32609f76a478357f622",
-    "skill_source": "solvers/idp_z3/skills/idp-z3",
+    "readiness_hash": "00846fea2c70a03214f2d787c544bf7a6205d6046d5954fc9b92e8c1a92d58ee",
+    "run_id": "20261117-idp-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "1836f35b34a6610c89d5a49908c55648b7fe6139",
+      "commit": "d76c79276168233b43e54738a0c5130728074fc8",
       "modified": false,
-      "path": "solvers/idp_z3/skills/idp-z3"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "d76c79276168233b43e54738a0c5130728074fc8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "75df9d068ca98ec4a85a0f47208875c79742b269fb4498d41b4900604c97f3b1",
+        "source": "solvers/idp_z3/skills/dcp-idp-z3",
+        "version": {
+          "commit": "d76c79276168233b43e54738a0c5130728074fc8",
+          "modified": true,
+          "path": "solvers/idp_z3/skills/dcp-idp-z3"
+        }
+      }
+    ],
     "solver_id": "idp_z3"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:ba3ca18d5318a81c9939c52247b0f765e352e061a02646e39742ba1e19f87d3b",
+      "id": "sha256:15a32724eb382f5e1fd09a13d0525214d110fab52591ff52bac933ac3b353db9",
+      "recipe": "sha256:80d584eef6435812873ebea1413da34b1d897a79271004ee650230622fd7b487",
       "tag": "dcp-eval/idp_z3:v1"
     },
     "instances": [
       {
-        "accepted": true,
-        "checking_seconds": 0.0034581690561026335,
-        "execution_wall_seconds": 0.5487281259847805,
+        "accepted": false,
+        "checking_seconds": 0.005868120992090553,
+        "detail": "",
+        "execution_wall_seconds": 184.16403489402728,
         "first_solution": {
-          "number": 4913
+          "number": 512
         },
         "id": "example",
         "instance_hash": "ade0bebbcdd770e830221a9ea5ea03aa975a54ba2b90f7077c3b5e0754faf3c8",
@@ -49,21 +80,25 @@
         "outputs": [
           "number"
         ],
-        "reason": "accepted",
-        "reference_setup_seconds": 0.30884392908774316,
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 1.703989528992679,
         "runner_status": {
+          "build_seconds": 0.5372119160019793,
           "detail": "",
-          "status": "limit",
+          "main_seconds": 180.01377854903694,
+          "read_seconds": 0.00018861802527680993,
+          "status": "timeout",
           "type": "status"
         },
-        "solutions_checked": 2,
-        "solutions_received": 2,
+        "skipped": true,
+        "solutions_checked": 1,
+        "solutions_received": 1,
         "stderr": ""
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0021053089294582605,
-        "execution_wall_seconds": 0.498809446929954,
+        "checking_seconds": 0.005623198987450451,
+        "execution_wall_seconds": 3.689706993987784,
         "first_solution": {
           "number": 512
         },
@@ -76,9 +111,12 @@
           "number"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.29378991504199803,
+        "reference_setup_seconds": 2.4159943780396134,
         "runner_status": {
+          "build_seconds": 0.22072445100639015,
           "detail": "",
+          "main_seconds": 0.2703556999913417,
+          "read_seconds": 0.00016308599151670933,
           "status": "complete",
           "type": "status"
         },
@@ -88,7 +126,7 @@
       }
     ],
     "instances_available": 2,
-    "instances_checked": 2,
+    "instances_checked": 1,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -96,15 +134,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "c54a2ff66c445e355c1938e8b165d43b398370d92db3568abddec43d2a316fcc",
+    "model_hash": "a366aa20b2a9dc811bec5c9a1130abf57ca9d5feed74cb077f9ef2a1ef90f92d",
     "problem_id": "dudeney_numbers",
     "reason": "accepted",
-    "reference_hash": "00d4f94b6fffa2fefd424c21bb84bbafe05c29f8725b9c0c9b960c5ac29857af",
+    "reference_hash": "dde7e1234367df3738d43daf50a78ff81f95ee862718e4b1306f49602a0092c1",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -112,14 +150,16 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 3,
+    "skipped_instances": [
+      "example"
+    ],
+    "solutions_checked": 2,
     "solver_id": "idp_z3",
-    "total_wall_seconds": 1.777767754974775,
+    "total_wall_seconds": 193.56499554996844,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.idp",

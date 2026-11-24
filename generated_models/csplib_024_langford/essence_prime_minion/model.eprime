@@ -1,9 +1,25 @@
 language ESSENCE' 1.0
-$ Langford pairing: arrange two copies of each number 1..k in one sequence of 2k positions so that the two copies of v have v numbers between them.
+$ csplib_024_langford: an Essence' model from DCP Rosetta.
+$
+$ Consider two sets of the numbers from 1 to k. Arrange the 2k numbers in the two sets into a single sequence in which the two 1s appear one number apart, the two 2s appear two numbers apart, and so on, up to the two ks, which appear k numbers apart.
+$
+$ Save this file as model.eprime. Download `csplib_024_langford.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_024_langford.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_024_langford_1.param.solution`:
+$   python dcp_convert_essence.py csplib_024_langford.json
+$   savilerow model.eprime csplib_024_langford_1.param -run-solver
+
+$ k: the largest number; the sequence has 2k positions
 given k : int(1..)
+
+$ sol[i]: the number at position i of the sequence, positions and numbers 1-based
 find sol : matrix indexed by [int(1..2*k)] of int(1..k)
+$ pos[v,j]: the position of the j-th copy of the number v (auxiliary)
 find pos : matrix indexed by [int(1..k), int(1..2)] of int(1..2*k)
 
+$ search hint
 branching on [pos]
 
 such that

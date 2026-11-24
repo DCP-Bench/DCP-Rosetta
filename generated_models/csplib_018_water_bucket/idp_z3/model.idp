@@ -1,62 +1,73 @@
-// Water bucket: pour water between buckets to reach the goal state with the fewest transfers,
-// printing the state sequence padded with PADDING_VALUE after the goal is reached.
-vocabulary {
-    // one index per bucket, sized from the capacities array (3 buckets)
-    type Bkt <: Int
-    // rows of the output sequence: MAX_STEPS states, row 1 is the first (initial) state
-    type Range_MAX_STEPS <: Int
-    capacities: Bkt -> Int
-    initial_state: Bkt -> Int
-    goal_state: Bkt -> Int
-    PADDING_VALUE: () -> Int
-    // declared outputs
-    sequence: Range_MAX_STEPS * Bkt -> Int
-    cost: () -> Int
-    // objective: the number of transfers
-    minimize: () -> Int
-    // auxiliary symbols: the bucket poured from and the bucket poured into at each step
-    source: Range_MAX_STEPS -> Bkt
-    target: Range_MAX_STEPS -> Bkt
-    amt: Range_MAX_STEPS -> Int
-    isGoal: Range_MAX_STEPS -> Bool
-    pad: Range_MAX_STEPS -> Bool
-    succ: Range_MAX_STEPS * Range_MAX_STEPS -> Bool
+// csplib_018_water_bucket: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// You are given a bucket of water and some empty buckets, each with a capacity (the three buckets hold 8, 5 and 3 pints).
+// The water is to be divided between the buckets, starting from the initial state, by pouring water between buckets. A
+// transfer pours water from one bucket into another until the first is empty or the second is full. Find the minimum
+// number of transfers of water between buckets that reach the goal state (4 pints in the 8 pint bucket, and 4 pints in
+// the 5 pint bucket). The sequence of states lists the initial state and then the state after each transfer, and after
+// the goal state is reached the remaining entries are the padding value.
+//
+// Save this file as model.idp. Download `csplib_018_water_bucket.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_018_water_bucket.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_018_water_bucket.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Bucket <: Int                 // the buckets, numbered from 0, sized from capacities
+    type Step <: Int                   // the entries of the sequence, numbered from 1, sized by Step_size
+    Step_size: () -> Int               // the number of entries of the sequence (the size of Step)
+    MAX_STEPS: () -> Int               // the number of entries of the sequence
+    PADDING_VALUE: () -> Int           // the value of the entries after the goal state is reached
+    capacities: Bucket -> Int          // capacities(b): the capacity of bucket b in pints
+    initial_state: Bucket -> Int       // initial_state(b): the pints of water in bucket b at the start
+    goal_state: Bucket -> Int          // goal_state(b): the pints of water in bucket b at the goal
+    sequence: Step * Bucket -> Int     // sequence(t, b): the pints of water in bucket b in entry t (entry 1 is the initial state, entry k + 1 the state after k transfers)
+    cost: () -> Int                    // the number of transfers needed to reach the goal state
+    source: Step -> Bucket             // source(t): the bucket that transfer t pours from (transfer t leads from entry t to entry t + 1)
+    target: Step -> Bucket             // target(t): the bucket that transfer t pours into
+    minimize: () -> Int                // the number of transfers
 }
-theory {
-    // the first state is the initial state
-    ! b in Bkt: sequence(1, b) = initial_state(b).
 
-    // a row is padding when every bucket holds the padding value
-    { ! s in Range_MAX_STEPS: pad(s) <- ! b in Bkt: sequence(s, b) = PADDING_VALUE(). }
+theory T:V {
+    // the sequence has one entry per step
+    Step_size() = MAX_STEPS().
 
-    // a row is the goal when every bucket holds its goal amount
-    { ! s in Range_MAX_STEPS: isGoal(s) <- ! b in Bkt: sequence(s, b) = goal_state(b). }
+    // the first entry of the sequence is the initial state
+    ! t in Step, b in Bucket: t = 1 => sequence(t, b) = initial_state(b).
 
-    // the successor relation links each row to the next one
-    { ! s, t in Range_MAX_STEPS: succ(s, t) <- t = s + 1. }
+    // the number of transfers is between 0 and the number of entries of the sequence minus one, so the goal state fits in the sequence
+    0 =< cost() & cost() + 1 =< MAX_STEPS().
 
-    // a state row holds amounts between 0 and the bucket capacity
-    ! s in Range_MAX_STEPS: ~pad(s) => ! b in Bkt: (0 =< sequence(s, b) & sequence(s, b) =< capacities(b)).
+    // the entry after the given number of transfers is the goal state
+    ? t in Step: t = cost() + 1 & (! b in Bucket: sequence(t, b) = goal_state(b)).
 
-    // the goal is reached within the sequence
-    ? s in Range_MAX_STEPS: isGoal(s).
+    // transfer t goes from the state in entry t to the state in entry t + 1, and each transfer pours from one bucket into a different bucket
+    ! t in Step: t =< cost() => source(t) ~= target(t).
 
-    // after the goal is reached, the remainder of the sequence is padding
-    ! s, t in Range_MAX_STEPS: succ(s, t) => ((isGoal(s) | pad(s)) => pad(t)).
+    // a transfer pours until the source bucket is empty or the target bucket is full: when the source bucket empties, the target gets all its water
+    ! t, s in Step, a, b in Bucket: s = t + 1 & t =< cost() & source(t) = a & target(t) = b & sequence(t, a) =< capacities(b) - sequence(t, b) => sequence(s, a) = 0 & sequence(s, b) = sequence(t, a) + sequence(t, b).
 
-    // a transfer takes water from one bucket and pours it into another, different bucket
-    ! s in Range_MAX_STEPS: source(s) ~= target(s).
+    // a transfer pours until the source bucket is empty or the target bucket is full: when the target bucket fills, it holds its capacity and the source keeps the rest
+    ! t, s in Step, a, b in Bucket: s = t + 1 & t =< cost() & source(t) = a & target(t) = b & capacities(b) - sequence(t, b) < sequence(t, a) => sequence(s, b) = capacities(b) & sequence(s, a) = sequence(t, a) - (capacities(b) - sequence(t, b)).
 
-    // the amount poured is the smaller of the water in the source and the free room in the target
-    ! s in Range_MAX_STEPS: amt(s) = if sequence(s, source(s)) =< capacities(target(s)) - sequence(s, target(s))
-        then sequence(s, source(s))
-        else capacities(target(s)) - sequence(s, target(s)).
+    // a transfer changes only the two buckets it pours between
+    ! t, s in Step, c in Bucket: s = t + 1 & t =< cost() & c ~= source(t) & c ~= target(t) => sequence(s, c) = sequence(t, c).
 
-    // the next state moves the poured amount from the source bucket to the target bucket
-    ! s, t in Range_MAX_STEPS: succ(s, t) => ! b in Bkt: ((~pad(s) & ~isGoal(s)) =>
-        sequence(t, b) = sequence(s, b) - (if source(s) = b then amt(s) else 0) + (if target(s) = b then amt(s) else 0)).
+    // each bucket holds between nothing and its capacity in every entry of the sequence up to the goal state
+    ! t in Step, b in Bucket: t =< cost() + 1 => 0 =< sequence(t, b) & sequence(t, b) =< capacities(b).
 
-    // the cost is the number of transfers, which is one less than the number of non-padding states
-    cost() = #{ s in Range_MAX_STEPS: ~pad(s) } - 1.
+    // the water is conserved: the total in the buckets is the total at the start (implied by the transfers; stated to help the solver)
+    ! t in Step: t =< cost() + 1 => sum{{ sequence(t, b) | b in Bucket }} = sum{{ initial_state(b) | b in Bucket }}.
+
+    // after the goal state is reached, the entries of the sequence are the padding value
+    ! t in Step, b in Bucket: t > cost() + 1 => sequence(t, b) = PADDING_VALUE().
+
+    // the objective is the number of transfers
     minimize() = cost().
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

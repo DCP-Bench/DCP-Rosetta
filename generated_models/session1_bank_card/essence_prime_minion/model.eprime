@@ -1,13 +1,29 @@
 language ESSENCE' 1.0
-$ A bank card PIN abcd is four digits, each between 0 and 9. Find the digits a, b, c, d that satisfy the facts about the PIN.
-find a, b, c, d : int(0..9)
+$ session1_bank_card: an Essence' model from DCP Rosetta.
+$
+$ A bank card has a 4-digit PIN abcd. No two digits are the same, the 2-digit number cd is 3 times the 2-digit
+$ number ab, and the 2-digit number da is 2 times the 2-digit number bc. Find the PIN.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_bank_card.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [a, b, c, d]
+$ a: first digit of the PIN (nonzero, as the PIN has 4 digits)
+find a : int(0..9)
+$ b: second digit of the PIN
+find b : int(0..9)
+$ c: third digit of the PIN
+find c : int(0..9)
+$ d: fourth digit of the PIN
+find d : int(0..9)
 
 such that
 $ no two digits are the same
 allDiff([a, b, c, d]),
+$ the PIN has 4 digits, so the first one is not zero
+a != 0,
 $ the 2-digit number cd is 3 times the 2-digit number ab
-10 * c + d = 3 * (10 * a + b),
+10*c + d = 3 * (10*a + b),
 $ the 2-digit number da is 2 times the 2-digit number bc
-10 * d + a = 2 * (10 * b + c)
+10*d + a = 2 * (10*b + c)

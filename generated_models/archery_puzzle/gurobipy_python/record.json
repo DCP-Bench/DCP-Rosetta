@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-opus-5-5 (Claude Code, model-generator campaign)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790604594.5076723,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/gurobi/python/CONTRACT.md": "64ac711159447f95a9300997cf286bacb9d20abdbf2ed49172a8ab84285a66a0"
+    },
+    "created_at": 1793803072.614617,
     "problem_id": "archery_puzzle",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1402c8e3902b3c3b86e46b423febede5526140d30e18581dd6e0faf3de62c6f8",
-    "run_id": "20260928T1148Z-gurobi-ffc0",
-    "schema": 2,
-    "skill_bundle_hash": "6a6e6df924a2c1bb358ef1a4722cbb1b4daa36e88d3a708fd8fa2645937e75ef",
-    "skill_source": "solvers\\gurobipy_python\\skills\\gurobipy",
+    "readiness_hash": "d008139638dcc84bf1d6ac4523bb6d9fcb8b5f607d6fd9b854817faf3599b60d",
+    "run_id": "gurobi-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "a7887115b4a4a2a43dbdb732e882ab1275292640",
+      "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
       "modified": false,
-      "path": "solvers/gurobipy_python/skills/gurobipy"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "37208b292bca196eb56cf0f6cee09df988466d9bcdbcf076c9e8a2e4a4e9a540",
+        "source": "solvers/gurobi/skills/dcp-gurobi",
+        "version": {
+          "commit": "e4eda1e3b9f14fbfce6dff6c81209454eac48733",
+          "modified": false,
+          "path": "solvers/gurobi/skills/dcp-gurobi"
+        }
+      }
+    ],
     "solver_id": "gurobipy_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:527fdcaef6c25d5c6452fd59bc01ebc79b913567ccf80bffbff88f9ce67ff9f0",
+      "id": "sha256:51e206b961fb980499155c874c9f1e30688aa3f972a09ea75203eb085a3f9972",
+      "recipe": "sha256:6339c09b15707929271e2c18a8c036813535fc3cbaebe2f69e403825b50f918e",
       "tag": "dcp-eval/gurobipy_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.009869700064882636,
-        "execution_wall_seconds": 1.679424799978733,
+        "checking_seconds": 0.0024915120156947523,
+        "execution_wall_seconds": 0.5342593700042926,
         "first_solution": {
           "hits": [
             2,
@@ -57,7 +82,7 @@
           "hits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6860807000193745,
+        "reference_setup_seconds": 0.2635452760150656,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -69,8 +94,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016320799943059683,
-        "execution_wall_seconds": 1.585897000040859,
+        "checking_seconds": 0.0036750659928657115,
+        "execution_wall_seconds": 0.5301451779960189,
         "first_solution": {
           "hits": [
             9,
@@ -89,7 +114,7 @@
           "hits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.1654126999201253,
+        "reference_setup_seconds": 0.30010270499042235,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -101,8 +126,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.007421699934639037,
-        "execution_wall_seconds": 2.201669799978845,
+        "checking_seconds": 0.0022377749846782535,
+        "execution_wall_seconds": 0.4300296609872021,
         "first_solution": {
           "hits": [
             1,
@@ -119,7 +144,7 @@
           "hits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.3891666000708938,
+        "reference_setup_seconds": 0.30737794400192797,
         "runner_status": {
           "detail": "",
           "status": "complete",
@@ -131,8 +156,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.014778700075112283,
-        "execution_wall_seconds": 1.7085674999980256,
+        "checking_seconds": 0.003719388972967863,
+        "execution_wall_seconds": 0.5304764450120274,
         "first_solution": {
           "hits": [
             0,
@@ -150,7 +175,7 @@
           "hits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.244677899987437,
+        "reference_setup_seconds": 0.3320251219847705,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -162,8 +187,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.011023700004443526,
-        "execution_wall_seconds": 1.6021541999652982,
+        "checking_seconds": 0.00349748000735417,
+        "execution_wall_seconds": 0.5311547630117275,
         "first_solution": {
           "hits": [
             7,
@@ -179,7 +204,7 @@
           "hits"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9481770999263972,
+        "reference_setup_seconds": 0.3078421549871564,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -193,21 +218,21 @@
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "f01a974351658d4c6094b69adeaed76e31440e20ea41fcbfe0fc167c429baa1f",
+    "model_hash": "4900bdb8214e78b2e5adc130df98ebbc45c5316c9aba340810b8a2576f5c2f91",
     "problem_id": "archery_puzzle",
     "reason": "accepted",
     "reference_hash": "d8fab01102f50bb32f4b473405f4990509909a398bb92eee8f3f0bf0e301f873",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -218,11 +243,11 @@
     "skipped_instances": [],
     "solutions_checked": 8,
     "solver_id": "gurobipy_python",
-    "total_wall_seconds": 21.857223500031978,
+    "total_wall_seconds": 5.3496622320089955,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5-5 (Claude Code, model-generator campaign)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.py",

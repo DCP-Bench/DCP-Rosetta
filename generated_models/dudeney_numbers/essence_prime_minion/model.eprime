@@ -1,16 +1,31 @@
 language ESSENCE' 1.0
-$ Dudeney number: a perfect cube, larger than 1, with at most n digits, whose digit sum equals its cube root.
-given n : int(1..)
+$ dudeney_numbers: an Essence' model from DCP Rosetta.
+$
+$ A Dudeney Number is a positive integer that is a perfect cube such that the sum of its digits is equal to the cube root of the number. Find such a number that is also larger than 1 and has at most n digits.
+$
+$ Save this file as model.eprime. Download `dudeney_numbers.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/dudeney_numbers.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `dudeney_numbers_1.param.solution`:
+$   python dcp_convert_essence.py dudeney_numbers.json
+$   savilerow model.eprime dudeney_numbers_1.param -run-solver
+
+$ n: the largest number of digits allowed (at most 10 in this model)
+given n : int(1..10)
+
+$ number: the Dudeney number found (the output): a perfect cube larger than 1 with at most n digits
 find number : int(2..10**n-1)
-$ the decimal digits of the number, the first digit is the units digit
+$ root: the cube root of number, which equals the sum of its at most n digits, so at most 9 * n
+find root : int(2..9 * n)
+$ digits[k]: digit k of number, indices 1-based with digit 1 the units digit
 find digits : matrix indexed by [int(1..n)] of int(0..9)
-$ the cube root of the number
-find root : int(2..1000)
-branching on [root, digits]
+
+branching on [root]
 such that
-$ the number is the cube of its root
+$ the number is a perfect cube: it is the cube of its root
 number = root * root * root,
-$ the digits, weighted by their place value, make up the number
+$ the digits of the number, weighted by their place value, make up the number
 number = (sum k : int(1..n) . digits[k] * 10**(k-1)),
-$ the sum of the digits equals the cube root
+$ the sum of the digits of the number is equal to its cube root
 root = (sum k : int(1..n) . digits[k])

@@ -1,15 +1,38 @@
+# devils_word: a PyCSP3 model from DCP Rosetta.
+# Download the `devils_word.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python devils_word.py devils_word.json
+
 from pycsp3 import *
 
-# put a plus or a minus sign before each number so that the signed sum is the total
-n = len(data.arr)
-arr = data.arr
 
-# result[i] is arr[i] with its sign, so it is either arr[i] or -arr[i]
-result = VarArray(size=n, dom=range(-max(arr), max(arr) + 1))
+def create_model(instance):
+    """Given an array of integers, insert '+' or '-' operators before each integer in the array
+    so that summing them up will result in a given total (666 for the devil's word)."""
+    numbers = instance["arr"]    # numbers[i]: the i-th integer of the array
+    total = instance["total"]    # the value the signed numbers must add up to
+    n_numbers = len(numbers)
 
-satisfy(
-    # each number of the array gets a plus or a minus sign
-    [Table(scope=[result[i]], supports=[(arr[i],), (-arr[i],)]) for i in range(n)],
-    # the signed numbers add up to the total
-    Sum(result) == data.total,
-)
+    # result[i] is numbers[i] with its sign: either +numbers[i] or -numbers[i]
+    result = VarArray(size=n_numbers, dom=lambda i: {-numbers[i], numbers[i]})
+
+    # The signed numbers add up to the total.
+    satisfy(Sum(result) == total)
+
+    return {"result": result}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

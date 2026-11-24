@@ -1,29 +1,65 @@
-# Guards and apples: the boy gives each of num_gates guards half of his apples plus one,
-# as a whole number of apples, and the one apple left goes to the girl.
+# session1_guards_and_apples: a SCIP (Python) model from DCP Rosetta.
+# Download the `session1_guards_and_apples.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_guards_and_apples.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python session1_guards_and_apples.py session1_guards_and_apples.json
+
 from pyscipopt import Model
 
 
-def build(instance):
-    n = instance["num_gates"]
-    m = Model()
+def create_model(instance):
+    """A boy has to give an apple to a girl. He passes a number of gates, each with a guard,
+    and bribes each guard with half of his apples plus one. A bribe must be a whole number
+    of apples, and after the last gate he has only the one apple he gives the girl, so he
+    has no apples left. Find how many apples he has before each gate and after the last one."""
+    num_gates = instance["num_gates"]  # the number of gates, each with a guard
 
-    # a[i] = number of apples before gate i (i = 0..n); a[n] is what is left after the last gate
-    # Each gate doubles the count and adds 2 going backwards, so a[0] = 3 * 2**n - 2 and fits the bound.
-    a = [m.addVar(name=f"apples_{i}", vtype="I", lb=0, ub=2 ** (n + 2)) for i in range(n + 1)]
+    model = Model("guards_and_apples")
 
-    # h[i] = half of the apples before gate i; the boy has no knife, so this is a whole number
-    h = [m.addVar(name=f"half_{i}", vtype="I", lb=0, ub=2 ** (n + 1)) for i in range(n)]
+    # The most apples he can have at any point. The equations below force apples[i] to be
+    # 3 * 2 ** (num_gates - i) - 2: going back one gate doubles the count and adds 2, starting
+    # from 1 apple after the last gate. So every count is at most 3 * 2 ** num_gates. This bound
+    # follows from the equations, not from the problem statement.
+    max_apples = 3 * 2 ** num_gates
 
-    # the apples before each gate are twice their half, so they are even
-    for i in range(n):
-        m.addCons(a[i] == 2 * h[i], name=f"even_before_gate_{i}")
+    # apples[i] is the number of apples he has before gate i, and apples[num_gates] the number
+    # he has after the last gate. A count of apples cannot be negative.
+    apples = [model.addVar(f"apples_{i}", vtype="I", lb=0, ub=max_apples) for i in range(num_gates + 1)]
 
-    # the bribe at gate i is half of his apples plus one, h[i] + 1, which leaves h[i] - 1
-    for i in range(n):
-        m.addCons(a[i + 1] == h[i] - 1, name=f"left_after_gate_{i}")
+    # bribe[i] is the number of apples he gives the guard at gate i. It is a whole number
+    # because the problem says the bribe is a whole number of apples.
+    bribe = [model.addVar(f"bribe_{i}", vtype="I", lb=0, ub=max_apples) for i in range(num_gates)]
 
-    # after the last gate he has exactly one apple left, which he gives to the girl
-    m.addCons(a[n] == 1, name="one_apple_for_girl")
+    # After the last gate he keeps only the one apple he gives the girl, so none are left.
+    model.addCons(apples[num_gates] == 1)
 
-    # number of apples before each gate, plus the number left after the last gate
-    return m, {"apples": a}
+    for i in range(num_gates):
+        # The bribe is half his apples plus one. Python's // is not available on variables, so
+        # "half" is written as 2 * bribe = apples + 2: this needs apples[i] to be even, which is
+        # the statement's requirement that the bribe is a whole number.
+        model.addCons(2 * bribe[i] == apples[i] + 2)
+
+        # He hands over the bribe and keeps the rest for the next gate.
+        model.addCons(apples[i + 1] == apples[i] - bribe[i])
+
+    return model, {"apples": apples}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

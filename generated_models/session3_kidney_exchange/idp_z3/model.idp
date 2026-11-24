@@ -1,27 +1,41 @@
-// Kidney exchange: maximize the number of people who receive a kidney in a
-// directed compatibility graph, where anyone who gives a kidney must receive one
-// and no person receives more than one kidney.
-// Row r stands for person r+1 (the compatibility rows are 0-based, person ids inside them are 1-based).
-vocabulary {
-    type Row <: Int                  // one row per person of the waiting list
-    type Slot <: Int                 // position inside a (padded) compatibility list
-    compatible: Row * Slot -> Int    // compatible[r] lists the people r+1 can donate to (0 = padding)
-    transplants: Row * Row -> Bool   // declared output: transplants[r][t] = person r+1 donates to person t+1
-    maximize: () -> Int
+// session3_kidney_exchange: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// At the hospital n people are on a waiting list for a kidney transplant. We have the information about the
+// compatibility between these people as a directed graph: compatible[i] is the set of people to which i can donate.
+// Given this information, we want to maximize the number of people that receive a new kidney: anyone who gives a
+// kidney must receive one, and no person receives more than one kidney.
+//
+// Save this file as model.idp. Download `session3_kidney_exchange.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_kidney_exchange.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session3_kidney_exchange.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type I <: Int                      // the people on the waiting list, numbered from 0
+    type S <: Int                      // positions inside a person's compatibility list, numbered from 0
+    compatible: I * S -> Int           // compatible(i, s): the person (numbered from 1, as in the data) that person i can donate to at position s; positions from compatible_len(i) on are padding
+    compatible_len: I -> Int           // compatible_len(i): the number of people that person i can donate to (created by the conversion from the ragged lists)
+    transplants: I * I -> Bool         // transplants(i, j): person i donates a kidney to person j
+    maximize: () -> Int                // the number of people who receive a kidney
 }
-theory {
-    // transplants[i][j] is 1 only if i can donate to j
-    ! r, t in Row: transplants(r, t) => ? s in Slot: compatible(r, s) = t + 1.
+theory T:V {
+    // a person donates only to a person on his or her compatibility list
+    ! i, j in I: transplants(i, j) => ? s in S: s < compatible_len(i) & compatible(i, s) = j + 1.
 
-    // each person gives at most one kidney
-    ! r in Row: #{ t in Row: transplants(r, t) } =< 1.
+    // each person donates at most one kidney
+    ! i in I: #{ j in I: transplants(i, j) } =< 1.
 
     // no person receives more than one kidney
-    ! t in Row: #{ r in Row: transplants(r, t) } =< 1.
+    ! j in I: #{ i in I: transplants(i, j) } =< 1.
 
     // anyone who gives a kidney must receive one
-    ! r in Row: (? t in Row: transplants(r, t)) => (? q in Row: transplants(q, r)).
+    ! i in I: (? j in I: transplants(i, j)) => (? k in I: transplants(k, i)).
 
-    // maximize the number of people who receive a new kidney
-    maximize() = #{ r, t in Row: transplants(r, t) }.
+    // the number of people who receive a kidney is the value to maximize
+    maximize() = #{ i, j in I: transplants(i, j) }.
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

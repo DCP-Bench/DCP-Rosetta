@@ -1,23 +1,35 @@
-% People in a room: 13 people, 4 of them male, enter a room one at a time. Choose the order
-% of men and women so that at every moment the ratio of women to men in the room is at
-% most 7/3.
+% session3_people_in_a_room: a Picat model from DCP Rosetta.
+%
+% There are 13 people. 4 of them are male. They randomly enter a room one at a time. Find a way that the males and
+% females enter so that the ratio of females to males in the room at any one time is no greater than 7/3?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session3_people_in_a_room.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
-model(Data, Vars, Outputs, Options) =>
-    TotalPeople = 13,                % people entering (fixed by the problem statement)
-    NumMales = 4,                    % how many of them are male (same)
-    % Sequence[i] = 1 if the i-th person to enter is female, 0 if male
-    Sequence = new_list(TotalPeople),
-    Sequence :: 0..1,
-    % exactly NumMales of the people are male
-    sum(Sequence) #= TotalPeople - NumMales,
-    % after each of the first 12 entrances, women to men is at most 7/3, that is
-    % 3 * women <= 7 * men (written without division, so a room with no men yet only
-    % allows no women); the full room of 13 meets the ratio on its own
-    foreach (I in 1..TotalPeople - 1)
-        FemalesSoFar #= sum([Sequence[J] : J in 1..I]),
-        3 * FemalesSoFar #=< 7 * (I - FemalesSoFar)
+model(_Data, Vars, Outputs, Options) =>
+    N = 13,                                % the number of people
+    Males = 4,                             % the number of males
+    Females = N - Males,
+    % Sex[K] = 0 when the K-th person to enter is male, 1 when female
+    Sex = new_list(N),
+    Sex :: 0..1,
+    % exactly 4 males and 9 females enter
+    sum(Sex) #= Females,
+    % at any time, the females in the room F and the males in the room M satisfy F/M =< 7/3, i.e. 3F =< 7M;
+    % with no males in the room, that means no females either
+    foreach (K in 1..N)
+        3 * sum([Sex[I] : I in 1..K]) #=< 7 * (K - sum([Sex[I] : I in 1..K]))
     end,
-    Vars = Sequence,
-    Outputs = [sequence = Sequence],
+    Vars = Sex,
+    Outputs = [sequence = Sex],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

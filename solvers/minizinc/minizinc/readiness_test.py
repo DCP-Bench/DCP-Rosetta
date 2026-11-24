@@ -8,10 +8,16 @@ keeps its output as the readiness evidence.
 Every instance field is bound as a model parameter, so each candidate below
 declares `n` and `optimize` even where it only uses one of them.
 
-`ragged_field`, `mixed_type_rows` and `unbindable_field_refused` cover the
-reshaping run.py applies to fields MiniZinc's data interface cannot take as
-they are: padded ragged rows with `<field>_len`, one array per column of
-mixed-type rows, and a clear refusal for a shape neither rule covers.
+`ragged_field`, `mixed_type_rows`, `head_and_arrays_rows` and
+`unbindable_field_refused` cover the reshaping run.py applies to fields
+MiniZinc's data interface cannot take as they are: padded ragged rows with
+`<field>_len`, one array per column of mixed-type rows, rows of a scalar
+followed by arrays (a Kakuro clue list), and a clear refusal for a shape no
+rule covers.
+
+`standalone_run` is what a reader does: run dcp_convert_mzn.py on a list of instances (the
+dataset file's form), then `minizinc model.mzn <data file>` in the image, once per file, and read a JSON
+object from each run.
 
 The isolation check differs from the Python integrations by necessity. MiniZinc
 is declarative and cannot inspect its own container, so that check drives the
@@ -148,6 +154,37 @@ MIXED = ("array[int] of string: items_1;\narray[int] of int: items_2;\n"
          r'output ["{\"score\":", show(score), ",\"named\":", show(named), "}"];' + "\n")
 MIXED_INSTANCES = [{"items": [["b", 1, [[3, 3]]], ["c", 0, [[1, 1], [2, 1], [1, 4]]], ["a", 2, []]]}]
 
+# Rows that each start with one scalar followed by arrays (Kakuro's clues
+# `[sum, [r, c], ...]`) bind as `<field>_1` (the scalars), `<field>_2` (the
+# arrays, padded) and `<field>_2_len`. The instance has to be ragged for that;
+# rows of one length bind as columns instead (see CONTRACT.md).
+HEAD_REFERENCE = """
+# Data
+clues = [[7, [1, 1], [1, 2]], [3, [2, 1]]]
+# End of data
+import cpmpy as cp
+import json
+cells = cp.intvar(0, 100, shape=len(clues), name="cells")
+weight = cp.intvar(0, 1000, shape=len(clues), name="weight")
+model = cp.Model([cells[i] == len(clue) - 1 for i, clue in enumerate(clues)],
+                 [weight[i] == clue[0] + sum(10 * r + c for r, c in clue[1:])
+                  for i, clue in enumerate(clues)])
+model.solve()
+solution = {"cells": cells.value(), "weight": weight.value()}
+print(json.dumps(solution))
+"""
+HEAD = ("array[int] of int: clues_1;\narray[int,int,int] of int: clues_2;\n"
+        "array[int] of int: clues_2_len;\n"
+        "set of int: C = index_set(clues_1);\n"
+        "array[C] of var 0..100: cells;\narray[C] of var 0..1000: weight;\n"
+        "constraint forall(i in C)(cells[i] = clues_2_len[i]);\n"
+        "constraint forall(i in C)(weight[i] = clues_1[i]"
+        " + sum(k in 1..clues_2_len[i])(10 * clues_2[i,k,1] + clues_2[i,k,2]));\n"
+        "solve satisfy;\n"
+        r'output ["{\"cells\":", show(cells), ",\"weight\":", show(weight), "}"];' + "\n")
+HEAD_INSTANCES = [{"clues": [[16, [1, 1], [1, 2]], [24, [1, 5], [1, 6], [1, 7]], [5, [3, 3]]]},
+                  {"clues": [[9, [4, 4], [4, 5], [4, 6], [4, 7]], [2, [1, 1]]]}]
+
 # A row that is ragged and mixes types at once fits neither rule; the runner
 # refuses it rather than guessing a layout.
 REFUSED_REFERENCE = """
@@ -167,7 +204,14 @@ print(json.dumps(solution))
 
 ISOLATION_PROBE = """import os, socket
 probe = socket.socket(); probe.settimeout(0.5)
-assert os.getuid() != 0, "container runs as root"
+def host_uid(uid):
+    for line in open("/proc/self/uid_map"):
+        inside, outside, count = map(int, line.split())
+        if inside <= uid < inside + count:
+            return outside + uid - inside
+# Unprivileged on the host: Docker runs as nobody; rootless podman without a subuid
+# range can only run as container root, which maps to the invoking user.
+assert os.getuid() != 0 or host_uid(0) != 0, "container has host root privilege"
 assert sorted(os.listdir("/input")) == ["model.mzn", "request.json"], "unexpected /input"
 assert not os.path.exists("/dataset"), "dataset is visible to the candidate"
 assert probe.connect_ex(("1.1.1.1", 443)) != 0, "network reachable"
@@ -177,6 +221,38 @@ except OSError:
     pass
 print("isolated")
 """
+
+
+def standalone_run(temp):
+    """The reader's path: convert a list of instances with dcp_convert_mzn.py, then run plain
+    `minizinc model.mzn data.json` on each file in the image."""
+    staging = temp / "standalone"
+    staging.mkdir()
+    (staging / "model.mzn").write_text(HEAD, encoding="utf-8")
+    (staging / "instances.json").write_text(json.dumps(HEAD_INSTANCES), encoding="utf-8")
+    code, out, err = run_process([sys.executable, str(Path(__file__).with_name("dcp_convert_mzn.py")),
+                                  str(staging / "instances.json")], 60)
+    files = sorted(staging.glob("instances_*.json"))
+    if code or len(files) != len(HEAD_INSTANCES):
+        print(err[-400:], file=sys.stderr)
+        return False
+    staging.chmod(0o755)
+    for path in staging.iterdir():
+        path.chmod(0o644)
+    for path in files:
+        code, out, err = run_process([
+            "docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+            "--user=65534:65534", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+            "--tmpfs", "/tmp:rw,exec,nosuid,size=536870912,mode=1777",
+            "--mount", f"type=bind,source={staging},target=/w,readonly",
+            "--workdir=/tmp", "--env=HOME=/tmp", "--entrypoint", "minizinc",
+            integration(SOLVER)["image"], "/w/model.mzn", f"/w/{path.name}"], 120)
+        try:
+            json.loads(out.strip().splitlines()[0])
+        except (IndexError, ValueError):
+            print(path.name, err[-400:], file=sys.stderr)
+            return False
+    return True
 
 
 def isolation(temp):
@@ -276,15 +352,20 @@ def main():
         mixed = check("mixed_type_rows", MIXED, reference=MIXED_REFERENCE,
                       instances=MIXED_INSTANCES, instance_count=2)
         results["mixed_type_rows"] &= mixed["instances_checked"] == 2
+        head = check("head_and_arrays_rows", HEAD, reference=HEAD_REFERENCE,
+                     instances=HEAD_INSTANCES, instance_count=3)
+        results["head_and_arrays_rows"] &= head["instances_checked"] == 3
         # The refusal names the field, so a model author can tell why it failed.
         refused = check("unbindable_field_refused", RAGGED, reference=REFUSED_REFERENCE,
                         expected={"execution_error"})
         results["unbindable_field_refused"] &= "Instance field `rows`" in refused.get("detail", "")
         for name, result in (("ragged_field", ragged), ("mixed_type_rows", mixed),
+                             ("head_and_arrays_rows", head),
                              ("unbindable_field_refused", refused)):
             print(name, json.dumps({key: result.get(key) for key in
                                     ("accepted", "reason", "detail", "instances_checked")}),
                   file=sys.stderr)
+        results["standalone_run"] = standalone_run(temp)
         results["isolation"] = isolation(temp)
 
     try:

@@ -1,22 +1,46 @@
-vocabulary {
-    type P <: Int
-    type R <: Int
-    max_production: () -> Int
-    capacity: R -> Int
-    renting_cost: P -> Int
-    product: P * R -> Int
-    use: P * R -> Int
-    qty: P -> Int
-    z: () -> Int
-    maximize: () -> Int
+// fixed_charge: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A company manufactures shirts, shorts and pants. Each product needs a number of hours of labor and an amount of
+// cloth, and the company has a limited capacity of both. Each product can be manufactured only by renting its own
+// machine type; the renting cost of a machine is paid once, however much is made on it. The profit on each unit of a
+// product, excluding the cost of renting the machines, is known, and each product is made in a whole number of units.
+// The company wants to maximize its profit: the profit on the units made, less the cost of the machines rented.
+//
+// Save this file as model.idp. Download `fixed_charge.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/fixed_charge.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py fixed_charge.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type P <: Int                      // the products (shirts, shorts, pants), numbered from 0
+    type A <: Int                      // the two facts about a product: 0 is its profit per unit, 1 its machine type
+    type M <: Int                      // the machine types, numbered from 0
+    type R <: Int                      // the resources (labor hours, cloth), numbered from 0
+    product: P * A -> Int              // product(p, 0): profit per unit of product p; product(p, 1): machine type of product p
+    renting_cost: M -> Int             // renting_cost(m): cost of renting machine m, paid once however much is made on it
+    use: P * R -> Int                  // use(p, r): amount of resource r needed for one unit of product p
+    capacity: R -> Int                 // capacity(r): the available amount of resource r
+    max_production: () -> Int          // the largest number of units of a product (from the data)
+    units: P -> Int                    // units(p): number of units of product p made
+    rented: M -> Bool                  // rented(m): machine m is rented
+    z: () -> Int                       // the maximum profit: profit on the units made less the renting costs
+    maximize: () -> Int                // the profit to maximize, the same as z
 }
-theory {
-    // Each product needs labor and cloth, and capacity of both is limited.
-    ! r in R: sum{{ (use(p, r) * qty(p)) | p in P }} =< capacity(r).
-    // Production is bounded.
-    ! p in P: 0 =< qty(p) & qty(p) =< max_production().
-    // Profit per unit (column 0) excludes machine rent; renting is paid only for products made.
-    z() = sum{{ (product(p, 0) * qty(p)) | p in P }} - sum{{ renting_cost(p) | p in P: qty(p) > 0 }}.
-    // Maximize profit.
+theory T:V {
+    // each product is made in a whole number of units, from none up to max_production (an upper bound the data gives and
+    // the statement does not mention)
+    ! p in P: 0 =< units(p) & units(p) =< max_production().
+    // the resources used by the units made do not exceed the capacity of each resource
+    ! r in R: sum{{ (use(p, r) * units(p)) | p in P }} =< capacity(r).
+    // a product can be made only if the machine type it needs is rented
+    ! p in P, m in M: m = product(p, 1) & units(p) > 0 => rented(m).
+    // the profit is the profit on the units made less the renting cost of the machines rented
+    z() = sum{{ (product(p, 0) * units(p)) | p in P }} - sum{{ renting_cost(m) | m in M: rented(m) }}.
+    // the total profit is the value to maximize
     maximize() = z().
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

@@ -1,17 +1,35 @@
 language ESSENCE' 1.0
-$ Balanced incomplete block design with v objects, b blocks, block size k, replication r and pair count l, given as a v by b incidence matrix.
+$ csplib_028_bibd: an Essence' model from DCP Rosetta.
+$
+$ Generate a balanced incomplete block design (BIBD) with parameters (v, b, r, k, lambda): arrange v distinct objects into b blocks so that each block contains exactly k distinct objects, each object occurs in exactly r different blocks, and every two distinct objects occur together in exactly lambda blocks. The design is given as its v by b incidence matrix, with exactly r ones per row, k ones per column, and a scalar product of lambda between any two distinct rows.
+$
+$ Save this file as model.eprime. Download `csplib_028_bibd.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_028_bibd.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_028_bibd_1.param.solution`:
+$   python dcp_convert_essence.py csplib_028_bibd.json
+$   savilerow model.eprime csplib_028_bibd_1.param -run-solver
+
+$ v: number of objects
 given v : int
+$ b: number of blocks
 given b : int
+$ r: number of blocks each object occurs in
 given r : int
+$ k: number of distinct objects in each block
 given k : int
+$ l: number of blocks in which every two distinct objects occur together (lambda)
 given l : int
-$ incidence matrix: matrix_[i,j] is true when object i is in block j
+
+$ matrix[i,j]: object i is in block j (indices 1-based; the data's index 0 is 1). Named matrix_ because matrix is an Essence' word.
 find matrix_ : matrix indexed by [int(1..v), int(1..b)] of bool
+
 branching on [matrix_]
 such that
 $ each object occurs in exactly r blocks
 forAll i : int(1..v) . ((sum j : int(1..b) . toInt(matrix_[i,j])) = r),
 $ each block contains exactly k distinct objects
 forAll j : int(1..b) . ((sum i : int(1..v) . toInt(matrix_[i,j])) = k),
-$ every two distinct objects occur together in exactly l blocks
-forAll i : int(1..v) . forAll i2 : int(1..v) . (i < i2) -> ((sum j : int(1..b) . toInt(matrix_[i,j]) * toInt(matrix_[i2,j])) = l)
+$ every two distinct objects occur together in exactly lambda blocks
+forAll i : int(1..v) . forAll i2 : int(i+1..v) . ((sum j : int(1..b) . toInt(matrix_[i,j] /\ matrix_[i2,j])) = l)

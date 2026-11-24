@@ -1,25 +1,48 @@
 language ESSENCE' 1.0
-$ Fixed-charge production planning: shirts, shorts and pants share labour and cloth capacities, and each product can only be made on its machine after the machine is rented, at a fixed cost.
-given num_products : int(1..)
-given num_machines : int(1..)
-$ product[p,1] is the profit per unit of product p and product[p,2] is the 0-based index of its machine
-given product : matrix indexed by [int(1..num_products), int(1..2)] of int(0..)
-given renting_cost : matrix indexed by [int(1..num_machines)] of int(0..)
-$ use[p,k] is the amount of resource k (1 labour, 2 cloth) used per unit of product p
-given use : matrix indexed by [int(1..num_products), int(1..2)] of int(0..)
-given capacity : matrix indexed by [int(1..2)] of int(0..)
-given max_production : int(0..)
+$ fixed_charge: an Essence' model from DCP Rosetta.
+$
+$ A company manufactures shirts, shorts and pants. Each product requires a number of hours of labour and a certain amount of cloth, and the company has a limited capacity of both. Each product can be manufactured only by renting its own machine type; the renting cost of a machine is paid once, however much is made on it. The profit on each product, per unit and excluding the cost of renting the machines, is known, and each product is made in a whole number of units. The company would like to maximise its profit: the profit on the units made, less the cost of the machines rented. The maximum profit is z.
+$
+$ Save this file as model.eprime. Download `fixed_charge.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/fixed_charge.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `fixed_charge_1.param.solution`:
+$   python dcp_convert_essence.py fixed_charge.json
+$   savilerow model.eprime fixed_charge_1.param -run-solver
 
-find x : matrix indexed by [int(1..num_products)] of int(0..max_production)
-$ y[m] is 1 when machine m is rented
-find y : matrix indexed by [int(1..num_machines)] of int(0..1)
-find z : int(-100000000..100000000)
+$ num_products: the number of products (shirts, shorts, pants)
+given num_products : int
+$ num_machines: the number of machines
+given num_machines : int
+$ max_production: the largest number of units of any product, used as the upper bound on production
+given max_production : int
+$ renting_cost[j]: the cost of renting machine j, indices 1-based
+given renting_cost : matrix indexed by [int(1..num_machines)] of int
+$ capacity_dim1: the number of resources (labour and cloth; derived from the data)
+given capacity_dim1 : int
+$ capacity[r]: the capacity of resource r, indices 1-based
+given capacity : matrix indexed by [int(1..capacity_dim1)] of int
+$ product[p,1]: profit per unit of product p; product[p,2]: machine of product p, numbered from 0 as in the data (machine 0 is machine 1)
+given product : matrix indexed by [int(1..num_products), int(1..2)] of int
+$ use[p,r]: amount of resource r needed per unit of product p
+given use : matrix indexed by [int(1..num_products), int(1..capacity_dim1)] of int
+
+$ production[p]: number of units of product p made
+find production : matrix indexed by [int(1..num_products)] of int(0..max_production)
+$ rented[j]: machine j is rented
+find rented : matrix indexed by [int(1..num_machines)] of bool
+$ z: the profit on the units made, less the cost of the machines rented
+$ every profit and rent is at most this in absolute value, so z lies within it
+letting bound = (sum p : int(1..num_products) . |product[p,1]|) * max_production + (sum j : int(1..num_machines) . |renting_cost[j]|)
+find z : int(-bound..bound)
 
 maximising z
+
 such that
-$ a product can only be produced if its machine is rented (production is bounded by the maximum when the machine is rented, and zero otherwise)
-forAll p : int(1..num_products) . (x[p] <= max_production * y[product[p,2]+1]),
-$ the labour and cloth used by all products must stay within the labour and cloth capacity
-forAll k : int(1..2) . ((sum p : int(1..num_products) . use[p,k] * x[p]) <= capacity[k]),
-$ the profit is the profit from the products minus the cost of renting the machines
-z = ((sum p : int(1..num_products) . product[p,1] * x[p]) - (sum m : int(1..num_machines) . renting_cost[m] * y[m]))
+$ the labour and cloth used by the units made do not exceed the capacity of each resource
+forAll r : int(1..capacity_dim1) . (sum p : int(1..num_products) . use[p,r] * production[p]) <= capacity[r],
+$ a product can be made only when its machine is rented
+forAll p : int(1..num_products) . (production[p] > 0 -> rented[product[p,2] + 1]),
+$ z is the profit on the units made less the renting cost of each machine rented once
+z = (sum p : int(1..num_products) . product[p,1] * production[p]) - (sum j : int(1..num_machines) . renting_cost[j] * toInt(rented[j]))

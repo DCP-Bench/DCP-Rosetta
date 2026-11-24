@@ -1,23 +1,35 @@
-// Bus scheduling: minimise the number of buses so that every 4-hour slot
-// has enough buses on the road. Each bus runs 8 successive hours (two slots),
-// and the day wraps around, so the last slot hands over to the first.
-vocabulary {
-    type I <: Int                  // time slots, sized from demands
-    demands: I -> Int              // demand for buses in each slot
-    x: I -> Int                    // declared output: buses starting in each slot
-    minimize: () -> Int
-    z: () -> Int
+// bus_scheduling: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A city considers a mass-transit bus system to reduce in-city driving. The demand for buses is constant over successive
+// 4-hour intervals of a cyclic day, and each bus operates 8 successive hours, so a bus starting in one interval also
+// works in the next one. The number of buses available in each 4-hour interval, those starting in it and those that
+// started in the interval before, must meet the demand for that interval. Find the minimum total number of buses.
+//
+// Save this file as model.idp. Download `bus_scheduling.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/bus_scheduling.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py bus_scheduling.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type I <: Int                      // the 4-hour intervals of the day, numbered from 0, sized from demands
+    demands: I -> Int                  // demands(i): the demand for buses in interval i
+    x: I -> Int                        // x(i): the number of buses that start in interval i (the output)
+    minimize: () -> Int                // the total number of buses
 }
-theory {
-    // no negative number of buses starts in a slot
+
+theory T:V {
+    // the number of buses starting in each interval is not negative
     ! i in I: x(i) >= 0.
+    // the buses available in interval j are those starting in j and those starting in the interval before j;
+    // the day is cyclic, so the interval before interval 0 is the last one
+    ! j in I: x(j) + sum{{ x(i) | i in I: (i + 1) % #{ k in I: true } = j }} >= demands(j).
+    // the total number of buses is to be minimal
+    minimize() = sum{{ x(i) | i in I }}.
+}
 
-    // the buses on the road in slot i are those starting in slot i and those
-    // starting in the previous slot (wrapping from the first slot to the last),
-    // and that count must meet the demand of slot i
-    ! i, j in I: ((i = j + 1 | (i = 0 & ~(? k in I: k = j + 1))) => x(i) + x(j) >= demands(i)).
-
-    // total number of buses
-    z() = sum{{ x(i) | i in I }}.
-    minimize() = z().
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

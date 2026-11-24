@@ -1,16 +1,34 @@
-vocabulary {
-    type Pos <: Int
-    Pos_size: () -> Int
-    num_gates: () -> Int
-    apples: Pos -> Int
+// session1_guards_and_apples: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A boy wants to give an apple to a girl. To get to her, he has to pass through a number of gates, each with a guard.
+// He bribes each guard with half of his apples, plus one. The boy does not have a knife, therefore he gives the guard
+// an integer number of apples. After he's given the apple to the girl, he has no apples left, so he has exactly one
+// apple after the last gate.
+//
+// Save this file as model.idp. Download `session1_guards_and_apples.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_guards_and_apples.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session1_guards_and_apples.json
+//   idp-engine model_1.idp
+vocabulary V {
+    num_gates: () -> Int               // the number of gates
+    Stage_size: () -> Int              // the number of positions of the apple count: num_gates + 1 (created by the conversion's rules)
+    type Stage <: Int                  // the positions of the apple count, numbered from 1: before gate 1, ..., before gate num_gates, after the last gate
+    apples: Stage -> Int               // apples(s): the number of apples the boy has at position s
 }
-theory {
-    Pos_size() = num_gates() + 1.
-    // apples[i] is the number before gate i (1-based position); the last is after the last gate
-    ! i in Pos: 1 =< apples(i) & apples(i) =< 100000.
-    // he bribes each guard with half of his apples plus one; the integer number of apples means the count is even
-    ! i in Pos: i =< num_gates() => apples(i) % 2 = 0.
-    ! i in Pos: i =< num_gates() => apples(i + 1) = apples(i) / 2 - 1.
-    // after giving the apple to the girl he has none left, so he holds one apple after the last gate
-    ! i in Pos: i = num_gates() + 1 => apples(i) = 1.
+theory T:V {
+    // there is one position for each gate, and one more for after the last gate
+    Stage_size() = num_gates() + 1.
+    // at each gate the boy gives the guard half of his apples plus one, a whole number of apples, so his apples before
+    // the gate are twice the apples he has left after it plus two
+    ! g in Stage: ! h in Stage: (h = g + 1 & g =< num_gates()) => apples(g) = 2 * apples(h) + 2.
+    // after the last gate the boy has exactly one apple
+    ! s in Stage: (s = num_gates() + 1) => apples(s) = 1.
+    // the boy never has a negative number of apples
+    ! s in Stage: apples(s) >= 0.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

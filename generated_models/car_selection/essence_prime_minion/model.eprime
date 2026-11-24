@@ -1,15 +1,34 @@
 language ESSENCE' 1.0
-$ Assign participants to cars, each participant to at most one car and each car to at most one participant, only along the interests given in the instance, maximising the number of assignments.
-given possible_assignments_dim1, possible_assignments_dim2 : int(1..)
+$ car_selection: an Essence' model from DCP Rosetta.
+$
+$ Assign participants to cars so as to maximise the total number of assignments. Each participant may be interested in a subset of the available cars. Each participant is assigned to at most one car, and each car is assigned to at most one participant.
+$
+$ Save this file as model.eprime. Download `car_selection.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/car_selection.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `car_selection_1.param.solution`:
+$   python dcp_convert_essence.py car_selection.json
+$   savilerow model.eprime car_selection_1.param -run-solver
+
+$ number of participants and number of cars, derived from the data: the row count and the row length of possible_assignments (not fields of the reader's JSON)
+given possible_assignments_dim1 : int(1..)
+given possible_assignments_dim2 : int(1..)
+$ possible_assignments[i,j]: 1 if participant i is interested in car j, 0 otherwise, indices 1-based
 given possible_assignments : matrix indexed by [int(1..possible_assignments_dim1), int(1..possible_assignments_dim2)] of int(0..1)
+
+$ assignments[i,j]: participant i is assigned to car j
 find assignments : matrix indexed by [int(1..possible_assignments_dim1), int(1..possible_assignments_dim2)] of bool
+$ total: the number of assignments made, which is maximised
+find total : int(0..possible_assignments_dim1 * possible_assignments_dim2)
 
-maximising (sum i : int(1..possible_assignments_dim1) . sum j : int(1..possible_assignments_dim2) . assignments[i,j])
-
+maximising total
 such that
+$ the total is the number of participant-car pairs that are assigned
+total = (sum i : int(1..possible_assignments_dim1) . sum j : int(1..possible_assignments_dim2) . toInt(assignments[i,j])),
+$ a participant is assigned only to a car that participant is interested in
+forAll i : int(1..possible_assignments_dim1) . forAll j : int(1..possible_assignments_dim2) . assignments[i,j] -> possible_assignments[i,j] = 1,
 $ each participant is assigned to at most one car
-forAll i : int(1..possible_assignments_dim1) . (sum j : int(1..possible_assignments_dim2) . assignments[i,j]) <= 1,
+forAll i : int(1..possible_assignments_dim1) . (sum j : int(1..possible_assignments_dim2) . toInt(assignments[i,j])) <= 1,
 $ each car is assigned to at most one participant
-forAll j : int(1..possible_assignments_dim2) . (sum i : int(1..possible_assignments_dim1) . assignments[i,j]) <= 1,
-$ a participant can only be assigned to a car they are interested in (possible_assignments[i,j] = 1)
-forAll i : int(1..possible_assignments_dim1) . forAll j : int(1..possible_assignments_dim2) . (assignments[i,j] -> (possible_assignments[i,j] = 1))
+forAll j : int(1..possible_assignments_dim2) . (sum i : int(1..possible_assignments_dim1) . toInt(assignments[i,j])) <= 1

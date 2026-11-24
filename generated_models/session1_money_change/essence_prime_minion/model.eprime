@@ -1,19 +1,33 @@
 language ESSENCE' 1.0
-$ Compose the change of the given amount from the available coins, using as few coins as possible.
+$ session1_money_change: an Essence' model from DCP Rosetta.
+$
+$ Alice has to give Bob some change. She has different types of coins of different values, and a certain
+$ number of coins of each type available. Compose the change from the available coins so that the number of coins used is
+$ as small as possible.
+$
+$ Save this file as model.eprime. Download `session1_money_change.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_money_change.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session1_money_change_1.param.solution`:
+$   python dcp_convert_essence.py session1_money_change.json
+$   savilerow model.eprime session1_money_change_1.param -run-solver
+
+$ amount: the amount of change to give, in the same units as the coin values
+given amount : int(0..)
+$ types_of_coins_dim1: the number of coin types (derived from the data)
 given types_of_coins_dim1 : int
+$ types_of_coins[i]: the value of coin type i (indices from 1)
 given types_of_coins : matrix indexed by [int(1..types_of_coins_dim1)] of int(1..)
+$ available_coins[i]: the number of coins of type i that Alice has
 given available_coins : matrix indexed by [int(1..types_of_coins_dim1)] of int(0..)
-given amount : int
+
+$ coin_counts[i]: the number of coins of type i given to Bob (indices from 1)
 find coin_counts : matrix indexed by [int(1..types_of_coins_dim1)] of int(0..amount)
-find total_coins : int(0..amount)
 
-branching on [coin_counts]
-
-minimising total_coins
+minimising (sum i : int(1..types_of_coins_dim1) . coin_counts[i])
 such that
-$ no more coins of each type are given than are available
+$ Alice cannot give more coins of a type than she has
 forAll i : int(1..types_of_coins_dim1) . coin_counts[i] <= available_coins[i],
-$ the coins given must add up to the amount of change
-(sum i : int(1..types_of_coins_dim1) . coin_counts[i] * types_of_coins[i]) = amount,
-$ the number of coins used is the total of the counts of each type
-total_coins = (sum i : int(1..types_of_coins_dim1) . coin_counts[i])
+$ the coins given add up to the amount of change
+(sum i : int(1..types_of_coins_dim1) . coin_counts[i] * types_of_coins[i]) = amount

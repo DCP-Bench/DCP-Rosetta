@@ -1,57 +1,74 @@
-% Golomb rulers (CSPLib 006): place m marks 0 = a_1 < a_2 < ... < a_m so that
-% all m(m-1)/2 pairwise differences are distinct; minimise the length a_m.
-% Outputs: length (a_m) and marks (the list a_1..a_m).
+% csplib_006_golomb_rulers: an ECLiPSe model from DCP Rosetta.
+%
+% Golomb ruler: a set of m integers 0 = a_1 < a_2 < ... < a_m such that the m(m-1)/2 differences
+% a_j - a_i, for 1 <= i < j <= m, are all distinct. Such a ruler contains m marks and has length
+% a_m. Find an optimal ruler, one of minimum length.
+%
+% Save this file as model.ecl. Download `csplib_006_golomb_rulers.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_006_golomb_rulers.json
+%   eclipse -b model.ecl -e "run('csplib_006_golomb_rulers_1.dat'), halt"
+
+% Field read from the data: size (the number of marks m of the ruler).
 
 :- lib(ic).
+:- lib(listut).
 
-model(Instance, Marks, [length-Len, marks-Marks], min(Len)) :-
-    memberchk(size-N, Instance),
-    % the ruler length is at most N*N for every size in the data
-    Max is N * N,
-    length(Marks, N),
-    Marks :: 0..Max,
-    % the first mark is at position 0
-    Marks = [0|_],
-    % the marks are strictly increasing
-    increasing(Marks),
-    final_element(Marks, Len),
-    % all differences between pairs of marks are distinct
-    differences(Marks, Diffs),
-    all_different_pairs(Diffs).
+model(Instance, Vars, ['length'-Length, 'marks'-Marks], min(Length)) :-
+    memberchk(size-M, Instance),
+    % the marks are positions in increasing order; M*M is an upper bound on the length of an optimal ruler with M marks (not given by the statement)
+    length(Marks, M),
+    Marks :: 0..M*M,
+    nth1(1, Marks, First),
+    First #= 0,
+    Last is M - 1,
+    ( for(I, 1, Last), param(Marks) do
+        I1 is I + 1,
+        nth1(I, Marks, Before),
+        nth1(I1, Marks, After),
+        Before #< After
+    ),
+    % the differences between every pair of marks are all distinct
+    ( for(Left, 1, Last), foreach(DiffRow, DiffRows), param(Marks, M) do
+        Start is Left + 1,
+        ( for(Right, Start, M), foreach(Diff, DiffRow), param(Marks, Left) do
+            nth1(Left, Marks, Ai),
+            nth1(Right, Marks, Aj),
+            Diff #= Aj - Ai
+        )
+    ),
+    flatten(DiffRows, Diffs),
+    alldifferent(Diffs),
+    % the length of the ruler is the position of its last mark, to be minimized
+    nth1(M, Marks, Length),
+    Vars = Marks.
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
+:- lib(branch_and_bound).
 
-% the last element of a list
-final_element([X], X).
-final_element([_|T], X) :-
-    final_element(T, X).
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
 
-% the marks are strictly increasing
-increasing([_]).
-increasing([A, B|Rest]) :-
-    A #< B,
-    increasing([B|Rest]).
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
 
-% every pairwise difference a_j - a_i with i < j
-differences([], []).
-differences([X|Xs], Ds) :-
-    diffs_from(X, Xs, D1),
-    differences(Xs, D2),
-    append(D1, D2, Ds).
-
-diffs_from(_, [], []).
-diffs_from(X, [Y|Ys], [D|Ds]) :-
-    D #= Y - X,
-    diffs_from(X, Ys, Ds).
-
-% the differences are all distinct
-all_different_pairs([]).
-all_different_pairs([D|Ds]) :-
-    distinct_from(D, Ds),
-    all_different_pairs(Ds).
-
-distinct_from(_, []).
-distinct_from(D, [E|Es]) :-
-    D #\= E,
-    distinct_from(D, Es).
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

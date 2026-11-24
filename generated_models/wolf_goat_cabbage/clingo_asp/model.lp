@@ -1,40 +1,64 @@
-% Wolf, goat and cabbage: a farmer ferries a wolf, a goat and a cabbage across
-% a river in a boat that carries the farmer and at most one item. The wolf must
-% never be left alone with the goat, nor the goat with the cabbage. The answer
-% lists, for each stage, which shore (0 = start, 1 = destination) each item and
-% the boat are on.
-steps(0..S-1) :- stage(S).
+% wolf_goat_cabbage: a clingo model from DCP Rosetta.
+%
+% The wolf, goat and cabbage problem is a river crossing puzzle. It dates back to at least the 9th century, and has
+% entered the folklore of several cultures.
+%
+% The story: A farmer with a wolf, a goat, and a cabbage must cross a river by boat. The boat can carry only the farmer
+% and a single item. If left unattended together, the wolf would eat the goat, or the goat would eat the cabbage. How can
+% they cross the river without anything being eaten?
+%
+% The crossing takes the given number of stages. At the first stage everything is on the starting shore, at the last
+% stage everything is on the destination shore, and the boat, with the farmer, changes shore from each stage to the next.
+%
+% Save this file as model.lp. Download `wolf_goat_cabbage.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/wolf_goat_cabbage.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py wolf_goat_cabbage.json
+%   python -m clingo model.lp wolf_goat_cabbage_1.lp
+%
+% Input: stage(S) holds the number S of stages. A shore is 0 for the starting shore and 1 for the destination shore.
 
-% Each item and the boat is on one of the two shores at every stage.
-1 { wolf_pos(I,P) : P = 0..1 } 1 :- steps(I).
-1 { goat_pos(I,P) : P = 0..1 } 1 :- steps(I).
-1 { cabbage_pos(I,P) : P = 0..1 } 1 :- steps(I).
-1 { boat_pos(I,P) : P = 0..1 } 1 :- steps(I).
+step(0..S - 1) :- stage(S).
+last(S - 1) :- stage(S).
 
-% Everything starts on the first shore ...
-:- wolf_pos(0,1).
-:- goat_pos(0,1).
-:- cabbage_pos(0,1).
-:- boat_pos(0,1).
-% ... and ends on the far shore.
-:- stage(S), wolf_pos(S-1,0).
-:- stage(S), goat_pos(S-1,0).
-:- stage(S), cabbage_pos(S-1,0).
-:- stage(S), boat_pos(S-1,0).
+% at each stage the wolf, goat, cabbage and boat are each on one shore
+1 { wolf_pos(T, P) : P = 0..1 } 1 :- step(T).
+1 { goat_pos(T, P) : P = 0..1 } 1 :- step(T).
+1 { cabbage_pos(T, P) : P = 0..1 } 1 :- step(T).
+1 { boat_pos(T, P) : P = 0..1 } 1 :- step(T).
 
-% The boat crosses the river at every stage.
-:- steps(I), steps(I-1), boat_pos(I,P), boat_pos(I-1,P).
+% at the first stage everything is on the starting shore
+:- wolf_pos(0, 1).
+:- goat_pos(0, 1).
+:- cabbage_pos(0, 1).
+:- boat_pos(0, 1).
 
-% The wolf and the goat are never alone together: if they share a shore the boat is there too.
-:- steps(I), wolf_pos(I,P), goat_pos(I,P), boat_pos(I,B), B != P.
-% The goat and the cabbage are never alone together.
-:- steps(I), goat_pos(I,P), cabbage_pos(I,P), boat_pos(I,B), B != P.
+% at the last stage everything is on the destination shore
+:- last(T), wolf_pos(T, 0).
+:- last(T), goat_pos(T, 0).
+:- last(T), cabbage_pos(T, 0).
+:- last(T), boat_pos(T, 0).
 
-% At most one of the wolf, goat and cabbage changes shore between two stages.
-moved(I,wolf) :- steps(I), steps(I+1), wolf_pos(I,A), wolf_pos(I+1,B), A != B.
-moved(I,goat) :- steps(I), steps(I+1), goat_pos(I,A), goat_pos(I+1,B), A != B.
-moved(I,cabbage) :- steps(I), steps(I+1), cabbage_pos(I,A), cabbage_pos(I+1,B), A != B.
-:- steps(I), #count { X : moved(I,X) } > 1.
+% the boat, with the farmer, changes shore from each stage to the next
+:- boat_pos(T, P), boat_pos(T + 1, P), step(T + 1).
+
+% the wolf, goat or cabbage can change shore only when the boat leaves from the shore it is on
+:- wolf_pos(T, P), wolf_pos(T + 1, Q), P != Q, boat_pos(T, R), R != P.
+:- goat_pos(T, P), goat_pos(T + 1, Q), P != Q, boat_pos(T, R), R != P.
+:- cabbage_pos(T, P), cabbage_pos(T + 1, Q), P != Q, boat_pos(T, R), R != P.
+
+% the boat carries the farmer and at most a single item
+moving(T, wolf) :- wolf_pos(T, P), wolf_pos(T + 1, Q), P != Q.
+moving(T, goat) :- goat_pos(T, P), goat_pos(T + 1, Q), P != Q.
+moving(T, cabbage) :- cabbage_pos(T, P), cabbage_pos(T + 1, Q), P != Q.
+:- step(T), #count { I : moving(T, I) } > 1.
+
+% the wolf would eat the goat if they are on one shore, unattended by the farmer
+:- wolf_pos(T, P), goat_pos(T, P), boat_pos(T, Q), Q != P.
+
+% the goat would eat the cabbage if they are on one shore, unattended by the farmer
+:- goat_pos(T, P), cabbage_pos(T, P), boat_pos(T, Q), Q != P.
 
 #show wolf_pos/2.
 #show goat_pos/2.

@@ -1,22 +1,43 @@
-% Devil's word: put a plus or minus sign in front of every number of a list so
-% that the signed numbers add up to the given total.
+% devils_word: a Picat model from DCP Rosetta.
+%
+% Given an array of integers, insert a '+' or a '-' sign before each integer so that the signed integers sum
+% to a given total.
+%
+% Save this file as model.pi. Download `devils_word.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py devils_word.json
+%   picat model.pi devils_word_1.dat
+
+% Data.get(arr): the integers, a list indexed from 1; Data.get(total): the total the signed integers must sum to.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     Arr = Data.get(arr),
     Total = Data.get(total),
-    N = len(Arr),
-    % plus[i] = 1 when arr[i] is added, 0 when it is subtracted
-    Plus = new_list(N),
-    Plus :: 0..1,
-    % result[i] = arr[i] with its sign
-    Result = new_list(N),
+    N = len(Arr),                         % the number of integers
+    Sign = new_list(N),                   % Sign[I] = 1 for a '+' before integer I, -1 for a '-'
+    Sign :: [-1, 1],
+    Result = new_list(N),                 % Result[I] is integer I with its sign
     foreach (I in 1..N)
-        Result[I] :: [-Arr[I], Arr[I]],
-        Result[I] #= Arr[I] * (2 * Plus[I] - 1)
+        Result[I] #= Sign[I] * Arr[I]
     end,
-    % the signed numbers add up to the total
+    % the signed integers sum to the total
     sum(Result) #= Total,
-    Vars = Plus,
+    Vars = Sign,
     Outputs = [result = Result],
-    Options = [].
+    Options = [].                         % satisfaction: no objective
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

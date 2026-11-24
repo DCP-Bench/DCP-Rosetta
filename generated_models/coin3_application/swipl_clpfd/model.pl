@@ -1,64 +1,63 @@
+% coin3_application: a SWI-Prolog model from DCP Rosetta.
+%
+% Find the minimum number of coins, of the given denominations, that allow one to pay exactly any amount smaller than
+% a given maximum amount.
+%
+% Save this file as model.pl. Download `coin3_application.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('coin3_application.json')" -t halt model.pl
+%
+% Data fields: denominations (the value of each kind of coin, lists indexed from 0), max_amount_to_pay (every
+% amount from 1 up to one less than this must be payable).
 :- use_module(library(clpfd)).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
-:- use_module(library(yall)).
 
-% Coins: find the fewest coins, of the given denominations, that allow paying
-% exactly any amount from 1 up to just below a given maximum.
 model(Instance, Vars, [x-X], min(NumCoins)) :-
-    Denominations = Instance.denominations,       % coin values
-    MaxAmount = Instance.max_amount_to_pay,       % amounts 1..MaxAmount-1 must be payable
-
-    % X[i] = number of coins of denomination i in the purse
-    length(Denominations, N),
-    length(X, N),
-    X ins 0..MaxAmount,
-
-    % the number of coins in the purse, which is minimised
-    NumCoins in 0..MaxAmount,
+    Denominations = Instance.denominations,
+    MaxAmount = Instance.max_amount_to_pay,
+    length(Denominations, K),              % the number of kinds of coin
+    Last is MaxAmount - 1,                 % the largest amount that must be payable
+    % X[I] = number of coins of kind I in the purse; a purse never needs more than Last coins of one kind
+    length(X, K),
+    X ins 0..Last,
+    % the number of coins in the purse, to be minimised
     sum(X, #=, NumCoins),
+    % every amount from 1 to Last can be paid with the coins of the purse
+    numlist(1, Last, Amounts),
+    maplist(payable(Denominations, X), Amounts, Uses),
+    append(Uses, UseVars),
+    append([[NumCoins], X, UseVars], Vars).
 
-    % Every amount from 1 to MaxAmount-1 can be paid with the purse. Instead of
-    % choosing the coins that pay each amount (which makes the same purse appear
-    % once per way of paying, and the search backtrack over those ways), the
-    % payable amounts are computed from the purse one denomination at a time:
-    % Reachable[s] is 1 when amount s can be paid with the denominations seen so
-    % far. Nothing in it is a free choice, so each purse is found only once.
-    Last is MaxAmount - 1,
-    numlist(0, Last, Amounts),
-    maplist([S, Flag]>>(S =:= 0 -> Flag = 1 ; Flag = 0), Amounts, Reachable0),
-    foldl(add_denomination(MaxAmount), Denominations, X, Reachable0-[], Reachable-Used),
-    Reachable = [_|MustPay],
-    maplist(=(1), MustPay),
-    append(Used, UsedVars),
-    append(X, [NumCoins|UsedVars], Vars).
+% Amount can be paid from the purse X: Used[I] coins of kind I, no more than the purse holds, add up to Amount
+payable(Denominations, X, Amount, Used) :-
+    length(X, K),
+    length(Used, K),
+    Used ins 0..Amount,
+    maplist(#=<, Used, X),
+    scalar_product(Denominations, Used, #=, Amount).
 
-% Pay with one more denomination. Reachable0[s] says whether s is payable
-% without it, Count is the number of coins of this denomination in the purse.
-% Used[s] is the fewest coins of this denomination needed to pay s, or -1 when
-% s cannot be paid with them: 0 if s was payable already, otherwise one more
-% than for s - Denomination, as long as that stays within Count.
-add_denomination(MaxAmount, Denomination, Count, Reachable0-Used0, Reachable-[Used|Used0]) :-
-    length(Reachable0, Length),
-    length(Used, Length),
-    MinusOne is -1,
-    Used ins MinusOne..MaxAmount,
-    Last is Length - 1,
-    numlist(0, Last, Amounts),
-    maplist(used_coins(Reachable0, Used, Denomination, Count), Amounts),
-    maplist([U, Flag]>>(Flag #<==> (U #>= 0)), Used, Reachable).
+:- use_module(library(http/json)).
 
-used_coins(Reachable0, Used, Denomination, Count, Amount) :-
-    nth0(Amount, Reachable0, Before),
-    nth0(Amount, Used, U),
-    (   Amount >= Denomination
-    ->  Back is Amount - Denomination,
-        nth0(Back, Used, UBack),
-        Before #= 1 #==> U #= 0,
-        (Before #= 0 #/\ UBack #>= 0 #/\ UBack #< Count) #==> U #= UBack + 1,
-        (Before #= 0 #/\ #\ (UBack #>= 0 #/\ UBack #< Count)) #==> U #= -1
-    ;   U #= Before - 1
-    ).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-% Decide the purse first, in order of denomination; the payable amounts follow.
-labeling_options([leftmost]).
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

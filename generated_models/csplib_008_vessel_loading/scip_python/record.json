@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791984988.4162097,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793721768.1920996,
     "problem_id": "csplib_008_vessel_loading",
     "profile": {
       "compilation_timeout": 120,
@@ -14,49 +18,70 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "647f43df878d2ae8aee7967a37c7d6f37fa7499711a8cde50ba9d3e3e3ff985e",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.02123728400329128,
-        "execution_wall_seconds": 0.8027219640207477,
+        "checking_seconds": 0.007077781017869711,
+        "execution_wall_seconds": 0.7773028840019833,
         "first_solution": {
           "bottom": [
+            0,
+            1,
+            1
+          ],
+          "left": [
             0,
             0,
             2
           ],
-          "left": [
-            4,
-            0,
-            0
-          ],
           "right": [
             5,
-            4,
-            4
+            2,
+            5
           ],
           "top": [
+            1,
             5,
-            2,
             5
           ]
         },
@@ -72,9 +97,12 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7298102430067956,
+        "reference_setup_seconds": 0.35086639499058947,
         "runner_status": {
+          "build_seconds": 0.006705918000079691,
           "detail": "",
+          "main_seconds": 0.012565193988848478,
+          "read_seconds": 0.0001613719796296209,
           "status": "limit",
           "type": "status"
         },
@@ -84,56 +112,56 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.071148736984469,
-        "execution_wall_seconds": 37.467638111964334,
+        "checking_seconds": 0.03633627001545392,
+        "execution_wall_seconds": 51.57098031399073,
         "first_solution": {
           "bottom": [
+            4,
+            4,
+            12,
+            12,
+            12,
+            8,
+            0,
+            0,
+            4,
+            10
+          ],
+          "left": [
             6,
             0,
             8,
             0,
             4,
             0,
-            12,
-            12,
             0,
-            6
-          ],
-          "left": [
-            4,
-            4,
-            12,
-            12,
-            12,
             8,
-            8,
-            0,
-            0,
-            0
+            12,
+            12
           ],
           "right": [
             12,
-            8,
-            16,
-            16,
-            16,
+            6,
             12,
-            16,
-            8,
             4,
-            4
+            8,
+            6,
+            8,
+            16,
+            16,
+            16
           ],
           "top": [
             12,
-            6,
+            8,
+            16,
+            16,
+            16,
             12,
             4,
-            8,
-            6,
-            16,
-            16,
-            6,
-            12
+            4,
+            10,
+            16
           ]
         },
         "id": "json:1",
@@ -148,9 +176,12 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8071668189950287,
+        "reference_setup_seconds": 1.126085455995053,
         "runner_status": {
+          "build_seconds": 0.00904959999024868,
           "detail": "",
+          "main_seconds": 50.81394042700413,
+          "read_seconds": 0.00017335900338366628,
           "status": "limit",
           "type": "status"
         },
@@ -160,56 +191,56 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.06704987701959908,
-        "execution_wall_seconds": 9.532275634992402,
+        "checking_seconds": 0.03919746199971996,
+        "execution_wall_seconds": 3.7439209159929305,
         "first_solution": {
           "bottom": [
             4,
+            10,
+            4,
+            12,
             8,
-            0,
+            10,
             0,
             0,
             4,
-            12,
-            12,
-            6,
-            0
+            10
           ],
           "left": [
             4,
-            10,
+            8,
+            0,
+            0,
+            0,
             4,
+            8,
+            0,
             12,
-            8,
-            10,
-            8,
-            0,
-            0,
-            0
+            12
           ],
           "right": [
+            12,
+            12,
+            4,
+            4,
+            4,
+            8,
+            16,
+            8,
+            16,
+            16
+          ],
+          "top": [
             10,
             16,
             8,
             16,
             12,
             16,
-            16,
-            8,
-            4,
-            4
-          ],
-          "top": [
-            12,
-            12,
             4,
             4,
-            4,
-            8,
-            16,
-            16,
-            12,
-            6
+            10,
+            16
           ]
         },
         "id": "json:2",
@@ -224,9 +255,12 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9385843069758266,
+        "reference_setup_seconds": 0.47029087800183333,
         "runner_status": {
+          "build_seconds": 0.009334613016108051,
           "detail": "",
+          "main_seconds": 3.0118772669811733,
+          "read_seconds": 0.00016972198500297964,
           "status": "limit",
           "type": "status"
         },
@@ -236,27 +270,27 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01293821498984471,
-        "execution_wall_seconds": 0.8334326119511388,
+        "checking_seconds": 0.006906285008881241,
+        "execution_wall_seconds": 0.737893094017636,
         "first_solution": {
           "bottom": [
             0,
             0,
-            0
+            3
           ],
           "left": [
             6,
-            3,
+            0,
             0
           ],
           "right": [
             10,
             6,
-            3
+            6
           ],
           "top": [
             6,
-            6,
+            3,
             6
           ]
         },
@@ -272,9 +306,12 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7134562960127369,
+        "reference_setup_seconds": 0.39160756999626756,
         "runner_status": {
+          "build_seconds": 0.007219008984975517,
           "detail": "",
+          "main_seconds": 0.012458609999157488,
+          "read_seconds": 0.00017185299657285213,
           "status": "limit",
           "type": "status"
         },
@@ -284,39 +321,39 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.03266046498902142,
-        "execution_wall_seconds": 0.9025696350145154,
+        "checking_seconds": 0.053335801989305764,
+        "execution_wall_seconds": 1.0351143190055154,
         "first_solution": {
           "bottom": [
+            0,
             4,
             0,
             0,
             6,
-            0,
             3
           ],
           "left": [
+            5,
+            5,
+            9,
             0,
             0,
-            4,
-            8,
-            8,
-            8
+            0
           ],
           "right": [
-            4,
-            4,
-            6,
+            9,
+            9,
             11,
-            11,
-            10
+            3,
+            3,
+            2
           ],
           "top": [
-            8,
             4,
-            6,
             8,
+            6,
             2,
+            8,
             5
           ]
         },
@@ -332,9 +369,12 @@
           "bottom"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9079522340325639,
+        "reference_setup_seconds": 0.42192459202487953,
         "runner_status": {
+          "build_seconds": 0.007811099989339709,
           "detail": "",
+          "main_seconds": 0.26314994000131264,
+          "read_seconds": 0.0001766319910530001,
           "status": "limit",
           "type": "status"
         },
@@ -352,15 +392,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "6265f87534867548c82697541a5b821ab1d2474e96e8d60b6b9f69baf079b3f4",
+    "model_hash": "ecad470333b0ec496eb3162b7d7f06f77c1a63b4e136e734550b7852f297c5b5",
     "problem_id": "csplib_008_vessel_loading",
     "reason": "accepted",
     "reference_hash": "57f871089ad0f43642d8d4362fe4aa82c5cc2d647921c4ee8223fe5e70650734",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -371,11 +411,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "scip_python",
-    "total_wall_seconds": 55.31683468504343,
+    "total_wall_seconds": 61.96523193799658,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

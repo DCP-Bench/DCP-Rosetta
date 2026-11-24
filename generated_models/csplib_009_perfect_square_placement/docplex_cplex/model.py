@@ -1,15 +1,20 @@
-"""Perfect square placement: pack squares of given sizes into a big square without overlap.
+# csplib_009_perfect_square_placement: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_009_perfect_square_placement.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_009_perfect_square_placement.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_009_perfect_square_placement.py csplib_009_perfect_square_placement.json
 
-The squares are axis-parallel with integer corners, and their areas add up to the area of
-the big square, so the packing leaves no gap. The model places every square.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Perfect square placement: pack squares with given integer sizes into a bigger square so
+    that no squares overlap and all square borders are parallel to the border of the big square.
+    The squares' areas add up to the big square's, so there is no spare room."""
     base = instance["base"]    # side length of the big square
     sides = instance["sides"]  # side lengths of the small squares
-    n = len(sides)
+    n = len(sides)  # number of small squares
 
     model = Model("perfect_square_placement")
 
@@ -36,3 +41,25 @@ def build(instance):
             model.add_constraint(y_coords[b] + sides[b] - y_coords[a] <= base * (2 - p - q))
 
     return model, {"x_coords": x_coords, "y_coords": y_coords}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

@@ -1,51 +1,76 @@
 language ESSENCE' 1.0
-$ Cryptarithmetic puzzle: the 20-letter word BAIJJAJIIAHFCFEBBJEA plus the 20-letter word DHFGABCDIDBIFFAGFEJE equals GJEGACDDHFAFJBFIHEEF, each letter a distinct digit.
-find A, B, C, D, E, F, G, H, I, J : int(0..9)
+$ crypta: an Essence' model from DCP Rosetta.
+$
+$ Cryptarithmetic puzzle, solve the operation:
+$   B A I J J A J I I A H F C F E B B J E A
+$ + D H F G A B C D I D B I F F A G F E J E
+$ -----------------------------------------
+$ = G J E G A C D D H F A F J B F I H E E F
+$ where all letters are distinct digits from 0 to 9, and the first letter of each number cannot be zero.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/crypta.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the digit of each letter
+find A : int(0..9)
+find B : int(0..9)
+find C : int(0..9)
+find D : int(0..9)
+find E : int(0..9)
+find F : int(0..9)
+find G : int(0..9)
+find H : int(0..9)
+find I : int(0..9)
+find J : int(0..9)
+$ carry[k] (auxiliary, not asked for): the carry out of column k of the sum (columns numbered from the left, 1 to 20); carry[21] is the carry into the rightmost column, which is 0
 find carry : matrix indexed by [int(1..21)] of int(0..1)
+
 such that
 $ all letters are distinct digits
 allDiff([A, B, C, D, E, F, G, H, I, J]),
 $ the first letter of each number is not zero
 B != 0, D != 0, G != 0,
-$ no carry comes out of the leftmost column, and no carry goes into the rightmost column
+$ no carry comes out of the leftmost column, and nothing carries into the rightmost column
 carry[1] = 0, carry[21] = 0,
-$ column 1 of the sum (leftmost): the digits B and D plus any carry give G
+$ column 1 (leftmost): B + D + carry from column 2 = G, with carry out
 B + D + carry[2] = G + 10 * carry[1],
-$ column 2 of the sum
+$ column 2: A + H + carry from column 3 = J, with carry out
 A + H + carry[3] = J + 10 * carry[2],
-$ column 3 of the sum
+$ column 3: I + F + carry from column 4 = E, with carry out
 I + F + carry[4] = E + 10 * carry[3],
-$ column 4 of the sum
+$ column 4: J + G + carry from column 5 = G, with carry out
 J + G + carry[5] = G + 10 * carry[4],
-$ column 5 of the sum
+$ column 5: J + A + carry from column 6 = A, with carry out
 J + A + carry[6] = A + 10 * carry[5],
-$ column 6 of the sum
+$ column 6: A + B + carry from column 7 = C, with carry out
 A + B + carry[7] = C + 10 * carry[6],
-$ column 7 of the sum
+$ column 7: J + C + carry from column 8 = D, with carry out
 J + C + carry[8] = D + 10 * carry[7],
-$ column 8 of the sum
+$ column 8: I + D + carry from column 9 = D, with carry out
 I + D + carry[9] = D + 10 * carry[8],
-$ column 9 of the sum
+$ column 9: I + I + carry from column 10 = H, with carry out
 I + I + carry[10] = H + 10 * carry[9],
-$ column 10 of the sum
+$ column 10: A + D + carry from column 11 = F, with carry out
 A + D + carry[11] = F + 10 * carry[10],
-$ column 11 of the sum
+$ column 11: H + B + carry from column 12 = A, with carry out
 H + B + carry[12] = A + 10 * carry[11],
-$ column 12 of the sum
+$ column 12: F + I + carry from column 13 = F, with carry out
 F + I + carry[13] = F + 10 * carry[12],
-$ column 13 of the sum
+$ column 13: C + F + carry from column 14 = J, with carry out
 C + F + carry[14] = J + 10 * carry[13],
-$ column 14 of the sum
+$ column 14: F + F + carry from column 15 = B, with carry out
 F + F + carry[15] = B + 10 * carry[14],
-$ column 15 of the sum
+$ column 15: E + A + carry from column 16 = F, with carry out
 E + A + carry[16] = F + 10 * carry[15],
-$ column 16 of the sum
+$ column 16: B + G + carry from column 17 = I, with carry out
 B + G + carry[17] = I + 10 * carry[16],
-$ column 17 of the sum
+$ column 17: B + F + carry from column 18 = H, with carry out
 B + F + carry[18] = H + 10 * carry[17],
-$ column 18 of the sum
+$ column 18: J + E + carry from column 19 = E, with carry out
 J + E + carry[19] = E + 10 * carry[18],
-$ column 19 of the sum
+$ column 19: E + J + carry from column 20 = E, with carry out
 E + J + carry[20] = E + 10 * carry[19],
-$ column 20 of the sum (rightmost column; it carries nothing in)
+$ column 20 (rightmost): A + E + nothing carried in = F, with carry out
 A + E + carry[21] = F + 10 * carry[20]

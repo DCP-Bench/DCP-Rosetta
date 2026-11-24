@@ -1,12 +1,33 @@
 language ESSENCE' 1.0
-$ Colour six countries with the fewest colours so that no two neighbouring countries share a colour.
-given graph : matrix indexed by [int(1..9), int(1..2)] of int(1..6)
-find colors : matrix indexed by [int(1..6)] of int(1..6)
+$ session2_color_simple: an Essence' model from DCP Rosetta.
+$
+$ Assign a colour to each of six countries (Belgium, Denmark, France, Germany, Netherlands and Luxembourg) so that two neighbouring countries never share a colour. Colours are the integers 1, 2, 3, and so on. Find a colouring that minimises the number of colours used.
+$
+$ Save this file as model.eprime. Download `session2_color_simple.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_color_simple.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `session2_color_simple_1.param.solution`:
+$   python dcp_convert_essence.py session2_color_simple.json
+$   savilerow model.eprime session2_color_simple_1.param -run-solver
 
-branching on [colors]
+$ number of countries, numbered 1 to n in the order Belgium, Denmark, France, Germany, Netherlands, Luxembourg
+letting n = 6
 
-minimising max(colors)
+$ graph_dim1: number of neighbouring pairs (derived by the converter from the data; not a field of the reader's JSON)
+given graph_dim1 : int
+$ graph[e,1] and graph[e,2]: the two countries of neighbouring pair e (1-based country numbers)
+given graph : matrix indexed by [int(1..graph_dim1), int(1..2)] of int(1..n)
+
+$ colors[c]: colour of country c, a colour being an integer from 1 to n
+find colors : matrix indexed by [int(1..n)] of int(1..n)
+$ num_colours: auxiliary, the number of colours used, which is the largest colour assigned
+find num_colours : int(1..n)
+
+minimising num_colours
 
 such that
-$ neighbouring countries (each edge of the border graph) must have different colours
-forAll e : int(1..9) . colors[graph[e,1]] != colors[graph[e,2]]
+$ the number of colours used is the largest colour assigned to a country
+num_colours = max(colors),
+$ every pair of neighbouring countries must receive different colours
+forAll e : int(1..graph_dim1) . colors[graph[e,1]] != colors[graph[e,2]]

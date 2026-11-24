@@ -1,66 +1,73 @@
-"""Flip rows and columns (Einav's puzzle): choose a sign for every row and column so that all row and column sums are non-negative and the overall sum is minimal."""
+# flip_rows_cols: a Gurobi (Python) model from DCP Rosetta.
+# Download the `flip_rows_cols.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flip_rows_cols.html
+# Then run it on the first instance (after `pip install gurobipy numpy`;
+# the licence that comes with pip allows models up to 2000 variables and constraints):
+#   python flip_rows_cols.py flip_rows_cols.json
+
 import gurobipy as gp
 from gurobipy import GRB
 
-# Bounds the problem's reference model gives its variables, mirrored as
-# problem constants: each flipped entry lies in -100..100, each row and column
-# sum in 0..300, and the overall sum in 0..1000.
-ENTRY_BOUND = 100
-LINE_SUM_MAX = 300
-TOTAL_MAX = 1000
 
-
-def build(instance):
-    a = instance["input_matrix"]
+def create_model(instance):
+    """Choose whether to flip the sign of each row and each column of a matrix so that every row and every column sums to a non-negative number, with the overall sum as small as possible."""
+    a = instance["input_matrix"]  # a[i][j]: the entry in row i, column j, before any flips
     rows = len(a)
     cols = len(a[0])
 
     model = gp.Model("flip_rows_cols")
 
-    # A sign is -1 or +1. row_up[i] is 1 when row i keeps its sign (+1), and
-    # col_up[j] likewise, so the sign is 2 * up - 1.
+    # row_up[i] is 1 when row i keeps its sign and 0 when it is flipped; col_up[j] likewise
+    # for columns. The sign of row i is 2 * row_up[i] - 1, and similarly for columns.
     row_up = [model.addVar(vtype=GRB.BINARY, name=f"row_up[{i}]") for i in range(rows)]
     col_up = [model.addVar(vtype=GRB.BINARY, name=f"col_up[{j}]") for j in range(cols)]
 
-    # Entry (i, j) after flipping is a[i][j] * row_sign * col_sign. The product
-    # of the two signs is -1 exactly when they differ, so flipped[i, j] is the
-    # XOR of the two up bits, with its four linear inequalities; this avoids a
-    # product of variables, which would cut the licence to 200 variables.
+    # flipped[i, j] is 1 when exactly one of row i and column j is flipped, which is when
+    # entry (i, j) changes sign. The four constraints below make it the exclusive or of the two up bits.
     flipped = model.addVars(rows, cols, vtype=GRB.BINARY, name="flipped")
-    x = {}
-    for i in range(rows):
-        for j in range(cols):
-            f = flipped[i, j]
-            model.addConstr(f >= row_up[i] - col_up[j])
-            model.addConstr(f >= col_up[j] - row_up[i])
-            model.addConstr(f <= row_up[i] + col_up[j])
-            model.addConstr(f <= 2 - row_up[i] - col_up[j])
-            x[i, j] = a[i][j] * (1 - 2 * f)
+    model.addConstrs((flipped[i, j] >= row_up[i] - col_up[j] for i in range(rows) for j in range(cols)),
+                     name="xor_a")
+    model.addConstrs((flipped[i, j] >= col_up[j] - row_up[i] for i in range(rows) for j in range(cols)),
+                     name="xor_b")
+    model.addConstrs((flipped[i, j] <= row_up[i] + col_up[j] for i in range(rows) for j in range(cols)),
+                     name="xor_c")
+    model.addConstrs((flipped[i, j] <= 2 - row_up[i] - col_up[j] for i in range(rows) for j in range(cols)),
+                     name="xor_d")
 
-    # Each flipped entry lies within the reference's entry bound. A fixed entry
-    # is +-a[i][j], so this only excludes data beyond the bound.
-    for i in range(rows):
-        for j in range(cols):
-            if abs(a[i][j]) > ENTRY_BOUND:
-                model.addConstr(flipped[i, j] >= 2, name=f"entry_out_of_range[{i},{j}]")
+    # x[i, j]: entry (i, j) after the flips, which is a[i][j] or -a[i][j].
+    x = {(i, j): a[i][j] * (1 - 2 * flipped[i, j]) for i in range(rows) for j in range(cols)}
 
-    # Every row sum and every column sum is non-negative (and at most the
-    # reference's bound).
-    for i in range(rows):
-        row_sum = gp.quicksum(x[i, j] for j in range(cols))
-        model.addConstr(row_sum >= 0, name=f"row_nonneg[{i}]")
-        model.addConstr(row_sum <= LINE_SUM_MAX, name=f"row_max[{i}]")
-    for j in range(cols):
-        col_sum = gp.quicksum(x[i, j] for i in range(rows))
-        model.addConstr(col_sum >= 0, name=f"col_nonneg[{j}]")
-        model.addConstr(col_sum <= LINE_SUM_MAX, name=f"col_max[{j}]")
-
-    # Minimise the overall sum, which lies in 0..1000.
+    # Every row sum and every column sum is non-negative.
+    model.addConstrs((gp.quicksum(x[i, j] for j in range(cols)) >= 0 for i in range(rows)), name="row_nonneg")
+    model.addConstrs((gp.quicksum(x[i, j] for i in range(rows)) >= 0 for j in range(cols)), name="col_nonneg")
+    # total_sum is the overall sum of all entries after the flips.
     total_sum = gp.quicksum(x.values())
-    model.addConstr(total_sum >= 0, name="total_nonneg")
-    model.addConstr(total_sum <= TOTAL_MAX, name="total_max")
+    # Minimise the overall sum of the entries after the flips.
     model.setObjective(total_sum, GRB.MINIMIZE)
 
     row_signs = [2 * u - 1 for u in row_up]
     col_signs = [2 * u - 1 for u in col_up]
     return model, {"row_signs": row_signs, "col_signs": col_signs}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.Params.OutputFlag = 0  # no solver log
+    model.Params.MIPGap = 0  # prove the optimum; the default stops within 0.01% of it
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a proven optimum
+        print("Objective value:", round(model.ObjVal))
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

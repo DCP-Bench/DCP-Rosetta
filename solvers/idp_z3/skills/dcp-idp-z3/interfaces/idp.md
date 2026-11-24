@@ -103,6 +103,46 @@ enumerates only optimal models ([assignment-all-optimal](../assets/idp/assignmen
 with the z3 route, add `term == best` to `theory.solver` and block the output terms
 yourself ([references/engine.md](../references/idp/engine.md)).
 
+## Readable models
+
+A model is easiest to read, check and reuse when it says the problem in the problem's own words. A reader runs it on
+one instance as `idp-engine model_1.idp`, where `model_1.idp` is the model followed by that instance's data as a
+`structure`; a `main` procedure at the end of the model says what to print.
+
+```
+// Knapsack: choose items whose total weight fits the capacity and whose total value is as large as possible.
+vocabulary V {
+    type I <: Int                      // the items, numbered from 0
+    capacity: () -> Int                // the weight capacity of the backpack
+    values: I -> Int                   // values(i): the value of item i
+    weights: I -> Int                  // weights(i): the weight of item i
+    x: I -> Bool                       // x(i): item i is taken
+    maximize: () -> Int                // the total value of the items taken
+}
+theory T:V {
+    // the items taken weigh no more than the capacity of the backpack
+    sum{{ weights(i) | i in I: x(i) }} =< capacity().
+    // the total value is the value of the items taken
+    maximize() = sum{{ values(i) | i in I: x(i) }}.
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
+}
+```
+
+- Start with a comment that states the problem, give every symbol of the vocabulary a comment (what it holds, the
+  index base), and name the vocabulary `V`, the theory `T` and (the converter's) structure `S`.
+- Give each requirement of the problem its own sentence of the theory with a comment saying it in the problem's words,
+  rather than folding several into one.
+- Prefer aggregates (`sum`, `#`) and quantifiers to hand-built encodings; give a type or function the widest
+  domain the problem states, never a bound that only fits the example instances.
+- A product inside `sum{{ }}` is parenthesised, `(a(i) * b(i))`; a slow satisfaction search raises `model_expand`'s
+  `timeout_seconds` (default 10); type decision symbols with a finite range, not `Int`, when you can.
+- A multiplier cannot stand outside a `sum{{ }}` (`k * sum{{ ... }}` does not parse): put it inside, `sum{{ (k * x(i)) | i in I }}`. `minimize` and `maximize` take no timeout of their own, so a hard optimisation can print nothing when a reader runs it; say so in the problem's comment only if the answer matters.
+- End with a `main` that prints the answer: `model_expand(T, S, max=1)` for a satisfaction problem, `minimize` or
+  `maximize` for an optimisation one (`model_expand` returns any model, not the best one).
+- Strings arrive as ids (contract, "Strings are bound as ids"): a vocabulary list as `0..n-1`, a string equal to a vocabulary item as its id, words over an alphabet as ragged lists of letter ids (padded, with `_len`), an ISO date as its day number. Declare the symbol and say in its comment what an id stands for.
+
 ## Common issues
 
 | Problem | Likely cause | Fix |

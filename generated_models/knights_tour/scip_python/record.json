@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-sonnet-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791989650.1939766,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/scip/python/CONTRACT.md": "690b20038277627960683d03eb7b921bc8a06c3ce3e59585a7739ded9cb4168f"
+    },
+    "created_at": 1794340948.3158169,
     "problem_id": "knights_tour",
     "profile": {
       "compilation_timeout": 120,
@@ -14,79 +18,105 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "dec26fe97f27e47e605711c77916c053a4fdb9719d9739e8b03e82cf9ac87e6c",
+    "run_id": "scip-polish",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "1cedad707c95ea9fa50638c0631f95ac610fe88a8c79d2594944d4e19a5c88dd",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "b577957b3aad1b8e74efca86cbe5ab1341c53319",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:ba8c4d07b6eb8ea203c2d797b6975ad656d98f740f9de8a609c87f1a58fedc9b",
+      "recipe": "sha256:d8e8a4b0ba3e1fb49869ba406d7ffe0d76e0d36fec698d04ec0116b2346507ed",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.14101530401967466,
-        "execution_wall_seconds": 2.2123039540019818,
+        "checking_seconds": 0.1250072649854701,
+        "execution_wall_seconds": 1.4171165610023309,
         "first_solution": {
           "x": [
             [
-              13,
-              20,
-              29,
-              2,
-              31,
-              22
+              19,
+              10,
+              21,
+              4,
+              17,
+              0
             ],
             [
+              12,
+              31,
               18,
               1,
-              12,
-              21,
-              28,
+              22,
               3
             ],
             [
-              11,
-              14,
-              19,
-              30,
-              23,
-              32
-            ],
-            [
-              0,
-              17,
-              8,
-              25,
-              4,
-              27
-            ],
-            [
-              35,
-              10,
-              15,
-              6,
-              33,
-              24
-            ],
-            [
-              16,
-              7,
-              34,
               9,
-              26,
-              5
+              20,
+              11,
+              16,
+              5,
+              26
+            ],
+            [
+              32,
+              13,
+              30,
+              25,
+              2,
+              23
+            ],
+            [
+              29,
+              8,
+              15,
+              34,
+              27,
+              6
+            ],
+            [
+              14,
+              33,
+              28,
+              7,
+              24,
+              35
             ]
           ]
         },
@@ -99,9 +129,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2775289539713413,
+        "reference_setup_seconds": 0.5160857709997799,
         "runner_status": {
+          "build_seconds": 0.046842231997288764,
           "detail": "",
+          "main_seconds": 0.5874545520055108,
+          "read_seconds": 0.0001307709899265319,
           "status": "limit",
           "type": "status"
         },
@@ -111,89 +144,89 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.22792167501756921,
-        "execution_wall_seconds": 6.6874419809901156,
+        "checking_seconds": 0.13404083100613207,
+        "execution_wall_seconds": 3.1489809900231194,
         "first_solution": {
           "x": [
             [
-              16,
-              51,
-              34,
-              61,
-              12,
-              21,
-              32,
-              63
+              47,
+              6,
+              29,
+              14,
+              27,
+              36,
+              31,
+              58
             ],
             [
-              35,
-              60,
-              15,
-              20,
-              33,
-              62,
+              8,
               13,
-              22
+              48,
+              35,
+              30,
+              57,
+              26,
+              37
             ],
             [
-              52,
-              17,
+              5,
+              46,
+              7,
+              28,
+              15,
+              38,
+              59,
+              32
+            ],
+            [
+              12,
+              9,
+              4,
+              49,
+              34,
+              25,
+              56,
+              39
+            ],
+            [
+              45,
               50,
               11,
-              14,
-              3,
-              0,
-              31
-            ],
-            [
-              49,
-              36,
-              59,
-              4,
-              19,
-              42,
-              23,
-              2
-            ],
-            [
-              58,
-              53,
-              18,
-              27,
-              10,
-              1,
-              30,
-              43
-            ],
-            [
-              37,
-              48,
-              5,
-              56,
-              41,
-              28,
-              9,
+              16,
+              55,
+              60,
+              33,
               24
             ],
             [
-              54,
-              57,
-              46,
-              39,
-              26,
-              7,
-              44,
-              29
+              10,
+              1,
+              52,
+              3,
+              20,
+              17,
+              40,
+              61
             ],
             [
-              47,
-              38,
-              55,
-              6,
-              45,
-              40,
-              25,
-              8
+              51,
+              44,
+              21,
+              54,
+              63,
+              42,
+              23,
+              18
+            ],
+            [
+              0,
+              53,
+              2,
+              43,
+              22,
+              19,
+              62,
+              41
             ]
           ]
         },
@@ -206,9 +239,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.3351677479804493,
+        "reference_setup_seconds": 1.1623209980025422,
         "runner_status": {
+          "build_seconds": 0.10752738898736425,
           "detail": "",
+          "main_seconds": 1.95533190399874,
+          "read_seconds": 0.0001442729844711721,
           "status": "limit",
           "type": "status"
         },
@@ -218,129 +254,129 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.31024500797502697,
-        "execution_wall_seconds": 22.694087954994757,
+        "checking_seconds": 0.2093989179993514,
+        "execution_wall_seconds": 12.879882097011432,
         "first_solution": {
           "x": [
             [
-              34,
-              15,
-              88,
-              17,
-              42,
-              69,
-              24,
-              19,
-              44,
-              67
-            ],
-            [
-              87,
-              76,
-              33,
-              36,
-              89,
-              18,
-              43,
-              68,
-              23,
-              20
-            ],
-            [
-              14,
-              35,
-              16,
-              41,
-              70,
-              25,
+              9,
               90,
-              21,
-              66,
-              45
-            ],
-            [
-              77,
-              86,
-              75,
-              32,
-              37,
-              40,
-              71,
-              62,
-              59,
-              22
-            ],
-            [
-              74,
-              13,
-              0,
-              39,
-              72,
-              91,
-              26,
-              65,
-              46,
-              61
-            ],
-            [
-              85,
-              78,
-              73,
-              80,
-              31,
-              38,
-              51,
-              60,
-              63,
-              58
-            ],
-            [
-              12,
-              81,
+              29,
+              94,
+              87,
               96,
-              1,
-              92,
-              27,
-              64,
-              57,
-              52,
-              47
+              31,
+              98,
+              85,
+              0
             ],
             [
-              95,
-              84,
-              79,
+              28,
+              93,
+              10,
+              89,
               30,
+              39,
+              86,
+              71,
+              58,
+              99
+            ],
+            [
+              91,
+              8,
+              27,
+              40,
+              95,
+              88,
               97,
-              50,
-              3,
-              54,
+              32,
+              1,
+              84
+            ],
+            [
+              26,
+              21,
+              92,
+              11,
+              38,
+              33,
+              70,
+              57,
+              72,
+              59
+            ],
+            [
               7,
+              12,
+              23,
+              36,
+              41,
+              4,
+              73,
+              2,
+              83,
               56
             ],
             [
-              82,
-              11,
-              98,
-              93,
-              2,
-              9,
-              28,
+              22,
+              25,
+              20,
               5,
-              48,
-              53
+              74,
+              37,
+              34,
+              69,
+              60,
+              63
             ],
             [
-              99,
-              94,
-              83,
-              10,
-              29,
-              4,
-              49,
-              8,
+              13,
+              6,
+              75,
+              24,
+              35,
+              42,
+              3,
+              62,
               55,
-              6
+              82
+            ],
+            [
+              76,
+              19,
+              44,
+              47,
+              16,
+              79,
+              68,
+              51,
+              64,
+              61
+            ],
+            [
+              45,
+              14,
+              17,
+              78,
+              43,
+              52,
+              49,
+              66,
+              81,
+              54
+            ],
+            [
+              18,
+              77,
+              46,
+              15,
+              48,
+              67,
+              80,
+              53,
+              50,
+              65
             ]
           ]
         },
@@ -353,9 +389,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 4.900748312007636,
+        "reference_setup_seconds": 2.8797257250116672,
         "runner_status": {
+          "build_seconds": 0.08753148399409838,
           "detail": "",
+          "main_seconds": 12.06121758199879,
+          "read_seconds": 0.00013018600293435156,
           "status": "limit",
           "type": "status"
         },
@@ -365,44 +404,44 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.06571960903238505,
-        "execution_wall_seconds": 1.756153585971333,
+        "checking_seconds": 0.037857222981983796,
+        "execution_wall_seconds": 1.3086220750119537,
         "first_solution": {
           "x": [
             [
-              22,
-              15,
-              8,
-              3,
-              20
-            ],
-            [
-              7,
-              2,
-              21,
-              14,
-              9
-            ],
-            [
-              16,
+              6,
               23,
-              12,
-              19,
+              18,
+              13,
               4
             ],
             [
-              1,
-              6,
               17,
-              10,
-              13
+              12,
+              5,
+              8,
+              19
             ],
             [
+              22,
+              7,
               24,
+              3,
+              14
+            ],
+            [
               11,
+              16,
+              1,
+              20,
+              9
+            ],
+            [
               0,
-              5,
-              18
+              21,
+              10,
+              15,
+              2
             ]
           ]
         },
@@ -415,9 +454,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8897364449803717,
+        "reference_setup_seconds": 0.5718096680066083,
         "runner_status": {
+          "build_seconds": 0.013074522983515635,
           "detail": "",
+          "main_seconds": 0.35635852499399334,
+          "read_seconds": 0.00017329800175502896,
           "status": "limit",
           "type": "status"
         },
@@ -427,72 +469,72 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.16376944800140336,
-        "execution_wall_seconds": 15.308781393978279,
+        "checking_seconds": 0.11596531901159324,
+        "execution_wall_seconds": 2.115859351004474,
         "first_solution": {
           "x": [
             [
-              48,
-              9,
-              12,
-              15,
-              40,
-              43,
-              2
-            ],
-            [
-              11,
-              16,
-              39,
+              0,
+              41,
               46,
-              1,
-              14,
-              41
-            ],
-            [
-              8,
-              47,
-              10,
-              13,
-              42,
-              3,
+              7,
+              2,
+              9,
               44
             ],
             [
-              17,
-              38,
-              7,
-              0,
-              45,
-              24,
-              21
-            ],
-            [
-              34,
-              31,
-              36,
-              25,
-              22,
-              27,
-              4
-            ],
-            [
-              37,
-              18,
-              33,
+              47,
               6,
-              29,
-              20,
-              23
+              1,
+              42,
+              45,
+              36,
+              3
             ],
             [
-              32,
-              35,
+              40,
+              23,
               30,
-              19,
-              26,
               5,
-              28
+              8,
+              43,
+              10
+            ],
+            [
+              31,
+              48,
+              39,
+              22,
+              37,
+              4,
+              35
+            ],
+            [
+              24,
+              21,
+              26,
+              29,
+              16,
+              11,
+              14
+            ],
+            [
+              27,
+              32,
+              19,
+              38,
+              13,
+              34,
+              17
+            ],
+            [
+              20,
+              25,
+              28,
+              33,
+              18,
+              15,
+              12
             ]
           ]
         },
@@ -505,9 +547,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.1687969120102935,
+        "reference_setup_seconds": 0.7688874460000079,
         "runner_status": {
+          "build_seconds": 0.030405400990275666,
           "detail": "",
+          "main_seconds": 1.0569263380020857,
+          "read_seconds": 0.00017739998293109238,
           "status": "limit",
           "type": "status"
         },
@@ -525,15 +570,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "601c8ad3c454838c9bf2f274ead43632fd4c5a0f04cd19ceea3f7406b073e6d7",
+    "model_hash": "e622de43a8fa3fc1adddbe5c8b712d592498dc3a8e8ff95c7c4f79d6aea2e722",
     "problem_id": "knights_tour",
     "reason": "accepted",
-    "reference_hash": "927c57181e65d293357f7f57663443c41936b0e2e306df030d3de12d6592a7e5",
+    "reference_hash": "252eb5400007fdca7b9e76656ef258e5b72fe6a041dff6cdf1aad63533f22660",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -544,11 +589,11 @@
     "skipped_instances": [],
     "solutions_checked": 10,
     "solver_id": "scip_python",
-    "total_wall_seconds": 60.42052235896699,
+    "total_wall_seconds": 27.821545179001987,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-sonnet-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

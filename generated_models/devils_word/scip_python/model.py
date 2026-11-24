@@ -1,28 +1,49 @@
-# Devil's word: insert a '+' or '-' before each integer of arr so that the signed
-# integers add up to total. The output lists the signed integers.
+# devils_word: a SCIP (Python) model from DCP Rosetta.
+# Download the `devils_word.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/devils_word.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python devils_word.py devils_word.json
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    arr = instance["arr"]
-    total = instance["total"]
-    n = len(arr)
+def create_model(instance):
+    """Put a plus or a minus sign before each integer of a list so that the
+    signed integers add up to a given total. Returns the model and its output
+    result, the list of the signed integers."""
+    arr = instance["arr"]      # arr[i]: the i-th integer of the list, which gets a sign
+    total = instance["total"]  # the value the signed integers must add up to
 
-    m = Model()
+    model = Model("devils_word")
 
-    # plus[i] = 1 if the sign before the i-th integer is '+', 0 if it is '-'
-    plus = [m.addVar(name=f"plus_{i}", vtype="B") for i in range(n)]
-    # signed[i] = the i-th integer with its sign applied
-    signed = [
-        m.addVar(name=f"signed_{i}", vtype="I", lb=-abs(arr[i]), ub=abs(arr[i]))
-        for i in range(n)
-    ]
+    # plus[i] is 1 when the i-th integer gets a plus sign, and 0 when it gets a minus sign
+    plus = [model.addVar(f"plus_{i}", vtype="B") for i in range(len(arr))]
 
-    # each integer is kept or negated according to its sign
-    for i in range(n):
-        m.addCons(signed[i] == arr[i] * (2 * plus[i] - 1))
+    # The signed i-th integer is +arr[i] when plus[i] is 1 and -arr[i] when plus[i] is 0.
+    # arr[i] is a constant, so this is linear in plus[i]: no indicator or big-M is needed.
+    result = [a * (2 * p - 1) for a, p in zip(arr, plus)]
 
-    # the signed integers must sum to the total
-    m.addCons(quicksum(signed) == total)
+    # The signed integers add up to the total.
+    model.addCons(quicksum(result) == total)
 
-    return m, {"result": signed}
+    return model, {"result": result}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

@@ -1,21 +1,42 @@
-vocabulary {
-    type Range_size <: Int
-    size: () -> Int
-    marks: Range_size -> Int
-    length: () -> Int
-    minimize: () -> Int
+// csplib_006_golomb_rulers: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A Golomb ruler is a set of m integers 0 = a_1 < a_2 < ... < a_m such that the m(m-1)/2 differences a_j - a_i, for
+// 1 <= i < j <= m, are all distinct. Such a ruler is said to contain m marks and is of length a_m. Find an optimal
+// ruler: one of minimum length.
+//
+// Save this file as model.idp. Download `csplib_006_golomb_rulers.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_006_golomb_rulers.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_size <: Int               // the marks, numbered 1 to size (mark 1 is at position 0)
+    size: () -> Int                      // m: the number of marks of the ruler
+    marks: Range_size -> Int             // marks(i): the position of mark i, 0-based, increasing in i
+    length: () -> Int                    // the length of the ruler: the position of the last mark
+    minimize: () -> Int                  // the length of the ruler, to be minimized
 }
-theory {
+
+theory T:V {
     // the first mark is at position 0
     marks(1) = 0.
-    // the marks are strictly increasing
+
+    // the marks are at strictly increasing positions
     ! i, j in Range_size: i < j => marks(i) < marks(j).
-    // every mark is at most size * size
-    ! i in Range_size: marks(i) =< size() * size().
-    // all differences a_j - a_i for i < j are distinct
-    ! i, j, k, l in Range_size: i < j & k < l & ~(i = k & j = l) => marks(j) - marks(i) ~= marks(l) - marks(k).
-    // the length of the ruler is the last mark
-    length() = marks(size()).
-    // minimize the length of the ruler
+
+    // all the differences between two marks are distinct: two different pairs of marks never have the same distance
+    ! i, j, k, l in Range_size: (i < j & k < l & (i ~= k | j ~= l)) => marks(j) - marks(i) ~= marks(l) - marks(k).
+
+    // the length of the ruler is the position of the last mark
+    ! i in Range_size: i = size() => length() = marks(i).
+
+    // the objective is the length of the ruler
     minimize() = length().
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

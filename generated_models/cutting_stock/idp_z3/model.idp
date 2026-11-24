@@ -1,22 +1,42 @@
-vocabulary {
-    type Pat <: Int                       // one index per cutting pattern
-    type Wid <: Int                       // one index per width to be cut
-    orders: Wid -> Int                    // orders[w]: number of rolls ordered of width w
-    num_rolls_width: Pat * Wid -> Int     // num_rolls_width(p, w): rolls of width w cut by pattern p
-    patterns_used: Pat -> Int             // declared output: times each pattern is used
-    minimize: () -> Int                   // objective: total number of raw rolls cut
-    min_rolls_cut: () -> Int              // declared output: same value as minimize
+// cutting_stock: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Raw rolls of a fixed width are cut into pieces of several smaller widths. Orders(j) pieces of kind j (each of
+// its own width) are needed. Cutting one raw roll with cutting pattern p yields num_rolls_width(p, j) pieces of kind j. Choose how
+// many rolls to cut with each pattern so that at least the ordered number of pieces of each width is produced, while
+// minimizing the total number of raw rolls cut.
+//
+// Save this file as model.idp. Download `cutting_stock.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/cutting_stock.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py cutting_stock.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Pat <: Int                    // the cutting patterns, numbered from 0, sized from num_rolls_width
+    type Width <: Int                  // the kinds of piece (one width each), numbered from 0, sized from orders
+    orders: Width -> Int               // orders(j): the number of pieces of kind j that are needed
+    num_rolls_width: Pat * Width -> Int  // num_rolls_width(p, j): pieces of kind j yielded by one roll cut with pattern p
+    patterns_used: Pat -> Int          // patterns_used(p): the number of rolls cut with pattern p (declared output)
+    min_rolls_cut: () -> Int           // the total number of rolls cut (declared output)
+    minimize: () -> Int                // the total number of rolls cut, to minimize
 }
-
-theory {
-    // each pattern is used a non-negative number of times, at most the total number of orders
+theory T:V {
+    // the number of rolls cut with each pattern is not negative
     ! p in Pat: patterns_used(p) >= 0.
-    ! p in Pat: patterns_used(p) =< sum{{ orders(w) | w in Wid }}.
 
-    // for each width, the rolls cut meet the orders for that width
-    ! w in Wid: sum{{ (patterns_used(p) * num_rolls_width(p, w)) | p in Pat }} >= orders(w).
+    // at least the ordered number of pieces of each width is produced
+    ! j in Width: sum{{ (num_rolls_width(p, j) * patterns_used(p)) | p in Pat }} >= orders(j).
 
-    // the objective is the total number of raw rolls cut
-    minimize() = sum{{ patterns_used(p) | p in Pat }}.
-    min_rolls_cut() = minimize().
+    // the total number of rolls cut is the sum of the rolls cut with each pattern
+    min_rolls_cut() = sum{{ patterns_used(p) | p in Pat }}.
+
+    // the number of rolls to minimize is the total number of rolls cut
+    minimize() = min_rolls_cut().
+
+    // each pattern is used no more often than the total number of pieces ordered (a minimal cut needs at most one roll per piece)
+    ! p in Pat: patterns_used(p) =< sum{{ orders(j) | j in Width }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

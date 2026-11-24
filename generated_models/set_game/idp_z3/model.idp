@@ -1,27 +1,40 @@
-// Set card game: find three cards from the table that form a set.
-vocabulary {
-    // a card is one of the cards on the table, indexed from 0 (sized from the data)
-    type Card <: Int
-    // a feature of a card: number, fill, color, shape (sized from the data)
-    type Feat <: Int
-    // the three positions of the winning set
-    type Slot := {1..3}
-
-    // the value of each feature of each card
-    cards_data: Card * Feat -> Int
-    // indices of the three cards that form a set
-    winning_cards: Slot -> Card
+// set_game: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Set is a real-time card game. The deck consists of 81 unique cards that vary in four features across three
+// possibilities for each kind of feature: number of shapes (one, two, or three), shape (diamond, squiggle, oval),
+// shading (solid, striped, or open), and color (red, green, or purple). In the game, certain combinations of three
+// cards are said to make up a "set". For each one of the four categories of features (color, number, shape, and
+// shading), the three cards must display that feature as either all the same, or all different.
+//
+// Given a list of cards, each written as [number, shading, color, shape], find three different cards that form a set.
+//
+// Save this file as model.idp. Download `set_game.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/set_game.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py set_game.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Card <: Int                   // the cards on the table, numbered from 0
+    type Feature <: Int                // the four features of a card, numbered from 0: 0 number, 1 shading, 2 color, 3 shape
+    type Slot := {0..2}                // the three places of the set, numbered from 0
+    cards_data: Card * Feature -> Int  // cards_data(c, f): the value of feature f of card c, from 1 to 3
+    winning_cards: Slot -> Card        // winning_cards(s): the card at place s of the set found, 0-based (declared output)
 }
-
-theory {
+theory T:V {
     // the three cards of the set are three different cards
-    ! s, t in Slot: s ~= t => winning_cards(s) ~= winning_cards(t).
+    winning_cards(0) ~= winning_cards(1) & winning_cards(0) ~= winning_cards(2) & winning_cards(1) ~= winning_cards(2).
 
-    // for each feature the three cards are all the same or all different
-    ! f in Feat:
-        (cards_data(winning_cards(1), f) = cards_data(winning_cards(2), f)
-            & cards_data(winning_cards(2), f) = cards_data(winning_cards(3), f))
-        | (cards_data(winning_cards(1), f) ~= cards_data(winning_cards(2), f)
-            & cards_data(winning_cards(2), f) ~= cards_data(winning_cards(3), f)
-            & cards_data(winning_cards(1), f) ~= cards_data(winning_cards(3), f)).
+    // for each feature, the three cards show that feature either all the same or all different
+    ! f in Feature:
+        (cards_data(winning_cards(0), f) = cards_data(winning_cards(1), f) &
+         cards_data(winning_cards(1), f) = cards_data(winning_cards(2), f))
+        |
+        (cards_data(winning_cards(0), f) ~= cards_data(winning_cards(1), f) &
+         cards_data(winning_cards(1), f) ~= cards_data(winning_cards(2), f) &
+         cards_data(winning_cards(0), f) ~= cards_data(winning_cards(2), f)).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

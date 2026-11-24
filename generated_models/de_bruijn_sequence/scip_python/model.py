@@ -1,37 +1,65 @@
+# de_bruijn_sequence: a SCIP (Python) model from DCP Rosetta.
+# Download the `de_bruijn_sequence.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python de_bruijn_sequence.py de_bruijn_sequence.json
+
+import numpy as np
 from pyscipopt import Model, quicksum
 
-# de Bruijn sequence: a cyclic sequence over an alphabet of size base in which
-# every string of length n occurs exactly once as a (cyclic) substring.
-def build(instance):
-    base = instance["base"]
-    n = instance["n"]
-    # the sequence has base^n symbols, one per length-n window
-    L = base ** n
 
-    m = Model()
+def create_model(instance):
+    """A de Bruijn sequence of order n on an alphabet of base symbols is a cyclic
+    sequence of base**n digits in which every string of n digits occurs exactly once,
+    reading the sequence cyclically (the digits at its end are followed by its start).
+    Find one, and print it as a list of digits."""
+    k = instance["base"]  # k: the number of symbols in the alphabet, so the digits are 0..k-1
+    n = instance["n"]     # n: the length of the strings that must each occur exactly once
+    L = k ** n            # L: the number of strings of n digits, which is also the length of the sequence
 
-    # digit[i]: the i-th symbol of the sequence, from 0 to base-1
-    digit = [m.addVar(name=f"digit_{i}", vtype="I", lb=0, ub=base - 1) for i in range(L)]
+    model = Model("de_bruijn_sequence")
 
-    # window[i] is the number of the length-n string starting at position i,
-    # read as a base-`base` number (the window is cyclic, so positions wrap)
-    # one-hot: at[i, s] = 1 if the window starting at i is the string s
-    at = {(i, s): m.addVar(name=f"at_{i}_{s}", vtype="B") for i in range(L) for s in range(L)}
-    for i in range(L):
-        # each window starts with exactly one string
-        m.addCons(quicksum(at[i, s] for s in range(L)) == 1)
-        # the window's value equals the number of its one-hot string
-        window_value = quicksum(
-            base ** (n - 1 - j) * digit[(i + j) % L] for j in range(n)
-        )
-        m.addCons(window_value == quicksum(s * at[i, s] for s in range(L)))
+    # x[i] is the digit at position i of the sequence. Its bounds 0..k-1 come from the alphabet size k.
+    x = [model.addVar(f"x_{i}", vtype="I", lb=0, ub=k - 1) for i in range(L)]
 
-    # every length-n string occurs exactly once among the L cyclic windows
-    # (there are L windows and L strings, so each string is used once)
-    for s in range(L):
-        m.addCons(quicksum(at[i, s] for i in range(L)) == 1)
+    # codes[i] is the string that starts at position i, read as a number in base k (from 0 to L - 1).
+    # Positions wrap around the end of the sequence, so every one of the L cyclic strings is counted.
+    codes = np.array(
+        [quicksum(k ** (n - 1 - j) * x[(i + j) % L] for j in range(n)) for i in range(L)],
+        dtype=object,
+    )
 
-    # satisfaction problem: no objective
+    # word[i, c] is 1 when the string starting at position i has code c, and 0 otherwise.
+    # SCIP has no all-different constraint, so the distinct strings are stated on this one-hot table:
+    # every code is taken by exactly one position. With L positions and L codes, each string occurs once.
+    word = model.addMatrixVar((L, L), vtype="B", name="word")
 
-    outputs = {"de_bruijn": digit}
-    return m, outputs
+    # Each position has exactly one code.
+    model.addMatrixCons(word.sum(axis=1) == 1)
+    # Each code belongs to exactly one position, so every string of n digits occurs exactly once.
+    model.addMatrixCons(word.sum(axis=0) == 1)
+    # The code chosen for a position is the code of the string that starts there.
+    model.addMatrixCons(word @ np.arange(L) == codes)
+
+    # Satisfaction problem: any sequence that meets the constraints above is an answer, so there is no objective.
+    return model, {"de_bruijn": x}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

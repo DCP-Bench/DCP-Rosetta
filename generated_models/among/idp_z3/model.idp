@@ -1,30 +1,32 @@
-// Among: an array x of n values, where exactly m of its entries take one of the values in v.
-
-vocabulary {
-    // The positions of x, 1..n (n is taken from the instance).
-    type Range_n <: Int
-    // The positions of v (sized from the instance array v).
-    type K <: Int
-
-    // Instance data.
-    n: () -> Int
-    m: () -> Int
-    v: K -> Int
-
-    // Declared output: the array x.
-    x: Range_n -> Int
-
-    // Helper: x(i) takes one of the values in v.
-    inV: Range_n -> Bool
+// among: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find an array x of n integers between 0 and 7, inclusive, such that exactly m of them take one of the values in v. The
+// other elements may take any other value in that range.
+//
+// Save this file as model.idp. Download `among.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/among.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py among.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_n <: Int                // the positions of the array x, numbered 1 to n
+    type Idx <: Int                    // the positions of the values v, numbered from 0
+    n: () -> Int                       // the number of elements of x
+    m: () -> Int                       // the number of elements of x that take one of the values in v
+    v: Idx -> Int                      // v(j): the j-th of the listed values (0-based)
+    x: Range_n -> Int                  // x(i): the i-th element of the array, an integer from 0 to 7
+    inV: Range_n -> Bool               // inV(i): x(i) takes one of the values in v
 }
-
-theory {
-    // every entry of x is a value between 0 and 7 (the problem fixes this domain)
-    ! i in Range_n: x(i) >= 0 & x(i) =< 7.
-
-    // inV(i) holds exactly when x(i) equals one of the values in v
-    ! i in Range_n: inV(i) <=> (? k in K: v(k) = x(i)).
-
-    // exactly m values in x take one of the values in v
+theory T:V {
+    // every element of x is an integer between 0 and 7
+    ! i in Range_n: 0 =< x(i) & x(i) =< 7.
+    // an element takes one of the values in v exactly when it is one of them
+    ! i in Range_n: inV(i) <=> (? j in Idx: x(i) = v(j)).
+    // exactly m elements of x take one of the values in v
     #{ i in Range_n: inV(i) } = m().
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

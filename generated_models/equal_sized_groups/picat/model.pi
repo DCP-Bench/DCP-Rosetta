@@ -1,40 +1,58 @@
-% Equal-sized groups: split a sorted list into k groups at k - 1 break points,
-% never separating equal values, so that the group sizes are as close as possible
-% to round(n / k).
-import sat.
+% equal_sized_groups: a Picat model from DCP Rosetta.
+%
+% Given a sorted list of N elements, divide them into K groups by choosing K-1 split points between them. There
+% may be elements with the same value, and items with the same value must be in the same group. Find K groups as
+% close in size to round(N/K) as possible. Each group holds at least one element. The break points are the
+% numbers of elements before each split point, and the total error (the sum of abs(size - round(N/K)) over the
+% groups) is minimized.
+%
+% Save this file as model.pi. Download `equal_sized_groups.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/equal_sized_groups.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py equal_sized_groups.json
+%   picat model.pi equal_sized_groups_1.dat
+%
+% Data.get(a): the sorted list of elements (a list indexed from 1); Data.get(k): the number of groups.
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
     A = Data.get(a),
     K = Data.get(k),
-    N = len(A),
-    % the ideal size, round(n / k) with halves rounded to the even number as in
-    % the reference
-    Q = N div K,
-    R = N mod K,
-    if 2 * R > K then
-        GSize = Q + 1
-    elseif 2 * R < K then
-        GSize = Q
-    elseif Q mod 2 == 0 then
-        GSize = Q
-    else
-        GSize = Q + 1
+    N = len(A),                            % the number of elements
+    % the size each group should have: round(N/K), with halves rounded up
+    Target = (2 * N + K) // (2 * K),
+    B = new_list(K - 1),                   % B[I] = the number of elements before the I-th split point
+    B :: 1..N - 1,
+    % the break points are the positions of the elements before them, with the start and the end added
+    Bs = [0] ++ B ++ [N],
+    % the break points increase, so each group holds at least one element
+    foreach (I in 1..K)
+        Bs[I] #< Bs[I + 1]
     end,
-    % x[p] = the break point p: the number of elements before it, 1..n
-    X = new_list(K - 1),
-    X :: 1..N,
-    % a break after element j would separate equal values when a[j] = a[j + 1]
-    X notin [J : J in 1..N-1, A[J] == A[J + 1]],
-    % s[i] = the size of group i, at least 1, which also orders the break points
-    S = new_list(K),
-    S :: 1..N,
-    S[1] #= X[1],
-    foreach (I in 2..K-1)
-        S[I] #= X[I] - X[I - 1]
+    % a split falls between two elements of different values, so equal elements stay in the same group
+    foreach (I in 1..K - 1)
+        element(B[I], A, V1),
+        Next #= B[I] + 1,
+        element(Next, A, V2),
+        V1 #!= V2
     end,
-    S[K] #= N - X[K - 1],
-    % the total distance from the ideal size, as small as possible
-    Z #= sum([abs(S[I] - GSize) : I in 1..K]),
-    Vars = X,
-    Outputs = [x = X],
-    Options = [$min(Z)].
+    % the total error: the sum over the groups of the difference between the size of the group and the target
+    Error #= sum([abs(Bs[I + 1] - Bs[I] - Target) : I in 1..K]),
+    Vars = B,
+    Outputs = [x = B],
+    % minimise the total error
+    Options = [$min(Error)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,0 +1,36 @@
+language ESSENCE' 1.0
+$ room_assignment: an Essence' model from DCP Rosetta.
+$
+$ The room assignment problem involves assigning a set of requests to a limited number of rooms such that each request is assigned to one room for its entire duration. Some requests may already have a room pre-assigned. The main constraint is that a room can only serve one request at a time, meaning no overlapping requests can be assigned to the same room. A request occupies its room from its start date up to, but not including, its end date, so one request can start in a room on the day another ends there. A pre-assigned room of -1 means that the request has none.
+$
+$ Save this file as model.eprime. Download `room_assignment.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/room_assignment.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `room_assignment_1.param.solution`:
+$   python dcp_convert_essence.py room_assignment.json
+$   savilerow model.eprime room_assignment_1.param -run-solver
+
+$ number of rooms: the rooms are numbered 0 to max_rooms - 1
+given max_rooms : int
+$ the highest room number
+letting last_room = max_rooms - 1
+$ number of requests, derived from the data (the length of start_data)
+given start_data_dim1 : int
+letting n = start_data_dim1
+$ start_data[i]: the start day of request i (requests numbered from 1), given as the number of days since 1970-01-01 (the data's ISO date as a day number)
+given start_data : matrix indexed by [int(1..n)] of int
+$ end_data[i]: the end day of request i, not included in its stay, as the number of days since 1970-01-01
+given end_data : matrix indexed by [int(1..n)] of int
+$ preassigned_room_data[i]: the room (0-based) request i is already assigned to, or -1 if it has none
+given preassigned_room_data : matrix indexed by [int(1..n)] of int
+
+$ room_assignments[i]: the room (0-based) assigned to request i
+find room_assignments : matrix indexed by [int(1..n)] of int(0..last_room)
+
+such that
+$ a request with a pre-assigned room (not -1) is assigned to that room
+forAll i : int(1..n) . (preassigned_room_data[i] != -1) -> (room_assignments[i] = preassigned_room_data[i]),
+$ a room serves one request at a time: two requests in the same room must not overlap, where a request
+$ occupies its room from its start day up to, but not including, its end day
+forAll i : int(1..n) . forAll j : int(1..n) . (i < j) -> ((room_assignments[i] != room_assignments[j]) \/ (end_data[i] <= start_data[j]) \/ (end_data[j] <= start_data[i]))

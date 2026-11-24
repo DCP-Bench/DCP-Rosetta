@@ -1,22 +1,54 @@
-vocabulary {
-    // the sequence length n, sizes the range 1..n
-    n: () -> Int
-    type Range_n <: Int
-    // one bit per position, +1 or -1
-    sequence: Range_n -> Int
-    // cyc(i, k, j): position j is (i + k) on the cycle of length n, 1-based
-    cyc: Range_n * Range_n * Range_n -> Bool
-    // k-th periodic autocorrelation
-    C: Range_n -> Int
-    minimize: () -> Int
+// csplib_005_autocorrelation: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Construct a binary sequence of length n, each bit being +1 or -1, that minimizes the autocorrelations between bits. With
+// periodic (cyclic) boundary conditions, the k-th autocorrelation is C_k = sum over i from 0 to n-1 of S_i * S_((i+k) mod n).
+// The aim is to minimize E = sum of C_k squared over k from 1 to n-1.
+//
+// Save this file as model.idp. Download `csplib_005_autocorrelation.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_005_autocorrelation.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_005_autocorrelation.json
+//   idp-engine model_1.idp
+
+vocabulary V {
+    type Range_n <: Int                      // the positions of the sequence, numbered 1 to n (position i holds S_(i-1))
+    type Lag <: Int                          // the shifts k, numbered 1 to n - 1 (sized by Lag_size)
+    type Count <: Int                        // the number of agreeing pairs plus one, numbered 1 to n + 1 (sized by Count_size)
+    Lag_size: () -> Int                      // the number of shifts: n - 1 (auxiliary)
+    Count_size: () -> Int                    // the number of counts: n + 1 (auxiliary)
+    n: () -> Int                             // n: the length of the sequence
+    bit: Range_n -> Bool                     // bit(i): position i holds +1 (auxiliary)
+    sequence: Range_n -> Int                 // sequence(i): the bit at position i, +1 or -1
+    partner: Lag * Range_n -> Range_n        // partner(k, i): the position i + k, wrapping around after n (auxiliary)
+    agreeCount: Lag -> Count                 // agreeCount(k): one plus the number of positions i whose bit equals that of partner(k, i) (auxiliary)
+    sq: Lag -> Int                           // sq(k): the square of the k-th autocorrelation C_k (auxiliary)
+    minimize: () -> Int                      // E: the sum of the squared autocorrelations, to be minimized
 }
-theory {
-    // each bit takes the value +1 or -1
-    ! i in Range_n: sequence(i) = 1 | sequence(i) = -1.
-    // cyclic index: j = i + k, or j = i + k - n when i + k exceeds n
-    { ! i, k, j in Range_n: cyc(i, k, j) <- i + k = j | i + k = j + n(). }
-    // C_k = sum_i S_i * S_((i+k) mod n)
-    ! k in Range_n: C(k) = sum{{ (sequence(i) * sequence(j)) | i, j in Range_n: cyc(i, k, j) }}.
-    // E = sum over k = 1..n-1 of C_k^2
-    minimize() = sum{{ (C(k) * C(k)) | k in Range_n: k ~= n() }}.
+
+theory T:V {
+    Lag_size() = n() - 1.
+    Count_size() = n() + 1.
+
+    // each bit is +1 or -1
+    ! i in Range_n: bit(i) => sequence(i) = 1.
+    ! i in Range_n: ~bit(i) => sequence(i) = -1.
+
+    // the partner of position i at shift k is i + k, wrapping around the sequence
+    ! k in Lag, i in Range_n: i + k =< n() => partner(k, i) = i + k.
+    ! k in Lag, i in Range_n: i + k > n() => partner(k, i) = i + k - n().
+
+    // the number of agreeing pairs at shift k: positions whose bit equals the bit of their partner
+    ! k in Lag: agreeCount(k) = #{ i in Range_n: (bit(i) <=> bit(partner(k, i))) } + 1.
+
+    // C_k is the number of agreeing pairs minus the number of disagreeing ones: 2 * agreeing - n
+    ! k in Lag, c in Count: agreeCount(k) = c => sq(k) = (2 * (c - 1) - n()) * (2 * (c - 1) - n()).
+
+    // the objective is the sum of the squared autocorrelations
+    minimize() = sum{{ sq(k) | k in Lag }}.
+}
+
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

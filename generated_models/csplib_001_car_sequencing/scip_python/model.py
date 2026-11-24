@@ -1,45 +1,75 @@
-# Car sequencing: arrange the cars of each type in one sequence so that no station's capacity
-# (at most at_most[o] of every per_slots[o] consecutive cars may require option o) is exceeded.
-from pyscipopt import Model, quicksum
+# csplib_001_car_sequencing: a SCIP (Python) model from DCP Rosetta.
+# Download the `csplib_001_car_sequencing.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_001_car_sequencing.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python csplib_001_car_sequencing.py csplib_001_car_sequencing.json
+
+from pyscipopt import Model
+import numpy as np
 
 
-def build(instance):
-    at_most = instance["at_most"]
-    per_slots = instance["per_slots"]
-    demand = instance["demand"]
-    requires = instance["requires"]
+def create_model(instance):
+    """Car sequencing: order the cars of an assembly line so that no option
+    station has to handle more cars needing its option than it can cope with
+    in any stretch of consecutive cars. Output the car type at each position
+    of the line, with car types numbered from 0."""
+    demand = np.array(instance["demand"])      # demand[c]: how many cars of type c are to be built
+    requires = np.array(instance["requires"])  # requires[c][o] = 1 when a car of type c needs option o
+    at_most = instance["at_most"]              # at_most[o]: the most cars needing option o allowed in one window
+    per_slots = instance["per_slots"]          # per_slots[o]: the length of the window for option o
 
-    n_types = len(demand)
-    n_opts = len(at_most)
-    # the number of cars is the total demand, one position in the line per car
-    n_cars = sum(demand)
+    num_types = len(demand)        # car types are numbered 0 .. num_types - 1
+    num_cars = int(demand.sum())   # one position of the line per car
 
-    m = Model()
-    # x[p, t] = 1 if the car in position p is of type t
-    x = {(p, t): m.addVar(name=f"x_{p}_{t}", vtype="B") for p in range(n_cars) for t in range(n_types)}
-    # y[p, o] = 1 if the car in position p requires option o
-    y = {(p, o): m.addVar(name=f"y_{p}_{o}", vtype="B") for p in range(n_cars) for o in range(n_opts)}
+    model = Model("csplib_001_car_sequencing")
 
-    # each position in the assembly line holds exactly one car
-    for p in range(n_cars):
-        m.addCons(quicksum(x[p, t] for t in range(n_types)) == 1)
+    # x[p, c] is 1 when position p of the line holds a car of type c, and 0 when not.
+    # One-hot over car types: the type at a position is a choice among num_types, and the
+    # options it needs are then a linear sum over requires, with no element constraint.
+    x = model.addMatrixVar((num_cars, num_types), vtype="B", name="x")
 
-    # each car type is produced as many times as its demand
-    for t in range(n_types):
-        m.addCons(quicksum(x[p, t] for p in range(n_cars)) == demand[t])
+    # Each position of the line holds exactly one car.
+    model.addMatrixCons(x.sum(axis=1) == 1)
 
-    # a car requires an option exactly when its type requires that option
-    for p in range(n_cars):
-        for o in range(n_opts):
-            m.addCons(y[p, o] == quicksum(requires[t][o] * x[p, t] for t in range(n_types) if requires[t][o]))
+    # Each car type c appears exactly demand[c] times in the sequence.
+    model.addMatrixCons(x.sum(axis=0) == demand)
 
-    # the stations cannot handle cars requiring their option bunched together:
-    # in every window of per_slots[o] consecutive positions, at most at_most[o] cars require option o
-    for o in range(n_opts):
-        w = per_slots[o]
-        for start in range(n_cars - w + 1):
-            m.addCons(quicksum(y[p, o] for p in range(start, start + w)) <= at_most[o])
+    # load[p, o] is 1 when the car at position p needs option o: the one-hot row
+    # of x picks out the matching row of requires.
+    load = x @ requires
 
-    # the output gives the car type at each position of the assembly line, numbered from 0
-    sequence = [quicksum(t * x[p, t] for t in range(n_types)) for p in range(n_cars)]
-    return m, {"sequence": sequence}
+    # Option o's station copes with at most at_most[o] cars needing it in any
+    # per_slots[o] consecutive positions. Every run of per_slots[o] consecutive
+    # positions is a window; if the sequence is shorter than the window, the single
+    # window is the whole sequence (the slice is cut at the end).
+    for o in range(len(at_most)):
+        window = per_slots[o]
+        for start in range(max(num_cars - window, 0) + 1):
+            model.addCons(load[start:start + window, o].sum() <= at_most[o])
+
+    # Objective: none. Any sequence that meets the station limits is an answer.
+
+    # The car type at position p is the one type number c for which x[p, c] is 1.
+    sequence = x @ np.arange(num_types)
+
+    return model, {"sequence": sequence}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

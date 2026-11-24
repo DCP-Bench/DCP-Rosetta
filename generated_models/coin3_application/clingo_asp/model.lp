@@ -1,23 +1,34 @@
-% Coins: choose how many coins of each denomination to carry, as few as
-% possible in total, so that every amount from 1 up to (but not including) the
-% maximum can be paid exactly.
-% denominations(I, D): coin I is worth D cents; max_amount_to_pay(M): amounts 1..M-1 must be payable.
-coin(I) :- denominations(I,_).
+% coin3_application: a clingo model from DCP Rosetta.
+%
+% Find the minimum number of coins that allows one to pay exactly any amount smaller than a given maximum amount using a given set of denominations.
+%
+% Save this file as model.lp. Download `coin3_application.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/coin3_application.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py coin3_application.json
+%   python -m clingo model.lp coin3_application_1.lp
+%
+% Input: denominations(I, D) holds the denomination D of coin type I, and max_amount_to_pay(M) holds the
+% maximum amount M (indices are 0-based, as in the data).
+
+coin(I) :- denominations(I, _).
 amount(1..M-1) :- max_amount_to_pay(M).
-% More than (M - 1) / D coins of value D can never be used to pay an amount below M.
-most(I,(M - 1) / D) :- denominations(I,D), max_amount_to_pay(M).
 
-% x(I, N): N coins of denomination I are carried.
-1 { x(I,N) : N = 0..K } 1 :- most(I,K).
+% the number of coins of each type is chosen; fewer than max_amount_to_pay coins of a type are ever needed,
+% since an amount is paid with at most that many coins of it
+1 { x(I, K) : K = 0..M-1 } 1 :- coin(I), max_amount_to_pay(M).
 
-% pay(A, I, N): to pay amount A, N coins of denomination I are used.
-1 { pay(A,I,N) : N = 0..K } 1 :- amount(A), most(I,K).
+% each amount is paid with some number of coins of each type
+1 { pay(A, I, K) : K = 0..A } 1 :- amount(A), coin(I).
 
-% A payment uses no more coins of a kind than are carried and adds up to the amount.
-:- pay(A,I,N), x(I,C), N > C.
-:- amount(A), A != #sum { D * N,I : pay(A,I,N), denominations(I,D) }.
+% the coins paid for an amount do not exceed the coins of that type held
+:- amount(A), pay(A, I, K), x(I, X), K > X.
 
-% Carry as few coins as possible.
-#minimize { N,I : x(I,N) }.
+% the coins paid for an amount add up to exactly that amount
+:- amount(A), #sum { D*K, I : pay(A, I, K), denominations(I, D) } != A.
+
+% minimize the total number of coins
+#minimize { K, I : x(I, K) }.
 
 #show x/2.

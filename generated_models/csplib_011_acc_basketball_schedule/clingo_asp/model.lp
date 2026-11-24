@@ -1,132 +1,122 @@
-% ACC basketball schedule (CSPLib 11): a double round-robin timetable for the nine teams of the
-% 1997/98 Atlantic Coast Conference. Every team meets every other team twice, once at home and
-% once away, over 18 dates, under nine groups of extra constraints.
-% Instance: n_teams(N) and n_days(D) give the number of teams and dates; teams and dates are
-% counted from 0. Which team is which, the mirroring scheme and the constraints below belong to
-% the problem statement for these nine teams and 18 dates.
+% csplib_011_acc_basketball_schedule: a clingo model from DCP Rosetta.
 %
-% Output: config(D, T, O): on date D team T plays team O (O = T means T has a bye).
-%         where(D, T, S): on date D team T plays at home (0), has a bye (1) or plays away (2).
+% Find a timetable for the 1997/98 Atlantic Coast Conference in basketball: a double round-robin schedule for the
+% nine teams (Clemson, Duke, Florida State, Georgia Tech, Maryland, North Carolina, North Carolina State, Virginia
+% and Wake Forest) over 18 dates, in which each team plays each other once at home and once away, subject to the
+% constraints below. The first and all later odd dates are weekday fixtures, the second and all later even dates
+% are weekend fixtures.
+%
+% Save this file as model.lp. Download `csplib_011_acc_basketball_schedule.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_011_acc_basketball_schedule.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_011_acc_basketball_schedule.json
+%   python -m clingo model.lp csplib_011_acc_basketball_schedule_1.lp
+%
+% Input: n_days(N): the number N of dates; n_teams(T): the number T of teams (indices are 0-based, as in the data).
+% Teams are numbered from 0 in the order listed: 0 Clemson, 1 Duke, 2 Florida State, 3 Georgia Tech, 4 Maryland,
+% 5 North Carolina, 6 North Carolina State, 7 Virginia, 8 Wake Forest. Dates are numbered from 0 (date 1 is 0).
 
-team(0..N-1) :- n_teams(N).
-day(0..D-1) :- n_days(D).
+day(0..N-1) :- n_days(N).
+team(0..T-1) :- n_teams(T).
 
-% The nine teams, in the order of the statement.
-#const clem = 0.
-#const duke = 1.
-#const fsu = 2.
-#const gt = 3.
-#const umd = 4.
-#const unc = 5.
-#const ncst = 6.
-#const uva = 7.
-#const wake = 8.
+% the even-numbered dates of the problem (second, fourth, ...) are weekend fixtures, which are indices 1, 3, ...
+weekend(D) :- day(D), D \ 2 == 1.
 
-% The three kinds of date for a team.
-#const home = 0.
-#const bye = 1.
-#const away = 2.
-status(home;bye;away).
+% on each date a team hosts one team, visits one team, or has a bye
+1 { home(D,I,J) : team(J), J != I ; away(D,I,J) : team(J), J != I ; bye(D,I) } 1 :- day(D), team(I).
 
-% The second and every later even date (counting dates from 1) is a weekend date: with dates
-% counted from 0 these are the odd numbers.
-weekend(D) :- day(D), D \ 2 = 1.
+% a match is the same from both sides: if I hosts J then J visits I, and the other way round
+:- home(D,I,J), not away(D,J,I).
+:- away(D,I,J), not home(D,J,I).
 
-1 { config(D,T,O) : team(O) } 1 :- day(D), team(T).
-1 { where(D,T,S) : status(S) } 1 :- day(D), team(T).
+% double round robin: each team hosts each other team exactly once
+:- team(I), team(J), I != J, #count { D : home(D,I,J) } != 1.
 
-% A team cannot have different opponents on the same date, and no two teams share an opponent.
-:- config(D,T1,O), config(D,T2,O), T1 < T2.
+hm(D,I) :- home(D,I,_).
+aw(D,I) :- away(D,I,_).
+game(D,I,J) :- home(D,I,J).
+game(D,I,J) :- away(D,I,J).
 
-% If team T plays team O, then team O plays team T.
-:- config(D,T,O), not config(D,O,T).
+% 1. mirroring: the dates of each pair (1,8), (2,9), (3,12), (4,13), (5,14), (6,15), (7,16), (10,17), (11,18)
+mirror(0,7). mirror(1,8). mirror(2,11). mirror(3,12). mirror(4,13). mirror(5,14). mirror(6,15). mirror(9,16). mirror(10,17).
+% each team meets the same opponent on both dates of a pair, at home on one and away on the other, or has a bye on both
+:- mirror(D1,D2), home(D1,I,J), not away(D2,I,J).
+:- mirror(D1,D2), away(D1,I,J), not home(D2,I,J).
+:- mirror(D1,D2), bye(D1,I), not bye(D2,I).
+:- mirror(D1,D2), bye(D2,I), not bye(D1,I).
 
-% Connect config and where: a team has a bye exactly when it plays itself; when two teams play
-% each other, one plays at home and the other away.
-:- config(D,T,T), not where(D,T,bye).
-:- where(D,T,bye), config(D,T,O), O != T.
-:- config(D,T,O), O != T, where(D,T,S), where(D,O,S).
+% 2. no two final aways: no team plays away on both of the last two dates
+:- aw(16,I), aw(17,I).
 
-% Double round-robin: each team plays each other team twice, once at home and once away.
-:- team(T), team(O), T != O, #count { D : config(D,T,O), where(D,T,home) } != 1.
+% 3. no team has more than two away matches in a row, or more than two home matches in a row
+:- aw(D,I), aw(D+1,I), aw(D+2,I).
+:- hm(D,I), hm(D+1,I), hm(D+2,I).
+% no team has more than three away matches or byes in a row, or more than four home matches or byes in a row
+ab(D,I) :- aw(D,I).
+ab(D,I) :- bye(D,I).
+hb(D,I) :- hm(D,I).
+hb(D,I) :- bye(D,I).
+:- ab(D,I), ab(D+1,I), ab(D+2,I), ab(D+3,I).
+:- hb(D,I), hb(D+1,I), hb(D+2,I), hb(D+3,I), hb(D+4,I).
 
-% 1. Mirroring. The dates are grouped in pairs (1,8), (2,9), (3,12), (4,13), (5,14), (6,15),
-% (7,16), (10,17), (11,18) (counted from 1; written from 0 below). In both dates of a pair each
-% team plays the same opponent, with home and away exchanged.
-mirror(0,7).  mirror(1,8).  mirror(2,11). mirror(3,12). mirror(4,13).
-mirror(5,14). mirror(6,15). mirror(9,16). mirror(10,17).
-:- mirror(A,B), config(A,T,O), not config(B,T,O).
-:- mirror(A,B), where(A,T,S), not where(B,T,2 - S).
+% 4. weekend pattern: over the weekends each team plays four at home, four away and has one bye
+:- team(I), #count { D : hm(D,I), weekend(D) } != 4.
+:- team(I), #count { D : aw(D,I), weekend(D) } != 4.
+:- team(I), #count { D : bye(D,I), weekend(D) } != 1.
 
-% 2. No two final aways. No team plays away on both of the last two dates.
-:- n_days(N), team(T), #count { D : where(D,T,away), D >= N - 2 } > 1.
+% 5. first weekends: each team has home matches or byes on at least two of the first five weekends (dates 2 to 10)
+:- team(I), #count { D : hb(D,I), weekend(D), D <= 9 } < 2.
 
-% 3. Home/away/bye patterns, over runs of consecutive dates.
-% No team has more than two away matches in a row, nor more than two home matches in a row.
-:- n_days(N), team(T), day(D), D + 3 <= N, #count { E : where(E,T,away), E >= D, E < D + 3 } > 2.
-:- n_days(N), team(T), day(D), D + 3 <= N, #count { E : where(E,T,home), E >= D, E < D + 3 } > 2.
-% No team has more than three away matches or byes in a row.
-:- n_days(N), team(T), day(D), D + 4 <= N,
-   #count { E : where(E,T,S), S != home, E >= D, E < D + 4 } > 3.
-% No team has more than four home matches or byes in a row.
-:- n_days(N), team(T), day(D), D + 5 <= N,
-   #count { E : where(E,T,S), S != away, E >= D, E < D + 5 } > 4.
+% 6. rival matches: Duke-UNC, Clemson-Georgia Tech, NC State-Wake Forest, Maryland-Virginia
+rival(1,5). rival(5,1). rival(0,3). rival(3,0). rival(6,8). rival(8,6). rival(4,7). rival(7,4).
+% on the last date every team except FSU plays its rival, unless it plays FSU or has a bye
+:- rival(I,R), not bye(17,I), not game(17,I,2), not game(17,I,R).
 
-% 4. Weekend pattern. Of the nine weekend dates each team plays four at home, four away and
-% has one bye.
-:- team(T), #count { D : where(D,T,home), weekend(D) } != 4.
-:- team(T), #count { D : where(D,T,away), weekend(D) } != 4.
-:- team(T), #count { D : where(D,T,bye), weekend(D) } != 1.
+% 7. constrained matches: Wake Forest-UNC, Wake Forest-Duke, Georgia Tech-UNC and Georgia Tech-Duke occur on dates 11 to 18
+:- #count { D : game(D,8,5), D >= 10 } = 0.
+:- #count { D : game(D,8,1), D >= 10 } = 0.
+:- #count { D : game(D,3,5), D >= 10 } = 0.
+:- #count { D : game(D,3,1), D >= 10 } = 0.
 
-% 5. First weekends. Each team has a home match or a bye on at least two of the first five
-% weekends.
-first_weekend(D) :- weekend(D), #count { E : weekend(E), E < D } < 5.
-:- team(T), #count { D : where(D,T,S), S != away, first_weekend(D) } < 2.
+% 8. opponent sequences: no team plays away against UNC and Duke on two consecutive dates
+:- away(D,I,5), away(D+1,I,1).
+:- away(D,I,1), away(D+1,I,5).
+% no team plays against UNC, Duke and Wake Forest on three consecutive dates, home or away
+sequence_opponent(1;5;8).
+:- game(D,I,A), game(D+1,I,B), game(D+2,I,C), sequence_opponent(A), sequence_opponent(B), sequence_opponent(C), A != B, A != C, B != C.
 
-% 6. Rival matches. Every team except FSU has a traditional rival.
-rival(duke,unc). rival(clem,gt). rival(ncst,wake). rival(umd,uva).
-rival(unc,duke). rival(gt,clem). rival(wake,ncst). rival(uva,umd).
-% On the last date every team except FSU plays its rival, unless it plays FSU or has a bye.
-:- n_days(N), team(T), T != fsu, config(N - 1,T,O), O != T, O != fsu, not rival(T,O).
+% 9. other constraints
+% UNC plays Duke on the last date and on date 11
+:- not game(17,5,1).
+:- not game(10,5,1).
+% UNC plays Clemson on the second date
+:- not game(1,5,0).
+% Duke has a bye on date 16
+:- not bye(15,1).
+% Wake Forest does not play at home on date 17
+:- hm(16,8).
+% Wake Forest has a bye on the first date
+:- not bye(0,8).
+% Clemson, Duke, Maryland and Wake Forest do not play away on the last date
+not_away_last(0;1;4;8).
+:- not_away_last(I), away(17,I,_).
+% Clemson, Florida State, Georgia Tech and Wake Forest do not play away on the first date
+not_away_first(0;2;3;8).
+:- not_away_first(I), away(0,I,_).
+% neither Florida State nor NC State has a bye on the last date
+:- bye(17,2).
+:- bye(17,6).
+% UNC does not have a bye on the first date
+:- bye(0,5).
 
-% 7. Constrained matches. These pairings occur at least once on dates 11 to 18 (dates 10 to 17
-% counted from 0).
-#const first_late_date = 10.
-must_meet_late(wake,unc). must_meet_late(wake,duke). must_meet_late(gt,unc). must_meet_late(gt,duke).
-:- must_meet_late(T,O), #count { D : config(D,T,O), D >= first_late_date } < 1.
-
-% 8. Opponent sequence. UNC and Duke are strong opponents (and so is Wake in the second rule).
-strong_two(unc;duke).
-strong_three(unc;duke;wake).
-% No team other than UNC and Duke plays away against UNC and Duke on two consecutive dates.
-:- team(T), T != unc, T != duke, day(D), config(D,T,O1), where(D,T,away),
-   config(D + 1,T,O2), where(D + 1,T,away), strong_two(O1), strong_two(O2), O1 != O2.
-% No team other than UNC, Duke and Wake plays UNC, Duke and Wake on three consecutive dates,
-% in any order and at home or away.
-:- team(T), not strong_three(T), day(D), config(D,T,O1), config(D + 1,T,O2), config(D + 2,T,O3),
-   strong_three(O1), strong_three(O2), strong_three(O3), O1 != O2, O1 != O3, O2 != O3.
-
-% 9. Other constraints.
-% UNC plays its rival Duke on the last date and on date 11, and plays Clem on date 2.
-:- n_days(N), not config(N - 1,unc,duke).
-:- not config(10,unc,duke).
-:- not config(1,unc,clem).
-% Duke has a bye on date 16.
-:- not where(15,duke,bye).
-% Wake does not play home on date 17 and has a bye on date 1.
-:- where(16,wake,home).
-:- not where(0,wake,bye).
-% Clem, Duke, UMD and Wake do not play away on the last date.
-no_last_away(clem;duke;umd;wake).
-:- n_days(N), no_last_away(T), where(N - 1,T,away).
-% Clem, FSU, GT and Wake do not play away on the first date.
-no_first_away(clem;fsu;gt;wake).
-:- no_first_away(T), where(0,T,away).
-% Neither FSU nor NC State has a bye on the last date.
-no_last_bye(fsu;ncst).
-:- n_days(N), no_last_bye(T), where(N - 1,T,bye).
-% UNC does not have a bye on the first date.
-:- where(0,unc,bye).
+% config(D,I,J): team I plays team J on date D, or J is I for a bye; where(D,I,V): team I is at home (0),
+% has a bye (1) or is away (2) on date D
+config(D,I,J) :- game(D,I,J).
+config(D,I,I) :- bye(D,I).
+where(D,I,0) :- hm(D,I).
+where(D,I,1) :- bye(D,I).
+where(D,I,2) :- aw(D,I).
 
 #show config/3.
 #show where/3.

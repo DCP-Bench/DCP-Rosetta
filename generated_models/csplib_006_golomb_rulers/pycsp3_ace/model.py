@@ -1,32 +1,54 @@
+# csplib_006_golomb_rulers: a PyCSP3 model from DCP Rosetta.
+# Download the `csplib_006_golomb_rulers.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python csplib_006_golomb_rulers.py csplib_006_golomb_rulers.json
+
 from pycsp3 import *
 
-# A Golomb ruler with m marks: the marks a_1 = 0 < a_2 < ... < a_m are such that
-# all the differences a_j - a_i for i < j are distinct. Find the ruler of minimum length.
 
-m = data.size
+def create_model(instance):
+    """A Golomb ruler is a set of m integers 0 = a_1 < a_2 < ... < a_m such that the
+    m(m-1)/2 differences a_j - a_i (1 <= i < j <= m) are all distinct. The ruler has m
+    marks and length a_m. Find a ruler of minimum length."""
+    n_marks = instance["size"]  # m, the number of marks on the ruler
 
-# the upper bound m * m on the length is a loose bound for a Golomb ruler
-max_length = m * m
+    # Upper bound on the length, assumed and not proven: a ruler with n_marks marks is taken to be
+    # no longer than n_marks * n_marks, far above the known optimal lengths of the instances.
+    max_length = n_marks * n_marks
 
-# marks[k] is the position of the (k+1)-th mark on the ruler
-marks = VarArray(size=m, dom=range(0, max_length + 1))
+    # marks[i] is the position of mark i + 1 on the ruler, the first mark at 0
+    marks = VarArray(size=n_marks, dom=range(max_length + 1))
+    # length is the position of the last mark, the length of the ruler
+    length = Var(dom=range(max_length + 1))
 
-# length is the position of the last mark
-length = Var(dom=range(0, max_length + 1))
+    satisfy(
+        # the first mark is at 0
+        marks[0] == 0,
+        # the marks are in strictly increasing order
+        Increasing(marks, strict=True),
+        # the length of the ruler is the position of its last mark a_m
+        length == marks[-1],
+        # all differences between pairs of marks are distinct
+        AllDifferent(marks[j] - marks[i] for i in range(n_marks) for j in range(i + 1, n_marks)),
+    )
 
-satisfy(
-    # the first mark is at position 0
-    marks[0] == 0,
+    # The objective: the length of the ruler is minimised.
+    minimize(length)
 
-    # the marks are placed in strictly increasing order
-    Increasing(marks, strict=True),
+    return {"marks": marks, "length": length}
 
-    # the length of the ruler is the position of the last mark
-    length == marks[m - 1],
 
-    # all the differences between pairs of marks are distinct
-    AllDifferent([marks[j] - marks[i] for i in range(m) for j in range(i + 1, m)]),
-)
+if __name__ == "__main__":
+    import json
+    import sys
 
-# minimise the length of the ruler
-minimize(length)
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is OPTIMUM:
+        print("marks", "=", values(outputs["marks"]))
+        print("length", "=", value(outputs["length"]))
+    else:
+        print("No solution:", status())

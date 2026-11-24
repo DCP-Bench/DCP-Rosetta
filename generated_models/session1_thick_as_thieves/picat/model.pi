@@ -1,28 +1,51 @@
-% Thick as thieves: six suspects, at most two of them guilty. The innocent tell
-% the truth and the guilty lie in what they said.
+% session1_thick_as_thieves: a Picat model from DCP Rosetta.
+%
+% Following a robbery at Sparkles the Jeweller's, Inspector Korner of the Yard interviewed six of the usual suspects.
+% He knew that the getaway car had been barely big enough to hold two, so he reckoned that at least four of them were
+% innocent - but which ones? He also supposed that the innocent ones would tell the truth, while the guilty one or
+% ones would lie. What they actually said was:
+% - ARTIE: "It wasn't me."
+% - BILL: "Crackitt was in it up to his neck."
+% - CRACKITT: "No I wasn't."
+% - DODGY: "If Crackitt did it, Bill did it with him."
+% - EDGY: "Nobody did it alone."
+% - FINGERS: "That's right: it was Artie and Dodgy together."
+% If the good inspector's suppositions were correct, who is guilty?
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_thick_as_thieves.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
+
+% The puzzle has no data: each suspect is a decision variable, 1 when guilty.
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle is fixed by the problem; the instance carries no data.
-    % Each suspect is 1 when guilty.
     Suspects = [Artie, Bill, Crackitt, Dodgy, Edgy, Fingers],
     Suspects :: 0..1,
-    % the getaway car held two, so at most two are guilty
+    % at least four of the six are innocent, so at most two are guilty
     sum(Suspects) #=< 2,
-    % A suspect is guilty exactly when what he said is false.
-    % Artie: "It wasn't me."
+    % a suspect is guilty exactly when what he said is false, since the innocent tell the truth and the guilty lie
+    % Artie: "It wasn't me." is false exactly when Artie is guilty
     Artie #<=> #~ (#~ Artie),
-    % Bill: "Crackitt was in it up to his neck."
+    % Bill: "Crackitt was in it up to his neck." is false exactly when Crackitt is innocent
     Bill #<=> #~ Crackitt,
-    % Crackitt: "No I wasn't."
+    % Crackitt: "No I wasn't." is false exactly when Crackitt is guilty
     Crackitt #<=> #~ (#~ Crackitt),
-    % Dodgy: "If Crackitt did it, Bill did it with him."
+    % Dodgy: "If Crackitt did it, Bill did it with him." is false exactly when Crackitt is guilty and Bill is innocent
     Dodgy #<=> #~ (Crackitt #=> Bill),
-    % Edgy: "Nobody did it alone."
-    Edgy #<=> #~ (sum(Suspects) #> 1),
-    % Fingers: "That's right: it was Artie and Dodgy together."
+    % Edgy: "Nobody did it alone." is false exactly when exactly one suspect is guilty
+    Edgy #<=> #~ (sum(Suspects) #!= 1),
+    % Fingers: "That's right: it was Artie and Dodgy together." is false exactly when not both Artie and Dodgy are guilty
     Fingers #<=> #~ (Artie #/\ Dodgy),
     Vars = Suspects,
     Outputs = [artie = Artie, bill = Bill, crackitt = Crackitt, dodgy = Dodgy,
                edgy = Edgy, fingers = Fingers],
     Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,15 +1,18 @@
-"""Diamond-free graph: a simple undirected graph on N vertices with no diamond.
+# csplib_050_diamond_free: a CPLEX (Python) model from DCP Rosetta.
+# Download the `csplib_050_diamond_free.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_050_diamond_free.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python csplib_050_diamond_free.py csplib_050_diamond_free.json
 
-A diamond is a set of four vertices with at least five edges among them. Every vertex has
-a positive degree that is a multiple of 3, and the sum of the degrees (twice the number
-of edges) is a multiple of 12. The model finds the adjacency matrix of such a graph.
-"""
 from itertools import combinations
-
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Diamond-free graph: a simple undirected graph on N vertices in which no four vertices have at
+    least five edges among them (a diamond), every vertex has a positive degree that is a multiple
+    of 3, and the degrees add up to a multiple of 12."""
     n = instance["N"]  # number of vertices
     vertices = range(n)
 
@@ -53,3 +56,25 @@ def build(instance):
     # The declared output: the adjacency matrix, with 0 on the diagonal (no loops).
     matrix = [[adjacent(u, v) if u != v else 0 for v in vertices] for u in vertices]
     return model, {"matrix": matrix}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

@@ -1,78 +1,57 @@
-:- use_module(library(clpfd)).
-:- use_module(library(apply)).
-:- use_module(library(lists)).
-
-% General store (cryptarithm): each letter stands for a different digit. Sixteen
-% words, read as numbers, add up to ALLWOOL. Find the digit of every letter.
-% The problem has no instance data; the words below are the sign in the
-% statement. As in the reference, a word may start with the digit 0.
+% general_store: a SWI-Prolog model from DCP Rosetta.
 %
-% The addition is posted column by column, the way it is done on paper: in each
-% column the digits of the words plus the carry from the column to the right
-% equal the digit of ALLWOOL plus 10 times the carry into the next column. This
-% form is used because stating the sum over whole word values did not finish
-% within the 180 s execution limit.
-model(_Instance, Vars, ['A'-A, 'B'-B, 'C'-C, 'E'-E, 'H'-H, 'L'-L, 'O'-O, 'P'-P, 'S'-S, 'W'-W]) :-
-    Letters = ['C'-C, 'H'-H, 'E'-E, 'S'-S, 'A'-A, 'B'-B, 'O'-O, 'W'-W, 'P'-P, 'L'-L],
-    pairs_values(Letters, Vars),
+% The owner of a general store has put up a sign: the words above the line are numbers that add up to ALL WOOL.
+% Each different letter stands for a different digit. The sixteen words CHESS, CASH, BOWWOW, CHOPS, ALSOPS, PALEALE,
+% COOL, BASS, HOPS, ALES, HOES, APPLES, COWS, CHEESE, CHSOAP and SHEEP, each read as a number, add up to ALLWOOL.
+% Leading zeros are allowed: a word may start with the digit 0. Give the digit of each letter A, B, C, E, H, L, O,
+% P, S and W.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
+%
+% No data fields: the model reads nothing from the data.
+:- use_module(library(clpfd)).
 
-    % each letter is a digit, and different letters are different digits
-    Vars ins 0..9,
-    all_distinct(Vars),
+model(_Instance, [A, B, C, E, H, L, O, P, S, W], ['A'-A, 'B'-B, 'C'-C, 'E'-E, 'H'-H, 'L'-L, 'O'-O, 'P'-P, 'S'-S, 'W'-W]) :-
+    % each letter stands for a different digit
+    [A, B, C, E, H, L, O, P, S, W] ins 0..9,
+    all_different([A, B, C, E, H, L, O, P, S, W]),
+    % the words above the line, each read as a number
+    maplist(word_value, [[C,H,E,S,S], [C,A,S,H], [B,O,W,W,O,W], [C,H,O,P,S], [A,L,S,O,P,S],
+                         [P,A,L,E,A,L,E], [C,O,O,L], [B,A,S,S], [H,O,P,S], [A,L,E,S], [H,O,E,S],
+                         [A,P,P,L,E,S], [C,O,W,S], [C,H,E,E,S,E], [C,H,S,O,A,P], [S,H,E,E,P]], Values),
+    % their total is ALL WOOL
+    word_value([A,L,L,W,O,O,L], AllWool),
+    sum(Values, #=, AllWool).
 
-    % the words above the line, and the total below it
-    Words = ['CHESS', 'CASH', 'BOWWOW', 'CHOPS', 'ALSOPS', 'PALEALE', 'COOL',
-             'BASS', 'HOPS', 'ALES', 'HOES', 'APPLES', 'COWS', 'CHEESE',
-             'CHSOAP', 'SHEEP'],
-    Total = 'ALLWOOL',
-    maplist(word_digits(Letters), Words, WordsDigits),
-    word_digits(Letters, Total, TotalDigits),
+% the number written by a list of digits, most significant first
+word_value(Digits, Value) :-
+    foldl(digit_step, Digits, 0, Value).
 
-    % A carry is at most the number of words: if the carry in is at most n, a
-    % column of n digits adds up to at most 9n + n, so the carry out is at most n.
-    length(Words, MaxCarry),
+digit_step(Digit, Acc0, Acc) :-
+    Acc #= Acc0*10 + Digit.
 
-    % add the columns from the units to the left; nothing is carried out of the
-    % last column
-    add_columns(WordsDigits, TotalDigits, 0, MaxCarry).
+:- use_module(library(http/json)).
 
-% word_digits(+Letters, +Word, -Digits): the digit variables of Word, with the
-% units digit first.
-word_digits(Letters, Word, Digits) :-
-    atom_chars(Word, Chars),
-    reverse(Chars, UnitsFirst),
-    maplist(letter_digit(Letters), UnitsFirst, Digits).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
 
-letter_digit(Letters, Letter, Digit) :-
-    memberchk(Letter-Digit, Letters).
-
-% add_columns(+WordsDigits, +TotalDigits, +CarryIn, +MaxCarry): the remaining
-% columns of the addition hold. The digit lists of the words have the columns
-% already done removed; a word that has run out of digits no longer takes part,
-% and the total contributes 0 once its own digits have run out.
-add_columns(WordsDigits, TotalDigits, CarryIn, MaxCarry) :-
-    (   WordsDigits == [], TotalDigits == []
-    ->  true
-    ;   column(WordsDigits, ColumnDigits, WordsDigitsRest),
-        (   TotalDigits = [TotalDigit|TotalDigitsRest]
-        ->  true
-        ;   TotalDigit = 0, TotalDigitsRest = []
-        ),
-        sum(ColumnDigits, #=, ColumnSum),
-        CarryOut in 0..MaxCarry,
-        ColumnSum + CarryIn #= TotalDigit + 10 * CarryOut,
-        (   WordsDigitsRest == [], TotalDigitsRest == []
-        ->  CarryOut #= 0
-        ;   add_columns(WordsDigitsRest, TotalDigitsRest, CarryOut, MaxCarry)
-        )
-    ).
-
-% column(+WordsDigits, -ColumnDigits, -Rest): the lowest digit of every word,
-% and the words that still have digits after that.
-column([], [], []).
-column([[D|Ds]|Words], [D|Digits], Rest) :-
-    column(Words, Digits, RestOfWords),
-    (   Ds == []
-    ->  Rest = RestOfWords
-    ;   Rest = [Ds|RestOfWords]
-    ).
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

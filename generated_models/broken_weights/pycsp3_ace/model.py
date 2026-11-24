@@ -1,31 +1,49 @@
+# broken_weights: a PyCSP3 model from DCP Rosetta.
+# Download the `broken_weights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+# Then run it on the first instance (after `pip install pycsp3`, which also needs Java for its ACE solver):
+#   python broken_weights.py broken_weights.json
+
 from pycsp3 import *
 
-# A merchant's weight of total m pounds broke into n pieces, each a whole number of pounds, and the
-# pieces must weigh every integer from 1 to m on a balance (a piece can go on either pan).
-m = data.m
-n = data.n
 
-# weights[i] is the whole-pound weight of piece i
-weights = VarArray(size=n, dom=range(1, m + 1))
+def create_model(instance):
+    """A merchant's measuring weight broke into n pieces, each a whole number of pounds,
+    totalling m pounds. The pieces must weigh every whole number of pounds from 1 to m on
+    a balance scale, where a piece may go on the same pan as the object or on the other pan.
+    Find the weights of the pieces."""
+    total_weight = instance["m"]   # m: the total weight of the broken measure, in pounds
+    n_pieces = instance["n"]       # n: the number of pieces it broke into
 
-# put_on[k][i] is +1 if piece i is on the object's pan, -1 if it is on the other pan, 0 if unused
-# when weighing k; signed[k][i] is the contribution of piece i to that weighing
-put_on = VarArray(size=[m, n], dom={-1, 0, 1})
-signed = VarArray(size=[m, n], dom=range(-m, m + 1))
+    # weights[i] is the weight of piece i, a whole number of pounds
+    weights = VarArray(size=n_pieces, dom=range(1, total_weight + 1))
 
-# the allowed (side, weight, contribution) triples: +w on the object's pan, -w on the other, 0 unused
-signed_supports = ([(1, w, w) for w in range(1, m + 1)]
-                   + [(-1, w, -w) for w in range(1, m + 1)]
-                   + [(0, w, 0) for w in range(1, m + 1)])
+    # pans[t][i] says where piece i goes when weighing t + 1 pounds:
+    # 1 for the object's pan, -1 for the other pan, 0 for not used
+    pans = VarArray(size=[total_weight, n_pieces], dom={-1, 0, 1})
 
-satisfy(
-    # the pieces weigh the total weight
-    Sum(weights) == m,
-    # the pieces are listed in non-decreasing order, which removes the order of the pieces as a symmetry
-    Increasing(weights, strict=False),
-    # a piece on the object's pan adds its weight, one on the other pan takes it away, an unused one adds nothing
-    [Table(scope=[put_on[k][i], weights[i], signed[k][i]], supports=signed_supports)
-     for k in range(m) for i in range(n)],
-    # every whole weight from 1 to m can be balanced by the pieces
-    [Sum(signed[k]) == k + 1 for k in range(m)],
-)
+    satisfy(
+        # The pieces together weigh the whole measure.
+        Sum(weights) == total_weight,
+        # Every whole weight from 1 to m is balanced: the pieces on the object's pan
+        # outweigh the pieces on the other pan by exactly that weight.
+        [Sum(weights[i] * pans[target - 1][i] for i in range(n_pieces)) == target
+         for target in range(1, total_weight + 1)],
+    )
+
+    return {"weights": weights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    outputs = create_model(instances[index])
+    if solve() is SAT:
+        for name, variables in outputs.items():
+            print(name, "=", values(variables))
+    else:
+        print("No solution:", status())

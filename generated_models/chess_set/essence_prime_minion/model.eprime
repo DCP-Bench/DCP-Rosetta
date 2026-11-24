@@ -1,15 +1,30 @@
 language ESSENCE' 1.0
-$ Decide how many small and large boxwood chess sets to make each week to maximise profit.
+$ chess_set: an Essence' model from DCP Rosetta.
+$
+$ A small joinery makes two different sizes of boxwood chess sets. The small set requires 3 hours of machining on a lathe, and the large set requires 2 hours. There are four lathes with skilled operators who each work a 40 hour week, so there are 160 lathe-hours per week. The small chess set requires 1 kg of boxwood, and the large set requires 3 kg. Only 200 kg of boxwood per week can be obtained. Each large chess set yields a profit of $20, and each small chess set a profit of $5. Decide how many sets of each kind should be made each week so as to maximise profit.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/chess_set.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the number of lathe-hours available per week
+letting lathe_hours = 160
+$ the kilograms of boxwood available per week
+letting boxwood_kg = 200
+
+$ small_set: the number of small chess sets made per week
 find small_set : int(0..200)
+$ large_set: the number of large chess sets made per week
 find large_set : int(0..200)
+$ max_profit: the profit from the sets made per week, which is maximised
 find max_profit : int(0..100000)
 
 maximising max_profit
-
 such that
-$ the lathe hours used (3 per small set, 2 per large set) must not exceed the 160 lathe-hours per week
-3 * small_set + 2 * large_set <= 160,
-$ the boxwood used (1 kg per small set, 3 kg per large set) must not exceed the 200 kg per week
-small_set + 3 * large_set <= 200,
+$ the lathe time used by the small and large sets does not exceed the lathe-hours available
+3 * small_set + 2 * large_set <= lathe_hours,
+$ the boxwood used by the small and large sets does not exceed the boxwood available
+small_set + 3 * large_set <= boxwood_kg,
 $ the profit is $5 per small set and $20 per large set
 max_profit = 5 * small_set + 20 * large_set

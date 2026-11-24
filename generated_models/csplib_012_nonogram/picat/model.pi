@@ -1,15 +1,29 @@
-% Nonogram: shade cells of a rows x cols grid so that, in every row and every column,
-% the blocks of consecutive shaded cells have exactly the lengths given by the rule of
-% that line, in order, with at least one unshaded cell between two blocks.
+% csplib_012_nonogram: a Picat model from DCP Rosetta.
+%
+% Nonograms are puzzles in which the solver shades squares in a grid so that the blocks of
+% consecutive shaded squares satisfy the constraints given for each row and each column. A
+% constraint lists the sequence of shaded blocks: 3,1,2 means a block of 3, then a gap of
+% unspecified size, a block of 1, another gap, and then a block of 2.
+%
+% Save this file as model.pi. Download `csplib_012_nonogram.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_012_nonogram.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_012_nonogram.json
+%   picat model.pi csplib_012_nonogram_1.dat
+%
+% Data.get(rows), Data.get(cols): the number of rows and columns of the grid; Data.get(row_rules):
+% the block sequence of each row (a list indexed from 1, 0 entries are padding); Data.get(col_rules):
+% the block sequence of each column.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
     NRows = Data.get(rows),
     NCols = Data.get(cols),
-    RowRules = Data.get(row_rules),   % a rule is a list of block lengths; 0 entries are padding
+    RowRules = Data.get(row_rules),
     ColRules = Data.get(col_rules),
-    % Cell[r, c] is 1 if the cell is unshaded and 2 if it is shaded: regular/6 reads
-    % symbols 1..2, so the 0/1 board is the cell value minus one.
+    % Cell[R, C] is 1 when the square is unshaded and 2 when it is shaded (the values that
+    % regular/6 reads); Board[R, C] is the same square as 0 (unshaded) or 1 (shaded)
     Cell = new_array(NRows, NCols),
     Cell :: 1..2,
     Board = new_array(NRows, NCols),
@@ -17,11 +31,11 @@ model(Data, Vars, Outputs, Options) =>
     foreach (R in 1..NRows, C in 1..NCols)
         Board[R, C] #= Cell[R, C] - 1
     end,
-    % the shaded blocks of each row follow the row's rule
+    % the shaded blocks of each row follow the clue of that row
     foreach (R in 1..NRows)
         line_rule([Cell[R, C] : C in 1..NCols], RowRules[R])
     end,
-    % the shaded blocks of each column follow the column's rule
+    % the shaded blocks of each column follow the clue of that column
     foreach (C in 1..NCols)
         line_rule([Cell[R, C] : R in 1..NRows], ColRules[C])
     end,
@@ -29,14 +43,15 @@ model(Data, Vars, Outputs, Options) =>
     Outputs = [board = Board],
     Options = [].
 
-% A line (cells valued 1 = unshaded, 2 = shaded) obeys a rule when it is accepted by the
-% automaton that counts the blocks: state s loops on an unshaded cell while waiting for
-% the next block, steps on a shaded cell through the block's length, and then needs one
-% unshaded cell as separator. After the last block only unshaded cells may follow.
+% line_rule(Line, Rule): the line of squares (1 = unshaded, 2 = shaded) has exactly the
+% shaded blocks of Rule, in order, with at least one unshaded square between two blocks.
+% An automaton counts the blocks: state S waits for the next block on unshaded squares,
+% steps through the block's length on shaded squares, and then needs one unshaded square
+% as a separator. After the last block only unshaded squares may follow.
 line_rule(Line, Rule) =>
     Blocks = [B : B in Rule, B > 0],
     NStates = sum(Blocks) + len(Blocks) + 1,
-    Next = new_array(NStates, 2),         % Next[s, symbol] = following state, 0 if none
+    Next = new_array(NStates, 2),         % Next[S, Symbol] = the following state, 0 if none
     foreach (S in 1..NStates, K in 1..2)
         Next[S, K] = 0
     end,
@@ -51,10 +66,23 @@ line_rule(Line, Rule) =>
         State := State + 1
     end,
     Next[State, 1] := State,
-    % the line may end right after the last block or after trailing unshaded cells
+    % the line may end right after the last block or after trailing unshaded squares
     if Blocks == [] then
         Accepting = [State]
     else
         Accepting = [State - 1, State]
     end,
     regular(Line, NStates, 2, Next, 1, Accepting).
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

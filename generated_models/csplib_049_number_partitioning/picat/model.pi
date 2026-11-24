@@ -1,25 +1,47 @@
-% Number partitioning: split the numbers 1..n into two sets A and B of the same size, with the
-% same sum and the same sum of squares. The output lists the members of A and of B.
-% Encoded with sat: with cp the instance n = 16 did not finish within 180 s, with sat it took 3 s.
+% csplib_049_number_partitioning: a Picat model from DCP Rosetta.
+%
+% The problem consists of finding a partition of the numbers 1..N into two sets A and B such that A and B have
+% the same cardinality, the sum of the numbers in A equals the sum of the numbers in B, and the sum of the squares
+% of the numbers in A equals the sum of the squares of the numbers in B. There is no solution for N < 8.
+%
+% Save this file as model.pi. Download `csplib_049_number_partitioning.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_049_number_partitioning.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_049_number_partitioning.json
+%   picat model.pi csplib_049_number_partitioning_1.dat
+%
+% Data.get(n): the number N; the numbers to partition are 1..N (a split into two sets of equal size needs N even).
 import sat.
 
 model(Data, Vars, Outputs, Options) =>
-    N = Data.get(n),                      % the numbers are 1..n (n is even)
-    Half = N // 2,                        % size of each set
-    % A[i], B[i] = the i-th member of the first and of the second set
+    N = Data.get(n),
+    N mod 2 == 0,                          % two sets of equal size need an even N, otherwise there is no solution
+    Half = N // 2,                         % the size of each set
+    % A[I] and B[I] = the I-th number of the set A and of the set B
     A = new_list(Half),
     B = new_list(Half),
     A :: 1..N,
     B :: 1..N,
-    % every number is used once, in one of the two sets (all numbers different, written as pairs)
-    Both = A ++ B,
-    foreach (I in 1..N - 1, J in I + 1..N)
-        Both[I] #!= Both[J]
-    end,
-    % both sets have the same sum
+    % every number from 1 to N is in exactly one of the two sets
+    all_different(A ++ B),
+    % A and B have the same cardinality, which is Half, and the same sum
     sum(A) #= sum(B),
-    % both sets have the same sum of squares
+    % the sums of the squares of the numbers in A and in B are equal
     sum([A[I] * A[I] : I in 1..Half]) #= sum([B[I] * B[I] : I in 1..Half]),
     Vars = A ++ B,
     Outputs = ['A' = A, 'B' = B],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

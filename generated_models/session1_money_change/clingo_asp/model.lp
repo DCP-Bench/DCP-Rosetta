@@ -1,21 +1,25 @@
-% Money change: give Bob the stated amount using coins of several types, no more of a type than
-% are available, with as few coins as possible.
-% Instance facts: amount(A); types_of_coins(I,V): coin type I is worth V; available_coins(I,N): N coins of type I exist.
-coin_type(I) :- types_of_coins(I,_).
+% session1_money_change: a clingo model from DCP Rosetta.
+%
+% Alice has to give Bob some change. She has different types of coins of different values and she has a certain number of coins of each value available. How can the change be composed with the available coins minimizing the number of coins used?
+%
+% Save this file as model.lp. Download `session1_money_change.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session1_money_change.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py session1_money_change.json
+%   python -m clingo model.lp session1_money_change_1.lp
 
-% Coins given use an order encoding: given(I,K) holds when at least K coins of type I are given,
-% K in 1..available (the reference allows 0..max available and also bounds each type by its own supply).
-{ given(I,K) : K = 1..N } :- available_coins(I,N).
-:- given(I,K+1), not given(I,K), K >= 1.
+% Input: amount(A): the amount of change to give; types_of_coins(I,V): coin type I has value V;
+% available_coins(I,N): N coins of type I are available (indices are 0-based).
+coin(I) :- types_of_coins(I,_).
 
-% coin_counts(I,K): exactly K coins of type I are given.
-coin_counts(I,0) :- coin_type(I), not given(I,1).
-coin_counts(I,K) :- given(I,K), not given(I,K+1).
+% for each coin type, the number of coins given is between 0 and the number available
+1 { coin_counts(I,K) : K = 0..N } 1 :- coin(I), available_coins(I,N).
 
-% The coins given add up to the amount: each coin of type I contributes its value.
-:- amount(A), #sum { V,I,K : given(I,K), types_of_coins(I,V) } != A.
+% the coins given add up to the amount
+:- amount(A), #sum { K*V,I : coin_counts(I,K), types_of_coins(I,V) } != A.
 
-% Minimise the number of coins given.
-#minimize { 1,I,K : given(I,K) }.
+% minimize the number of coins given
+#minimize { K,I : coin_counts(I,K) }.
 
 #show coin_counts/2.

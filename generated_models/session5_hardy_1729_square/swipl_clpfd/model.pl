@@ -1,15 +1,43 @@
+% session5_hardy_1729_square: a SWI-Prolog model from DCP Rosetta.
+%
+% Find a combination of 4 different numbers between 1 and 100 such that the sum of the squares of the first two
+% numbers is equal to the sum of the squares of the other two, i.e. a^2 + b^2 = c^2 + d^2, with a, b, c and d all
+% different.
+%
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_hardy_1729_square.html
+% Save this model as model.pl and run it (SWI-Prolog 9, https://www.swi-prolog.org) with:
+%   swipl -g "solve_model(_{})" -t halt model.pl
 :- use_module(library(clpfd)).
 
-% Hardy's 1729 with squares: find four different numbers a, b, c, d between 1
-% and 100 such that a^2 + b^2 = c^2 + d^2. The problem has no instance data;
-% the range 1..100 is the one in the statement.
-model(_Instance, Vars, [a-A, b-B, c-C, d-D]) :-
-    Vars = [A, B, C, D],
-    Vars ins 1..100,
+model(_Instance, [A, B, C, D], [a-A, b-B, c-C, d-D]) :-
+    [A, B, C, D] ins 1..100,
+    all_different([A, B, C, D]),
+    % symmetry breaking (not in the statement): the order within each pair is fixed, which only removes repeated answers
+    A #< B,
+    C #< D,
+    A*A + B*B #= C*C + D*D.
 
-    % the sum of the squares of the first two numbers equals the sum of the
-    % squares of the other two
-    A * A + B * B #= C * C + D * D,
+:- use_module(library(http/json)).
 
-    % the four numbers are different
-    all_distinct(Vars).
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

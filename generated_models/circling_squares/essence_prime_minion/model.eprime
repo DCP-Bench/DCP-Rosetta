@@ -1,29 +1,60 @@
 language ESSENCE' 1.0
-$ Place a different whole number in each of the ten squares of the circle (A, B, C, D, E, F, G, H, I, K in order around the circle), so that for any two adjacent numbers the sum of their squares equals the sum of the squares of the two numbers diametrically opposite them.
-find A, B, C, D, E, F, G, H, I, K : int(0..99)
+$ circling_squares: an Essence' model from DCP Rosetta.
+$
+$ Circling the squares: place a different whole number in each of the ten squares of a circle, so that the sum of the squares of any two adjacent numbers equals the sum of the squares of the two numbers diametrically opposite them. The squares are, going round the circle, A, B, C, D, E, F, G, H, I, K. The numbers A = 16, B = 2, F = 8 and G = 14 stand as given, and fractions are not allowed.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ the ten numbers in the circle, going round in the order A, B, C, D, E, F, G, H, I, K; each a positive whole number of at most two figures (1 to 99): the puzzle says no number need contain more than two figures, so this bound is an assumption taken from that remark
+$ A: the number in the first square
+find A : int(1..99)
+$ B: the number in the second square
+find B : int(1..99)
+$ C: the number in the third square
+find C : int(1..99)
+$ D: the number in the fourth square
+find D : int(1..99)
+$ E: the number in the fifth square
+find E : int(1..99)
+$ F: the number in the sixth square
+find F : int(1..99)
+$ G: the number in the seventh square
+find G : int(1..99)
+$ H: the number in the eighth square
+find H : int(1..99)
+$ I: the number in the ninth square
+find I : int(1..99)
+$ K: the number in the tenth square
+find K : int(1..99)
 
 such that
-$ the ten numbers are all different
+$ every number is different from every other number in the circle
 allDiff([A, B, C, D, E, F, G, H, I, K]),
-$ the four numbers placed as examples stand as they are
-A = 16, B = 2, F = 8, G = 14,
-$ A and B to F and G: the squares of A and B equal the squares of F and G
-A*A + B*B = F*F + G*G,
-$ B and C to G and H
-B*B + C*C = G*G + H*H,
-$ C and D to H and I
-C*C + D*D = H*H + I*I,
-$ D and E to I and K
-D*D + E*E = I*I + K*K,
-$ E and F to K and A
-E*E + F*F = K*K + A*A,
-$ F and G to A and B
-F*F + G*G = A*A + B*B,
-$ G and H to B and C
-G*G + H*H = B*B + C*C,
-$ H and I to C and D
-H*H + I*I = C*C + D*D,
-$ I and K to D and E
-I*I + K*K = D*D + E*E,
-$ K and A to E and F
-K*K + A*A = E*E + F*F
+$ the numbers placed as examples stand as they are
+A = 16,
+B = 2,
+F = 8,
+G = 14,
+$ A and B (adjacent) have the same total of squares as the diametrically opposite F and G
+A * A + B * B = F * F + G * G,
+$ B and C (adjacent) have the same total of squares as the diametrically opposite G and H
+B * B + C * C = G * G + H * H,
+$ C and D (adjacent) have the same total of squares as the diametrically opposite H and I
+C * C + D * D = H * H + I * I,
+$ D and E (adjacent) have the same total of squares as the diametrically opposite I and K
+D * D + E * E = I * I + K * K,
+$ E and F (adjacent) have the same total of squares as the diametrically opposite K and A
+E * E + F * F = K * K + A * A,
+$ F and G (adjacent) have the same total of squares as the diametrically opposite A and B
+F * F + G * G = A * A + B * B,
+$ G and H (adjacent) have the same total of squares as the diametrically opposite B and C
+G * G + H * H = B * B + C * C,
+$ H and I (adjacent) have the same total of squares as the diametrically opposite C and D
+H * H + I * I = C * C + D * D,
+$ I and K (adjacent) have the same total of squares as the diametrically opposite D and E
+I * I + K * K = D * D + E * E,
+$ K and A (adjacent) have the same total of squares as the diametrically opposite E and F
+K * K + A * A = E * E + F * F

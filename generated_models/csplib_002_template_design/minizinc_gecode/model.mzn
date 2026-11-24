@@ -1,42 +1,46 @@
-% Template design (CSPLib 2): a printing firm prints several variations of a
-% carton from templates, each template holding n_slots slots that carry copies
-% of the variations. Decide how many printed sheets each template is run for
-% and how many copies of each variation each template carries, so that every
-% variation's demand is met with as few printed sheets in total as possible.
+% csplib_002_template_design: a MiniZinc model from DCP Rosetta.
+%
+% This problem arises from a colour printing firm which produces a variety of products from thin board.
+% Each mother sheet is printed from a template, consisting of a thin aluminium sheet on which the design
+% for several of the variations is etched. The problem is to decide, for a given number of templates
+% with a given number of slots each, which variations, and how many copies of each, to include on each
+% template, and how many sheets to make from each template. Every slot of a template is filled. Each
+% template yields between 1 sheet and as many sheets as the largest demand. The sheets produced must meet
+% at least the demand of every variation, and the objective is to minimize the total number of
+% sheets produced.
+%
+% Save this file as model.mzn. Download `csplib_002_template_design.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_002_template_design.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_002_template_design.json
+%   minizinc model.mzn csplib_002_template_design_1.json
 
-int: n_slots;          % slots on a template
-int: n_templates;      % number of different templates
-int: n_var;            % number of variations
-array[int] of int: demand;  % demand[v] = how many items of variation v are ordered
+int: n_templates;                       % the number of templates
+int: n_slots;                           % the number of slots on each template
+int: n_var;                             % the number of design variations
+array[int] of int: demand;              % demand[v]: the number of sheets of variation v ordered
 
-set of int: Templates = 1..n_templates;
-set of int: Variations = 1..n_var;
+set of int: Templates = 1..n_templates; % one index per template
+set of int: Vars = 1..n_var;            % one index per variation
+int: max_sheets = max(demand);          % no template yields more sheets than the largest demand
 
-% a template is never run for more sheets than the largest demand
-int: ub = max(demand);
+% layout[t, v]: the number of slots of template t given to variation v
+array[Templates, Vars] of var 0..n_slots: layout;
+% production[t]: the number of sheets made from template t
+array[Templates] of var 1..max_sheets: production;
 
-% production[t] = number of sheets printed from template t
-array[Templates] of var 1..ub: production;
+% every slot of each template is filled
+constraint forall(t in Templates)(sum(v in Vars)(layout[t, v]) = n_slots);
 
-% layout[t, v] = number of copies of variation v on template t
-% (the reference allows up to n_var copies of a variation on one template)
-array[Templates, Variations] of var 0..n_var: layout;
+% the sheets made from the templates meet the demand of every variation
+constraint forall(v in Vars)(sum(t in Templates)(layout[t, v] * production[t]) >= demand[v]);
 
-% all slots are populated in a template
-constraint forall(t in Templates) (sum(v in Variations) (layout[t, v]) = n_slots);
+% implied: each sheet carries n_slots items, so the sheets made must cover the total demand
+constraint n_slots * sum(t in Templates)(production[t]) >= sum(v in Vars)(demand[v]);
 
-% the demand of every variation is met: each sheet of template t yields
-% layout[t, v] items of variation v
-constraint forall(v in Variations)
-    (sum(t in Templates) (production[t] * layout[t, v]) >= demand[v]);
+var int: objective = sum(t in Templates)(production[t]);
 
-% Implied: every printed sheet carries n_slots items, so the sheets must be
-% enough to cover the total demand
-constraint n_slots * sum(production) >= sum(demand);
-
-% minimise the total number of printed sheets
-var int: objective = sum(production);
 solve minimize objective;
 
-output ["{\"production\": [", join(", ", [show(production[t]) | t in Templates]),
-        "], \"layout\": [", join(", ", ["[" ++ join(", ", [show(layout[t, v]) | v in Variations]) ++ "]" | t in Templates]), "]}"];
+output ["{\"production\": ", showJSON(production), ", \"layout\": ", showJSON(layout), "}"];

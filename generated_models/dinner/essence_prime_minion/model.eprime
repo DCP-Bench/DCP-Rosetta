@@ -1,13 +1,22 @@
 language ESSENCE' 1.0
-$ Dinner: choose how many grandparents, parents and children go to dinner, with 1 to 6 grandparents, 1 to 10 parents and 1 to 40 children.
-$ the number of grandparents
+$ dinner: an Essence' model from DCP Rosetta.
+$
+$ We are going out to dinner taking 1 to 6 grandparents, 1 to 10 parents and/or 1 to 40 children. Grandparents cost $3 for dinner, parents $2 and children $0.50. There must be 20 people in total at dinner and it must cost $20. Find how many grandparents, parents and children are going to dinner.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/dinner.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ number of grandparents going to dinner, 1 to 6
 find grandparents : int(1..6)
-$ the number of parents
+$ number of parents going to dinner, 1 to 10
 find parents : int(1..10)
-$ the number of children
+$ number of children going to dinner, 1 to 40
 find children : int(1..40)
+
 such that
 $ there must be 20 people in total at dinner
 grandparents + parents + children = 20,
-$ the dinner must cost exactly $20; costs are in cents: grandparents 300, parents 200, children 50
+$ the dinner must cost $20, counted in cents: 300 per grandparent, 200 per parent, 50 per child
 300 * grandparents + 200 * parents + 50 * children = 2000

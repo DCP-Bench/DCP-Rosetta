@@ -1,14 +1,30 @@
 language ESSENCE' 1.0
-$ Added corners: enter the digits 1 to 8 in the circles (corners) and squares (edge midpoints) of the frame, so that each square equals the sum of its adjoining circles.
+$ added_corners: an Essence' model from DCP Rosetta.
+$
+$ Enter the digits 1 through 8 into the eight positions around the edge of a 3 by 3 grid whose centre is empty, using each digit exactly once. The corners are circles (C) and the middles of the sides are squares (F):
+$
+$   C F C
+$   F   F
+$   C F C
+$
+$ The number in each square must equal the sum of the numbers in the two circles adjoining it.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/added_corners.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
+
+$ positions[k]: the digit in position k, numbered 1 to 8 in reading order (left to right, top to bottom): 1 top-left circle, 2 top square, 3 top-right circle, 4 left square, 5 right square, 6 bottom-left circle, 7 bottom square, 8 bottom-right circle
 find positions : matrix indexed by [int(1..8)] of int(1..8)
+
 such that
-$ the digits 1 through 8 are each used once
+$ the digits 1 through 8 are each used exactly once
 allDiff(positions),
 $ the top square is the sum of the two top circles
 positions[2] = positions[1] + positions[3],
-$ the left square is the sum of the top-left and bottom-left circles
+$ the left square is the sum of the two left circles
 positions[4] = positions[1] + positions[6],
-$ the right square is the sum of the top-right and bottom-right circles
+$ the right square is the sum of the two right circles
 positions[5] = positions[3] + positions[8],
 $ the bottom square is the sum of the two bottom circles
 positions[7] = positions[6] + positions[8]

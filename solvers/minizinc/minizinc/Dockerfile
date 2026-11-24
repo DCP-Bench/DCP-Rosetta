@@ -4,5 +4,5 @@ COPY --from=minizinc /usr/local /usr/local
 COPY solvers/minizinc/minizinc/requirements.txt /opt/requirements.txt
 RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /opt/requirements.txt
 COPY runner/runtime.py /opt/runner/runtime.py
-COPY solvers/minizinc/minizinc/run.py /opt/runner/run.py
+COPY solvers/minizinc/minizinc/run.py solvers/minizinc/minizinc/dcp_convert_mzn.py /opt/runner/
 ENTRYPOINT ["python", "/opt/runner/run.py"]

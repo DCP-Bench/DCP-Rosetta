@@ -1,26 +1,53 @@
-% Three coins: some coins lie on a table, each heads (0) or tails (1). In exactly the given
-% number of moves, each flipping one coin, make them all heads or all tails. The model
-% finds the state of the coins after every move.
+% three_coins: a Picat model from DCP Rosetta.
+%
+% Three coins lie on a table in the order tails, heads, tails. In precisely three moves make them face either all
+% heads or all tails. Each move consists of choosing one coin and flipping it over.
+%
+% Save this file as model.pi. Download `three_coins.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/three_coins.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py three_coins.json
+%   picat model.pi three_coins_1.dat
+%
+% Data.get(init): the starting configuration of the three coins, 1 for tails and 0 for heads (a list indexed from 1);
+% Data.get(num_moves): the number of moves.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
+    Init = Data.get(init),
     NumMoves = Data.get(num_moves),
-    Init = Data.get(init),            % starting position of the coins, 1 = tails
-    N = len(Init),
-    % Steps[m, j] = state of coin j after m - 1 moves (row 1 is the start), 1 = tails
-    Steps = new_array(NumMoves + 1, N),
-    Steps :: 0..1,
-    % the first row is the starting position
-    foreach (J in 1..N)
-        Steps[1, J] #= Init[J]
+    NumCoins = len(Init),
+    % Steps[K,C] = 1 when coin C is tails after K-1 moves (row 1 is the starting configuration)
+    Steps = [new_list(NumCoins) : _K in 1..NumMoves + 1],
+    foreach (Row in Steps)
+        Row :: 0..1
+    end,
+    % the starting configuration
+    foreach (C in 1..NumCoins)
+        Steps[1,C] #= Init[C]
     end,
     % each move flips exactly one coin
-    foreach (M in 2..NumMoves + 1)
-        sum([Steps[M, J] #!= Steps[M - 1, J] : J in 1..N]) #= 1
+    foreach (K in 1..NumMoves)
+        sum([Steps[K,C] #!= Steps[K + 1,C] : C in 1..NumCoins]) #= 1
     end,
-    % in the last row the coins are all heads (no tails) or all tails
-    LastTails #= sum([Steps[NumMoves + 1, J] : J in 1..N]),
-    (LastTails #= 0) #\/ (LastTails #= N),
+    % in the end all coins face the same way, all heads or all tails
+    foreach (C in 1..NumCoins)
+        Steps[NumMoves + 1,C] #= Steps[NumMoves + 1,1]
+    end,
     Vars = Steps,
     Outputs = [steps = Steps],
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

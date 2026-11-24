@@ -18,7 +18,6 @@ when the user owns the cgroup `cpu` controller). Otherwise the run gets ceil(cpu
 cores of its own (`CoreClaim`) and may not widen its affinity. `describe` reports which,
 and every result records it.
 """
-import fcntl
 import functools
 import hashlib
 import json
@@ -114,6 +113,8 @@ class CoreClaim:
     every core this process may use. Released on `release` or when the process ends."""
 
     def __init__(self, cpus):
+        import fcntl  # POSIX only; Docker never claims cores, so a Windows host runs without it
+
         count = max(1, math.ceil(cpus))
         pool = parse_cpu_list(setting("DCP_TASKSET")) if setting("DCP_TASKSET") else sorted(os.sched_getaffinity(0))
         folder = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"dcp-cores-{os.getuid()}"

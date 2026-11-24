@@ -7,32 +7,25 @@ import cvc5.pythonic as c5
 
 
 def create_model(instance):
-    """Tommy was given 15 coins for his birthday: half-crowns, shillings and sixpences. They
-    add up to one pound, five shillings and six pence. How many half-crowns was he given?"""
-    # Money in pence.
-    pence_in_shilling = 12
-    pence_in_sixpence = 6
-    pence_in_half_crown = 2 * pence_in_shilling + pence_in_sixpence  # two shillings and sixpence
-    pence_in_pound = 20 * pence_in_shilling
-    total_pence = pence_in_pound + 5 * pence_in_shilling + pence_in_sixpence  # one pound, five shillings and six pence
-    n_coins = 15  # the number of coins Tommy was given
-
-    # How many half-crowns, shillings and sixpences Tommy was given.
-    half_crowns, shillings, sixpences = c5.Ints("half_crowns shillings sixpences")
+    """Tommy was given 15 coins, each a half-crown (30 pence), a shilling (12 pence) or a
+    sixpence (6 pence), though not necessarily coins of all three kinds. Together they are
+    worth £1 5s 6d. How many half-crowns could he have been given?"""
+    # The instance has no fields: every number below is from the problem statement.
+    half_crowns = c5.Int("half_crowns")  # how many half-crowns he was given
+    shillings = c5.Int("shillings")      # how many shillings
+    sixpences = c5.Int("sixpences")      # how many sixpences
 
     solver = c5.Solver()
 
-    # The coins number 15 in all.
-    solver.add(half_crowns + shillings + sixpences == n_coins)
+    # A kind may be absent, so each count is at least 0; none can exceed the 15 coins.
+    solver.add([c5.And(0 <= k, k <= 15) for k in (half_crowns, shillings, sixpences)])
 
-    # He was given coins of each kind.
-    solver.add(half_crowns >= 1, shillings >= 1, sixpences >= 1)
+    # He was given 15 coins.
+    solver.add(half_crowns + shillings + sixpences == 15)
 
-    # The coins add up to the total.
-    solver.add(
-        pence_in_half_crown * half_crowns + pence_in_shilling * shillings
-        + pence_in_sixpence * sixpences == total_pence
-    )
+    # They add up to £1 5s 6d = 240 + 5 * 12 + 6 = 306 pence; a half-crown is 30 pence, a
+    # shilling 12 and a sixpence 6.
+    solver.add(30 * half_crowns + 12 * shillings + 6 * sixpences == 306)
 
     return solver, {"half_crowns": half_crowns}
 

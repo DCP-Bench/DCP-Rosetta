@@ -1,25 +1,34 @@
-% Divisible by 1 through 9: find a ten-digit number that uses each digit 0 to 9 exactly
-% once and where, for every n, the number formed by its first n digits is divisible by n.
-% The statement fixes all the data (ten digits, divisors 1 to 10), so the instance has no
-% fields.
+% divisible_by_1_through_9: a MiniZinc model from DCP Rosetta.
+%
+% Find a 10 digit number that uses each of the digits 0 to 9 exactly once and where the number formed by
+% the first n digits of the number is divisible by n. Read the digits from left to right: in the number
+% abcd, the number a is divisible by 1, the number ab by 2, the number abc by 3, and the entire number
+% abcd by 4.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/divisible_by_1_through_9.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-int: n_digits = 10;
+set of int: Digits = 1..10;                      % the positions of the digits, from left to right
 
-% digits[i]: the i-th digit of the number, read from left to right
-array[1..n_digits] of var 0..9: digits;
+% digit[p]: the digit at position p
+array[Digits] of var 0..9: digit;
 
-% Each of the digits 0 to 9 is used exactly once.
-constraint all_different(digits);
+% each of the digits 0 to 9 is used exactly once
+constraint all_different(digit);
 
-% The number formed by the first n digits is divisible by n.
-% That number is the sum of digits[j] * 10^(n-j), which for n = 10 is above 2^31 - 1, the
-% largest integer Gecode holds. Replacing each place value 10^(n-j) by its remainder modulo
-% n leaves the remainder of the sum modulo n unchanged and keeps the sum below 1000.
-constraint forall(n in 1..n_digits)(
-  sum(j in 1..n)((pow(10, n - j) mod n) * digits[j]) mod n = 0
+% the number is a 10 digit number, so its leading digit is not 0
+constraint digit[1] != 0;
+
+% the number formed by the first n digits is divisible by n, for n from 1 to 9
+constraint forall(n in 1..9)(
+    sum(p in 1..n)(digit[p] * pow(10, n - p)) mod n = 0
 );
 
-solve satisfy;
+% the number formed by the first 10 digits is divisible by 10, so its last digit is 0
+constraint digit[10] = 0;
 
-output ["{\"digits\": ", show(digits), "}"];
+solve satisfy;
+output ["{\"digits\": ", showJSON(digit), "}"];

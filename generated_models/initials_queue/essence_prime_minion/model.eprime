@@ -1,18 +1,40 @@
 language ESSENCE' 1.0
-$ Initials queue: ten people in a queue each have a pair of distinct letters from A to E in alphabetical order, all pairs differ, and no one shares a letter with the person in front. The front is BE, then CD, and the last is BD. Letters are 0 (A) to 4 (E).
-find queue : matrix indexed by [int(1..10), int(1..2)] of int(0..4)
+$ initials_queue: an Essence' model from DCP Rosetta.
+$
+$ I noticed something weird about names of the first 10 people in the queue for a Maths lecture.
+$ Each of them had initials which were an alphabetically ordered pair of distinct letters from the
+$ first five letters of the alphabet (A, B, C, D, E). None of the people had the same initials as
+$ any other and no-one shared a letter with the person in front of them. Mathematician BE was at
+$ the front of the queue with CD right behind, while BD was right at the end of the queue. Work
+$ out the initials of the ten people in the queue, starting from the front.
+$
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/initials_queue.html
+$ Save this model as model.eprime and run it with Savile Row 1.11 (it needs Java); the solution is
+$ written to `model.eprime.solution`:
+$   savilerow model.eprime -run-solver
 
-branching on [queue]
+$ the number of people in the queue
+letting people = 10
+$ the number of letters, A to E
+letting letters = 5
+
+$ queue[i,1], queue[i,2]: the first and second initial of the person i-th in the queue, from the front (the letters A to E as 0 to letters-1)
+find queue : matrix indexed by [int(1..people), int(1..2)] of int(0..letters-1)
+$ code[i]: the initials of person i as letters * first + second, so that two people with the same initials have the same code
+find code : matrix indexed by [int(1..people)] of int(0..letters*letters-1)
+
 such that
 $ each person's initials are an alphabetically ordered pair of distinct letters
-forAll p : int(1..10) . queue[p, 1] < queue[p, 2],
+forAll i : int(1..people) . queue[i,1] < queue[i,2],
+$ the code of each person
+forAll i : int(1..people) . code[i] = letters * queue[i,1] + queue[i,2],
 $ no two people have the same initials
-allDiff([queue[p, 1] * 5 + queue[p, 2] | p : int(1..10)]),
-$ no one shares a letter with the person in front of them in the queue
-forAll p : int(1..9) . (queue[p, 1] != queue[p + 1, 1]) /\ (queue[p, 1] != queue[p + 1, 2]) /\ (queue[p, 2] != queue[p + 1, 1]) /\ (queue[p, 2] != queue[p + 1, 2]),
-$ the mathematician at the front of the queue has initials BE
-queue[1, 1] = 1 /\ queue[1, 2] = 4,
+allDiff(code),
+$ the person at the front has initials BE
+queue[1,1] = 1 /\ queue[1,2] = 4,
 $ the person right behind the front has initials CD
-queue[2, 1] = 2 /\ queue[2, 2] = 3,
-$ the person right at the end of the queue has initials BD
-queue[10, 1] = 1 /\ queue[10, 2] = 3
+queue[2,1] = 2 /\ queue[2,2] = 3,
+$ the person at the end of the queue has initials BD
+queue[people,1] = 1 /\ queue[people,2] = 3,
+$ nobody shares a letter with the person in front of them
+forAll i : int(1..people-1) . (queue[i,1] != queue[i+1,1] /\ queue[i,1] != queue[i+1,2] /\ queue[i,2] != queue[i+1,1] /\ queue[i,2] != queue[i+1,2])

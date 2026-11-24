@@ -1,44 +1,54 @@
-vocabulary {
-    type Pos <: Int                 // states 1..stage, one per state of the crossing
-    Pos_size: () -> Int
-    stage: () -> Int
-
-    wolf_pos: Pos -> Bool           // true on the destination shore
-    goat_pos: Pos -> Bool
-    cabbage_pos: Pos -> Bool
-    boat_pos: Pos -> Bool
-    next: Pos * Pos -> Bool         // s directly follows t
+// wolf_goat_cabbage: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The wolf, goat and cabbage problem is a river crossing puzzle. A farmer with a wolf, a goat, and a cabbage must cross
+// a river by boat. The boat can carry only the farmer and a single item. If left unattended together, the wolf would
+// eat the goat, or the goat would eat the cabbage. How can they cross the river without anything being eaten? The
+// crossing takes the given number of stages. At the first stage everything is on the starting shore, at the last stage
+// everything is on the destination shore, and the boat, with the farmer, changes shore from each stage to the next.
+//
+// Save this file as model.idp. Download `wolf_goat_cabbage.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/wolf_goat_cabbage.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py wolf_goat_cabbage.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Range_stage <: Int            // the stages of the crossing, numbered from 1 to stage
+    stage: () -> Int                   // the number of stages of the crossing
+    wolf_pos: Range_stage -> Bool      // wolf_pos(k): the wolf is on the destination shore at stage k (false: starting shore) (declared output)
+    goat_pos: Range_stage -> Bool      // goat_pos(k): the goat is on the destination shore at stage k (declared output)
+    cabbage_pos: Range_stage -> Bool   // cabbage_pos(k): the cabbage is on the destination shore at stage k (declared output)
+    boat_pos: Range_stage -> Bool      // boat_pos(k): the boat, with the farmer, is on the destination shore at stage k (declared output)
 }
+theory T:V {
+    // at the first stage everything is on the starting shore
+    ~wolf_pos(1) & ~goat_pos(1) & ~cabbage_pos(1) & ~boat_pos(1).
 
-theory {
-    // the number of states is the number of stages
-    Pos_size() = stage().
+    // at the last stage everything is on the destination shore
+    wolf_pos(stage()) & goat_pos(stage()) & cabbage_pos(stage()) & boat_pos(stage()).
 
-    // the successor relation between consecutive states
-    { ! t, s in Pos: next(t, s) <- s = t + 1. }
+    // the boat changes shore from each stage to the next
+    ! k in Range_stage: k < stage() => (boat_pos(k + 1) <=> ~boat_pos(k)).
 
-    // everything starts on the starting shore
-    ! x in Pos: x = 1 => (~wolf_pos(x) & ~goat_pos(x) & ~cabbage_pos(x) & ~boat_pos(x)).
+    // the farmer moves an item only from the shore where he is: an item that changes shore is on the boat's shore
+    ! k in Range_stage: k < stage() => ((wolf_pos(k + 1) ~= wolf_pos(k)) => (wolf_pos(k) <=> boat_pos(k))).
+    ! k in Range_stage: k < stage() => ((goat_pos(k + 1) ~= goat_pos(k)) => (goat_pos(k) <=> boat_pos(k))).
+    ! k in Range_stage: k < stage() => ((cabbage_pos(k + 1) ~= cabbage_pos(k)) => (cabbage_pos(k) <=> boat_pos(k))).
 
-    // everything ends on the destination shore
-    ! x in Pos: x = stage() => (wolf_pos(x) & goat_pos(x) & cabbage_pos(x) & boat_pos(x)).
+    // the boat carries at most one item at a time: at most one of the wolf, goat and cabbage changes shore
+    ! k in Range_stage: k < stage() => ~(wolf_pos(k + 1) ~= wolf_pos(k) & goat_pos(k + 1) ~= goat_pos(k)).
+    ! k in Range_stage: k < stage() => ~(wolf_pos(k + 1) ~= wolf_pos(k) & cabbage_pos(k + 1) ~= cabbage_pos(k)).
+    ! k in Range_stage: k < stage() => ~(goat_pos(k + 1) ~= goat_pos(k) & cabbage_pos(k + 1) ~= cabbage_pos(k)).
 
-    // the farmer rows the boat on every crossing
-    ! t, s in Pos: next(t, s) => (boat_pos(s) <=> ~boat_pos(t)).
+    // the wolf would eat the goat unless the farmer is with them: at every stage, if the wolf and the goat are on the
+    // same shore, the farmer is on that shore too
+    ! k in Range_stage: ((wolf_pos(k) <=> goat_pos(k)) => (boat_pos(k) <=> goat_pos(k))).
 
-    // an item only crosses when it is on the same shore as the boat
-    ! t, s in Pos: next(t, s) => ((wolf_pos(s) <=> wolf_pos(t)) | (wolf_pos(t) <=> boat_pos(t))).
-    ! t, s in Pos: next(t, s) => ((goat_pos(s) <=> goat_pos(t)) | (goat_pos(t) <=> boat_pos(t))).
-    ! t, s in Pos: next(t, s) => ((cabbage_pos(s) <=> cabbage_pos(t)) | (cabbage_pos(t) <=> boat_pos(t))).
-
-    // the boat carries the farmer and at most one item
-    ! t, s in Pos: next(t, s) => ~((wolf_pos(s) <=> ~wolf_pos(t)) & (goat_pos(s) <=> ~goat_pos(t))).
-    ! t, s in Pos: next(t, s) => ~((wolf_pos(s) <=> ~wolf_pos(t)) & (cabbage_pos(s) <=> ~cabbage_pos(t))).
-    ! t, s in Pos: next(t, s) => ~((goat_pos(s) <=> ~goat_pos(t)) & (cabbage_pos(s) <=> ~cabbage_pos(t))).
-
-    // the wolf and the goat are never left together without the farmer
-    ! t in Pos: (wolf_pos(t) <=> goat_pos(t)) => (boat_pos(t) <=> goat_pos(t)).
-
-    // the goat and the cabbage are never left together without the farmer
-    ! t in Pos: (goat_pos(t) <=> cabbage_pos(t)) => (boat_pos(t) <=> goat_pos(t)).
+    // the goat would eat the cabbage unless the farmer is with them: at every stage, if the goat and the cabbage are on
+    // the same shore, the farmer is on that shore too
+    ! k in Range_stage: ((goat_pos(k) <=> cabbage_pos(k)) => (boat_pos(k) <=> goat_pos(k))).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

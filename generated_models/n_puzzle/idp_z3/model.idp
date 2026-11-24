@@ -1,53 +1,56 @@
-vocabulary {
-    type Row <: Int
-    type Col <: Int
-    type Step <: Int
-    type Tile := {0..15}
-    Step_size: () -> Int
-    N_STEPS: () -> Int
-    puzzle_start: Row * Col -> Int
-    puzzle_end: Row * Col -> Int
-    steps: Step * Row * Col -> Tile
-    blank_r: Step -> Row
-    blank_c: Step -> Col
-    next_step: Step * Step -> Bool
-    first: Step -> Bool
-    last: Step -> Bool
-    adjacent: Row * Col * Row * Col -> Bool
+// n_puzzle: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// The N-Puzzle is a classic sliding puzzle game where the goal is to move tiles on a grid to achieve a specific end
+// configuration. The puzzle consists of a grid with n+1 tiles, one of which is empty (tile 0). The objective is to
+// trace the steps to the original picture by moving the tiles into their correct positions. Each step moves one tile
+// that is horizontally or vertically next to the empty tile into the empty position. Freezing is not allowed: the
+// state of the puzzle must change at each step. The start and end states of the puzzle are given, together with the
+// number of steps to the solution, which includes the start and end states.
+//
+// Save this file as model.idp. Download `n_puzzle.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/n_puzzle.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py n_puzzle.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Row <: Int                    // the rows of the grid, numbered from 0, sized from puzzle_start
+    type Col <: Int                    // the columns of the grid, numbered from 0, sized from puzzle_start
+    type Step <: Int                   // the states of the puzzle, numbered from 1 to N_STEPS
+    Step_size: () -> Int               // the number of states, which is N_STEPS
+    N_STEPS: () -> Int                 // the number of states, including the start and end states
+    puzzle_start: Row * Col -> Int     // puzzle_start(r, c): the tile on cell (r, c) in the start state, 0 for the empty cell
+    puzzle_end: Row * Col -> Int       // puzzle_end(r, c): the tile on cell (r, c) in the end state, 0 for the empty cell
+    Tile_max: () -> Int                // the largest tile number: the number of cells minus 1
+    steps: Step * Row * Col -> Int     // steps(t, r, c): the tile on cell (r, c) in state t, 0 for the empty cell (declared output)
+    blank_r: Step -> Row               // blank_r(t): the row of the empty cell in state t
+    blank_c: Step -> Col               // blank_c(t): the column of the empty cell in state t
 }
-
-theory {
-    // the step list has exactly N_STEPS entries, one per step
+theory T:V {
+    // the puzzle has N_STEPS states, numbered from 1
     Step_size() = N_STEPS().
-
-    // two cells are adjacent when they share an edge
-    { ! r1, r2 in Row: ! c1, c2 in Col: adjacent(r1, c1, r2, c2) <- abs(r1 - r2) + abs(c1 - c2) = 1. }
-
-    // step u follows step t
-    { ! t, u in Step: next_step(t, u) <- u = t + 1. }
-
-    // the first and last steps
-    { ! t in Step: first(t) <- t = 1. }
-    { ! t in Step: last(t) <- t = Step_size(). }
-
-    // every state holds each tile exactly once
-    ! t in Step: ! r1 in Row: ! c1 in Col: ! r2 in Row: ! c2 in Col: (r1 ~= r2 | c1 ~= c2) => steps(t, r1, c1) ~= steps(t, r2, c2).
-
-    // the empty cell is tile 0 in every state
+    // the tiles are numbered from 0 (the empty cell) up to the number of cells minus 1
+    Tile_max() = #{ r in Row, c in Col: true } - 1.
+    // every cell of every state holds a tile number in range
+    ! t in Step, r in Row, c in Col: 0 =< steps(t, r, c) & steps(t, r, c) =< Tile_max().
+    // every tile appears on only one cell in each state
+    ! t in Step, r1 in Row, c1 in Col, r2 in Row, c2 in Col: steps(t, r1, c1) = steps(t, r2, c2) => r1 = r2 & c1 = c2.
+    // the empty tile 0 is on the cell that is the empty cell of the state
     ! t in Step: steps(t, blank_r(t), blank_c(t)) = 0.
-
-    // a move slides the empty cell into an adjacent cell
-    ! t in Step: ! u in Step: next_step(t, u) => adjacent(blank_r(t), blank_c(t), blank_r(u), blank_c(u)).
-
-    // the tile in the new empty cell moves into the old empty cell
-    ! t in Step: ! u in Step: ! r in Row: ! c in Col: (next_step(t, u) & r = blank_r(t) & c = blank_c(t)) => steps(u, r, c) = steps(t, blank_r(u), blank_c(u)).
-
-    // every other cell keeps its tile, so each step changes the state
-    ! t in Step: ! u in Step: ! r in Row: ! c in Col: (next_step(t, u) & ~(r = blank_r(t) & c = blank_c(t)) & ~(r = blank_r(u) & c = blank_c(u))) => steps(u, r, c) = steps(t, r, c).
-
+    // the empty cell is the only cell holding the empty tile 0
+    ! t in Step, r in Row, c in Col: steps(t, r, c) = 0 => r = blank_r(t) & c = blank_c(t).
     // the first state is the start picture
-    ! t in Step: first(t) => ! r in Row: ! c in Col: steps(t, r, c) = puzzle_start(r, c).
-
+    ! t in Step, r in Row, c in Col: t = 1 => steps(t, r, c) = puzzle_start(r, c).
     // the last state is the end picture
-    ! t in Step: last(t) => ! r in Row: ! c in Col: steps(t, r, c) = puzzle_end(r, c).
+    ! t in Step, r in Row, c in Col: t = Step_size() => steps(t, r, c) = puzzle_end(r, c).
+    // each step moves a tile that is horizontally or vertically next to the empty tile into the empty position
+    ! t in Step, u in Step: u = t + 1 => abs(blank_r(t) - blank_r(u)) + abs(blank_c(t) - blank_c(u)) = 1.
+    // the tile next to the empty cell moves into the empty cell
+    ! t in Step, u in Step, r in Row, c in Col: (u = t + 1 & r = blank_r(t) & c = blank_c(t)) => steps(u, r, c) = steps(t, blank_r(u), blank_c(u)).
+    // every other cell keeps its tile, so the state changes at each step
+    ! t in Step, u in Step, r in Row, c in Col: (u = t + 1 & ~(r = blank_r(t) & c = blank_c(t)) & ~(r = blank_r(u) & c = blank_c(u))) => steps(u, r, c) = steps(t, r, c).
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

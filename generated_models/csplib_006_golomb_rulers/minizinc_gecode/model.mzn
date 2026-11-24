@@ -1,32 +1,37 @@
-% Golomb ruler: place `size` marks at integer positions on a ruler, the first at
-% 0, so that all differences between two marks are distinct, with the ruler (the
-% position of the last mark) as short as possible.
+% csplib_006_golomb_rulers: a MiniZinc model from DCP Rosetta.
+%
+% A Golomb ruler is a set of m integers 0 = a_1 < a_2 < ... < a_m such that the m(m-1)/2
+% differences a_j - a_i, for 1 <= i < j <= m, are all distinct. Such a ruler contains m marks
+% and has length a_m. Find an optimal ruler, that is one of minimum length.
+%
+% Save this file as model.mzn. Download `csplib_006_golomb_rulers.json` and `dcp_convert_mzn.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_006_golomb_rulers.html
+% Convert the instances once, then run the first one (MiniZinc 2.8 or later):
+%   python dcp_convert_mzn.py csplib_006_golomb_rulers.json
+%   minizinc model.mzn csplib_006_golomb_rulers_1.json
+
 include "globals.mzn";
 
-int: size;  % number of marks on the ruler
+int: size;                                  % m, the number of marks
+set of int: Marks = 1..size;                % one index per mark
+int: max_length = size * size;              % a generous upper bound on the length
 
-% marks[i] = position of the i-th mark. The upper bound size * size is the
-% reference's own bound on the length.
-array[1..size] of var 0..size * size: marks;
+array[Marks] of var 0..max_length: marks;   % marks[k]: position of the k-th mark
+var int: ruler_length = marks[size];        % the length is the position of the last mark
 
-% the first mark is at 0
+% the first mark is at position 0
 constraint marks[1] = 0;
 
-% marks are in increasing order
-constraint forall(i in 1..size - 1) (marks[i] < marks[i + 1]);
+% the marks are in strictly increasing order
+constraint forall(k in 1..size - 1)(marks[k] < marks[k + 1]);
 
-% Golomb condition: the differences between all pairs of marks are distinct
-constraint alldifferent([marks[j] - marks[i] | i in 1..size - 1, j in i + 1..size]);
+% all differences between pairs of marks are distinct
+constraint alldifferent([marks[j] - marks[i] | i in Marks, j in Marks where i < j]);
 
-% Implied: the differences between marks that are k places apart are k distinct
-% positive integers (the k consecutive gaps), so they add up to at least
-% 1 + 2 + ... + k. This follows from the constraints above and removes no solution;
-% it gives Gecode a lower bound on every mark from the start.
-constraint forall(i in 1..size - 1, j in i + 1..size) (marks[j] - marks[i] >= (j - i) * (j - i + 1) div 2);
+% redundant: the k gaps between marks k places apart are distinct positive integers
+constraint forall(i in Marks, j in Marks where i < j)(marks[j] - marks[i] >= (j - i) * (j - i + 1) div 2);
 
-% the length of the ruler is the position of its last mark, to be minimised
-var int: ruler_length = marks[size];
 var int: objective = ruler_length;
 solve minimize objective;
-
-output ["{\"marks\": [", join(", ", [show(marks[i]) | i in 1..size]), "], \"length\": ", show(ruler_length), "}"];
+output ["{\"marks\": ", showJSON(marks), ", \"length\": ", showJSON(ruler_length), "}"];

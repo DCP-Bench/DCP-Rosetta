@@ -1,19 +1,50 @@
-% Media selection: choose advertising media so that every target audience is
-% reached by at least one of them, at the least total cost.
+% media_selection: a Picat model from DCP Rosetta.
+%
+% Allocate advertising budgets between possible advertising media: decide which media to select so
+% that all target audiences are reached, each by at least one selected medium, with the minimum
+% total cost. An audience may be covered more than once; it only has to be covered at least once.
+%
+% Save this file as model.pi. Download `media_selection.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/media_selection.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py media_selection.json
+%   picat model.pi media_selection_1.dat
+%
+% Data.get(target_audiences): the audiences to reach (a list indexed from 1, its length is the
+% number of audiences); Data.get(advertising_media): the media (its length is the number of media);
+% Data.get(incidence_matrix): the incidence matrix, a list of rows where row T, column M is 1 when
+% medium M reaches audience T; Data.get(media_costs): the cost of each medium (lists indexed from 1).
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Incidence = Data.get(incidence_matrix),   % incidence[t][m] = 1 when medium m reaches t
+    Incidence = Data.get(incidence_matrix),
     Costs = Data.get(media_costs),
-    NA = len(Data.get(target_audiences)),
-    NM = len(Data.get(advertising_media)),
-    Selected = new_list(NM),
+    NumAudiences = len(Data.get(target_audiences)),
+    NumMedia = len(Data.get(advertising_media)),
+    % Selected[M] = 1 when medium M is selected
+    Selected = new_list(NumMedia),
     Selected :: 0..1,
-    % every audience is reached
-    foreach (T in 1..NA)
-        sum([Incidence[T, M] * Selected[M] : M in 1..NM]) #>= 1
+    % every target audience is reached by at least one selected medium
+    foreach (T in 1..NumAudiences)
+        sum([Incidence[T, M] * Selected[M] : M in 1..NumMedia]) #>= 1
     end,
-    MinTotalCost #= sum([Costs[M] * Selected[M] : M in 1..NM]),
+    % the total cost of the selected media
+    MinTotalCost #= sum([Costs[M] * Selected[M] : M in 1..NumMedia]),
     Vars = Selected,
     Outputs = [is_selected = Selected, min_total_cost = MinTotalCost],
+    % minimize the total cost of the campaign
     Options = [$min(MinTotalCost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

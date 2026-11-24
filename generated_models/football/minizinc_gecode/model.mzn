@@ -1,37 +1,55 @@
-% Football squad: buy players for as close to GBP 30 million as possible without
-% going over, taking the required number from each position and at least eleven
-% players in total. The output is the total price in GBP thousands.
+% football: a MiniZinc model from DCP Rosetta.
+%
+% A chairman gives an upper limit of GBP 30 million on the purchase of players. Buy players so that
+% their total price is as close to that limit as possible without going over. The players come in four
+% groups, each with a price in GBP millions: goalkeepers, defenders, midfielders and strikers. You must
+% buy exactly one goalkeeper, at least two defenders, at least three midfielders and at least two
+% strikers, and at least eleven players in total.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/football.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% The players on offer are fixed by the problem, so their prices (in GBP
-% thousands) are mirrored here: goalkeepers 1-3, defenders 4-11, midfielders
-% 12-21 and strikers 22-26.
-int: budget = 30000;
-array[1..26] of int: price = [
-    730, 1280, 3880,
-    920, 1310, 1620, 2410, 2790, 3280, 3910, 4570,
-    1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130,
-    4460, 6470, 7780, 8390, 9500];
-array[1..4] of set of int: position = [1..3, 4..11, 12..21, 22..26];
-% the fewest and most players to buy at each position: exactly 1 goalkeeper,
-% then 2 or more defenders, 3 or more midfielders and 2 or more strikers
-array[1..4] of int: fewest = [1, 2, 3, 2];
-array[1..4] of int: most = [1, 8, 10, 5];
-int: min_players = 11;  % at least this many players in all
+int: budget = 30000;                                 % the upper limit on spending, in GBP thousands
+array[1..26] of int: price = [                       % price of each player, in GBP thousands
+    730, 1280, 3880,                                 % goalkeepers g1-g3
+    920, 1310, 1620, 2410, 2790, 3280, 3910, 4570,   % defenders d1-d8
+    1800, 2630, 3170, 3769, 4140, 4750, 5380, 5930, 6780, 7130,  % midfielders m1-m10
+    4460, 6470, 7780, 8390, 9500];                   % strikers s1-s5
+set of int: Players = index_set(price);
+set of int: Goalkeepers = 1..3;
+set of int: Defenders = 4..11;
+set of int: Midfielders = 12..21;
+set of int: Strikers = 22..26;
 
-% buy[p] is true when player p is bought
-array[1..26] of var bool: buy;
+% buy[p]: player p is bought
+array[Players] of var bool: buy;
 
-constraint forall(k in 1..4) (
-    sum(p in position[k]) (bool2int(buy[p])) >= fewest[k] /\
-    sum(p in position[k]) (bool2int(buy[p])) <= most[k]);
-constraint sum(p in 1..26) (bool2int(buy[p])) >= min_players;
+% buy exactly one goalkeeper
+constraint sum(p in Goalkeepers)(bool2int(buy[p])) = 1;
 
-% z = total price paid, and it stays within the budget
-var 0..budget: z = sum(p in 1..26) (price[p] * bool2int(buy[p]));
+% buy at least two defenders
+constraint sum(p in Defenders)(bool2int(buy[p])) >= 2;
 
-% spend as much as possible
+% buy at least three midfielders
+constraint sum(p in Midfielders)(bool2int(buy[p])) >= 3;
+
+% buy at least two strikers
+constraint sum(p in Strikers)(bool2int(buy[p])) >= 2;
+
+% buy at least eleven players in total
+constraint sum(p in Players)(bool2int(buy[p])) >= 11;
+
+% z: total price of the players bought
+var 0..sum(price): z = sum(p in Players)(price[p] * bool2int(buy[p]));
+
+% the purchases do not go over the chairman's limit
+constraint z <= budget;
+
 var int: objective = z;
+
 solve maximize objective;
 
-output ["{\"z\": ", show(z), "}"];
+output ["{\"z\": ", showJSON(z), "}"];

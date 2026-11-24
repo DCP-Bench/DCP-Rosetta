@@ -1,16 +1,30 @@
-// 0-1 knapsack: choose items to maximize total value without exceeding the weight capacity
-vocabulary {
-    type I <: Int                  // the items, one index per item
-    capacity: () -> Int
-    values: I -> Int
-    weights: I -> Int
-    x: I -> Bool                   // x(i) = true if item i is in the backpack
-    maximize: () -> Int
+// knapsack: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A hiker is planning a trip and needs to decide which items to take in their backpack. Each item has a certain value
+// and weight, and the hiker wants to maximize the total value of the items in the backpack without exceeding the weight
+// capacity of the backpack.
+//
+// Save this file as model.idp. Download `knapsack.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/knapsack.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py knapsack.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type I <: Int                      // the items, numbered from 0
+    capacity: () -> Int                // the weight capacity of the backpack
+    values: I -> Int                   // values(i): the value of item i
+    weights: I -> Int                  // weights(i): the weight of item i
+    x: I -> Bool                       // x(i): item i is taken into the backpack
+    maximize: () -> Int                // the total value of the items taken
 }
-theory {
-    // the total weight of the chosen items must not exceed the capacity
+theory T:V {
+    // the items taken weigh no more in total than the weight capacity of the backpack
     sum{{ weights(i) | i in I: x(i) }} =< capacity().
-
-    // the objective is the total value of the chosen items
+    // the total value of the items taken is the value to maximize
     maximize() = sum{{ values(i) | i in I: x(i) }}.
+}
+procedure main() {
+    pretty_print(maximize(T, S, term="maximize()"))
 }

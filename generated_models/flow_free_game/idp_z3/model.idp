@@ -1,52 +1,33 @@
-vocabulary {
-    // the board: 0 for an empty cell, otherwise the color of an endpoint
-    type Row <: Int
-    type Col <: Int
-    board: Row * Col -> Int
-
-    // one color per pair of endpoints
-    type Color <: Int
-    Color_size: () -> Int
-
-    // number of cells on the board
-    ncells: () -> Int
-
-    // the output: the color of every cell
-    B: Row * Col -> Int
-
-    // number of same-colored neighbours of each cell
-    deg: Row * Col -> Int
-    // position of each cell along its pipe, the root has rank 0
-    rank: Row * Col -> Int
-    // the root cell of each pipe, one endpoint per color
-    root: Row * Col -> Bool
+// flow_free_game: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Flow Free: connect the matching colours with pipes to create a flow. Pair all the colours, and cover the entire
+// board. The pipes break if they cross or overlap. The cells of the board are connected horizontally and vertically:
+// a numbered cell has exactly one neighbour of its own colour, and a filled cell has exactly two. The colours are the
+// integers from 1 to 5.
+//
+// Save this file as model.idp. Download `flow_free_game.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/flow_free_game.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py flow_free_game.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type R <: Int                      // the rows of the board, numbered from 0
+    type C <: Int                      // the columns of the board, numbered from 0
+    board: R * C -> Int                // board(r, c): the given colour of cell (r, c), 0 when the cell is empty
+    B: R * C -> Int                    // B(r, c): the colour of cell (r, c) in the solution, from 1 to 5
 }
-theory {
-    // there are two endpoints per color
-    Color_size() = #{ r in Row, c in Col: board(r, c) ~= 0 } / 2.
-
-    // the board has one cell for each (row, column) pair
-    ncells() = #{ r in Row, c in Col: true }.
-
-    // every cell has a color between 1 and the number of colors
-    ! r in Row: ! c in Col: 1 =< B(r, c) & B(r, c) =< Color_size().
-
-    // a numbered cell keeps its color
-    ! r in Row: ! c in Col: board(r, c) ~= 0 => B(r, c) = board(r, c).
-
-    // each cell has exactly two same-colored neighbours, endpoints have one
-    ! r in Row: ! c in Col: board(r, c) ~= 0 => deg(r, c) = 1.
-    ! r in Row: ! c in Col: board(r, c) = 0 => deg(r, c) = 2.
-    ! r in Row: ! c in Col: deg(r, c) = #{ s in Row, t in Col: ((r = s & c + 1 = t) | (r = s & t + 1 = c) | (c = t & r + 1 = s) | (c = t & s + 1 = r)) & B(s, t) = B(r, c) }.
-
-    // each pipe starts at one endpoint, which has rank 0
-    ! r in Row: ! c in Col: root(r, c) => board(r, c) ~= 0 & rank(r, c) = 0.
-    ! k in Color: #{ r in Row, c in Col: root(r, c) & B(r, c) = k } = 1.
-
-    // ranks are bounded by the number of cells
-    ! r in Row: ! c in Col: 0 =< rank(r, c) & rank(r, c) =< ncells().
-
-    // every cell that is not a root has a neighbour of its color with a lower rank,
-    // so each pipe reaches its root without a cycle
-    ! r in Row: ! c in Col: ~root(r, c) => ? s in Row: ? t in Col: ((r = s & c + 1 = t) | (r = s & t + 1 = c) | (c = t & r + 1 = s) | (c = t & s + 1 = r)) & B(s, t) = B(r, c) & rank(s, t) < rank(r, c).
+theory T:V {
+    // every cell has a colour from 1 to 5
+    ! r in R: ! c in C: 1 =< B(r, c) & B(r, c) =< 5.
+    // a numbered cell keeps its given colour
+    ! r in R: ! c in C: board(r, c) ~= 0 => B(r, c) = board(r, c).
+    // a numbered cell has exactly one neighbour of its own colour
+    ! r in R: ! c in C: board(r, c) ~= 0 => #{ r2 in R, c2 in C: abs(r - r2) + abs(c - c2) = 1 & B(r2, c2) = B(r, c) } = 1.
+    // a filled cell has exactly two neighbours of its own colour
+    ! r in R: ! c in C: board(r, c) = 0 => #{ r2 in R, c2 in C: abs(r - r2) + abs(c - c2) = 1 & B(r2, c2) = B(r, c) } = 2.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

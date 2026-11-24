@@ -1,74 +1,88 @@
-# Flow Free: colour every cell of the board so that each colour forms one pipe joining
-# its two endpoints, pipes do not cross or overlap, and the whole board is covered.
+# flow_free_game: a SCIP (Python) model from DCP Rosetta.
+# Download the `flow_free_game.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/flow_free_game.html
+# Then run it on the first instance (after `pip install pyscipopt numpy`):
+#   python flow_free_game.py flow_free_game.json
+
 from pyscipopt import Model, quicksum
 
 
-def build(instance):
-    board = instance["board"]
-    n_rows = len(board)
-    n_cols = len(board[0])
-    n_cells = n_rows * n_cols
-    colors = sorted({v for row in board for v in row if v != 0})
-    cells = [(i, j) for i in range(n_rows) for j in range(n_cols)]
+def create_model(instance):
+    """Flow Free: the two cells of each colour are joined by a pipe of that colour,
+    every cell carries exactly one pipe, and pipes move only between orthogonally
+    neighbouring cells. The output B is the completed board: the colour of each cell."""
+    board = instance["board"]  # board[r][c]: the colour of cell (r, c), or 0 when the cell is empty
+    rows = len(board)          # the number of rows of the board
+    cols = len(board[0])       # the number of columns of the board
+    # The colours are 1 to K. The description pairs every colour and the board gives both
+    # of its cells, so K is the largest colour on the board.
+    K = max(max(row) for row in board)
 
-    def nbrs(p):
-        i, j = p
-        out = []
-        for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            if 0 <= i + di < n_rows and 0 <= j + dj < n_cols:
-                out.append((i + di, j + dj))
-        return out
+    cells = [(r, c) for r in range(rows) for c in range(cols)]
+    # ends[j]: the two cells the board gives colour j + 1, in reading order. The pipe runs
+    # from the first to the second. A pipe can be walked from either end, so this choice
+    # of direction loses no solution.
+    ends = [[(r, c) for (r, c) in cells if board[r][c] == j + 1] for j in range(K)]
+    # nbrs[v]: the cells orthogonally next to cell v, the only cells a pipe can step to
+    nbrs = {(r, c): [(r + dr, c + dc) for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]
+                     if 0 <= r + dr < rows and 0 <= c + dc < cols]
+            for (r, c) in cells}
 
-    m = Model()
+    model = Model("flow_free_game")
 
-    # x[p, c] = 1 if cell p has colour c
-    x = {(p, c): m.addVar(name=f"x[{p[0]},{p[1]},{c}]", vtype="B") for p in cells for c in colors}
+    # x[r, c, j] is 1 when cell (r, c) carries colour j + 1. A cell the board colours is
+    # fixed to that colour; an empty cell may take any colour.
+    lb = [[[int(board[r][c] == j + 1) for j in range(K)] for c in range(cols)] for r in range(rows)]
+    ub = [[[int(board[r][c] in (0, j + 1)) for j in range(K)] for c in range(cols)] for r in range(rows)]
+    x = model.addMatrixVar((rows, cols, K), vtype="B", lb=lb, ub=ub)
+    # Every cell carries exactly one colour, so no two pipes share a cell.
+    model.addMatrixCons(x.sum(axis=2) == 1)
 
-    # every cell has exactly one colour, and the board is covered
-    for p in cells:
-        m.addCons(quicksum(x[p, c] for c in colors) == 1)
+    # arc[v, w, j] is 1 when the pipe of colour j steps from cell v to the neighbouring cell w.
+    arc = {(v, w, j): model.addVar(vtype="B") for v in cells for w in nbrs[v] for j in range(K)}
+    # level[r, c, j] is the position of cell (r, c) along the pipe of colour j. A pipe visits
+    # each cell at most once, so it has at most rows * cols cells, and positions run from 0
+    # to rows * cols - 1.
+    level = model.addMatrixVar((rows, cols, K), vtype="I", lb=0, ub=rows * cols - 1)
 
-    # the numbered cells of the board keep their colour
-    endpoints = {}
-    for p in cells:
-        i, j = p
-        if board[i][j] != 0:
-            c = board[i][j]
-            m.addCons(x[p, c] == 1)
-            endpoints.setdefault(c, []).append(p)
+    # Each pipe is a single path from its first cell to its last. Every cell of the pipe
+    # has one step out, except its last cell, and one step in, except its first cell.
+    # A cell without the colour has no steps at all.
+    for j in range(K):
+        first, last = ends[j]
+        for v in cells:
+            model.addCons(quicksum(arc[v, w, j] for w in nbrs[v]) == x[v + (j,)] - int(v == last))
+            model.addCons(quicksum(arc[w, v, j] for w in nbrs[v]) == x[v + (j,)] - int(v == first))
 
-    # a pipe is a path: each endpoint has one neighbour of its colour,
-    # and every other cell of a colour has exactly two neighbours of that colour
-    for p in cells:
-        i, j = p
-        for c in colors:
-            same = quicksum(x[q, c] for q in nbrs(p))
-            if board[i][j] == c:
-                m.addCons(same == 1)
-            elif board[i][j] == 0:
-                m.addConsIndicator(same <= 2, binvar=x[p, c])
-                m.addConsIndicator(same >= 2, binvar=x[p, c])
+    # SCIP has no connectivity constraint for a path, so a pipe could close into a loop of
+    # cells apart from its own path. A step from v to w puts w at least one position further
+    # along the pipe than v. Going round a loop would raise the position forever, so no loop
+    # can form, and with the degree rules above each colour's cells are exactly one path.
+    for (v, w, j), step in arc.items():
+        model.addConsIndicator(level[v + (j,)] - level[w + (j,)] <= -1, binvar=step)
 
-    # a pipe is connected: a unit of flow leaves the first endpoint of each colour and
-    # every other cell of that colour absorbs one unit, along pipe cells only.
-    # Cycles that do not reach an endpoint cannot absorb flow, so they are excluded.
-    flow = {}
-    for c in colors:
-        for p in cells:
-            for q in nbrs(p):
-                f = m.addVar(name=f"flow[{c},{p[0]},{p[1]},{q[0]},{q[1]}]", vtype="C", lb=0, ub=n_cells)
-                flow[c, p, q] = f
-                m.addCons(f <= n_cells * x[p, c])
-                m.addCons(f <= n_cells * x[q, c])
-        for p in cells:
-            if p == endpoints[c][0]:
-                continue
-            # the cell of colour c absorbs one unit of flow
-            m.addCons(
-                quicksum(flow[c, q, p] for q in nbrs(p)) - quicksum(flow[c, p, q] for q in nbrs(p))
-                == x[p, c]
-            )
+    # No objective: the problem is satisfaction, and any completed board is a solution.
 
-    # the output B gives the colour of each cell
-    B = [[quicksum(c * x[(i, j), c] for c in colors) for j in range(n_cols)] for i in range(n_rows)]
-    return m, {"B": B}
+    # B[r][c] is the colour of cell (r, c): the colour j + 1 of the one entry x[r, c, j] that is 1.
+    B = (x * list(range(1, K + 1))).sum(axis=2)
+    return model, {"B": B}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    import numpy as np
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

@@ -1,13 +1,17 @@
-"""Broken weights: a measuring weight of m pounds broke into n pieces of whole-pound weights.
+# broken_weights: a CPLEX (Python) model from DCP Rosetta.
+# Download the `broken_weights.json` instances from the model's page:
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/broken_weights.html
+# Then run it on the first instance (after `pip install docplex cplex`; the CPLEX that comes
+# with pip allows models up to 1000 variables and 1000 constraints):
+#   python broken_weights.py broken_weights.json
 
-On a balance scale the pieces must be able to weigh every whole weight from 1 to m: each
-piece goes on the object's side, on the other side, or stays off. The model finds the
-weights of the n pieces.
-"""
 from docplex.mp.model import Model
 
 
-def build(instance):
+def create_model(instance):
+    """Broken weights: a measuring weight of m pounds broke into n pieces of whole-pound weights.
+    On a balance scale each piece goes on the object's side, on the other side, or stays off; the
+    pieces must be able to weigh every whole weight from 1 to m. What do the pieces weigh?"""
     m = instance["m"]  # total weight of the pieces
     n = instance["n"]  # number of pieces
 
@@ -18,8 +22,7 @@ def build(instance):
 
     # weighs[j, v] is 1 when piece j weighs v pounds, v in 1..m; each piece has one weight.
     weighs = {(j, v): model.binary_var(name=f"weighs_{j}_{v}") for j in pieces for v in values}
-    for j in pieces:
-        model.add_constraint(model.sum(weighs[j, v] for v in values) == 1)
+    model.add_constraints(model.sum(weighs[j, v] for v in values) == 1 for j in pieces)
 
     # weights[j] is the weight of piece j.
     weights = [model.sum(v * weighs[j, v] for v in values) for j in pieces]
@@ -40,12 +43,34 @@ def build(instance):
     # Pieces of equal weight meet the condition once the first of them does, so it is stated
     # once per weight value v that some piece takes: v <= 2 * (total of pieces lighter than v)
     # + 1. The pieces themselves are not put in order; the condition is on the multiset.
-    used = [None] + [model.binary_var(name=f"used_{v}") for v in values]
+    # used[v] is 1 when some piece weighs v.
+    used = {v: model.binary_var(name=f"used_{v}") for v in values}
     for v in values:
         count = model.sum(weighs[j, v] for j in pieces)
         lighter = model.sum(u * weighs[j, u] for j in pieces for u in range(1, v))
-        # used[v] is 1 when some piece weighs v.
         model.add_constraint(count <= n * used[v])
         model.add_constraint(v * used[v] <= 2 * lighter + 1)
 
     return model, {"weights": weights}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    instances = json.load(open(sys.argv[1]))
+    index = 0 if len(sys.argv) <= 2 else int(sys.argv[2])
+
+    model, outputs = create_model(instances[index])
+    solution = model.solve()
+
+    if solution:  # a solution
+        def value(out):  # a variable, a linear expression or a number, or lists of them
+            if isinstance(out, (list, tuple)):
+                return [value(item) for item in out]
+            return out if isinstance(out, int) else round(out.solution_value)
+
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.solve_details.status)

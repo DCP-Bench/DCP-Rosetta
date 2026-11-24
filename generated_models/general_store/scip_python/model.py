@@ -1,46 +1,80 @@
-# General store puzzle: the cryptarithm of the sixteen words above the line adding up to ALL WOOL,
-# where each different letter stands for a different digit.
+# general_store: a SCIP (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/general_store.html
+# Run it (after `pip install pyscipopt numpy`) with:
+#   python general_store.py
+
 from pyscipopt import Model, quicksum
-
-# The words above the line and the total, as written in the problem statement (problem data, not instance data).
-WORDS = ["CHESS", "CASH", "BOWWOW", "CHOPS", "ALSOPS", "PALEALE", "COOL", "BASS",
-         "HOPS", "ALES", "HOES", "APPLES", "COWS", "CHEESE", "CHSOAP", "SHEEP"]
-TOTAL = "ALLWOOL"
-LETTERS = "ABCEHLOPSW"  # the ten distinct letters of the puzzle
-WIDTH = len(TOTAL)      # the total has the most digits: seven columns
+import numpy as np
 
 
-def build(instance):
-    m = Model()
+def create_model(instance):
+    """The owner of a general store has written sixteen words to add up to
+    ALL WOOL. Each different letter stands for a different digit: find the
+    digit of each letter so that the sixteen words add up to ALL WOOL.
 
-    # b[L, v] = 1 if letter L stands for digit v; a digit expression d[L] is derived from it
-    b = {(L, v): m.addVar(name=f"b_{L}_{v}", vtype="B") for L in LETTERS for v in range(10)}
-    d = {}
-    for L in LETTERS:
-        # each letter stands for exactly one digit
-        m.addCons(quicksum(b[L, v] for v in range(10)) == 1)
-        d[L] = quicksum(v * b[L, v] for v in range(10))
+    The instance file is empty ([]): the statement fixes all the data, so
+    the instance argument is not read."""
+    model = Model("general_store")
 
-    # each digit is used by exactly one letter (ten letters, ten digits, all different)
-    for v in range(10):
-        m.addCons(quicksum(b[L, v] for L in LETTERS) == 1)
+    # The ten letters, as the row numbers of the assignment matrix below.
+    A, B, C, E, H, L, O, P, S, W = range(10)
 
-    # carry[p] is the carry into column p (column 0 is the units column); the carries out of the
-    # first column and of the last column are zero. A column holds at most 16 digits of at most 9,
-    # so a carry never exceeds 15.
-    carry = {p: m.addVar(name=f"carry_{p}", vtype="I", lb=0, ub=16) for p in range(1, WIDTH)}
+    # x[l, v] is 1 when letter l stands for digit v, and 0 when not.
+    x = model.addMatrixVar((10, 10), vtype="B", name="x")
+    # Each letter stands for exactly one digit.
+    model.addMatrixCons(x.sum(axis=1) == 1)
+    # Each digit is stood for by at most one letter. There are ten letters
+    # and ten digits, so every digit is then stood for by exactly one letter.
+    model.addMatrixCons(x.sum(axis=0) <= 1)
 
-    # the column additions: the digits of the sixteen words in each column, plus the carry in,
-    # equal the total's digit in that column plus ten times the carry out
-    for p in range(WIDTH):
-        rows = [w[len(w) - 1 - p] for w in WORDS if p < len(w)]
-        cin = carry[p] if p > 0 else 0
-        cout = carry[p + 1] if p + 1 < WIDTH else 0
-        # the words' digits and the carry from the column before add up to the total's digit
-        m.addCons(quicksum(d[L] for L in rows) + cin == d[TOTAL[WIDTH - 1 - p]] + 10 * cout)
+    # digit[l] is the digit that letter l stands for.
+    digit = x @ np.arange(10)
 
-    outputs = {
-        "A": d["A"], "B": d["B"], "C": d["C"], "E": d["E"], "H": d["H"],
-        "L": d["L"], "O": d["O"], "P": d["P"], "S": d["S"], "W": d["W"],
+    def number(letters):
+        """The whole number spelled by these letters, most significant first."""
+        return quicksum(10**k * digit[l] for k, l in enumerate(reversed(letters)))
+
+    # The sixteen words, as the statement writes them, and their sum ALL WOOL.
+    addends = [
+        number([C, H, E, S, S]),              # CHESS
+        number([C, A, S, H]),                 # CASH
+        number([B, O, W, W, O, W]),           # BOWWOW
+        number([C, H, O, P, S]),              # CHOPS
+        number([A, L, S, O, P, S]),           # ALSOPS
+        number([P, A, L, E, A, L, E]),        # PALEALE
+        number([C, O, O, L]),                 # COOL
+        number([B, A, S, S]),                 # BASS
+        number([H, O, P, S]),                 # HOPS
+        number([A, L, E, S]),                 # ALES
+        number([H, O, E, S]),                 # HOES
+        number([A, P, P, L, E, S]),           # APPLES
+        number([C, O, W, S]),                 # COWS
+        number([C, H, E, E, S, E]),           # CHEESE
+        number([C, H, S, O, A, P]),           # CHSOAP
+        number([S, H, E, E, P]),              # SHEEP
+    ]
+    total = number([A, L, L, W, O, O, L])     # ALL WOOL
+
+    # The sixteen words add up to ALL WOOL.
+    model.addCons(quicksum(addends) == total)
+
+    # There is no objective: the statement asks only for the digits.
+    return model, {
+        "A": digit[A], "B": digit[B], "C": digit[C], "E": digit[E], "H": digit[H],
+        "L": digit[L], "O": digit[O], "P": digit[P], "S": digit[S], "W": digit[W],
     }
-    return m, outputs
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.hideOutput()  # no solver log
+    model.optimize()
+
+    if model.getStatus() == "optimal":  # a proven optimum, or with no objective a solution
+        value = np.vectorize(lambda var: round(model.getVal(var)))  # make it work on nested variables
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution:", model.getStatus())

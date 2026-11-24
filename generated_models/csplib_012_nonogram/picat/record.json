@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-sonnet-5-5)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1790857475.7815812,
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/picat/picat/CONTRACT.md": "84202cb7387163b69f6023ef9f5658182a3bd8e8b5d15cc07f32426b75c94ebf"
+    },
+    "created_at": 1794501393.2644448,
     "problem_id": "csplib_012_nonogram",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "6534fc9c0b8d0a20b5ef10a05cd3450cdcb9d59bca5a989c4a6042fe4ab2091b",
-    "run_id": "20261001T1218Z-picat-971a",
-    "schema": 2,
-    "skill_bundle_hash": "9c09b7b65e862d4be362383b1f7175757d00cca6ebf70ee872641c6c03ee535f",
-    "skill_source": "solvers\\picat\\skills\\picat",
+    "readiness_hash": "6349758252cdf8d0bc71631c157efe55d743038b912f2bc780627c63a8272e69",
+    "run_id": "20261114-picat-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "9e97e234e761b34da5daae9cfe5f583a4438d01e",
+      "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
       "modified": false,
-      "path": "solvers/picat/skills/picat"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "d8c844033a146dbc55f9571b6929affc6badcd3bc8fe96c77a521a26987179a4",
+        "source": "solvers/picat/skills/dcp-picat",
+        "version": {
+          "commit": "721f210fbda5af1082eab9069efcaf8a51424e5e",
+          "modified": false,
+          "path": "solvers/picat/skills/dcp-picat"
+        }
+      }
+    ],
     "solver_id": "picat"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:59c7946aa6a99bc6f6ca146559c554b94c2ed0d1df56ba02955402fa60271966",
+      "id": "sha256:5ea63b9832d8270c8ab826fa631a98480e54b76ff46e38a5ec48e72ce8414e71",
+      "recipe": "sha256:f06a73c33be291578424d0b82082735dcc778ac1de62ed2561dd6d102739f621",
       "tag": "dcp-eval/picat:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.01285020005889237,
-        "execution_wall_seconds": 1.4678804001305252,
+        "checking_seconds": 0.0027652099961414933,
+        "execution_wall_seconds": 0.8011234580189921,
         "first_solution": {
           "board": [
             [
@@ -171,9 +201,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7215175000019372,
+        "reference_setup_seconds": 0.2530366670107469,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.0,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -183,8 +216,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.041678400011733174,
-        "execution_wall_seconds": 1.955866999924183,
+        "checking_seconds": 0.01163164502941072,
+        "execution_wall_seconds": 0.6958377779810689,
         "first_solution": {
           "board": [
             [
@@ -638,9 +671,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7718245000578463,
+        "reference_setup_seconds": 0.3210903409635648,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.03,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -650,8 +686,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.05413040006533265,
-        "execution_wall_seconds": 40.257316400064155,
+        "checking_seconds": 0.019980221055448055,
+        "execution_wall_seconds": 14.566807487048209,
         "first_solution": {
           "board": [
             [
@@ -1340,9 +1376,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.9573311998974532,
+        "reference_setup_seconds": 0.504124163009692,
         "runner_status": {
+          "build_seconds": 0.02,
           "detail": "",
+          "main_seconds": 13.08,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -1352,8 +1391,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0384510001167655,
-        "execution_wall_seconds": 1.70556930010207,
+        "checking_seconds": 0.00883867300581187,
+        "execution_wall_seconds": 1.2284312960109673,
         "first_solution": {
           "board": [
             [
@@ -1807,9 +1846,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.505832999944687,
+        "reference_setup_seconds": 0.33773443498648703,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.04,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -1819,8 +1861,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.016671699937433004,
-        "execution_wall_seconds": 1.6897291999775916,
+        "checking_seconds": 0.006284189003054053,
+        "execution_wall_seconds": 0.9957567880046554,
         "first_solution": {
           "board": [
             [
@@ -2004,9 +2046,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.784108400112018,
+        "reference_setup_seconds": 0.36843472498003393,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -2016,8 +2061,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.19717320008203387,
-        "execution_wall_seconds": 1.9366719999816269,
+        "checking_seconds": 0.03952368104364723,
+        "execution_wall_seconds": 1.0121021649683826,
         "first_solution": {
           "board": [
             [
@@ -4201,9 +4246,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.235495900036767,
+        "reference_setup_seconds": 0.4175438300007954,
         "runner_status": {
+          "build_seconds": 0.06,
           "detail": "",
+          "main_seconds": 0.17,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -4213,8 +4261,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.013066800078377128,
-        "execution_wall_seconds": 1.4823900999035686,
+        "checking_seconds": 0.005970429047010839,
+        "execution_wall_seconds": 0.6932399360230193,
         "first_solution": {
           "board": [
             [
@@ -4381,9 +4429,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.461735999910161,
+        "reference_setup_seconds": 0.42328617902239785,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -4393,8 +4444,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01977919996716082,
-        "execution_wall_seconds": 1.7320272999349982,
+        "checking_seconds": 0.004898593004327267,
+        "execution_wall_seconds": 1.4591316749574617,
         "first_solution": {
           "board": [
             [
@@ -4663,9 +4714,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.4974521999247372,
+        "reference_setup_seconds": 0.4760364679968916,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.22,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -4675,8 +4729,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.09009329997934401,
-        "execution_wall_seconds": 1.6814904001075774,
+        "checking_seconds": 0.030766794050578028,
+        "execution_wall_seconds": 0.8436690350063145,
         "first_solution": {
           "board": [
             [
@@ -5650,9 +5704,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6935011998284608,
+        "reference_setup_seconds": 0.36260912904981524,
         "runner_status": {
+          "build_seconds": 0.04,
           "detail": "",
+          "main_seconds": 0.08,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -5662,8 +5719,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.010779100004583597,
-        "execution_wall_seconds": 1.2436752000357956,
+        "checking_seconds": 0.012162062979768962,
+        "execution_wall_seconds": 0.8974552300060168,
         "first_solution": {
           "board": [
             [
@@ -5797,9 +5854,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.713709799805656,
+        "reference_setup_seconds": 0.47121854801662266,
         "runner_status": {
+          "build_seconds": 0.01,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -5809,8 +5869,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01032560016028583,
-        "execution_wall_seconds": 1.6239099998492748,
+        "checking_seconds": 0.004222461022436619,
+        "execution_wall_seconds": 1.073754365032073,
         "first_solution": {
           "board": [
             [
@@ -5914,9 +5974,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.8858423000201583,
+        "reference_setup_seconds": 0.4907429589657113,
         "runner_status": {
+          "build_seconds": 0.0,
           "detail": "",
+          "main_seconds": 0.01,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -5926,8 +5989,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.12789040012285113,
-        "execution_wall_seconds": 1.6964840998407453,
+        "checking_seconds": 0.049668413994368166,
+        "execution_wall_seconds": 0.907488810014911,
         "first_solution": {
           "board": [
             [
@@ -7606,9 +7669,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.078365799970925,
+        "reference_setup_seconds": 0.5616390350041911,
         "runner_status": {
+          "build_seconds": 0.04,
           "detail": "",
+          "main_seconds": 0.12,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -7618,8 +7684,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.3390263000037521,
-        "execution_wall_seconds": 2.1321805000770837,
+        "checking_seconds": 0.10426214698236436,
+        "execution_wall_seconds": 1.51005677098874,
         "first_solution": {
           "board": [
             [
@@ -11053,9 +11119,12 @@
           "board"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 2.2206663000397384,
+        "reference_setup_seconds": 0.791939449030906,
         "runner_status": {
+          "build_seconds": 0.16,
           "detail": "",
+          "main_seconds": 0.51,
+          "read_seconds": 0.0,
           "status": "complete",
           "type": "status"
         },
@@ -11067,21 +11136,21 @@
     "instances_available": 13,
     "instances_checked": 13,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "6873eaa7b189f28396f0202f37b03bc5d67208524375bf279c4b2b885b2433bd",
+    "model_hash": "8054df97a89369df896a7f1247e364efaa0c37f8a1b7f77d87a21465abd359ec",
     "problem_id": "csplib_012_nonogram",
     "reason": "accepted",
-    "reference_hash": "3e2d77fd45556518b59d456db797db007b76e7c25f1ed317a7c1303d13641ad6",
+    "reference_hash": "b0ef3317a0511fdd1f00661ac63bf3703090f60e16134889531f67e7f0f189e4",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -11092,11 +11161,11 @@
     "skipped_instances": [],
     "solutions_checked": 13,
     "solver_id": "picat",
-    "total_wall_seconds": 91.11971149989404,
+    "total_wall_seconds": 33.29115305299638,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-sonnet-5-5)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.pi",

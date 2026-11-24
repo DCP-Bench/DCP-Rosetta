@@ -1,35 +1,53 @@
-% Circling the squares: place a different number from 1 to 99 in each of ten
-% squares of a circle so that the sum of the squares of any two adjacent numbers
-% equals the sum of the squares of the two numbers opposite them. A, B, F and G
-% are given.
-% The puzzle is fixed by the problem; the instance carries no data.
+% circling_squares: a clingo model from DCP Rosetta.
+%
+% Circling the squares: the puzzle is to place a different number in each of the ten squares so that the sum of
+% the squares of any two adjacent numbers shall be equal to the sum of the squares of the two numbers
+% diametrically opposite to them. The numbers placed, as examples, must stand as they are: A=16, B=2, F=8 and
+% G=14. In the same way, B and C should be equal to G and H, A and K to F and E, H and I to C and D, and so on,
+% with any two adjoining squares in the circle. The numbers are whole numbers, fractions are not allowed, and no
+% number need contain more than two figures.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/circling_squares.html
+% Save this file as model.lp and run it (clingo 5.8, e.g. `pip install clingo`) with:
+%   python -m clingo model.lp
+
+% the squares of the circle, in order: a, b, c, d, e, f, g, h, i, k
 square(a;b;c;d;e;f;g;h;i;k).
 
-% v(S, V): the square S holds the number V.
-1 { v(S,V) : V = 1..99 } 1 :- square(S).
-% The numbers are all different.
-:- v(S,V), v(T,V), S < T.
+% value(S, V): the square S holds the number V, a whole number from 1 to 99
+1 { value(S, V) : V = 1..99 } 1 :- square(S).
 
-% The numbers that are given.
-given(a,16). given(b,2). given(f,8). given(g,14).
-:- given(S,V), not v(S,V).
+% the numbers in the squares are all different
+:- value(S, V), value(T, V), S < T.
 
-% pairs(P, Q, R, S): the squares of the numbers in P and Q add up to the squares of
-% the numbers in R and S.
-pairs(a,b,f,g). pairs(b,c,g,h). pairs(c,d,h,i). pairs(d,e,i,k). pairs(e,f,k,a).
-:- pairs(P,Q,R,S), #sum { V*V,P : v(P,V);  V*V,Q : v(Q,V);  -V*V,R : v(R,V);  -V*V,S : v(S,V) } != 0.
+% the given numbers
+given(a, 16). given(b, 2). given(f, 8). given(g, 14).
+:- given(S, V), not value(S, V).
 
-% The answer: one atom per square, a(V), b(V), ...
-a(V) :- v(a,V).
-b(V) :- v(b,V).
-c(V) :- v(c,V).
-d(V) :- v(d,V).
-e(V) :- v(e,V).
-f(V) :- v(f,V).
-g(V) :- v(g,V).
-h(V) :- v(h,V).
-i(V) :- v(i,V).
-k(V) :- v(k,V).
+% equal_pairs(P, Q, R, S): the squares of the numbers in the adjacent squares P and Q add up to the squares of
+% the numbers in the squares R and S, which are opposite them
+equal_pairs(a, b, f, g).
+equal_pairs(b, c, g, h).
+equal_pairs(c, d, h, i).
+equal_pairs(d, e, i, k).
+equal_pairs(e, f, k, a).
+
+% the sum of the squares of P and Q minus the sum of the squares of R and S is zero
+:- equal_pairs(P, Q, R, S),
+   #sum { V*V,P : value(P, V); V*V,Q : value(Q, V); -V*V,R : value(R, V); -V*V,S : value(S, V) } != 0.
+
+% one atom per square: a(V) says that the square a holds the number V, and so on
+a(V) :- value(a, V).
+b(V) :- value(b, V).
+c(V) :- value(c, V).
+d(V) :- value(d, V).
+e(V) :- value(e, V).
+f(V) :- value(f, V).
+g(V) :- value(g, V).
+h(V) :- value(h, V).
+i(V) :- value(i, V).
+k(V) :- value(k, V).
+
 #show a/1.
 #show b/1.
 #show c/1.

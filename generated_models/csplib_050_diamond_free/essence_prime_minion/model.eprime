@@ -1,21 +1,37 @@
 language ESSENCE' 1.0
-$ Diamond-free degree sequences: find a simple undirected graph on N vertices, given by its adjacency matrix, whose degrees are non-increasing, positive and divisible by 3, with degree sum divisible by 12, and that contains no diamond (no four vertices with at least five edges between them).
-given N : int
+$ csplib_050_diamond_free: an Essence' model from DCP Rosetta.
+$
+$ Find a simple undirected graph on N vertices, with no loops, that is diamond-free: no four vertices have at least five edges between them, so the graph has no diamond as an induced subgraph. The degrees d_1 >= d_2 >= ... >= d_N are non-increasing, each degree is greater than zero and divisible by 3, and the sum of the degrees is divisible by 12 (so the number of edges is divisible by 6).
+$
+$ Save this file as model.eprime. Download `csplib_050_diamond_free.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_050_diamond_free.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_050_diamond_free_1.param.solution`:
+$   python dcp_convert_essence.py csplib_050_diamond_free.json
+$   savilerow model.eprime csplib_050_diamond_free_1.param -run-solver
+
+$ N: number of vertices
+given N : int(1..)
+
+$ matrix_[u,v]: vertices u and v are adjacent (indices 1-based; named matrix_ because matrix is an Essence' word)
 find matrix_ : matrix indexed by [int(1..N), int(1..N)] of bool
+$ deg[u]: degree of vertex u, the number of vertices adjacent to u (auxiliary, a function of matrix_)
 find deg : matrix indexed by [int(1..N)] of int(0..N-1)
 
 branching on [matrix_]
 such that
-$ the graph is simple and undirected: no loop edges, and the edge between u and v is the same edge as between v and u
-forAll i : int(1..N) . !matrix_[i, i],
-forAll i, j : int(1..N) . matrix_[i, j] = matrix_[j, i],
-$ the degree of each vertex is the number of its adjacent vertices
-forAll i : int(1..N) . deg[i] = (sum j : int(1..N) . matrix_[i, j]),
-$ the degrees are listed in non-increasing order, d_i >= d_(i+1)
-forAll i : int(1..N-1) . deg[i] >= deg[i + 1],
-$ each degree is greater than zero and divisible by 3 (modulo 3 is zero)
-forAll i : int(1..N) . deg[i] > 0 /\ deg[i] % 3 = 0,
-$ the sum of the degrees is divisible by 12 (so the number of edges is divisible by 6)
-((sum i : int(1..N) . deg[i]) % 12) = 0,
-$ diamond-free: for every set of four vertices the number of edges between them is at most four
-forAll a : int(1..N) . forAll b : int(a+1..N) . forAll c : int(b+1..N) . forAll d : int(c+1..N) . (matrix_[a, b] + matrix_[a, c] + matrix_[a, d] + matrix_[b, c] + matrix_[b, d] + matrix_[c, d]) <= 4
+$ the graph is simple: no vertex is adjacent to itself
+forAll u : int(1..N) . (!matrix_[u,u]),
+$ the graph is undirected: adjacency is symmetric
+forAll u : int(1..N) . forAll v : int(1..N) . (matrix_[u,v] = matrix_[v,u]),
+$ deg[u] is the number of vertices adjacent to u
+forAll u : int(1..N) . (deg[u] = (sum v : int(1..N) . toInt(matrix_[u,v]))),
+$ the degrees are listed in non-increasing order, d_u >= d_(u+1)
+forAll u : int(1..N-1) . (deg[u] >= deg[u+1]),
+$ each degree is greater than zero and divisible by 3
+forAll u : int(1..N) . (deg[u] > 0 /\ deg[u] % 3 = 0),
+$ the sum of the degrees is divisible by 12
+(sum u : int(1..N) . deg[u]) % 12 = 0,
+$ diamond-free: among any four vertices there are at most four edges
+forAll a : int(1..N) . forAll b : int(a+1..N) . forAll c : int(b+1..N) . forAll d : int(c+1..N) . ((toInt(matrix_[a,b]) + toInt(matrix_[a,c]) + toInt(matrix_[a,d]) + toInt(matrix_[b,c]) + toInt(matrix_[b,d]) + toInt(matrix_[c,d])) <= 4)

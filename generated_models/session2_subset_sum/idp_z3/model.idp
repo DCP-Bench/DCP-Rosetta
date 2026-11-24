@@ -1,16 +1,30 @@
-// A bank van had several kinds of coin bags, each kind holding a fixed number of coins.
-// Some bags were stolen, losing a given total number of coins. Find how many bags
-// of each kind were stolen.
-vocabulary {
-    type B <: Int                      // coin bag kinds, sized from the data
-    coin_numbers: B -> Int             // number of coins in a bag of each kind
-    total_coins_lost: () -> Int        // total number of coins lost
-    bags: B -> Int                     // number of stolen bags of each kind
+// session2_subset_sum: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// A bank van had several bags of coins, each containing a number of coins from a given list (there are multiple bags
+// of the same kind). While the van was parked on the street, thieves stole some bags. A total of a given number of
+// coins were lost. It is required to find how many bags were stolen for each type of coin bag.
+//
+// Save this file as model.idp. Download `session2_subset_sum.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_subset_sum.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session2_subset_sum.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Kind <: Int                   // the kinds of coin bags, numbered from 0
+    coin_numbers: Kind -> Int          // coin_numbers(k): the number of coins in a bag of kind k
+    total_coins_lost: () -> Int        // the total number of coins lost
+    bags: Kind -> Int                  // bags(k): the number of bags of kind k stolen
+    lost: Kind -> Int                  // lost(k): the number of coins in the bags of kind k stolen (auxiliary)
 }
-theory {
-    // every bag count is a non-negative number, and no more coins than were lost
-    ! b in B: 0 =< bags(b) & bags(b) =< total_coins_lost().
-
-    // the stolen bags add up to exactly the coins lost
-    sum{{ (bags(b) * coin_numbers(b)) | b in B }} = total_coins_lost().
+theory T:V {
+    // the bags stolen hold together exactly the number of coins lost
+    ! k in Kind: lost(k) = coin_numbers(k) * bags(k).
+    sum{{ lost(k) | k in Kind }} = total_coins_lost().
+    // the number of bags stolen of each kind is not negative
+    ! k in Kind: bags(k) >= 0.
+}
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

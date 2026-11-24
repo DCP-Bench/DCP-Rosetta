@@ -1,19 +1,35 @@
 language ESSENCE' 1.0
-$ Cut raw rolls of a given width into pieces of several widths, using cutting patterns; each width must be cut at least as many times as its order requires, and the total number of raw rolls cut is minimised.
-given roll_width : int(1..)
+$ cutting_stock: an Essence' model from DCP Rosetta.
+$
+$ Cutting stock: raw rolls of a given width are cut with cutting patterns, and a pattern yields a given number of pieces of each of several smaller widths. Each width must be produced at least as many times as its order requires. Choose how many rolls to cut with each pattern so that the total number of raw rolls cut is minimised.
+$
+$ Save this file as model.eprime. Download `cutting_stock.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/cutting_stock.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `cutting_stock_1.param.solution`:
+$   python dcp_convert_essence.py cutting_stock.json
+$   savilerow model.eprime cutting_stock_1.param -run-solver
+
+$ widths_dim1: the number of piece widths, derived from the data (the length of widths)
 given widths_dim1 : int(1..)
+$ widths[j]: the width of pieces of kind j (indices 1-based, so the data's index 0 is 1)
 given widths : matrix indexed by [int(1..widths_dim1)] of int(1..)
+$ orders[j]: the number of pieces of width widths[j] that are needed
 given orders : matrix indexed by [int(1..widths_dim1)] of int(0..)
-$ num_rolls_width[p,j] is the number of pieces of width j that pattern p cuts from one roll
+$ num_rolls_width_dim1: the number of cutting patterns, num_rolls_width_dim2: the number of widths; both derived from the data (not fields of the reader's JSON)
 given num_rolls_width_dim1, num_rolls_width_dim2 : int(1..)
+$ num_rolls_width[p,j]: the number of pieces of width widths[j] that one raw roll cut with pattern p yields (patterns and widths 1-based)
 given num_rolls_width : matrix indexed by [int(1..num_rolls_width_dim1), int(1..num_rolls_width_dim2)] of int(0..)
-$ patterns_used[p] is the number of rolls cut with pattern p
+
+$ patterns_used[p]: the number of raw rolls cut with pattern p (patterns 1-based, so the output's first entry is pattern 1); at most sum(orders), since an optimal plan cuts no more than one roll per ordered piece
 find patterns_used : matrix indexed by [int(1..num_rolls_width_dim1)] of int(0..sum(orders))
+$ min_rolls_cut: the total number of raw rolls cut
 find min_rolls_cut : int(0..sum(orders))
 
 minimising min_rolls_cut
 such that
 $ the total number of raw rolls cut is the sum of the rolls cut with each pattern
 min_rolls_cut = (sum p : int(1..num_rolls_width_dim1) . patterns_used[p]),
-$ for each width, the pieces cut over all patterns meet the order for that width
+$ for each width, the pieces cut over all patterns are at least the order for that width
 forAll j : int(1..widths_dim1) . (sum p : int(1..num_rolls_width_dim1) . patterns_used[p] * num_rolls_width[p,j]) >= orders[j]

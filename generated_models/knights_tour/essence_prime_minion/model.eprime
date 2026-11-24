@@ -1,25 +1,46 @@
 language ESSENCE' 1.0
-$ Knight's tour: move a knight so that it visits every square of an n by n board exactly once; x shows the move number of each square, from 0.
-given n : int(1..)
-$ the squares a knight can jump between, each square numbered (row-1)*n+column
-letting Jumps = [ [(r1-1)*n+c1, (r2-1)*n+c2] | r1 : int(1..n), c1 : int(1..n), r2 : int(1..n), c2 : int(1..n), ((|r1-r2| = 1) /\ (|c1-c2| = 2)) \/ ((|r1-r2| = 2) /\ (|c1-c2| = 1)) ]
-find x : matrix indexed by [int(1..n), int(1..n)] of int(0..n*n-1)
-$ row and column of the square visited at each move (moves numbered from 1)
-find rowOf : matrix indexed by [int(1..n*n)] of int(1..n)
-find colOf : matrix indexed by [int(1..n*n)] of int(1..n)
-$ the square of each move as one index from 1 to n*n
-find cell : matrix indexed by [int(1..n*n)] of int(1..n*n)
-$ the search follows the board squares, the one with the fewest possible moves first
-heuristic sdf
-branching on [x]
+$ knights_tour: an Essence' model from DCP Rosetta.
+$
+$ A knight's tour is a sequence of moves of a knight on a chessboard such that the knight visits every square exactly once, without returning to its starting square. Find a knight's tour on an n by n chessboard, giving for each square the number of the move at which the knight visits it. The moves are numbered from 0 to n*n-1.
+$
+$ Save this file as model.eprime. Download `knights_tour.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/knights_tour.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `knights_tour_1.param.solution`:
+$   python dcp_convert_essence.py knights_tour.json
+$   savilerow model.eprime knights_tour_1.param -run-solver
+
+$ n: the size of the chessboard, which has n rows and n columns
+given n : int
+
+$ the number of squares, n*n; the moves are numbered from 0 to cells-1
+letting cells = n * n
+
+$ rowOf[t], colOf[t]: row and column (1-based) of the square visited at move t-1 (t is 1-based, so rowOf[1] is move 0)
+find rowOf : matrix indexed by [int(1..cells)] of int(1..n)
+find colOf : matrix indexed by [int(1..cells)] of int(1..n)
+$ squareOf[t]: the square of move t-1 numbered row by row, (row-1)*n + column, from 1 to cells
+find squareOf : matrix indexed by [int(1..cells)] of int(1..cells)
+$ moveOfSquare[s]: the move number (0-based) at which square s is visited, where s = (row-1)*n + column
+find moveOfSquare : matrix indexed by [int(1..cells)] of int(0..cells-1)
+$ x[r,c]: the number of the move at which the knight visits the square in row r and column c (rows and columns indexed from 1 here; moves numbered from 0)
+find x : matrix indexed by [int(1..n), int(1..n)] of int(0..cells-1)
+
+$ search: follow the tour move by move, so each move is chosen next to the one before it
+branching on [squareOf]
+
 such that
-$ every square is visited by exactly one move
-allDiff(cell),
-$ the move numbers on the board are all different
-allDiff(flatten(x)),
-$ each move number on the board is the move made from that square
-forAll r : int(1..n) . forAll c : int(1..n) . (cell[x[r,c]+1] = (r-1)*n + c),
-$ move k is made from the square given by rowOf and colOf, and x records the move number k-1 there
-forAll k : int(1..n*n) . ((cell[k] = (rowOf[k]-1)*n + colOf[k]) /\ (x[rowOf[k], colOf[k]] = k-1)),
-$ each move goes to a square a knight can reach from the previous one
-forAll k : int(1..n*n-1) . table([cell[k], cell[k+1]], Jumps)
+$ the square of each move is given by its row and column
+forAll t : int(1..cells) . squareOf[t] = (rowOf[t] - 1) * n + colOf[t],
+$ every square is visited at a different move, so the squares of the moves are all different
+allDiff(squareOf),
+$ the move after move t is a knight's move (two squares in one direction and one in the other) from the square of move t
+forAll t : int(1..cells-1) . (((|rowOf[t] - rowOf[t+1]| = 1) /\ (|colOf[t] - colOf[t+1]| = 2)) \/ ((|rowOf[t] - rowOf[t+1]| = 2) /\ (|colOf[t] - colOf[t+1]| = 1))),
+$ moveOfSquare gives the move number of each square, so the move number of the square of move t-1 is t-1
+forAll t : int(1..cells) . moveOfSquare[squareOf[t]] = t - 1,
+$ x[r,c] is the move number of the square in row r and column c
+forAll r : int(1..n) . forAll c : int(1..n) . x[r,c] = moveOfSquare[(r - 1) * n + c],
+$ symmetry breaking: the start square lies in the top-left triangle of the board (the tour is reflected or transposed to fit, which keeps it a tour)
+2 * rowOf[1] <= n + 1,
+colOf[1] <= rowOf[1]

@@ -1,11 +1,27 @@
 language ESSENCE' 1.0
-$ de Bruijn sequence of order n on an alphabet of base symbols: a cyclic sequence of length base^n in which every string of length n occurs exactly once as a cyclic substring.
-given base : int
-given n : int
+$ de_bruijn_sequence: an Essence' model from DCP Rosetta.
+$
+$ A de Bruijn sequence of order n on an alphabet of base symbols is a cyclic sequence in which every possible length-n string over the alphabet occurs exactly once as a substring (read cyclically). Find such a sequence for the given base and order; it has length base^n.
+$
+$ Save this file as model.eprime. Download `de_bruijn_sequence.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/de_bruijn_sequence.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `de_bruijn_sequence_1.param.solution`:
+$   python dcp_convert_essence.py de_bruijn_sequence.json
+$   savilerow model.eprime de_bruijn_sequence_1.param -run-solver
+
+$ base: the size of the alphabet, symbols 0 to base-1
+given base : int(1..)
+$ n: the order, the length of the substrings
+given n : int(1..)
+$ seq_len: the length of the sequence, base^n
 letting seq_len = base ** n
+
+$ de_bruijn[p]: the symbol at position p of the cyclic sequence (positions 1-based, so the output's first entry is position 1); a value from 0 to base-1
 find de_bruijn : matrix indexed by [int(1..seq_len)] of int(0..base-1)
 
 branching on [de_bruijn]
 such that
-$ every length-n string read cyclically from each start position is different, so each of the base^n strings occurs exactly once
+$ each of the base^n length-n strings read cyclically from a start position occurs exactly once: the value of the string starting at each position is different
 allDiff([ (sum j : int(1..n) . de_bruijn[((i + j - 2) % seq_len) + 1] * base ** (n - j)) | i : int(1..seq_len) ])

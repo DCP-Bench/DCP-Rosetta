@@ -3,10 +3,10 @@
     "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
     "contracts": {
-      "solvers/CONTRACT.md": "177cc9b9640c5000d4632ee86bfd0a434e3c399403805e9fa8d521aa5f0d1155",
-      "solvers/eclipse_clp/CONTRACT.md": "0a79c7a17d3b244f132814712c15a00181e75914afd3c2027f68f49d7de06183"
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/eclipse/prolog/CONTRACT.md": "bd8681cdc92c400eaed7117cc1d9767452aba4a687b7610fcdcb35e8035cc9e1"
     },
-    "created_at": 1792316377.6480396,
+    "created_at": 1794511472.2982807,
     "problem_id": "fixed_charge",
     "profile": {
       "compilation_timeout": 120,
@@ -18,33 +18,33 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "1752abeb97f393db6abeed5d8072314cb019e53ea6cdba6c28e3a7b9f59b8a7c",
-    "run_id": "20261018-eclipse-clp-models",
+    "readiness_hash": "cfdfb4e580d8d8dfb1111022e28e9d77b76a10a62784db90514048871aa99737",
+    "run_id": "20261115-eclipse-standalone",
     "schema": 3,
-    "skill_bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-    "skill_source": "rosetta-skills/model-generator",
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+      "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
       "modified": false,
-      "path": "rosetta-skills/model-generator"
+      "path": "skills/model-generator"
     },
     "skills": [
       {
-        "bundle_hash": "ae6b8d1ae09cc1aeb0428028840a69592d9c8fad0359b0feb72651fd3cf7c287",
-        "source": "rosetta-skills/model-generator",
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "rosetta-skills/model-generator"
+          "path": "skills/model-generator"
         }
       },
       {
-        "bundle_hash": "8f2254ed868f92f072796f1a85e20c99a430b5cc47a199e9b804654539cfcc7d",
-        "source": "solvers/eclipse_clp/skills/eclipse-clp",
+        "bundle_hash": "ad3e03eeb677b4fd2fe741fd2c0684c5aa831478c51aa96c18a3266d4ac134b5",
+        "source": "solvers/eclipse/skills/dcp-eclipse",
         "version": {
-          "commit": "45205265a34ad34affcf6a5659d0ea93ba033657",
+          "commit": "19e8dd5df0eac8e426a6fdc54b5884ea2a7a6f19",
           "modified": false,
-          "path": "solvers/eclipse_clp/skills/eclipse-clp"
+          "path": "solvers/eclipse/skills/dcp-eclipse"
         }
       }
     ],
@@ -52,20 +52,76 @@
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:cb05be3a8ccfa25074fb0739a6fbaa95e7671afbe485c0e2bd825f148cfc1318",
+      "id": "sha256:21e1098608489d31b38d61fd56da549e69e85203e7d8d972164662d7bd30653d",
+      "recipe": "sha256:cf52576ba60077b18b4ccd6f4f723da5eb9baab7ea2bff593be2f6bfe67cffdc",
       "tag": "dcp-eval/eclipse_clp:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.04015388700645417,
-        "execution_wall_seconds": 1.5018333919579163,
+        "checking_seconds": 0.006630023999605328,
+        "execution_wall_seconds": 1.0943247829563916,
         "first_solution": {
           "z": 75
         },
         "id": "example",
+        "incumbents": [
+          [
+            6e-05,
+            0
+          ],
+          [
+            0.000195,
+            5
+          ],
+          [
+            0.00022,
+            12
+          ],
+          [
+            0.00024,
+            19
+          ],
+          [
+            0.000258,
+            26
+          ],
+          [
+            0.000275,
+            33
+          ],
+          [
+            0.000291,
+            40
+          ],
+          [
+            0.000307,
+            47
+          ],
+          [
+            0.000323,
+            54
+          ],
+          [
+            0.000338,
+            61
+          ],
+          [
+            0.000354,
+            68
+          ],
+          [
+            0.00037,
+            75
+          ]
+        ],
         "instance_hash": "54ab4627ffc989947071268a0a1f2bc239153e7f324bb8bbdd7a215a92c22907",
         "is_optimization": true,
         "oom_killed": false,
@@ -74,10 +130,13 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.700690104975365,
+        "reference_setup_seconds": 0.6372084970353171,
         "runner_status": {
+          "build_seconds": 0.0650970935821533,
           "detail": "",
-          "solve_seconds": 0.15,
+          "main_seconds": 0.0668578147888184,
+          "read_seconds": 8.08238983154297e-05,
+          "solve_seconds": 0.06,
           "status": "complete",
           "type": "status"
         },
@@ -87,12 +146,82 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.015936780022457242,
-        "execution_wall_seconds": 1.5137931290082633,
+        "checking_seconds": 0.003122172027360648,
+        "execution_wall_seconds": 1.240815932978876,
         "first_solution": {
           "z": 62
         },
         "id": "json:1",
+        "incumbents": [
+          [
+            3.9e-05,
+            0
+          ],
+          [
+            0.000263,
+            2
+          ],
+          [
+            0.000277,
+            6
+          ],
+          [
+            0.000286,
+            10
+          ],
+          [
+            0.000295,
+            14
+          ],
+          [
+            0.000304,
+            18
+          ],
+          [
+            0.000312,
+            22
+          ],
+          [
+            0.00032,
+            26
+          ],
+          [
+            0.000328,
+            30
+          ],
+          [
+            0.000336,
+            34
+          ],
+          [
+            0.000345,
+            38
+          ],
+          [
+            0.000353,
+            42
+          ],
+          [
+            0.000361,
+            46
+          ],
+          [
+            0.000369,
+            50
+          ],
+          [
+            0.000377,
+            54
+          ],
+          [
+            0.000385,
+            58
+          ],
+          [
+            0.000394,
+            62
+          ]
+        ],
         "instance_hash": "06a3e5a93ffe15d21306d6b747bb90486a572adebe97338d7dec1431a83b3da4",
         "is_optimization": true,
         "oom_killed": false,
@@ -101,10 +230,13 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.7293133239727467,
+        "reference_setup_seconds": 0.3932321459869854,
         "runner_status": {
+          "build_seconds": 0.0527670383453369,
           "detail": "",
-          "solve_seconds": 0.16,
+          "main_seconds": 0.0536870956420898,
+          "read_seconds": 7.48634338378906e-05,
+          "solve_seconds": 0.05,
           "status": "complete",
           "type": "status"
         },
@@ -114,12 +246,18 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.019623741041868925,
-        "execution_wall_seconds": 1.496462121955119,
+        "checking_seconds": 0.007794918958097696,
+        "execution_wall_seconds": 0.9691248229937628,
         "first_solution": {
           "z": 0
         },
         "id": "json:2",
+        "incumbents": [
+          [
+            3.9e-05,
+            0
+          ]
+        ],
         "instance_hash": "f00d02e99809c73ae43f59eac59eaa6ea29f3628a084296d9b32d0e92c117716",
         "is_optimization": true,
         "oom_killed": false,
@@ -128,10 +266,13 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.3038574550300837,
+        "reference_setup_seconds": 0.45055823400616646,
         "runner_status": {
+          "build_seconds": 0.0392770767211914,
           "detail": "",
-          "solve_seconds": 0.17,
+          "main_seconds": 0.0398950576782227,
+          "read_seconds": 5.00679016113281e-05,
+          "solve_seconds": 0.04,
           "status": "complete",
           "type": "status"
         },
@@ -141,12 +282,666 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.018288361025042832,
-        "execution_wall_seconds": 1.5699747280450538,
+        "checking_seconds": 0.01116980699589476,
+        "execution_wall_seconds": 0.8960649640066549,
         "first_solution": {
           "z": 564
         },
         "id": "json:3",
+        "incumbents": [
+          [
+            3.8e-05,
+            0
+          ],
+          [
+            0.000175,
+            3
+          ],
+          [
+            0.000186,
+            6
+          ],
+          [
+            0.000193,
+            9
+          ],
+          [
+            0.000201,
+            12
+          ],
+          [
+            0.000208,
+            15
+          ],
+          [
+            0.000215,
+            18
+          ],
+          [
+            0.000222,
+            21
+          ],
+          [
+            0.000229,
+            24
+          ],
+          [
+            0.000237,
+            27
+          ],
+          [
+            0.000244,
+            30
+          ],
+          [
+            0.000251,
+            33
+          ],
+          [
+            0.000259,
+            36
+          ],
+          [
+            0.000266,
+            39
+          ],
+          [
+            0.000273,
+            42
+          ],
+          [
+            0.00028,
+            45
+          ],
+          [
+            0.000287,
+            48
+          ],
+          [
+            0.000294,
+            51
+          ],
+          [
+            0.000301,
+            54
+          ],
+          [
+            0.000308,
+            57
+          ],
+          [
+            0.000316,
+            60
+          ],
+          [
+            0.000323,
+            63
+          ],
+          [
+            0.00033,
+            66
+          ],
+          [
+            0.000337,
+            69
+          ],
+          [
+            0.000344,
+            72
+          ],
+          [
+            0.000351,
+            75
+          ],
+          [
+            0.000359,
+            78
+          ],
+          [
+            0.000366,
+            81
+          ],
+          [
+            0.000373,
+            84
+          ],
+          [
+            0.00038,
+            87
+          ],
+          [
+            0.000412,
+            88
+          ],
+          [
+            0.000417,
+            91
+          ],
+          [
+            0.000429,
+            92
+          ],
+          [
+            0.000434,
+            95
+          ],
+          [
+            0.000438,
+            98
+          ],
+          [
+            0.000449,
+            99
+          ],
+          [
+            0.000453,
+            102
+          ],
+          [
+            0.000457,
+            105
+          ],
+          [
+            0.000468,
+            106
+          ],
+          [
+            0.000472,
+            109
+          ],
+          [
+            0.000475,
+            112
+          ],
+          [
+            0.000486,
+            113
+          ],
+          [
+            0.00049,
+            116
+          ],
+          [
+            0.000493,
+            119
+          ],
+          [
+            0.000497,
+            122
+          ],
+          [
+            0.000508,
+            123
+          ],
+          [
+            0.000512,
+            126
+          ],
+          [
+            0.000515,
+            129
+          ],
+          [
+            0.000526,
+            130
+          ],
+          [
+            0.000529,
+            133
+          ],
+          [
+            0.000533,
+            136
+          ],
+          [
+            0.000544,
+            137
+          ],
+          [
+            0.000547,
+            140
+          ],
+          [
+            0.000551,
+            143
+          ],
+          [
+            0.000562,
+            144
+          ],
+          [
+            0.000566,
+            147
+          ],
+          [
+            0.000569,
+            150
+          ],
+          [
+            0.000573,
+            153
+          ],
+          [
+            0.000584,
+            154
+          ],
+          [
+            0.000587,
+            157
+          ],
+          [
+            0.000591,
+            160
+          ],
+          [
+            0.000601,
+            161
+          ],
+          [
+            0.000605,
+            164
+          ],
+          [
+            0.000609,
+            167
+          ],
+          [
+            0.000624,
+            168
+          ],
+          [
+            0.00063,
+            171
+          ],
+          [
+            0.000636,
+            174
+          ],
+          [
+            0.000654,
+            175
+          ],
+          [
+            0.000663,
+            178
+          ],
+          [
+            0.000669,
+            181
+          ],
+          [
+            0.000675,
+            184
+          ],
+          [
+            0.000693,
+            185
+          ],
+          [
+            0.000699,
+            188
+          ],
+          [
+            0.000705,
+            191
+          ],
+          [
+            0.000723,
+            192
+          ],
+          [
+            0.000729,
+            195
+          ],
+          [
+            0.000735,
+            198
+          ],
+          [
+            0.000753,
+            199
+          ],
+          [
+            0.000759,
+            202
+          ],
+          [
+            0.000766,
+            205
+          ],
+          [
+            0.000783,
+            206
+          ],
+          [
+            0.000789,
+            209
+          ],
+          [
+            0.000795,
+            212
+          ],
+          [
+            0.000801,
+            215
+          ],
+          [
+            0.00082,
+            216
+          ],
+          [
+            0.000826,
+            219
+          ],
+          [
+            0.000832,
+            222
+          ],
+          [
+            0.000857,
+            223
+          ],
+          [
+            0.000864,
+            226
+          ],
+          [
+            0.00087,
+            229
+          ],
+          [
+            0.000891,
+            230
+          ],
+          [
+            0.000897,
+            233
+          ],
+          [
+            0.000903,
+            236
+          ],
+          [
+            0.000922,
+            237
+          ],
+          [
+            0.000928,
+            240
+          ],
+          [
+            0.000933,
+            243
+          ],
+          [
+            0.000939,
+            246
+          ],
+          [
+            0.000958,
+            247
+          ],
+          [
+            0.000964,
+            250
+          ],
+          [
+            0.00097,
+            253
+          ],
+          [
+            0.00099,
+            254
+          ],
+          [
+            0.000996,
+            257
+          ],
+          [
+            0.001001,
+            260
+          ],
+          [
+            0.00102,
+            261
+          ],
+          [
+            0.001026,
+            264
+          ],
+          [
+            0.001032,
+            267
+          ],
+          [
+            0.001046,
+            268
+          ],
+          [
+            0.001053,
+            271
+          ],
+          [
+            0.00106,
+            274
+          ],
+          [
+            0.001066,
+            277
+          ],
+          [
+            0.001085,
+            278
+          ],
+          [
+            0.00109,
+            281
+          ],
+          [
+            0.001096,
+            284
+          ],
+          [
+            0.001114,
+            285
+          ],
+          [
+            0.001118,
+            288
+          ],
+          [
+            0.001122,
+            291
+          ],
+          [
+            0.001133,
+            292
+          ],
+          [
+            0.001137,
+            295
+          ],
+          [
+            0.001141,
+            298
+          ],
+          [
+            0.001153,
+            299
+          ],
+          [
+            0.001157,
+            302
+          ],
+          [
+            0.001161,
+            305
+          ],
+          [
+            0.001164,
+            308
+          ],
+          [
+            0.001176,
+            309
+          ],
+          [
+            0.00118,
+            312
+          ],
+          [
+            0.001183,
+            315
+          ],
+          [
+            0.001195,
+            316
+          ],
+          [
+            0.001199,
+            319
+          ],
+          [
+            0.001203,
+            322
+          ],
+          [
+            0.001217,
+            323
+          ],
+          [
+            0.001307,
+            326
+          ],
+          [
+            0.001314,
+            329
+          ],
+          [
+            0.001326,
+            333
+          ],
+          [
+            0.001402,
+            336
+          ],
+          [
+            0.001408,
+            339
+          ],
+          [
+            0.001421,
+            343
+          ],
+          [
+            0.001497,
+            346
+          ],
+          [
+            0.001508,
+            353
+          ],
+          [
+            0.001581,
+            363
+          ],
+          [
+            0.001652,
+            373
+          ],
+          [
+            0.001726,
+            383
+          ],
+          [
+            0.001796,
+            393
+          ],
+          [
+            0.001866,
+            403
+          ],
+          [
+            0.001878,
+            413
+          ],
+          [
+            0.001889,
+            423
+          ],
+          [
+            0.001901,
+            433
+          ],
+          [
+            0.001911,
+            443
+          ],
+          [
+            0.001921,
+            453
+          ],
+          [
+            0.001931,
+            463
+          ],
+          [
+            0.00194,
+            473
+          ],
+          [
+            0.00195,
+            483
+          ],
+          [
+            0.00196,
+            493
+          ],
+          [
+            0.00197,
+            503
+          ],
+          [
+            0.00198,
+            513
+          ],
+          [
+            0.002332,
+            514
+          ],
+          [
+            0.002354,
+            521
+          ],
+          [
+            0.002388,
+            525
+          ],
+          [
+            0.002405,
+            532
+          ],
+          [
+            0.002422,
+            539
+          ],
+          [
+            0.002439,
+            546
+          ],
+          [
+            0.002471,
+            550
+          ],
+          [
+            0.002488,
+            557
+          ],
+          [
+            0.002503,
+            564
+          ]
+        ],
         "instance_hash": "4a472d6459f9cad58fa6905832c4dadbcbe6bd00ce933fcbebba8cbb4baa87b7",
         "is_optimization": true,
         "oom_killed": false,
@@ -155,10 +950,13 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.2924070640001446,
+        "reference_setup_seconds": 0.4681303249672055,
         "runner_status": {
+          "build_seconds": 0.0490798950195312,
           "detail": "",
-          "solve_seconds": 0.19,
+          "main_seconds": 0.0521740913391113,
+          "read_seconds": 4.91142272949219e-05,
+          "solve_seconds": 0.05,
           "status": "complete",
           "type": "status"
         },
@@ -168,12 +966,234 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01790705998428166,
-        "execution_wall_seconds": 1.5159500929294154,
+        "checking_seconds": 0.004066477995365858,
+        "execution_wall_seconds": 1.0017825500108302,
         "first_solution": {
           "z": 482
         },
         "id": "json:4",
+        "incumbents": [
+          [
+            3.8e-05,
+            0
+          ],
+          [
+            8.4e-05,
+            5
+          ],
+          [
+            9.6e-05,
+            14
+          ],
+          [
+            0.000104,
+            23
+          ],
+          [
+            0.000111,
+            32
+          ],
+          [
+            0.000119,
+            41
+          ],
+          [
+            0.000126,
+            50
+          ],
+          [
+            0.000134,
+            59
+          ],
+          [
+            0.000141,
+            68
+          ],
+          [
+            0.000148,
+            77
+          ],
+          [
+            0.000156,
+            86
+          ],
+          [
+            0.000163,
+            95
+          ],
+          [
+            0.00017,
+            104
+          ],
+          [
+            0.000178,
+            113
+          ],
+          [
+            0.000185,
+            122
+          ],
+          [
+            0.000192,
+            131
+          ],
+          [
+            0.000199,
+            140
+          ],
+          [
+            0.000207,
+            149
+          ],
+          [
+            0.000214,
+            158
+          ],
+          [
+            0.000221,
+            167
+          ],
+          [
+            0.000228,
+            176
+          ],
+          [
+            0.000236,
+            185
+          ],
+          [
+            0.000243,
+            194
+          ],
+          [
+            0.00025,
+            203
+          ],
+          [
+            0.000257,
+            212
+          ],
+          [
+            0.000264,
+            221
+          ],
+          [
+            0.000272,
+            230
+          ],
+          [
+            0.000279,
+            239
+          ],
+          [
+            0.000286,
+            248
+          ],
+          [
+            0.000293,
+            257
+          ],
+          [
+            0.000301,
+            266
+          ],
+          [
+            0.000308,
+            275
+          ],
+          [
+            0.000315,
+            284
+          ],
+          [
+            0.000322,
+            293
+          ],
+          [
+            0.00033,
+            302
+          ],
+          [
+            0.000338,
+            311
+          ],
+          [
+            0.000345,
+            320
+          ],
+          [
+            0.000352,
+            329
+          ],
+          [
+            0.000359,
+            338
+          ],
+          [
+            0.000366,
+            347
+          ],
+          [
+            0.000372,
+            356
+          ],
+          [
+            0.000379,
+            365
+          ],
+          [
+            0.000386,
+            374
+          ],
+          [
+            0.000393,
+            383
+          ],
+          [
+            0.000399,
+            392
+          ],
+          [
+            0.000406,
+            401
+          ],
+          [
+            0.000413,
+            410
+          ],
+          [
+            0.000419,
+            419
+          ],
+          [
+            0.000426,
+            428
+          ],
+          [
+            0.000433,
+            437
+          ],
+          [
+            0.000439,
+            446
+          ],
+          [
+            0.000446,
+            455
+          ],
+          [
+            0.000453,
+            464
+          ],
+          [
+            0.000459,
+            473
+          ],
+          [
+            0.000467,
+            482
+          ]
+        ],
         "instance_hash": "526bd1dc7734b3bf035e908b263c0e97fb8dacbee024065ad5f07e61234a6b13",
         "is_optimization": true,
         "oom_killed": false,
@@ -182,10 +1202,13 @@
           "z"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.6105378539068624,
+        "reference_setup_seconds": 0.3720511479768902,
         "runner_status": {
+          "build_seconds": 0.0392160415649414,
           "detail": "",
-          "solve_seconds": 0.15,
+          "main_seconds": 0.0405011177062988,
+          "read_seconds": 4.69684600830078e-05,
+          "solve_seconds": 0.04,
           "status": "complete",
           "type": "status"
         },
@@ -203,15 +1226,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "ad2793a89c9c2bc4c90699a99699f48fbb1bdc99cb2106238e9a245cfc33c0bb",
+    "model_hash": "8db2ab1c8988274ef215dca7d487cc283cb85c606138ad16b5ab6f652789bd04",
     "problem_id": "fixed_charge",
     "reason": "accepted",
-    "reference_hash": "c5e2542105307d56060121c573d13caeb8df6f6811ca6ba492034a4e666a77b4",
+    "reference_hash": "b240a17c716c6ecd75fd62766cff095c7ec7a6e1f39a842294413c3f087670d3",
     "reference_runtime": {
       "cpmpy": "1.0.0",
       "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.5"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -222,7 +1245,7 @@
     "skipped_instances": [],
     "solutions_checked": 5,
     "solver_id": "eclipse_clp",
-    "total_wall_seconds": 16.161986515973695,
+    "total_wall_seconds": 8.101293579034973,
     "unperformed_instances": []
   },
   "generated_by": {

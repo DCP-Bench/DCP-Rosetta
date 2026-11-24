@@ -1,13 +1,27 @@
 language ESSENCE' 1.0
-$ Find an auto-referential series S = (s_0, ..., s_{n+1}) where s_i counts the occurrences of i in S, for i = 0..n, and s_{n+1} = m.
-given n : int(1..)
-given m : int(0..)
+$ autoref: an Essence' model from DCP Rosetta.
+$
+$ Given an integer n > 0 and an integer m >= 0, find a non-empty finite series S = (s0, s1, ..., sn, sn+1) of integers between 0 and n such that there are si occurrences of i in S for each integer i from 0 to n, and sn+1 = m.
+$
+$ Save this file as model.eprime. Download `autoref.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/autoref.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `autoref_1.param.solution`:
+$   python dcp_convert_essence.py autoref.json
+$   savilerow model.eprime autoref_1.param -run-solver
+
+$ n: every term lies between 0 and n; the series has n+2 terms
+given n : int
+$ m: the value of the last term s(n+1)
+given m : int
+
+$ s[k]: the term s(k-1) of the series S, so s[1] is s0 and s[n+2] is s(n+1)
 find s : matrix indexed by [int(1..n+2)] of int(0..n)
+
 branching on [s]
 such that
-$ every entry of S is one of the counted values 0..n
-forAll j : int(1..n+2) . s[j] <= n,
-$ s_{n+1} equals m
+$ the last term of the series is m
 s[n+2] = m,
-$ for each i in 0..n, s_i is the number of occurrences of i in the series S
-forAll i : int(0..n) . s[i+1] = (sum j : int(1..n+2) . (s[j] = i))
+$ for each i from 0 to n, the term s(i) counts the occurrences of i in the series
+forAll i : int(0..n) . s[i+1] = (sum k : int(1..n+2) . toInt(s[k] = i))

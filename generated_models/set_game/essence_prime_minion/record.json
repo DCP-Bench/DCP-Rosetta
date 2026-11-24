@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
-    "attempt_id": "attempt-002",
-    "created_at": 1791953962.3894656,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794652464.2489827,
     "problem_id": "set_game",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "0c6b8b4741ad5c4b4ae7e233c084cab30a24962daf7804dcecc780266477d709",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "75077638e2703c15feaac61d8c7252a7d982012d1e96a54aa7c3767d4c6f0add",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "e6887ae3d31bbab091fe766b98d0f79b0cf09f49",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:a8e3ad9c0af3b0a0a7825c53fa6346379a1a128302a8668d289e243a7622a052",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.06954698701156303,
-        "execution_wall_seconds": 1.1536327389767393,
+        "checking_seconds": 0.3101278420072049,
+        "execution_wall_seconds": 5.168709377001505,
         "first_solution": {
           "winning_cards": [
             0,
@@ -54,9 +84,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.664485347981099,
+        "reference_setup_seconds": 2.0405940290074795,
         "runner_status": {
+          "build_seconds": 1.6676216125488281,
           "detail": "",
+          "main_seconds": 1.9192652580095455,
+          "read_seconds": 0.0007256349781528115,
           "status": "limit",
           "type": "status"
         },
@@ -66,8 +99,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04084830003557727,
-        "execution_wall_seconds": 1.0545327399740927,
+        "checking_seconds": 0.42014450702117756,
+        "execution_wall_seconds": 6.064964886987582,
         "first_solution": {
           "winning_cards": [
             7,
@@ -84,20 +117,23 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6294502590317279,
+        "reference_setup_seconds": 2.4633093330194242,
         "runner_status": {
+          "build_seconds": 2.4780454635620117,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 2.815270026039798,
+          "read_seconds": 0.0142762940376997,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.033623152994550765,
-        "execution_wall_seconds": 0.9999946579919197,
+        "checking_seconds": 0.38313645200105384,
+        "execution_wall_seconds": 5.5120330909849145,
         "first_solution": {
           "winning_cards": [
             0,
@@ -114,20 +150,23 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6734481690218672,
+        "reference_setup_seconds": 2.851217341958545,
         "runner_status": {
+          "build_seconds": 1.822221279144287,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 2.114501061034389,
+          "read_seconds": 0.00938233599299565,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.07937072799541056,
-        "execution_wall_seconds": 1.0509708549943753,
+        "checking_seconds": 0.42416534799849615,
+        "execution_wall_seconds": 5.150201757031027,
         "first_solution": {
           "winning_cards": [
             0,
@@ -144,9 +183,12 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7638768089818768,
+        "reference_setup_seconds": 2.465566113998648,
         "runner_status": {
+          "build_seconds": 1.6068484783172607,
           "detail": "",
+          "main_seconds": 1.967325470992364,
+          "read_seconds": 0.010311907040886581,
           "status": "limit",
           "type": "status"
         },
@@ -156,8 +198,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.02736007800558582,
-        "execution_wall_seconds": 0.8488015009788796,
+        "checking_seconds": 0.2333309199893847,
+        "execution_wall_seconds": 5.304201762017328,
         "first_solution": {
           "winning_cards": [
             0,
@@ -174,35 +216,38 @@
           "winning_cards"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6688422560109757,
+        "reference_setup_seconds": 1.4476372649660334,
         "runner_status": {
+          "build_seconds": 1.7747089862823486,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 2.0954481640364975,
+          "read_seconds": 0.010336792038287967,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated information file out.info\n"
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": "WARNING: Command-line arguments indicate more than one solution (e.g. -all-solutions).\nWARNING: However, non-default SAT encodings or other options may change the number of solutions. Try -S0 and removing non-default SAT encodings if necessary.\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution.000001\nCreated solution file out.solution.000002\nCreated information file out.info\n"
       }
     ],
     "instances_available": 5,
     "instances_checked": 5,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "a01dcf93403cd0d03b0aef30b274cb773d72dbeeb5da150d7273cc77002eec14",
+    "model_hash": "ec0b80317b1b9cd4e255ac3065f7feb8142c9ea905cd4485b042127a71d8f0cb",
     "problem_id": "set_game",
     "reason": "accepted",
-    "reference_hash": "1440ef9dbee8c999ae6d7bf4fa0f20e88827460b09b3e0b2e8aba595f1f1a962",
+    "reference_hash": "52c50566b122fdd9923fba97836a0b0855e46f17c3c9fa50d5005f1afafbe85a",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -211,13 +256,13 @@
       "tolerate_inconclusive": true
     },
     "skipped_instances": [],
-    "solutions_checked": 7,
+    "solutions_checked": 10,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 9.027559812995605,
+    "total_wall_seconds": 42.123832527024206,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.eprime",

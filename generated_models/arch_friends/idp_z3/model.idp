@@ -1,46 +1,47 @@
-// Arch friends: Harriet bought four shoes, each at a different store, in some order; find the purchase order and the store for each pair.
-vocabulary {
-    // the four stops of Harriet's shopping trip, numbered 1 to 4 in order
-    type Stop := {1..4}
-
-    // the stop at which each shoe was bought
-    ecruespadrilles: () -> Stop
-    fuchsiaflats: () -> Stop
-    purplepumps: () -> Stop
-    suedesandals: () -> Stop
-
-    // the stop at which each store was visited
-    footfarm: () -> Stop
-    heelsinahandcart: () -> Stop
-    theshoepalace: () -> Stop
-    tootsies: () -> Stop
+// arch_friends: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Harriet, upon returning from the mall, is happily describing her four shoe purchases to her friend Aurora. Aurora just
+// loves the four different kinds of shoes that Harriet bought (ecru espadrilles, fuchsia flats, purple pumps, and suede
+// sandals), but Harriet can't recall at which different store (Foot Farm, Heels in a Handcart, The Shoe Palace, or
+// Tootsies) she got each pair. Help these two figure out the order in which Harriet bought each pair of shoes, and where
+// she bought each. We know that:
+//  1. Harriet bought fuchsia flats at Heels in a Handcart.
+//  2. The store she visited just after buying her purple pumps was not Tootsies.
+//  3. The Foot Farm was Harriet's second stop.
+//  4. Two stops after leaving The Shoe Palace, Harriet bought her suede sandals.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/arch_friends.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Stop := {1..4}                // the stops Harriet made, numbered from 1 to 4 in the order of her visits
+    ecruespadrilles: () -> Stop        // the stop at which she bought the ecru espadrilles
+    fuchsiaflats: () -> Stop           // the stop at which she bought the fuchsia flats
+    purplepumps: () -> Stop            // the stop at which she bought the purple pumps
+    suedesandals: () -> Stop           // the stop at which she bought the suede sandals
+    footfarm: () -> Stop               // the stop at which she visited the Foot Farm
+    heelsinahandcart: () -> Stop       // the stop at which she visited Heels in a Handcart
+    theshoepalace: () -> Stop          // the stop at which she visited The Shoe Palace
+    tootsies: () -> Stop               // the stop at which she visited Tootsies
 }
-theory {
-    // every shoe was bought on a different stop
-    ecruespadrilles() ~= fuchsiaflats().
-    ecruespadrilles() ~= purplepumps().
-    ecruespadrilles() ~= suedesandals().
-    fuchsiaflats() ~= purplepumps().
-    fuchsiaflats() ~= suedesandals().
+theory T:V {
+    // each stop is a different shoe purchase, so the four shoes are bought at four different stops
+    ecruespadrilles() ~= fuchsiaflats() & ecruespadrilles() ~= purplepumps() & ecruespadrilles() ~= suedesandals().
+    fuchsiaflats() ~= purplepumps() & fuchsiaflats() ~= suedesandals().
     purplepumps() ~= suedesandals().
-
-    // every store was visited on a different stop
-    footfarm() ~= heelsinahandcart().
-    footfarm() ~= theshoepalace().
-    footfarm() ~= tootsies().
-    heelsinahandcart() ~= theshoepalace().
-    heelsinahandcart() ~= tootsies().
+    // each stop is a different store, so the four stores are visited at four different stops
+    footfarm() ~= heelsinahandcart() & footfarm() ~= theshoepalace() & footfarm() ~= tootsies().
+    heelsinahandcart() ~= theshoepalace() & heelsinahandcart() ~= tootsies().
     theshoepalace() ~= tootsies().
-
     // Harriet bought fuchsia flats at Heels in a Handcart
     fuchsiaflats() = heelsinahandcart().
-
-    // The Foot Farm was Harriet's second stop
+    // the store visited just after buying the purple pumps was not Tootsies (if there is a stop after the purple pumps)
+    purplepumps() < 4 => tootsies() ~= purplepumps() + 1.
+    // the Foot Farm was the second stop
     footfarm() = 2.
-
-    // the store she visited just after buying her purple pumps was not Tootsies
-    tootsies() ~= purplepumps() + 1.
-
-    // two stops after leaving The Shoe Palace, Harriet bought her suede sandals
+    // two stops after leaving The Shoe Palace, Harriet bought the suede sandals
     suedesandals() = theshoepalace() + 2.
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

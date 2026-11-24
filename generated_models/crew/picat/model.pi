@@ -1,33 +1,61 @@
-% Crew assignment: staff each flight with flight attendants. A flight needs a
-% given number of crew, of whom at least given numbers are stewards, hostesses
-% and speakers of French, Spanish and German, and a person who works a flight
-% has the next two flights off.
-import sat.
+% crew: a Picat model from DCP Rosetta.
+%
+% Assign flight attendants to flights. Each flight needs a certain number of cabin crew, and they have to
+% speak certain languages. attributes[p] describes person p as five 0/1 values: steward, hostess, speaks
+% French, speaks Spanish, speaks German. required_crew[f] describes flight f as six numbers: the number of
+% cabin crew, then the numbers of stewards, hostesses, French speakers, Spanish speakers and German speakers
+% needed. A flight has exactly that number of cabin crew, and at least the required number of each of the
+% others; one person can count towards several of them. Every cabin crew member has at least two flights off
+% after an attended flight, so nobody attends more than one of any three consecutive flights.
+%
+% Save this file as model.pi. Download `crew.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/crew.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py crew.json
+%   picat model.pi crew_1.dat
+%
+% Data.get(attributes): for each person, the five 0/1 values (steward, hostess, French, Spanish, German);
+% Data.get(required_crew): for each flight, the crew size and the required numbers of stewards, hostesses,
+% French, Spanish and German speakers (lists indexed from 1).
+import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    Attributes = Data.get(attributes),   % per person: steward, hostess, French, Spanish, German (0/1)
-    Required = Data.get(required_crew),  % per flight: crew size, then the minimum per attribute
-    NPersons = len(Attributes),
-    NFlights = len(Required),
-    NAttributes = len(Attributes[1]),
-    % crew[f, p] = 1 when person p works on flight f
-    Crew = new_array(NFlights, NPersons),
-    Crew :: 0..1,
-    foreach (F in 1..NFlights)
-        % the flight has exactly the crew size it needs
-        sum([Crew[F, P] : P in 1..NPersons]) #= Required[F, 1],
-        % and at least the required number of people with each attribute
-        foreach (A in 1..NAttributes)
-            sum([Crew[F, P] : P in 1..NPersons, Attributes[P, A] == 1]) #>= Required[F, A + 1]
-        end
+    Attributes = Data.get(attributes),
+    RequiredCrew = Data.get(required_crew),
+    NumPeople = len(Attributes),           % the number of people
+    NumFlights = len(RequiredCrew),        % the number of flights
+    % Crew[F][P] = 1 when person P is assigned to flight F
+    Crew = [new_list(NumPeople) : _F in 1..NumFlights],
+    foreach (F in 1..NumFlights)
+        Crew[F] :: 0..1
     end,
-    % after a flight a person has the next two flights off
-    foreach (F in 1..NFlights-1, P in 1..NPersons)
-        Crew[F, P] + Crew[F + 1, P] #=< 1,
-        if F + 2 =< NFlights then
-            Crew[F, P] + Crew[F + 2, P] #=< 1
-        end
+    % each flight has exactly the required number of cabin crew
+    foreach (F in 1..NumFlights)
+        sum(Crew[F]) #= RequiredCrew[F,1]
+    end,
+    % each flight has at least the required number of stewards, hostesses and speakers of each language
+    foreach (F in 1..NumFlights, K in 2..6)
+        sum([Attributes[P,K - 1] * Crew[F,P] : P in 1..NumPeople]) #>= RequiredCrew[F,K]
+    end,
+    % nobody attends more than one of any three consecutive flights
+    foreach (F in 1..NumFlights - 2, P in 1..NumPeople)
+        Crew[F,P] + Crew[F + 1,P] + Crew[F + 2,P] #=< 1
     end,
     Vars = Crew,
     Outputs = [crew = Crew],
+    % any assignment that meets the requirements will do
     Options = [].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

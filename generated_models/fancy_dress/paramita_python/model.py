@@ -7,53 +7,46 @@
 #   python fancy_dress.py
 
 from paramita.containers import WcnfFormula
-from paramita.modelling import (
-    And, Bool, DimacsVariablePool, If, Iff, add_to_weighted_container, to_cnf,
-)
+from paramita.modelling import And, Bool, DimacsVariablePool, If, Or, add_to_weighted_container, to_cnf
 
 
 def create_model(instance):
-    """Mr Greenguest wants to attend a party where guests must wear green. He owns
-    only a green shirt, and can buy a green tie, a green hat and green socks, or
-    pay the entrance fee instead of following the dress rules. Find the cheapest way."""
-    # t is true when he wears a green tie, which costs $10
-    t = Bool("t")
-    # h is true when he wears a green hat, which costs $2
-    h = Bool("h")
-    # r is true when he wears the green shirt he already owns, which costs nothing
-    r = Bool("r")
-    # s is true when he wears green socks, which cost $12
-    s = Bool("s")
-    # n is true when he pays the $11 entrance fee
-    n = Bool("n")
+    """Mr Greenguest chooses which green items to wear to Mr Greenfan's party, and pays the
+    $11 entrance fee if he is not dressed according to rules 1-3, at the lowest total cost.
+    He owns a green shirt; a green tie costs $10, a used green hat $2, green socks $12."""
+    # The instance has no fields: every number below is from the problem statement.
+    t = Bool("t")  # he wears a green tie
+    h = Bool("h")  # he wears a green hat
+    r = Bool("r")  # he wears a green shirt
+    s = Bool("s")  # he wears green socks
+    n = Bool("n")  # he pays the entrance fee
 
-    # Rule 1: a green tie requires a green shirt.
-    rule1 = If(t, r)
+    # Rule 4: a guest who is not dressed according to rules 1-3 must pay the fee, so each
+    # rule holds or he pays.
+    rules = [
+        # Rule 1: if someone wears a green tie he has to wear a green shirt.
+        Or(If(t, r), n),
+        # Rule 2: a guest who wears green socks or a green shirt must also wear a green tie
+        # or a green hat.
+        Or(If(s | r, t | h), n),
+        # Rule 3: a guest wearing a green shirt or a green hat or who does not wear green
+        # socks must wear a green tie.
+        Or(If(r | h | ~s, t), n),
+    ]
 
-    # Rule 2: green socks and a green shirt together require a green tie or a green hat.
-    rule2 = If(s & r, t | h)
+    # Minimise the total cost: the tie, the hat, the socks and the fee (the shirt he owns).
+    cost = 10 * t + 2 * h + 12 * s + 11 * n
 
-    # Rule 3: a green shirt, a green hat, or no green socks requires a green tie.
-    rule3 = If(r | h | ~s, t)
-
-    # Rule 4: he pays the fee exactly when he breaks one of rules 1 to 3.
-    constraints = [Iff(n, ~(rule1 & rule2 & rule3))]
-
-    # total is what he pays: the tie, the hat, the socks and the fee.
-    total = 10 * t + 2 * h + 12 * s + 11 * n
-
-    outputs = {"t": t, "h": h, "r": r, "s": s, "n": n}
-
-    # Encode into a weighted formula: the constraints as hard clauses, the value to
-    # minimise as soft clauses, negated because MaxSAT maximises. The pool gives
-    # each Bool its number in the clauses.
+    # Encode into a weighted formula: the rules as hard clauses, the cost to minimise as
+    # soft clauses, negated because MaxSAT maximises. The pool gives each Bool its number
+    # in the clauses.
     formula = WcnfFormula()
     pool = DimacsVariablePool()
-    add_to_weighted_container(-total, And(constraints), to_cnf, formula, pool)
+    add_to_weighted_container(-cost, And(rules), to_cnf, formula, pool)
 
-    # The objective in the problem's terms: what he pays, minimised (its negation is
-    # what the soft clauses maximise).
-    return (formula, pool), outputs, total
+    # The objective in the problem's terms: the total cost, minimised (its negation is what
+    # the soft clauses maximise).
+    return (formula, pool), {"t": t, "h": h, "r": r, "s": s, "n": n}, cost
 
 
 if __name__ == "__main__":

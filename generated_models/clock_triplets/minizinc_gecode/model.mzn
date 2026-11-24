@@ -1,20 +1,28 @@
-% Clock triplets: rearrange 1..12 around a clock face so that no three adjacent
-% numbers sum above 21. The puzzle fixes the clock, so there are no parameters.
+% clock_triplets: a MiniZinc model from DCP Rosetta.
+%
+% Rearrange the numbers on the face of a clock (1 to 12) so that no triplet of adjacent numbers has a sum
+% higher than 21, which is the smallest value that the highest sum of a triplet can have.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/clock_triplets.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-int: n = 12;
-array[1..n] of var 1..n: x;
-% The reference caps the largest triplet sum at 21 by declaring the variable's
-% domain rather than by optimizing.
-var 0..21: triplet_sum;
+int: max_triplet_sum = 21;                  % the largest allowed sum of three adjacent numbers
+int: hours = 12;                             % the number of positions on the clock face
 
+% x[i]: the number at position i of the clock face, positions wrap around
+array[1..hours] of var 1..hours: x;
+
+% the numbers on the face are 1 to 12, each used once
 constraint all_different(x);
 
-% Triplets wrap around the face.
-constraint forall(i in 1..n) (
-    x[i] + x[(i + n - 2) mod n + 1] + x[(i + n - 3) mod n + 1] <= triplet_sum
+% no three adjacent numbers on the face sum to more than the largest allowed sum
+constraint forall(i in 1..hours)(
+    x[i] + x[i mod hours + 1] + x[(i + 1) mod hours + 1] <= max_triplet_sum
 );
 
 solve satisfy;
 
-output ["{\"x\": [", join(", ", [show(x[i]) | i in 1..n]), "]}"];
+output ["{\"x\": ", showJSON(x), "}"];

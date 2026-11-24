@@ -1,32 +1,46 @@
-% Averbach's card-passing riddle: three players X, Y, Z of three different
-% nationalities (American, English, French) sit round a table, each passing
-% three cards to the person on their right. Y passed to the American, and X
-% passed to the person who passed to the Frenchwoman. Find who is who.
-% A seat is 0, 1 or 2 and seat b+1 (mod 3) is to the right of seat b.
+% circular_table_averbach_1_2: a MiniZinc model from DCP Rosetta.
+%
+% Three players (X, Y, Z) of different nationalities (American, English, French) are seated around a
+% circular table playing a game of Hearts. Each passed three cards to the person on their right. Y passed
+% three hearts to the American, and X passed the queen of spades and two diamonds to the person who passed
+% their cards to the Frenchwoman. Determine the nationality of each person.
+%
+% Seats are numbered 0, 1, 2, and seat 1 is right of seat 0, seat 2 right of seat 1, and seat 0 right of
+% seat 2. Each variable holds the seat of the person it names, so the same value on a person and on a
+% nationality means that person has that nationality.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/circular_table_averbach_1_2.html
+% Save this file as model.mzn and run it (MiniZinc 2.8 or later) with:
+%   minizinc model.mzn
+
 include "globals.mzn";
 
-% The riddle fixes everything; the instance carries no data.
+set of int: Seats = 0..2;
 
-% seats of the three players, all different
-var 0..2: x;
-var 0..2: y;
-var 0..2: z;
+% the seat of each player
+var Seats: x;
+var Seats: y;
+var Seats: z;
+
+% the seat of each nationality
+var Seats: american;
+var Seats: english;
+var Seats: french;
+
+% the three players sit in different seats
 constraint all_different([x, y, z]);
 
-% seats of the three nationalities, all different: the same seat number in the
-% player and nationality outputs denotes the same person
-var 0..2: american;
-var 0..2: english;
-var 0..2: french;
+% the three nationalities are in different seats
 constraint all_different([american, english, french]);
 
-% the American sits to the right of Y, since Y passed to the American
+% Y passed to the person on Y's right, who is the American
 constraint american = (y + 1) mod 3;
-% X sits to the right of the Frenchwoman, since X passed to the person who passed to her
-constraint x = (french + 1) mod 3;
+
+% X passed to the person on X's right, who passed to the Frenchwoman
+constraint french = (x + 2) mod 3;
 
 solve satisfy;
 
-output ["{\"x\": ", show(x), ", \"y\": ", show(y), ", \"z\": ", show(z),
-        ", \"american\": ", show(american), ", \"english\": ", show(english),
-        ", \"french\": ", show(french), "}"];
+output ["{\"x\": ", showJSON(x), ", \"y\": ", showJSON(y), ", \"z\": ", showJSON(z),
+        ", \"american\": ", showJSON(american), ", \"english\": ", showJSON(english),
+        ", \"french\": ", showJSON(french), "}"];

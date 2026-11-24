@@ -1,44 +1,78 @@
-% csplib_009 perfect square placement: pack squares with the given integer sides
-% into a bigger square of side base, so that no squares overlap, all borders are
-% parallel to the border of the big square, and there is no spare capacity.
-% Outputs x_coords and y_coords: the lower-left corner of each square, starting from 0.
-% Solver: gfd (Gecode), so the cumulative and the reified disjunctions are Gecode's.
+% csplib_009_perfect_square_placement: an ECLiPSe model from DCP Rosetta.
+%
+% Perfect square placement (the squared square problem): pack a set of squares with given integer
+% sides into a bigger square of a given base, such that no squares overlap each other and all
+% square borders are parallel to the border of the big square. The sum of the square surfaces is
+% equal to the surface of the packing square, so there is no spare capacity.
+%
+% Save this file as model.ecl. Download `csplib_009_perfect_square_placement.json` and `dcp_convert_ecl.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_009_perfect_square_placement.html
+% Convert the instances once, then run the first one (ECLiPSe 7.2, https://eclipseclp.org):
+%   python dcp_convert_ecl.py csplib_009_perfect_square_placement.json
+%   eclipse -b model.ecl -e "run('csplib_009_perfect_square_placement_1.dat'), halt"
 
-:- lib(gfd).
+% Fields read from the data: base (the side of the big square) and sides (the side of each
+% square, indexed from 0; the number of squares is the length of sides).
 
-model(Instance, Vars, [x_coords-Xs, y_coords-Ys], none) :-
-    memberchk(base-B, Instance),
+:- lib(ic).
+:- lib(listut).
+
+model(Instance, Vars, ['x_coords'-Xs, 'y_coords'-Ys]) :-
+    memberchk(base-Base, Instance),
     memberchk(sides-Sides, Instance),
-    length(Sides, N),
-    length(Xs, N),
-    length(Ys, N),
-    % each square lies inside the big square: its corner ranges over 0..base-side
-    ( foreach(S, Sides), foreach(X, Xs), foreach(Y, Ys), param(B) do
-        Hi is B - S,
-        X :: 0..Hi,
-        Y :: 0..Hi
+    length(Sides, NumSquares),
+    length(Xs, NumSquares),
+    length(Ys, NumSquares),
+    % each square lies inside the big square, so its corner is between 0 and base minus its side
+    ( for(I, 1, NumSquares), param(Xs, Ys, Sides, Base) do
+        nth1(I, Sides, S),
+        Limit is Base - S,
+        nth1(I, Xs, X),
+        nth1(I, Ys, Y),
+        X :: 0..Limit,
+        Y :: 0..Limit
     ),
-    append(Xs, Ys, Vars),
-    % squares do not overlap: for each pair, one lies left of, right of, below or above the other
-    square_list(Xs, Ys, Sides, Squares),
-    no_overlap_all(Squares),
-    % redundant: the squares crossing any vertical line have sides summing to at most base,
-    % and likewise for any horizontal line
-    cumulative(Xs, Sides, Sides, B),
-    cumulative(Ys, Sides, Sides, B).
-
-% the squares as a list of placed(X, Y, Side) terms
-square_list([], [], [], []).
-square_list([X|Xs], [Y|Ys], [S|Ss], [placed(X, Y, S)|Rest]) :-
-    square_list(Xs, Ys, Ss, Rest).
-
-% each square against every later square
-no_overlap_all([]).
-no_overlap_all([placed(X1, Y1, S1)|Rest]) :-
-    ( foreach(placed(X2, Y2, S2), Rest), param(X1, Y1, S1) do
-        ( X1 + S1 #=< X2 ) or ( X2 + S2 #=< X1 ) or ( Y1 + S1 #=< Y2 ) or ( Y2 + S2 #=< Y1 )
+    % no two squares overlap: for each pair, one lies to the left of the other, or one lies
+    % below the other
+    ( for(Row, 1, NumSquares), param(Xs, Ys, Sides, NumSquares) do
+        Row1 is Row + 1,
+        nth1(Row, Xs, XI), nth1(Row, Ys, YI), nth1(Row, Sides, SI),
+        ( for(Col, Row1, NumSquares), param(Xs, Ys, Sides, XI, YI, SI) do
+            nth1(Col, Xs, XJ), nth1(Col, Ys, YJ), nth1(Col, Sides, SJ),
+            Left1 #= (XI + SI #=< XJ),
+            Left2 #= (XJ + SJ #=< XI),
+            Below1 #= (YI + SI #=< YJ),
+            Below2 #= (YJ + SJ #=< YI),
+            Left1 + Left2 + Below1 + Below2 #>= 1
+        )
     ),
-    no_overlap_all(Rest).
+    flatten([Xs, Ys], Vars).
 
-search_goal(Vars) :-
-    search(Vars, 0, first_fail, indomain_min, complete, []).
+:- lib(branch_and_bound).
+
+% Reads the data file, builds the model, solves it and prints each output.
+run(File) :-
+    open(File, read, Stream), read(Stream, Instance), close(Stream),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

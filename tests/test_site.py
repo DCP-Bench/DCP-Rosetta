@@ -324,6 +324,50 @@ class RenderingHelperTests(unittest.TestCase):
         self.assertIsNotNone(generate_site.MATH_RE.search("integers \\( 0 = a_1 \\)"))
 
 
+class SourcesListTests(unittest.TestCase):
+    def test_links_citations_and_instance_only_sources(self):
+        html = generate_site.sources_html({"sources": [
+            {"kind": "origin", "url": "https://example.org/model.py"},
+            {"kind": "description", "text": "Winston, page 3"},
+            {"kind": "model", "url": "https://example.org/model.py"},
+            {"kind": "instances", "url": "https://example.org/data.json"},
+        ]})
+        self.assertEqual(html.count("https://example.org/model.py"), 2)  # one link: its href and title
+        self.assertIn("<li>Winston, page 3</li>", html)
+        self.assertNotIn("data.json", html)
+        self.assertEqual(generate_site.sources_html({"sources": []}), "")
+
+
+class ConverterLinkTests(unittest.TestCase):
+    """A model whose integration ships a `dcp_convert_*.py` says so just below its Model heading, above the code,
+    so a reader who downloads the instances finds the script that prepares them where they read the model."""
+
+    SENTENCE = "Convert the instance data first with"
+
+    def entry(self, solver):
+        return {"directory": solver, "model_file": "model.mzn", "code": "",
+                "metrics": {"problem": "queens", "solver": solver, "verdict": {}}}
+
+    def test_the_converter_is_found_by_its_file_name(self):
+        found = generate_site.converter_file("minizinc_gecode")
+        self.assertEqual(found.name, "dcp_convert_mzn.py")
+        self.assertIsNone(generate_site.converter_file("cpmpy_python"))
+
+    def test_a_model_with_instances_names_the_converter_between_the_heading_and_the_code(self):
+        rendered = generate_site.generated_model_html(self.entry("minizinc_gecode"))
+        self.assertIn(self.SENTENCE, rendered)
+        self.assertIn('href="dcp_convert_mzn.py"', rendered)
+        self.assertNotIn("<dt>Data converter</dt>", rendered)
+        self.assertLess(rendered.index("<h3>Model</h3>"), rendered.index(self.SENTENCE))
+        self.assertLess(rendered.index(self.SENTENCE), rendered.index("code-head"))
+
+    def test_no_converter_sentence_without_a_data_file_or_a_converter(self):
+        self.assertNotIn(self.SENTENCE, generate_site.generated_model_html(self.entry("minizinc_gecode"), False))
+        self.assertNotIn(self.SENTENCE, generate_site.generated_model_html(self.entry("cpmpy_python")))
+        # a problem that shows an example instance but offers no instance file has nothing to convert
+        self.assertNotIn(self.SENTENCE, generate_site.generated_model_html(self.entry("minizinc_gecode"), True, False))
+
+
 class RealRepositoryTests(unittest.TestCase):
     """The vocabulary and the integration metadata, as the site build reads them."""
 

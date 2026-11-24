@@ -1,21 +1,38 @@
 language ESSENCE' 1.0
-$ Futoshiki: fill an N by N grid with the digits 1 to N so that every row and column contains each digit once and the given inequalities hold.
-$ grid size N, taken from the instance values
+$ futoshiki: an Essence' model from DCP Rosetta.
+$
+$ The futoshiki puzzle is played on a square grid, such as 5 x 5. The objective is to place the
+$ numbers 1 to 5 (or whatever the dimensions are) such that each row and each column contains each
+$ of the digits 1 to 5. Some digits may be given at the start. In addition, inequality constraints
+$ are also initially specified between some of the squares, such that one must be higher or lower
+$ than its neighbour. These constraints must be honoured as the grid is filled out.
+$
+$ Save this file as model.eprime. Download `futoshiki.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/futoshiki.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `futoshiki_1.param.solution`:
+$   python dcp_convert_essence.py futoshiki.json
+$   savilerow model.eprime futoshiki_1.param -run-solver
+
+$ n: the side of the grid, which is the number of rows of the given values (derived from the data)
 given values_dim1 : int
-$ given digits of the puzzle, 0 for an empty cell
-given values : matrix indexed by [int(1..values_dim1), int(1..values_dim1)] of int
-$ number of inequality clues, taken from the instance lt list
+letting n = values_dim1
+$ values[r,c]: the digit given in row r, column c (rows and columns 1-based); 0 if the cell is empty
+given values : matrix indexed by [int(1..n), int(1..n)] of int(0..n)
+$ lt_dim1: the number of inequalities (derived from the data)
 given lt_dim1 : int
-$ each clue lt[k,..] = (r1, c1, r2, c2) says cell (r1,c1) is less than cell (r2,c2), 1-based
-given lt : matrix indexed by [int(1..lt_dim1), int(1..4)] of int
-$ the completed grid
-find grid : matrix indexed by [int(1..values_dim1), int(1..values_dim1)] of int(1..values_dim1)
+$ lt[k,1..4]: inequality k says the cell in row lt[k,1], column lt[k,2] holds a smaller digit than the cell in row lt[k,3], column lt[k,4] (1-based)
+given lt : matrix indexed by [int(1..lt_dim1), int(1..4)] of int(1..n)
+$ grid[r,c]: the digit in row r, column c of the completed grid
+find grid : matrix indexed by [int(1..n), int(1..n)] of int(1..n)
+
 such that
-$ the digits that are given in the puzzle are kept in their cells
-forAll r : int(1..values_dim1) . forAll c : int(1..values_dim1) . ((values[r,c] != 0) -> (grid[r,c] = values[r,c])),
-$ each row contains each digit once
-forAll r : int(1..values_dim1) . allDiff(grid[r,..]),
-$ each column contains each digit once
-forAll c : int(1..values_dim1) . allDiff(grid[..,c]),
-$ each inequality clue must be honoured: the first cell is lower than the second cell
-forAll k : int(1..lt_dim1) . (grid[lt[k,1], lt[k,2]] < grid[lt[k,3], lt[k,4]])
+$ the digits in each row are different
+forAll r : int(1..n) . allDiff([grid[r,c] | c : int(1..n)]),
+$ the digits in each column are different
+forAll c : int(1..n) . allDiff([grid[r,c] | r : int(1..n)]),
+$ the given digits are kept
+forAll r : int(1..n) . forAll c : int(1..n) . (values[r,c] > 0 -> grid[r,c] = values[r,c]),
+$ each inequality holds
+forAll k : int(1..lt_dim1) . grid[lt[k,1], lt[k,2]] < grid[lt[k,3], lt[k,4]]

@@ -1,11 +1,31 @@
-% Four different numbers from 1 to 100 with a^2 + b^2 = c^2 + d^2.
+% session5_hardy_1729_square: a Picat model from DCP Rosetta.
+%
+% Find a combination of 4 different numbers between 1 and 100, such that the sum of the squares of the two first
+% numbers is equal to the sum of the squares of the other two numbers, i.e. a^2 + b^2 = c^2 + d^2 for a, b, c and d
+% between 1 and 100, all different.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_hardy_1729_square.html
+% Save this model as model.pi and run it (Picat 3.9, https://picat-lang.org) with:
+%   picat model.pi
 import cp.
 
 model(_Data, Vars, Outputs, Options) =>
-    % The puzzle has no data.
-    [A, B, C, D] :: 1..100,
-    all_different([A, B, C, D]),
+    % the four numbers a, b, c and d, each between 1 and 100
+    Numbers = new_list(4),
+    Numbers :: 1..100,
+    [A, B, C, D] = Numbers,
+    % all four numbers are different
+    all_different(Numbers),
+    % the sum of the squares of a and b equals the sum of the squares of c and d
     A * A + B * B #= C * C + D * D,
-    Vars = [A, B, C, D],
+    Vars = Numbers,
     Outputs = [a = A, b = B, c = C, d = D],
-    Options = [ff].
+    Options = [].
+
+main =>
+    model(new_map(), Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

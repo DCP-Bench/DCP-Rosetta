@@ -1,34 +1,52 @@
 language ESSENCE' 1.0
-$ Progressive party: choose which boats are hosts and a visit schedule for the guest boats over the periods, minimising the number of host boats.
+$ csplib_013_progressive_party_problem: an Essence' model from DCP Rosetta.
+$
+$ A party is timetabled at a yacht club. Some boats are designated hosts. The crews of the other (guest) boats visit host boats for several successive half-hour periods: a host crew stays on board to act as hosts, while a guest crew visits several hosts in turn. Every boat can hold a limited number of people at once (its capacity), and crew sizes differ. The total number of people aboard a boat, its own host crew together with the guest crews visiting it, must not exceed its capacity. A guest boat cannot revisit a host, and two crews cannot meet more than once. Minimise the number of host boats.
+$
+$ Save this file as model.eprime. Download `csplib_013_progressive_party_problem.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_013_progressive_party_problem.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_013_progressive_party_problem_1.param.solution`:
+$   python dcp_convert_essence.py csplib_013_progressive_party_problem.json
+$   savilerow model.eprime csplib_013_progressive_party_problem_1.param -run-solver
+
+$ n_boats: number of boats
 given n_boats : int
+$ n_periods: number of half-hour periods
 given n_periods : int
-$ capacity of each boat (people it can hold at once), one entry per boat
+$ capacity[b]: number of people boat b can hold at once, indices 1-based
 given capacity : matrix indexed by [int(1..n_boats)] of int
-$ number of crew members on each boat, one entry per boat
+$ crew_size[b]: number of crew members of boat b, indices 1-based
 given crew_size : matrix indexed by [int(1..n_boats)] of int
-$ is_host[b] is true when boat b is a host boat (boats are numbered from 1 in the model, from 0 in the output)
+
+$ is_host[b]: boat b is a host boat (boats are numbered from 1 here; the output numbers them from 0)
 find is_host : matrix indexed by [int(1..n_boats)] of bool
-$ visits[p,b] is the 0-based index of the host boat visited by boat b in period p; a host boat visits itself
+$ visits[p,b]: the host boat (0-based index, as in the output) that boat b visits in period p; a host boat visits itself
 find visits : matrix indexed by [int(1..n_periods), int(1..n_boats)] of int(0..n_boats-1)
-$ num_hosts is the number of host boats
+$ num_hosts: the number of host boats (the quantity to minimise)
 find num_hosts : int(0..n_boats)
+
+$ search hints: decide which boats are hosts first, then the visits
 heuristic sdf
 branching on [is_host, num_hosts, visits]
+
 minimising num_hosts
+
 such that
 $ the number of host boats is the number of boats designated as hosts
 num_hosts = (sum b : int(1..n_boats) . toInt(is_host[b])),
-$ a host boat stays at its own position in every period
-forAll p : int(1..n_periods) . forAll b : int(1..n_boats) . is_host[b] -> visits[p,b] = b - 1,
+$ a host boat's crew stays on board, so in every period a host boat is visited by itself (visits[p,b] = b - 1)
+forAll p : int(1..n_periods) . forAll b : int(1..n_boats) . (is_host[b] -> visits[p,b] = b - 1),
 $ a guest boat visits a host boat in every period
-forAll p : int(1..n_periods) . forAll b : int(1..n_boats) . (!is_host[b]) -> is_host[visits[p,b] + 1],
-$ a guest boat cannot revisit a host: its visits are all different over the periods
-forAll b : int(1..n_boats) . (!is_host[b]) -> allDiff(visits[..,b]),
-$ the total people aboard a host boat, its own crew and the guest crews visiting it, do not exceed its capacity
+forAll p : int(1..n_periods) . forAll b : int(1..n_boats) . ((!is_host[b]) -> is_host[visits[p,b] + 1]),
+$ a guest boat cannot revisit a host: the hosts it visits over the periods are all different
+forAll b : int(1..n_boats) . ((!is_host[b]) -> allDiff(visits[..,b])),
+$ the people aboard a host boat, its own crew and the guest crews visiting it, do not exceed its capacity
 forAll p : int(1..n_periods) . forAll h : int(1..n_boats) . ((sum b : int(1..n_boats) . crew_size[b] * toInt(visits[p,b] = h - 1)) <= capacity[h]),
-$ redundant: in each period the crews of the guest boats fit into the spare room of the host boats
+$ redundant: in each period the guest crews fit into the spare room of the host boats
 forAll p : int(1..n_periods) . ((sum b : int(1..n_boats) . toInt(!is_host[b]) * crew_size[b]) <= (sum b : int(1..n_boats) . toInt(is_host[b]) * (capacity[b] - crew_size[b]))),
-$ symmetry: boats with the same capacity and crew size are interchangeable, so among them the host boats come first
-forAll i, j : int(1..n_boats) . (i < j /\ capacity[i] = capacity[j] /\ crew_size[i] = crew_size[j]) -> (is_host[j] -> is_host[i]),
-$ two crews meet at most once: for two boats, the number of periods in which they are at the same boat is at most one
-forAll i, j : int(1..n_boats) . (i < j) -> ((sum p : int(1..n_periods) . toInt(visits[p,i] = visits[p,j])) <= 1)
+$ symmetry breaking: boats with the same capacity and crew size are interchangeable, so among them a host boat never comes after a guest boat
+forAll i, j : int(1..n_boats) . ((i < j /\ capacity[i] = capacity[j] /\ crew_size[i] = crew_size[j]) -> (is_host[j] -> is_host[i])),
+$ two crews meet at most once: for two boats, the number of periods in which they are at the same host is at most one
+forAll i, j : int(1..n_boats) . ((i < j) -> ((sum p : int(1..n_periods) . toInt(visits[p,i] = visits[p,j])) <= 1))

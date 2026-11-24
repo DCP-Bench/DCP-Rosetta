@@ -1,21 +1,50 @@
-% Bus driver scheduling: choose a set of shifts so that every piece of work (task) is covered by
-% exactly one chosen shift, using as few shifts as possible. Every shift costs the same.
-% Tasks are numbered from 0, as in the shift lists.
+% csplib_022_bus_driver_scheduling: a Picat model from DCP Rosetta.
+%
+% Bus drivers are scheduled. Given a set of tasks (pieces of work) to cover and a large set of
+% possible shifts, where each shift covers a subset of the tasks, select a subset of shifts that
+% covers each piece of work exactly once. The number of shifts used is to be minimised; every shift
+% costs the same.
+%
+% Save this file as model.pi. Download `csplib_022_bus_driver_scheduling.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_022_bus_driver_scheduling.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_022_bus_driver_scheduling.json
+%   picat model.pi csplib_022_bus_driver_scheduling_1.dat
+%
+% Data.get(num_work): the number of pieces of work, numbered from 0; Data.get(num_shifts): the number
+% of shifts; Data.get(shifts): for each shift (a list indexed from 1) the pieces of work it covers,
+% numbered from 0.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
-    NumWork = Data.get(num_work),         % number of tasks
-    NumShifts = Data.get(num_shifts),     % number of possible shifts
-    Shifts = Data.get(shifts),            % Shifts[i] = the tasks that shift i covers
-    % X[i] = 1 if shift i is selected
+    NumWork = Data.get(num_work),
+    NumShifts = Data.get(num_shifts),
+    Shifts = Data.get(shifts),
+    % X[S] = 1 when shift S is selected
     X = new_list(NumShifts),
     X :: 0..1,
-    % each task is covered by exactly one selected shift
-    foreach (T in 0..NumWork - 1)
-        sum([X[I] : I in 1..NumShifts, membchk(T, Shifts[I])]) #= 1
+    % every piece of work is covered by exactly one selected shift
+    foreach (W in 0..NumWork - 1)
+        CoveringShifts = [S : S in 1..NumShifts, member(W, Shifts[S])],
+        sum([X[S] : S in CoveringShifts]) #= 1
     end,
     % the number of shifts used
-    Total #= sum(X),
+    Cost #= sum(X),
     Vars = X,
     Outputs = [x = X],
-    Options = [$min(Total)].
+    % minimise the number of shifts used
+    Options = [$min(Cost)].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "unknown",
-    "attempt_id": "attempt-002",
-    "created_at": 1791957478.0098903,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-001",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/essence_prime/essence_prime/CONTRACT.md": "2f967a17d132aa2cb33fb28667c1177a5e6ffec5a8f1a30c9fb8c336f96e4130"
+    },
+    "created_at": 1794646307.6311004,
     "problem_id": "csplib_002_template_design",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,41 +18,58 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "422416d0f1f6ee23d0f4167878f366f3569536271937b7721dec9ec2841b4c7e",
-    "run_id": "20261014-essence-models",
-    "schema": 2,
-    "skill_bundle_hash": "24974ee587811ae8dc486b10a695ae86edd21f807150ea7eb1d0aa503f794c5a",
-    "skill_source": "solvers/essence_prime_minion/skills/essence-prime",
+    "readiness_hash": "393e75a04382ae48dced2fd8a8fb6bbeebfe5e61cd404cd37ab1d4b1ce4b47d4",
+    "run_id": "20261117-essence-rest",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "a831befaee72a05a1d289986404ff978bb79f0cf",
+      "commit": "a4daba04eaca83461a522cac98569d48de542a77",
       "modified": false,
-      "path": "solvers/essence_prime_minion/skills/essence-prime"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "417cd414cfda80a2ad3a3da162b6b7af64350951fd43867b5fa849aa778c68c9",
+        "source": "solvers/essence_prime/skills/dcp-essence-prime",
+        "version": {
+          "commit": "a4daba04eaca83461a522cac98569d48de542a77",
+          "modified": true,
+          "path": "solvers/essence_prime/skills/dcp-essence-prime"
+        }
+      }
+    ],
     "solver_id": "essence_prime_minion"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:61e61eeca819a4b2bf78991359b62952353c651c629d9ddbbc363cd5d46518e4",
+      "id": "sha256:34d76f0f1af8e6d6ca078de71060ca9fe98d9833c0f55507ba4ab1495a476e85",
+      "recipe": "sha256:093e06ffa9e7ad014162b942ff9f3ad05700c01ec7581da7fe622ce4074b7f62",
       "tag": "dcp-eval/essence_prime_minion:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.006237584981136024,
-        "execution_wall_seconds": 45.66677343903575,
+        "checking_seconds": 0.04560605896404013,
+        "execution_wall_seconds": 15.375904307002202,
         "first_solution": {
           "layout": [
-            [
-              1,
-              1,
-              1,
-              2,
-              2,
-              2,
-              0
-            ],
             [
               0,
               0,
@@ -57,14 +78,81 @@
               0,
               2,
               7
+            ],
+            [
+              1,
+              1,
+              1,
+              2,
+              2,
+              2,
+              0
             ]
           ],
           "production": [
-            260,
-            158
+            158,
+            260
           ]
         },
         "id": "example",
+        "incumbents": [
+          [
+            0.14000248908996582,
+            801
+          ],
+          [
+            0.14000248908996582,
+            547
+          ],
+          [
+            0.14000248908996582,
+            543
+          ],
+          [
+            0.14000248908996582,
+            540
+          ],
+          [
+            0.14000248908996582,
+            536
+          ],
+          [
+            0.14000248908996582,
+            533
+          ],
+          [
+            0.14000248908996582,
+            529
+          ],
+          [
+            0.14000248908996582,
+            526
+          ],
+          [
+            0.14000248908996582,
+            522
+          ],
+          [
+            0.14000248908996582,
+            519
+          ],
+          [
+            0.14000248908996582,
+            515
+          ],
+          [
+            0.14000248908996582,
+            512
+          ],
+          [
+            0.15200281143188477,
+            469
+          ],
+          [
+            0.15200281143188477,
+            418
+          ]
+        ],
         "instance_hash": "8b885ec6a3a9dd29161b80284eeffaacac4c6e371911d761bad4368b3998ac05",
         "is_optimization": true,
         "oom_killed": false,
@@ -74,22 +162,115 @@
           "layout"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8961773680057377,
+        "reference_setup_seconds": 1.6542004870134406,
         "runner_status": {
+          "build_seconds": 2.611450672149658,
           "detail": "",
-          "status": "complete",
+          "main_seconds": 12.026900606986601,
+          "read_seconds": 0.014339819957967848,
+          "status": "limit",
           "type": "status"
         },
-        "solutions_checked": 1,
-        "solutions_received": 1,
-        "stderr": "Created output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated information file out.info\n"
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": "Created output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\nCreated output file for domain filtering out.minion\nCreated output file out.minion\nCreated solution file out.solution\nCreated information file out.info\n"
       },
       {
         "accepted": false,
-        "checking_seconds": 9.770155884325504e-07,
-        "detail": "Candidate optimum was not proven",
-        "execution_wall_seconds": 179.02333359100157,
+        "checking_seconds": 4.440080374479294e-07,
+        "detail": "",
+        "execution_wall_seconds": 183.36289679002948,
         "id": "json:2",
+        "incumbents": [
+          [
+            0.34000611305236816,
+            802
+          ],
+          [
+            0.34000611305236816,
+            543
+          ],
+          [
+            0.34000611305236816,
+            540
+          ],
+          [
+            0.34000611305236816,
+            536
+          ],
+          [
+            0.34000611305236816,
+            533
+          ],
+          [
+            0.34000611305236816,
+            529
+          ],
+          [
+            0.34000611305236816,
+            526
+          ],
+          [
+            0.34000611305236816,
+            522
+          ],
+          [
+            0.34000611305236816,
+            519
+          ],
+          [
+            0.34000611305236816,
+            515
+          ],
+          [
+            0.34000611305236816,
+            512
+          ],
+          [
+            0.34000611305236816,
+            470
+          ],
+          [
+            0.34000611305236816,
+            417
+          ],
+          [
+            0.34000611305236816,
+            416
+          ],
+          [
+            0.34000611305236816,
+            415
+          ],
+          [
+            0.34000611305236816,
+            414
+          ],
+          [
+            0.4360077381134033,
+            413
+          ],
+          [
+            0.6120107173919678,
+            412
+          ],
+          [
+            2.1720380783081055,
+            411
+          ],
+          [
+            6.5001137256622314,
+            410
+          ],
+          [
+            24.388426542282104,
+            409
+          ],
+          [
+            44.46477794647217,
+            408
+          ]
+        ],
         "instance_hash": "aa569d28922003810909e38cc5be3666c8a18c2b1e5a48a67772432c92e9c39e",
         "is_optimization": true,
         "oom_killed": false,
@@ -99,36 +280,39 @@
           "layout"
         ],
         "reason": "execution_timeout",
-        "reference_setup_seconds": 8.62692645099014,
+        "reference_setup_seconds": 23.34109633701155,
         "runner_status": {
-          "detail": "Candidate optimum was not proven",
+          "build_seconds": 1.8477504253387451,
+          "detail": "",
+          "main_seconds": 180.02617337199626,
+          "read_seconds": 0.002280249958857894,
           "status": "timeout",
           "type": "status"
         },
         "skipped": true,
         "solutions_checked": 0,
         "solutions_received": 0,
-        "stderr": "Created output file for domain filtering out.minion\nCreated output file out.minion\nCreated information file out.info\n"
+        "stderr": "Created output file for domain filtering out.minion\nCreated output file out.minion\n"
       }
     ],
     "instances_available": 2,
     "instances_checked": 1,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "cb95a08b6c4b178c291802726f0f6d11aa03ffdb5ac39f7ed89967a99e787a2b",
+    "model_hash": "a17d5482b3765e027e239b8daf7c9d0ddba94b224fda29ac8c31fa11d261e53b",
     "problem_id": "csplib_002_template_design",
     "reason": "accepted",
-    "reference_hash": "02b76c64495d432bead1751c07374346d049e8a2277f67bd4d62cb29f19f93f4",
+    "reference_hash": "19e4f9dcd42d45222d0e8304bcdb9705e3e279c654a285b47b2c610bb1dcc48e",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -139,13 +323,13 @@
     "skipped_instances": [
       "json:2"
     ],
-    "solutions_checked": 1,
+    "solutions_checked": 2,
     "solver_id": "essence_prime_minion",
-    "total_wall_seconds": 234.3581125290366,
+    "total_wall_seconds": 225.61146787903272,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": true,
   "model_file": "model.eprime",

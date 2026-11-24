@@ -1,30 +1,34 @@
-// Giant cat army: build a list from [0] by adding 5, adding 7 or taking the square root, so that 2, 10 and 14 appear in that order.
-vocabulary {
-    // positions of the list: 24 elements
-    type Pos := {0..23}
-    // every element is an integer between 0 and 60
-    type Val := {0..60}
-
-    // the list, read in order from position 0
-    x: Pos -> Val
-
-    // auxiliary: v is the square of r
-    sqr: Val * Val -> Bool
+// giant_cat_army: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Start with the list [0], then build the list by one of three operations: adding 5, adding 7, or taking the square
+// root. The game is completed when the list has 2, 10 and 14 on it, in that order (other numbers may lie between them).
+// All the elements of the list are distinct, all are at most 60 and all are integers. The list has length 24, starts
+// with 0 and ends with 14.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/giant_cat_army.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Pos <: Int                    // the positions of the list, numbered 1 to 24
+    x: Pos -> Int                      // x(i): the number at position i of the list
 }
-theory {
-    // the square relation over the element range
-    { ! v, r in Val: sqr(v, r) <- v = r * r. }
-
-    // the list starts with 0 and ends with 14
-    x(0) = 0.
-    x(23) = 14.
-
-    // all the elements are distinct
-    ! i, j in Pos: i ~= j => x(i) ~= x(j).
-
-    // each step adds 5, adds 7, or takes the square root of the previous element
-    ! i, j in Pos: j = i + 1 => ((x(j) = x(i) + 5) | (x(j) = x(i) + 7) | sqr(x(i), x(j))).
-
-    // 2, 10 and 14 appear in the list in that order, other numbers may lie between them
-    ? i, j, k in Pos: i < j & j < k & x(i) = 2 & x(j) = 10 & x(k) = 14.
+structure D:V {
+    Pos := {1..24}.
+}
+theory T:V {
+    // the list starts with 0
+    x(1) = 0.
+    // each number follows the one before it by adding 5, adding 7, or taking its square root, which must be an integer
+    ! i in Pos: ! j in Pos: j = i + 1 => (x(j) = x(i) + 5 | x(j) = x(i) + 7 | x(j) * x(j) = x(i)).
+    // every element is an integer from 0 to 60
+    ! i in Pos: 0 =< x(i) & x(i) =< 60.
+    // all the elements of the list are distinct
+    ! i in Pos: ! j in Pos: i ~= j => x(i) ~= x(j).
+    // the list ends with 14
+    x(24) = 14.
+    // the list has 2 and then 10 on it, before the final 14
+    ?p in Pos: ?q in Pos: p < q & q < 24 & x(p) = 2 & x(q) = 10.
+}
+procedure main() {
+    pretty_print(model_expand(T, D, max=1))
 }

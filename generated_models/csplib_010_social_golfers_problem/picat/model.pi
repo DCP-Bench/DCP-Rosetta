@@ -1,5 +1,18 @@
-% Social golfers: n_groups * group_size golfers play once a week for n_weeks weeks, in
-% n_groups groups of group_size; no two golfers may be in the same group more than once.
+% csplib_010_social_golfers_problem: a Picat model from DCP Rosetta.
+%
+% A golf club has n_groups * group_size golfers, each of whom plays golf once a week, always in
+% n_groups groups of group_size golfers. Schedule their play over n_weeks weeks so that no golfer
+% plays in the same group as any other golfer on more than one occasion.
+%
+% Save this file as model.pi. Download `csplib_010_social_golfers_problem.json` and `dcp_convert_picat.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_010_social_golfers_problem.html
+% Convert the instances once, then run the first one (Picat 3.9, https://picat-lang.org):
+%   python dcp_convert_picat.py csplib_010_social_golfers_problem.json
+%   picat model.pi csplib_010_social_golfers_problem_1.dat
+%
+% Data.get(n_groups): the number of groups; Data.get(group_size): the number of golfers in each
+% group; Data.get(n_weeks): the number of weeks.
 import cp.
 
 model(Data, Vars, Outputs, Options) =>
@@ -7,17 +20,30 @@ model(Data, Vars, Outputs, Options) =>
     NGroups = Data.get(n_groups),
     GroupSize = Data.get(group_size),
     NGolfers = NGroups * GroupSize,
-    % Assign[g, w] = the group (numbered from 0) golfer g plays in during week w
+    % Assign[G, W] = the group, numbered from 0, that golfer G plays in during week W
     Assign = new_array(NGolfers, NWeeks),
     Assign :: 0..NGroups - 1,
-    % each group has exactly group_size players in every week
+    % every week, each group has exactly group_size golfers
     foreach (Gr in 0..NGroups - 1, W in 1..NWeeks)
         sum([Assign[G, W] #= Gr : G in 1..NGolfers]) #= GroupSize
     end,
-    % each pair of golfers is in the same group in at most one week
+    % no two golfers play in the same group on more than one occasion
     foreach (G1 in 1..NGolfers - 1, G2 in G1 + 1..NGolfers)
         sum([Assign[G1, W] #= Assign[G2, W] : W in 1..NWeeks]) #=< 1
     end,
     Vars = Assign,
     Outputs = [assign = Assign],
     Options = [ff].
+
+main([File]) =>
+    Fd = open(File),
+    Term = read_term(Fd),
+    Term = $json_object(Keys, Values),
+    close(Fd),
+    Data = new_map([K = V : {K, V} in zip(Keys, Values)]),
+    model(Data, Vars, Outputs, Options),
+    solve(Options, Vars),
+    solve(vars(Outputs)),
+    foreach(Name = Value in Outputs)
+        printf("%w = %w\n", Name, Value)
+    end.

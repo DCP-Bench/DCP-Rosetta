@@ -1,32 +1,41 @@
-// Csplib 016 traffic lights: assign a state to each of eight lights so that every
-// consecutive pair of junction states is a safe combination from the problem table.
-vocabulary {
-    // V1..V4 are lights 0..3 and P1..P4 are lights 4..7 (0-based)
-    type Light := {0..7}
-    // one row per allowed tuple (V_i, P_i, V_i+1, P_i+1), sized from the instance
-    type R <: Int
-    // four columns per row: V_i, P_i, V_i+1, P_i+1
-    type C <: Int
-    allowed_tuples: R * C -> Int
-    // declared output: [V1, V2, V3, V4, P1, P2, P3, P4]
-    lights: Light -> Int
+// csplib_016_traffic_lights: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Imagine a four-way traffic junction with eight traffic lights. Four lights (V1 to V4) are for vehicles, and four (P1 to
+// P4) are for pedestrians. The lights have different states. The problem parameters list the combinations of light states
+// (V_i, P_i, V_{i+1}, P_{i+1}) that are safe for intersecting roads, for i = 1..4 (with V_5 = V_1 and P_5 = P_1); every
+// other combination is disallowed to prevent accidents. Vehicle light states: 0 = red, 1 = red-yellow, 2 = green,
+// 3 = yellow. Pedestrian light states: 0 = red, 1 = green. Find a valid assignment of light states to the eight lights.
+//
+// Save this file as model.idp. Download `csplib_016_traffic_lights.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_016_traffic_lights.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py csplib_016_traffic_lights.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Site := {0..3}                // the junctions 1..4 (V_i and P_i), numbered from 0
+    type Light := {0..7}               // the eight lights: 0..3 are V1..V4, 4..7 are P1..P4
+    type State := {0..3}               // a state of a light
+    type Tuple <: Int                  // the allowed combinations, numbered from 0, sized from allowed_tuples
+    type Field := {0..3}               // the four entries of an allowed combination
+    allowed_tuples: Tuple * Field -> Int   // allowed_tuples(t, 0..3): the entries (V_i, P_i, V_{i+1}, P_{i+1}) of allowed combination t
+    lights: Light -> State             // lights(k): the state of light k, in the order V1..V4, P1..P4
+    vehicle: Site -> State             // vehicle(i): the state of vehicle light V_{i+1} (auxiliary, the same as lights)
+    pedestrian: Site -> State          // pedestrian(i): the state of pedestrian light P_{i+1} (auxiliary, the same as lights)
 }
-theory {
-    // vehicle light states are 0=red, 1=red-yellow, 2=green, 3=yellow
-    ! i in Light: lights(i) >= 0.
-    lights(0) =< 3.
-    lights(1) =< 3.
-    lights(2) =< 3.
-    lights(3) =< 3.
-    // pedestrian light states are 0=red, 1=green
-    lights(4) =< 1.
-    lights(5) =< 1.
-    lights(6) =< 1.
-    lights(7) =< 1.
-    // for i=1..4 (with V5=V1 and P5=P1), the pair (V_i, P_i, V_i+1, P_i+1) is one of the listed safe combinations
-    ? r in R: allowed_tuples(r, 0) = lights(0) & allowed_tuples(r, 1) = lights(4) & allowed_tuples(r, 2) = lights(1) & allowed_tuples(r, 3) = lights(5).
-    ? r in R: allowed_tuples(r, 0) = lights(1) & allowed_tuples(r, 1) = lights(5) & allowed_tuples(r, 2) = lights(2) & allowed_tuples(r, 3) = lights(6).
-    ? r in R: allowed_tuples(r, 0) = lights(2) & allowed_tuples(r, 1) = lights(6) & allowed_tuples(r, 2) = lights(3) & allowed_tuples(r, 3) = lights(7).
-    ? r in R: allowed_tuples(r, 0) = lights(3) & allowed_tuples(r, 1) = lights(7) & allowed_tuples(r, 2) = lights(0) & allowed_tuples(r, 3) = lights(4).
-    // every other combination is disallowed: the chosen states of each pair must match a listed tuple
+
+theory T:V {
+    // the vehicle lights are the first four lights of the output
+    ! i in Site, k in Light: k = i => vehicle(i) = lights(k).
+
+    // the pedestrian lights are the last four lights of the output
+    ! i in Site, k in Light: k = i + 4 => pedestrian(i) = lights(k).
+
+    // for each junction i, the states of V_i, P_i, V_{i+1}, P_{i+1} form an allowed combination, where the last junction is followed by the first one
+    ! i in Site, j in Site: (j = i + 1 | (i = 3 & j = 0)) => (? t in Tuple: allowed_tuples(t, 0) = vehicle(i) & allowed_tuples(t, 1) = pedestrian(i) & allowed_tuples(t, 2) = vehicle(j) & allowed_tuples(t, 3) = pedestrian(j)).
+}
+
+procedure main() {
+    pretty_print(model_expand(T, S, max=1))
 }

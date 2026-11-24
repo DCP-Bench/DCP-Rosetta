@@ -1,18 +1,26 @@
-// session5_hardy_1729_square: find 4 different numbers between 1 and 100 such that
-// the sum of the squares of the first two equals the sum of the squares of the other two.
-vocabulary {
-    // the numbers range over 1 to 100
-    type Num := {1..100}
-    // declared outputs: the four numbers
-    a: () -> Num
-    b: () -> Num
-    c: () -> Num
-    d: () -> Num
+// session5_hardy_1729_square: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Find a combination of 4 different numbers between 1 and 100, such that the sum of the squares of the two first
+// numbers is equal to the sum of the squares of the other two numbers, i.e. a^2 + b^2 = c^2 + d^2 for a, b, c and d
+// between 1 and 100, all different.
+//
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session5_hardy_1729_square.html
+// Save this model as model.idp and run it (`pip install idp-engine`) with:
+//   idp-engine model.idp
+vocabulary V {
+    type Number := {1..100}            // the numbers available, from 1 to 100
+    a: () -> Number                    // the first of the two first numbers
+    b: () -> Number                    // the second of the two first numbers
+    c: () -> Number                    // the first of the other two numbers
+    d: () -> Number                    // the second of the other two numbers
 }
-theory {
-    // the four numbers are different from each other
+theory T:V {
+    // the four numbers are all different
     a() ~= b() & a() ~= c() & a() ~= d() & b() ~= c() & b() ~= d() & c() ~= d().
 
-    // the sum of the squares of a and b equals the sum of the squares of c and d
+    // the sum of the squares of the two first numbers equals the sum of the squares of the other two numbers
     a() * a() + b() * b() = c() * c() + d() * d().
+}
+procedure main() {
+    pretty_print(model_expand(T, max=1))
 }

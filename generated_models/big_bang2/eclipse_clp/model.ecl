@@ -1,60 +1,74 @@
-% Nontransitive dice (big_bang2): five dice with six integer faces each, face values 1..12.
-% Rows of the output: Rock, Paper, Scissors, Lizard, Spock.
-% Die A beats die B when A has a strictly larger face value than B in more than half of all
-% possible pairs of faces, that is in at least 19 of the 36 pairs.
+% big_bang2: an ECLiPSe model from DCP Rosetta.
+%
+% Nontransitive dice: find a set of five dice, each with six integer faces from 1 to 12 (faces may repeat), so that the
+% dominance relationships between the dice are those of Rock-Paper-Scissors extended by Lizard and Spock. Rock crushes
+% Scissors and Lizard; Paper covers Rock and disproves Spock; Scissors cuts Paper and decapitates Lizard; Lizard eats Paper
+% and poisons Spock; Spock vaporizes Rock and smashes Scissors. A die A beats a die B when A has a strictly larger face than B
+% in more than half of the 36 pairs of faces. Find the dice as a list of lists, in the order Rock, Paper, Scissors, Lizard,
+% Spock.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/big_bang2.html
+% Save this model as model.ecl and run it (ECLiPSe 7.2, https://eclipseclp.org) with:
+%   eclipse -b model.ecl -e "run, halt"
 
-:- lib(ic).
+:- lib(gfd).
 
+% The model reads no data. Dice lists the faces of each die, in the order Rock, Paper, Scissors, Lizard, Spock.
 model(_Instance, Vars, [dice-Dice]) :-
     Dice = [Rock, Paper, Scissors, Lizard, Spock],
-    % Each die has six integer-valued faces, each face value between 1 and 12 inclusive.
-    ( foreach(Row, Dice) do length(Row, 6), Row :: 1..12 ),
+    % each die has six faces, each a whole number from 1 to 12
+    ( foreach(Die, Dice) do length(Die, 6), Die :: 1..12 ),
+    % the faces of a die are a set: they are listed in ascending order, which breaks the symmetry
+    ( foreach(Die, Dice) do ascending(Die) ),
+    % the ten beats relationships: the first die beats the second
+    beats(Rock, Scissors), beats(Rock, Lizard),
+    beats(Paper, Rock), beats(Paper, Spock),
+    beats(Scissors, Paper), beats(Scissors, Lizard),
+    beats(Lizard, Paper), beats(Lizard, Spock),
+    beats(Spock, Rock), beats(Spock, Scissors),
+    % labelling order: Rock, Scissors, Lizard, Paper, Spock, so that each die is fixed
+    % next to the dice it is compared with
+    flatten([Rock, Scissors, Lizard, Paper, Spock], Vars).
 
-    % Per die: Counts[V] = number of faces showing V, Below[V] = number of faces below V,
-    % Close = closeness of the face sum to its mean 6 * 6.5 (search guide only).
-    die_view(Rock, CR, BR, ClR),
-    die_view(Paper, CP, BP, ClP),
-    die_view(Scissors, CS, BS, ClS),
-    die_view(Lizard, CL, BL, ClL),
-    die_view(Spock, CSp, BSp, ClSp),
+ascending([X, Y | Rest]) :- X #=< Y, ascending([Y | Rest]).
+ascending([_]).
 
-    % The ten beats relationships between the choices:
-    % Rock crushes Scissors, Rock crushes Lizard, Paper covers Rock, Paper disproves Spock,
-    % Scissors cuts Paper, Scissors decapitate Lizard, Lizard eats Paper, Lizard poisons Spock,
-    % Spock vaporizes Rock, Spock smashes Scissors.
-    % A beats B: A has a strictly larger face than B in more than half of the 36 face pairs.
-    wins(CR, BS), wins(CR, BL),
-    wins(CP, BR), wins(CP, BSp),
-    wins(CS, BP), wins(CS, BL),
-    wins(CL, BP), wins(CL, BSp),
-    wins(CSp, BR), wins(CSp, BS),
-
-    % Labelling order: per die its closeness, then its counts; then all faces.
-    flatten([[ClR|CR], [ClS|CS], [ClP|CP], [ClL|CL], [ClSp|CSp], Dice], Vars).
-
-die_view(Row, Counts, Below, Close) :-
-    length(Counts, 12),
-    length(Below, 12),
-    ( for(V, 1, 12), foreach(C, Counts), param(Row) do
-        ( foreach(F, Row), foreach(B, Bs), param(V) do B #= (F #= V) ),
-        C :: 0..6,
-        C #= sum(Bs)
+% die A beats die B when A has a strictly larger face than B in at least 19 of the 36 pairs of faces
+beats(A, B) :-
+    ( foreach(X, A), foreach(Row, Rows), param(B) do
+        ( foreach(Y, B), foreach(Win, Row), param(X) do
+            Win :: 0..1,
+            ( X #> Y ) <=> ( Win #= 1 )
+        )
     ),
-    sum(Counts) #= 6,
-    ( for(V, 1, 12), foreach(C, Counts), foreach(T, Ts) do T = V * C ),
-    S #= sum(Ts),
-    ( foreach(C, Counts), foreach(B, Below), fromto(0, Acc, Acc1, _) do
-        B :: 0..6, B #= Acc, Acc1 #= Acc + C
-    ),
-    Close :: 0..33,
-    Close #= 33 - abs(S - 39).
-
-% Die W beats die L: the pairs won are the sum over values V of Counts_W[V] * Below_L[V].
-wins(CW, BL) :-
-    ( foreach(C, CW), foreach(B, BL), foreach(P, Ps) do
-        P :: 0..36, P #= C * B
-    ),
-    sum(Ps) #>= 19.
+    flatten(Rows, Wins),
+    sum(Wins) #>= 19.
 
 search_goal(Vars) :-
-    search(Vars, 0, input_order, indomain_max, complete, []).
+    search(Vars, 0, input_order, indomain_min, complete, []).
+
+:- lib(branch_and_bound).
+
+% Builds the model, solves it and prints each output.
+run :- solve_model([]).
+
+solve_model(Instance) :-
+    (   current_module(gfd) -> Lib = gfd ; Lib = ic ),
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   Objective = max(Expr)
+    ->  call(Lib:(Total #= Expr)), call(Lib:(Cost #= -Total)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   Objective = min(Expr)
+    ->  call(Lib:(Cost #= Expr)),
+        minimize(run_search(Vars, Outputs), Cost)
+    ;   run_search(Vars, Outputs)
+    ),
+    ( foreach(Name-Value, Outputs) do printf("%w = %w%n", [Name, Value]) ).
+
+run_search(Vars, Outputs) :-
+    (   current_predicate(search_goal/1) -> search_goal(Vars) ; labeling(Vars) ),
+    term_variables(Outputs, Free),
+    labeling(Free).

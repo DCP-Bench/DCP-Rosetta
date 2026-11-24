@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-opus-5, interactive session, coordinator and modeller",
-    "attempt_id": "attempt-001",
-    "created_at": 1789403852.701101,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/minizinc/minizinc/CONTRACT.md": "b300d37d013b3ca18dbe0fe5e6c07b3dbf287d4fff5f1a3077207c450b862160"
+    },
+    "created_at": 1794433187.1452098,
     "problem_id": "csplib_007_all_interval",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "f653bff9667e6e89e3de6a7bfefc43600cf2791c5e79e861d7c7bfb2a4d1a9fb",
-    "run_id": "models-20260914-vamos",
-    "schema": 2,
-    "skill_bundle_hash": "30ac41ea799744bb837d0ea2b0a635b711e679f11c7e47fac4d5ec7d76c763e7",
-    "skill_source": "solvers\\minizinc_gecode\\skills\\minizinc-gecode",
+    "readiness_hash": "6ad60bae7f1c5b92e276d32dbe9f2652b704e69541c928703823e6363d9db2e0",
+    "run_id": "20261111-minizinc-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "c53275587239a7dfc6c33b6ab313a4da4cba69cf",
+      "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
       "modified": false,
-      "path": "solvers/minizinc_gecode/skills/minizinc-gecode"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "957267ea94c67694f873fba7908efad1bfbee0d2aff67fff7296aa9dfaa72625",
+        "source": "solvers/minizinc/skills/dcp-minizinc",
+        "version": {
+          "commit": "a46b53ed81d6b42c7096a1033aa3645894c041a8",
+          "modified": false,
+          "path": "solvers/minizinc/skills/dcp-minizinc"
+        }
+      }
+    ],
     "solver_id": "minizinc_gecode"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:9e7414c03ec8d8826d0f529a4feae4e3054f8626699aa86c9825f5d99e9f9715",
+      "id": "sha256:e7010653e8c901f08696fc4b9822d6342c4f0f2d0148584048f6411ab2462a5c",
+      "recipe": "sha256:c84d37170272580e63e1170438f9d5a8d887ddb101623f785a696df04e9a071f",
       "tag": "dcp-eval/minizinc_gecode:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.010189900000113994,
-        "execution_wall_seconds": 1.315186200023163,
+        "checking_seconds": 0.0036890439805574715,
+        "execution_wall_seconds": 0.8955359800020233,
         "first_solution": {
           "diffs": [
             1,
@@ -70,13 +100,14 @@
         "id": "example",
         "instance_hash": "78e629c92dd3d2d83954a8ea8d607938a69a1c5e828a7e406abcd6ccb1fd0de0",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x",
           "diffs"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8899726999807172,
+        "reference_setup_seconds": 0.3254934980068356,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -84,12 +115,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f985196c180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f797e85c900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.0077037999872118235,
-        "execution_wall_seconds": 1.3669820000068285,
+        "checking_seconds": 0.003978955995989963,
+        "execution_wall_seconds": 0.9974716669821646,
         "first_solution": {
           "diffs": [
             1,
@@ -124,13 +155,14 @@
         "id": "json:1",
         "instance_hash": "47be4ac5a4037bf89b3e7681587afbf75c3d2ea6167953e8700d73adeaed5a3f",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x",
           "diffs"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.963951800018549,
+        "reference_setup_seconds": 0.3372471689945087,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -138,12 +170,12 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7ff65b2f4180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7fea2ef48900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
       },
       {
         "accepted": true,
-        "checking_seconds": 0.011264799977652729,
-        "execution_wall_seconds": 2.182747799961362,
+        "checking_seconds": 0.0039109890058171,
+        "execution_wall_seconds": 1.498226830008207,
         "first_solution": {
           "diffs": [
             1,
@@ -180,13 +212,14 @@
         "id": "json:2",
         "instance_hash": "0848856ab12e0dd05c50fb325547a53ca7a79e61c153934d0c8807e100b83d12",
         "is_optimization": false,
+        "oom_killed": false,
         "optimum": null,
         "outputs": [
           "x",
           "diffs"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9584436999866739,
+        "reference_setup_seconds": 0.3322201760020107,
         "runner_status": {
           "detail": "",
           "status": "limit",
@@ -194,11 +227,121 @@
         },
         "solutions_checked": 2,
         "solutions_received": 2,
-        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7ac5df028180>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f4299264900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+      },
+      {
+        "accepted": true,
+        "checking_seconds": 0.002677440003026277,
+        "execution_wall_seconds": 0.895281029981561,
+        "first_solution": {
+          "diffs": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "x": [
+            2,
+            1,
+            3,
+            0,
+            4
+          ]
+        },
+        "id": "json:3",
+        "instance_hash": "69369a855f25a6dee720104d836b2dc0ed976f8b5a6deeb4f820bbb4290f948b",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "x",
+          "diffs"
+        ],
+        "reason": "accepted",
+        "reference_setup_seconds": 0.3185954610235058,
+        "runner_status": {
+          "detail": "",
+          "status": "limit",
+          "type": "status"
+        },
+        "solutions_checked": 2,
+        "solutions_received": 2,
+        "stderr": "Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x7f2495fd8900>\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 126, in __del__\n    self.close()\n  File \"/usr/local/lib/python3.12/asyncio/base_subprocess.py\", line 104, in close\n    proto.pipe.close()\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 568, in close\n    self._close(None)\n  File \"/usr/local/lib/python3.12/asyncio/unix_events.py\", line 592, in _close\n    self._loop.call_soon(self._call_connection_lost, exc)\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 799, in call_soon\n    self._check_closed()\n  File \"/usr/local/lib/python3.12/asyncio/base_events.py\", line 545, in _check_closed\n    raise RuntimeError('Event loop is closed')\nRuntimeError: Event loop is closed\n"
+      },
+      {
+        "accepted": false,
+        "checking_seconds": 0.002756042988039553,
+        "detail": "",
+        "execution_wall_seconds": 180.66827148699667,
+        "first_solution": {
+          "diffs": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ],
+          "x": [
+            9,
+            10,
+            8,
+            11,
+            7,
+            12,
+            6,
+            13,
+            5,
+            14,
+            4,
+            15,
+            3,
+            16,
+            2,
+            17,
+            1,
+            18,
+            0,
+            19
+          ]
+        },
+        "id": "json:4",
+        "instance_hash": "9029a0a6832ad7a5516c61454610e9453819c593896fa2438484e6d6f94330ea",
+        "is_optimization": false,
+        "oom_killed": false,
+        "optimum": null,
+        "outputs": [
+          "x",
+          "diffs"
+        ],
+        "reason": "execution_timeout",
+        "reference_setup_seconds": 0.3724284630152397,
+        "runner_status": {
+          "detail": "",
+          "status": "timeout",
+          "type": "status"
+        },
+        "skipped": true,
+        "solutions_checked": 1,
+        "solutions_received": 1,
+        "stderr": ""
       }
     ],
-    "instances_available": 3,
-    "instances_checked": 3,
+    "instances_available": 5,
+    "instances_checked": 4,
     "limits": {
       "compilation_timeout": 120,
       "cpus": 1,
@@ -206,15 +349,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "65f3ec28ec876340139a6c0f5fbfc736d3ea4345c182075735f7a23d7a2f5e6d",
+    "model_hash": "64139fcbf7aa228f44caa33d3c5d3035ff6739e14445cbdb5c35a345298ff250",
     "problem_id": "csplib_007_all_interval",
     "reason": "accepted",
-    "reference_hash": "6ee888b639715726b5000349e83d6661982e86486ab9435d227aee021540963d",
+    "reference_hash": "9ed8f2d917e0bd3abfd633b7c1427d7a27d765875d0288775859aa9ab526f194",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.12.10"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -222,14 +365,16 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "skipped_instances": [],
-    "solutions_checked": 6,
+    "skipped_instances": [
+      "json:4"
+    ],
+    "solutions_checked": 9,
     "solver_id": "minizinc_gecode",
-    "total_wall_seconds": 8.595767199993134,
+    "total_wall_seconds": 187.02865501100314,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-opus-5, interactive session, coordinator and modeller"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.mzn",

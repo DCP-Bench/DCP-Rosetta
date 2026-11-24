@@ -1,39 +1,36 @@
-vocabulary {
-    // one row per border, two columns per row (0-based)
-    type I <: Int
-    type J <: Int
-    graph: I * J -> Int
-
-    // a country id is one of the values in graph
-    type Country <: Int
-    Country_size: () -> Int
-    country: Country -> Bool
-
-    // two countries share a border
-    edge: Country * Country -> Bool
-
-    // declared output: colour per country, partial over the countries present
-    colors: Country -> Int (domain: country)
-
-    // declared objective: largest colour used
-    minimize: () -> Int
+// session2_color_simple: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// We want to assign a different colour to the following countries: Belgium, Denmark, France, Germany, Netherlands and
+// Luxembourg. Two neighbouring countries cannot have the same colour. You can use integers starting from 1 to represent
+// the colours. Find a colouring that minimizes the number of colours used.
+//
+// Save this file as model.idp. Download `session2_color_simple.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/session2_color_simple.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py session2_color_simple.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Edge <: Int                   // the neighbouring pairs of countries, numbered from 0
+    type End <: Int                    // the two ends of an edge: 0 and 1
+    type Country := {1..6}             // the six countries, numbered from 1
+    type Color := {1..6}               // the colours, numbered from 1 (as many as countries, which always suffice)
+    graph: Edge * End -> Int           // graph(e, 0) and graph(e, 1): the two countries of the edge e (numbered from 1)
+    colors: Country -> Color           // colors(c): the colour of country c
+    used: Color -> Bool                // used(k): some country has colour k (auxiliary)
+    minimize: () -> Int                // the number of colours used
 }
-theory {
-    // the country count is the largest value in graph, bounded above by the sum of all values
-    Country_size() = sum{{ graph(i, j) | i in I, j in J }}.
-
-    // the countries are 1 to the largest value in graph
-    { ! c in Country: country(c) <- c =< max{ graph(i, j) | i in I, j in J }. }
-
-    // a border joins the two countries in one row of graph
-    { ! c1, c2 in Country: edge(c1, c2) <- ? i in I: graph(i, 0) = c1 & graph(i, 1) = c2. }
-
-    // every country gets a colour from 1 to the number of countries
-    ! c in Country: country(c) => 1 =< colors(c) & colors(c) =< Country_size().
-
-    // two neighbouring countries cannot have the same colour
-    ! c1, c2 in Country: country(c1) & country(c2) & edge(c1, c2) => colors(c1) ~= colors(c2).
-
-    // minimize the number of colours used: the largest colour value
-    minimize() = max{ colors(c) | c in Country: country(c) }.
+theory T:V {
+    // two neighbouring countries have different colours
+    ! e in Edge: colors(graph(e, 0)) ~= colors(graph(e, 1)).
+    // a colour is used when some country has that colour
+    ! k in Color: used(k) <=> ?c in Country: colors(c) = k.
+    // the colours used are 1, 2, ..., up to the number used (a colouring with a gap can be renumbered without gaps)
+    ! k in Color: used(k) => ! j in Color: j =< k => used(j).
+    // the number of colours used is to be minimized
+    minimize() = #{ k in Color: used(k) }.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

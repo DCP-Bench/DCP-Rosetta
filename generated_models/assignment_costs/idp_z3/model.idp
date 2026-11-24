@@ -1,25 +1,30 @@
-// Assignment costs: assign people to tasks with different costs so that the total cost is minimized.
-vocabulary {
-    // the tasks and the people, sized from the instance's cost table
-    type Task <: Int
-    type Person <: Int
-
-    // cost of each person doing each task, from the instance
-    cost: Task * Person -> Int
-
-    // declared output: whether task t is assigned to person p
-    x: Task * Person -> Bool
-
-    // total cost of the assignment
-    minimize: () -> Int
+// assignment_costs: an FO(·) model for IDP-Z3 from DCP Rosetta.
+//
+// Assign people to 4 tasks with different costs, so that the total cost is minimized. Each task must be assigned to
+// exactly one person, but it is not necessary to assign all people to a task.
+//
+// Save this file as model.idp. Download `assignment_costs.json` and `dcp_convert_idp.py` from the
+// problem's page:
+//   https://dcp-bench.github.io/DCP-Rosetta/problems/assignment_costs.html
+// Convert the instances once (the data is added to the model as a structure), then run the first
+// one (`pip install idp-engine`, which the converter needs too):
+//   python dcp_convert_idp.py assignment_costs.json
+//   idp-engine model_1.idp
+vocabulary V {
+    type Task <: Int                   // the tasks, numbered from 0
+    type Person <: Int                 // the people, numbered from 0
+    cost: Task * Person -> Int         // cost(t, p): the cost of assigning task t to person p
+    x: Task * Person -> Bool           // x(t, p): task t is assigned to person p
+    minimize: () -> Int                // the total cost of the assignment
 }
-theory {
-    // each task must be assigned to exactly one person
-    ! t in Task: ?=1 p in Person: x(t, p).
-
-    // it is not necessary to assign all people to a task, but each person takes at most one task
-    ! p in Person: ?=<1 t in Task: x(t, p).
-
-    // the objective is the total cost of the assigned pairs
+theory T:V {
+    // each task is assigned to exactly one person
+    ! t in Task: #{ p in Person: x(t, p) } = 1.
+    // each person is assigned at most one task
+    ! p in Person: #{ t in Task: x(t, p) } =< 1.
+    // the total cost is the cost of the assignments made
     minimize() = sum{{ cost(t, p) | t in Task, p in Person: x(t, p) }}.
+}
+procedure main() {
+    pretty_print(minimize(T, S, term="minimize()"))
 }

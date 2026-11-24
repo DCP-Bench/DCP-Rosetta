@@ -1,10 +1,17 @@
-"""Crossfigure (CSPLib 21): fill a 9x9 grid with digits so that every across and down number satisfies its clue."""
+# csplib_021_crossfigures: a Gurobi (Python) model from DCP Rosetta.
+#   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_021_crossfigures.html
+# Run it (after `pip install gurobipy numpy`; the licence that comes with pip allows models
+# up to 2000 variables and constraints) with:
+#   python csplib_021_crossfigures.py
+
 import gurobipy as gp
 from gurobipy import GRB
 
-# The puzzle has no instance data: the grid, the clue positions and the clues
-# are fixed by the problem statement and mirrored here from the reference.
+# The puzzle has no instance data: the grid and the clue positions are fixed by
+# the problem statement, so they are written out here.
+# The grid is 9 by 9.
 N = 9
+# The grid from the problem statement: '#' is a black square, '.' a cell that takes a digit.
 BLACK = [
     "....#....",
     "..#...#..",
@@ -16,11 +23,13 @@ BLACK = [
     "..#...#..",
     "....#....",
 ]
-# (number, length, row, column), rows and columns counted from 1.
+# The across clues, read from the grid and the clue list: (clue number, length of the
+# answer, row, column), with rows and columns counted from 1.
 ACROSS = [(1, 4, 1, 1), (4, 4, 1, 6), (7, 2, 2, 1), (8, 3, 2, 4), (9, 2, 2, 8),
           (10, 2, 3, 3), (11, 2, 3, 6), (13, 4, 4, 1), (15, 4, 4, 6), (17, 4, 6, 1),
           (20, 4, 6, 6), (23, 2, 7, 3), (24, 2, 7, 6), (25, 2, 8, 1), (27, 3, 8, 4),
           (28, 2, 8, 8), (29, 4, 9, 1), (30, 4, 9, 6)]
+# The down clues, in the same form as ACROSS.
 DOWN = [(1, 4, 1, 1), (2, 2, 1, 2), (3, 4, 1, 4), (4, 4, 1, 6), (5, 2, 1, 8),
         (6, 4, 1, 9), (10, 2, 3, 3), (12, 2, 3, 7), (14, 3, 4, 2), (16, 3, 4, 8),
         (17, 4, 6, 1), (18, 2, 6, 3), (19, 4, 6, 4), (20, 4, 6, 6), (21, 2, 6, 7),
@@ -28,43 +37,48 @@ DOWN = [(1, 4, 1, 1), (2, 2, 1, 2), (3, 4, 1, 4), (4, 4, 1, 6), (5, 2, 1, 8),
 
 
 def _is_prime(n):
+    """True when n is a prime number."""
     return n >= 2 and all(n % d for d in range(2, int(n ** 0.5) + 1))
 
 
-def build(instance):
+def create_model(instance):
+    """Fill the 9 by 9 crossfigure grid with digits so that every across and down number equals its clue; black squares hold 0."""
     model = gp.Model("crossfigures")
 
-    # M[i][j] is the digit in each cell.
+    # M[i][j] is the digit in row i, column j, from 0 to 9. The range 0 to 9 is the
+    # range of a digit; black squares are fixed to 0 below.
     M = [[model.addVar(lb=0, ub=9, vtype=GRB.INTEGER, name=f"M[{i},{j}]") for j in range(N)]
          for i in range(N)]
 
     # Black squares hold 0.
-    for i in range(N):
-        for j in range(N):
-            if BLACK[i][j] == "#":
-                model.addConstr(M[i][j] == 0, name=f"black[{i},{j}]")
+    model.addConstrs((M[i][j] == 0 for i in range(N) for j in range(N) if BLACK[i][j] == "#"), name="black")
 
-    # Each across or down number is read from its digits, most significant first
-    # (a leading zero is allowed, as in the reference).
+    # The number of a clue is read from its digits, most significant first
+    # (a leading zero is allowed).
     def number(length, row, col, across):
         cells = [M[row - 1][col - 1 + k] if across else M[row - 1 + k][col - 1] for k in range(length)]
         return gp.quicksum(10 ** (length - 1 - k) * cells[k] for k in range(length))
 
+    # A[c] is the number of the across clue c, and D[c] the number of the down clue c.
     A = {c: number(L, r, k, True) for c, L, r, k in ACROSS}
     D = {c: number(L, r, k, False) for c, L, r, k in DOWN}
+    # width[(direction, c)] is how many digits the answer to clue c has.
     width = {("A", c): L for c, L, _, _ in ACROSS}
     width.update({("D", c): L for c, L, _, _ in DOWN})
 
-    # 23 across is a prime number: it selects exactly one prime of its width,
-    # which also lets the three clues that multiply by 23 across stay linear.
+    # 23 across is a prime number. prime[k] is 1 when 23 across equals primes[k], and exactly one
+    # is picked. Picking it this way keeps the three clues that multiply by 23 across linear.
     primes = [p for p in range(2, 10 ** width[("A", 23)]) if _is_prime(p)]
     prime = model.addVars(len(primes), vtype=GRB.BINARY, name="prime")
     model.addConstr(prime.sum() == 1, name="a23_prime")
     model.addConstr(A[23] == gp.quicksum(p * prime[k] for k, p in enumerate(primes)), name="a23_value")
 
     def times_a23(expr, upper, name):
-        """A linear expression equal to expr * (23 across), for 0 <= expr <= upper:
-        each selected-prime binary times expr is linearised as the skill shows."""
+        """A linear expression equal to expr * (23 across), for 0 <= expr <= upper.
+
+        Each product prime[k] * expr is replaced by z_k, which equals expr when prime[k] is 1
+        and 0 otherwise. The bound upper (99 here, the largest two-digit value) is chosen to
+        keep the variables finite; it is not from the problem statement."""
         parts = []
         for k, p in enumerate(primes):
             z = model.addVar(lb=0, ub=upper, vtype=GRB.CONTINUOUS, name=f"{name}[{p}]")
@@ -77,6 +91,7 @@ def build(instance):
     def square_of_width(expr, length, name):
         """expr is a square number (1, 4, 9, ...) of at most `length` digits."""
         squares = [i * i for i in range(1, 10 ** length) if i * i < 10 ** length]
+        # pick[k] is 1 for the square squares[k], and exactly one square is picked.
         pick = model.addVars(len(squares), vtype=GRB.BINARY, name=name)
         model.addConstr(pick.sum() == 1)
         model.addConstr(expr == gp.quicksum(s * pick[k] for k, s in enumerate(squares)))
@@ -121,3 +136,19 @@ def build(instance):
     model.addConstr(D[28] == D[21] + 27, name="d28")               # 21 down plus twenty-seven
 
     return model, {"M": M}
+
+
+if __name__ == "__main__":
+    import numpy as np
+
+    model, outputs = create_model({})
+    model.Params.OutputFlag = 0  # no solver log
+    model.optimize()
+
+    if model.Status == GRB.OPTIMAL:  # a solution
+        # a variable's value is var.X, an expression's is expr.getValue(); both read through LinExpr
+        value = np.vectorize(lambda out: round(gp.LinExpr(out).getValue()))
+        for name, output in outputs.items():
+            print(name, "=", value(output))
+    else:
+        print("No solution, Gurobi status", model.Status)  # 3 infeasible, 4 infeasible or unbounded

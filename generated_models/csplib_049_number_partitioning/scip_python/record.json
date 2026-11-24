@@ -1,8 +1,12 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
+    "agent": "claude-code (claude-haiku-5-5)",
     "attempt_id": "attempt-001",
-    "created_at": 1791985148.535777,
+    "contracts": {
+      "solvers/CONTRACT.md": "8b40ad1dd4bd639774b59fea980b68cae50fbcc934d36241dce23199b3fe0084",
+      "solvers/scip/python/CONTRACT.md": "37e4562e765686fa688b7b2606d1c1962a7c53dd734d5734a842e8625cca725f"
+    },
+    "created_at": 1793723600.0187333,
     "problem_id": "csplib_049_number_partitioning",
     "profile": {
       "compilation_timeout": 120,
@@ -14,30 +18,51 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "04efe0dc810407950d89442aad1f0088b3756954da2feff369fe9ea727f949cd",
-    "run_id": "20261015-scip-models",
-    "schema": 2,
-    "skill_bundle_hash": "41d8390dc18adc173bc95b5e8f8ee2bf994ad2d4662b9f56eb8147b7488a85e7",
-    "skill_source": "solvers/scip_python/skills/pyscipopt",
+    "readiness_hash": "72e6ae0eb542043368f35e080de1d5b3591c3bb356ff9a3c4d33019dd197c167",
+    "run_id": "scip-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "d504882216c7c353f7b9e7bb53a32f4f1cbfae2f",
+      "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
       "modified": false,
-      "path": "solvers/scip_python/skills/pyscipopt"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "eaa549bd16ab8562bd98f0ed5ba48c96c15e5e50905a6e8cdabbdee270e0e469",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "647f43df878d2ae8aee7967a37c7d6f37fa7499711a8cde50ba9d3e3e3ff985e",
+        "source": "solvers/scip/skills/dcp-scip",
+        "version": {
+          "commit": "5e13d541afd518e25e0fbc8126c0c2d6f29b6a83",
+          "modified": false,
+          "path": "solvers/scip/skills/dcp-scip"
+        }
+      }
+    ],
     "solver_id": "scip_python"
   },
   "evaluation": {
     "accepted": true,
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:e15e0e84046a694be0106bf17823c090913a48e696968c5d57a83b8e4f5b35d0",
+      "id": "sha256:e0040eae5e2a832042702e1cfc8804738d2e46b760ad27c172f578b8e298428e",
+      "recipe": "sha256:aed2d8863ce2a657ca803c9c5dae0648548f0ac1d89b5d13f137e1825739a734",
       "tag": "dcp-eval/scip_python:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.008385664026718587,
-        "execution_wall_seconds": 1.0921442959806882,
+        "checking_seconds": 0.0031871229875832796,
+        "execution_wall_seconds": 0.7337232959980611,
         "first_solution": {
           "A": [
             1,
@@ -62,9 +87,12 @@
           "B"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9610336470068432,
+        "reference_setup_seconds": 0.3413530089892447,
         "runner_status": {
+          "build_seconds": 0.007435689010890201,
           "detail": "",
+          "main_seconds": 0.012712513998849317,
+          "read_seconds": 0.0001511370064690709,
           "status": "limit",
           "type": "status"
         },
@@ -74,8 +102,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.008613265992607921,
-        "execution_wall_seconds": 1.1340655329986475,
+        "checking_seconds": 0.005409915000200272,
+        "execution_wall_seconds": 0.6336411270021927,
         "first_solution": {
           "A": [
             2,
@@ -104,9 +132,12 @@
           "B"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.9431513960007578,
+        "reference_setup_seconds": 0.35976514499634504,
         "runner_status": {
+          "build_seconds": 0.010014834988396615,
           "detail": "",
+          "main_seconds": 0.09380352101288736,
+          "read_seconds": 0.00014626499614678323,
           "status": "limit",
           "type": "status"
         },
@@ -116,26 +147,26 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01046723104082048,
-        "execution_wall_seconds": 6.578499466006178,
+        "checking_seconds": 0.004160988988587633,
+        "execution_wall_seconds": 0.7358113510126714,
         "first_solution": {
           "A": [
             2,
             3,
-            5,
-            8,
-            10,
-            11,
+            6,
+            7,
+            9,
+            12,
             13,
             16
           ],
           "B": [
             1,
             4,
-            6,
-            7,
-            9,
-            12,
+            5,
+            8,
+            10,
+            11,
             14,
             15
           ]
@@ -150,9 +181,12 @@
           "B"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8476662239991128,
+        "reference_setup_seconds": 0.3698022839962505,
         "runner_status": {
+          "build_seconds": 0.011084392986958846,
           "detail": "",
+          "main_seconds": 0.10638590098824352,
+          "read_seconds": 0.00014752798597328365,
           "status": "limit",
           "type": "status"
         },
@@ -170,15 +204,15 @@
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "edf069e67fae3b48d23de891e72ee963de250b9af0e2ad5b741ce2959980be8b",
+    "model_hash": "34fc19df428a3942a15a1ea3fb09cf9035e3e707db9538b2d4f967cb68d577e3",
     "problem_id": "csplib_049_number_partitioning",
     "reason": "accepted",
     "reference_hash": "47d11cd39d71809257e80bd07c867e89a4c90f48064ec7aa4c2afd286c8f3500",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -189,11 +223,11 @@
     "skipped_instances": [],
     "solutions_checked": 6,
     "solver_id": "scip_python",
-    "total_wall_seconds": 12.0029018180212,
+    "total_wall_seconds": 4.028995306987781,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

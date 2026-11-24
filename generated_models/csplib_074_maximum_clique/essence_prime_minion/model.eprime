@@ -1,11 +1,26 @@
 language ESSENCE' 1.0
-$ Maximum clique: choose the largest set of vertices of a graph in which every two chosen vertices are adjacent.
+$ csplib_074_maximum_clique: an Essence' model from DCP Rosetta.
+$
+$ Given a simple undirected graph G = (V, E), a clique is a subset of vertices in which every two distinct vertices are adjacent (connected by an edge). Find a clique of the largest possible size in the graph.
+$
+$ Save this file as model.eprime. Download `csplib_074_maximum_clique.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_074_maximum_clique.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `csplib_074_maximum_clique_1.param.solution`:
+$   python dcp_convert_essence.py csplib_074_maximum_clique.json
+$   savilerow model.eprime csplib_074_maximum_clique_1.param -run-solver
+
+$ n: the number of vertices
 given n : int(1..)
-$ adj[i,j] = 1 when vertices i and j are joined by an edge
+$ adj[i,j]: 1 when vertices i and j are joined by an edge, 0 otherwise (vertices indexed 1-based, so the data's index 0 is 1)
 given adj : matrix indexed by [int(1..n), int(1..n)] of int(0..1)
-$ c[i] is true when vertex i is in the clique
+
+$ c[i]: vertex i is in the clique (vertices indexed 1-based, so the output's first entry is vertex 1)
 find c : matrix indexed by [int(1..n)] of bool
+
 branching on [c]
+$ the size of the clique, to be maximised
 maximising (sum i : int(1..n) . toInt(c[i]))
 such that
 $ two distinct vertices both in the clique must be joined by an edge

@@ -1,36 +1,42 @@
-% Maximum density still life: on an n x m active grid inside Conway's Game of Life, find the stable
-% pattern (still life) with the most live cells. Life is played on an infinite board: cells outside the
-% grid are dead, but must not come alive either.
-% Instance facts: n(N): rows of the grid; m(M): columns of the grid.
-cell(0..N-1,0..M-1) :- n(N), m(M).
+% csplib_032_max_density_still_life: a clingo model from DCP Rosetta.
+%
+% This problem, arising from Conway's Game of Life, seeks to find the most densely populated stable pattern (a "still life") on an n x m active grid. A still life is a pattern of live and dead cells that does not change from one generation to the next. Life is played on an infinite board. Cells outside the n x m active grid are dead and are not printed, but they are still part of the board. The rules for a pattern to be a still life are:
+% 1. A live cell must have exactly 2 or 3 live neighbors to remain alive.
+% 2. A dead cell, including any dead cell just outside the active grid, must not have exactly 3 live neighbors (otherwise it would become alive).
+% The goal is to maximize the number of live cells in the active grid.
+%
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+% Save this file as model.lp. Download `csplib_032_max_density_still_life.json` and `dcp_convert_asp.py` from the
+% problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/csplib_032_max_density_still_life.html
+% Convert the instances once, then run the first one (clingo 5.8, e.g. `pip install clingo`):
+%   python dcp_convert_asp.py csplib_032_max_density_still_life.json
+%   python -m clingo model.lp csplib_032_max_density_still_life_1.lp
 
-% outside(X,Y): a dead cell just outside the active grid, in the ring around it. Cells farther out
-% have no live neighbour and the corners of the ring have at most one, so only the sides matter, but
-% all the ring cells are listed because it is simpler and gives the same rules.
-outside(X,Y) :- n(N), m(M), X = -1..N, Y = -1..M, not cell(X,Y).
+% Input: n(N) and m(M): the active grid has N rows and M columns (cells are numbered from 0).
 
-% next(X,Y,A,B): cell (A,B) of the grid is one of the up to eight neighbours of the board cell (X,Y).
-next(X,Y,A,B) :- cell(X,Y), cell(A,B), (A,B) != (X,Y), |A-X| <= 1, |B-Y| <= 1.
-next(X,Y,A,B) :- outside(X,Y), cell(A,B), |A-X| <= 1, |B-Y| <= 1.
+% the active grid, and the board around it: the cells just outside the grid are the border
+inside(I,J) :- n(N), m(M), I = 0..N-1, J = 0..M-1.
+cell(I,J)   :- n(N), m(M), I = -1..N, J = -1..M.
 
-% live(I,J): the grid cell (I,J) is alive.
-{ live(I,J) } :- cell(I,J).
+% adj(I,J,I2,J2): cells (I,J) and (I2,J2) are neighbours (touching, including diagonally)
+adj(I,J,I+D,J+E) :- cell(I,J), D = -1..1, E = -1..1, (D,E) != (0,0), cell(I+D,J+E).
 
-% A live cell needs exactly 2 or 3 live neighbours to remain alive.
-:- live(I,J), #count { A,B : next(I,J,A,B), live(A,B) } < 2.
-:- live(I,J), #count { A,B : next(I,J,A,B), live(A,B) } > 3.
+% live(I,J): the cell (I,J) of the active grid is alive; a cell outside the grid is dead
+{ live(I,J) } :- inside(I,J).
 
-% A dead cell must not have exactly 3 live neighbours, or it would become alive.
-:- cell(I,J), not live(I,J), #count { A,B : next(I,J,A,B), live(A,B) } == 3.
+% a live cell has 2 or 3 live neighbours
+:- live(I,J), #count { I2,J2 : live(I2,J2), adj(I,J,I2,J2) } < 2.
+:- live(I,J), #count { I2,J2 : live(I2,J2), adj(I,J,I2,J2) } > 3.
 
-% The same holds for the dead cells just outside the grid.
-:- outside(X,Y), #count { A,B : next(X,Y,A,B), live(A,B) } == 3.
+% a dead cell, inside the grid or in the border around it, does not have exactly 3 live neighbours
+:- cell(I,J), not live(I,J), #count { I2,J2 : live(I2,J2), adj(I,J,I2,J2) } = 3.
 
-% Maximise the number of live cells in the grid.
+% the number of live cells in the active grid is as large as possible
 #maximize { 1,I,J : live(I,J) }.
 
-% grid(I,J,true/false): whether the cell (I,J) is alive.
-grid(I,J,true)  :- live(I,J).
-grid(I,J,false) :- cell(I,J), not live(I,J).
+% grid(I,J,V): the cell (I,J) of the active grid holds V, 1 when alive and 0 when dead
+grid(I,J,1) :- live(I,J).
+grid(I,J,0) :- inside(I,J), not live(I,J).
 
 #show grid/3.

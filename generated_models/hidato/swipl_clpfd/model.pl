@@ -1,58 +1,93 @@
+% hidato: a SWI-Prolog model from DCP Rosetta.
+%
+% Hidato puzzles start semi-filled with numbered tiles. Connect the numbers together to win: consecutive numbers
+% must touch horizontally, vertically or diagonally, and the numbers must be in increasing order. Fill in the empty
+% cells, marked 0 in the given puzzle, with numbers so that the grid holds each number from 1 to the number of cells
+% exactly once.
+%
+% Save this file as model.pl. Download `hidato.json` from the problem's page:
+%   https://dcp-bench.github.io/DCP-Rosetta/problems/hidato.html
+% Run the first instance (SWI-Prolog 9, https://www.swi-prolog.org), or the second with solve_file(..., 2):
+%   swipl -g "solve_file('hidato.json')" -t halt model.pl
+%
+% Data fields: puzzle (the grid as a list of rows, indexed from 0; a 0 marks an empty cell, any other value is a
+% number given in the puzzle).
 :- use_module(library(clpfd)).
 :- use_module(library(apply)).
-:- use_module(library(lists)).
 :- use_module(library(yall)).
+:- use_module(library(http/json)).
 
-% Hidato: a grid is partly filled with numbers. Fill the empty cells with the
-% numbers 1..(rows * columns), each used once, so that consecutive numbers sit
-% in cells that touch horizontally, vertically or diagonally.
 model(Instance, Vars, [x-Rows]) :-
-    Puzzle = Instance.puzzle,               % 0 marks an empty cell
-    length(Puzzle, R),
+    Puzzle = Instance.puzzle,
+    length(Puzzle, Height),
     Puzzle = [FirstRow|_],
-    length(FirstRow, C),
-    Total is R * C,
-
-    % Rows[i][j] is the number written in the cell of row i, column j.
-    length(Rows, R),
-    maplist({C, Total}/[Row]>>(length(Row, C), Row ins 1..Total), Rows),
+    length(FirstRow, Width),
+    Count is Height * Width,               % the number of cells, which is also the largest number
+    % Rows[R][C] is the number in row R and column C of the grid
+    length(Rows, Height),
+    maplist({Width}/[Row]>>length(Row, Width), Rows),
     append(Rows, Cells),
-    % every number is used once
+    % each number from 1 to the number of cells is used exactly once
+    Cells ins 1..Count,
     all_distinct(Cells),
-    % the numbers already given stay where they are
-    append(Puzzle, Givens),
-    maplist([Given, Cell]>>(Given =:= 0 -> true ; Cell #= Given), Givens, Cells),
+    % the numbers given in the puzzle keep their places
+    maplist(keep_givens, Puzzle, Rows),
+    % Positions[K] is the position in the flattened grid (counted from 1) of the number K
+    numlist(1, Count, Numbers),
+    length(Positions, Count),
+    Positions ins 1..Count,
+    maplist(position_of(Cells), Numbers, Positions),
+    % consecutive numbers touch, horizontally, vertically or diagonally
+    touching_chain(Width, Positions),
+    Vars = [Rows, Positions].
 
-    % Spots[k] is the row and the column of the cell that holds number k: the
-    % same assignment seen from the numbers' side. Knowing where number k sits
-    % tells where number k+1 can sit, which is what makes the search follow the
-    % path 1, 2, 3, ... instead of looking for a neighbour of every cell.
-    numlist(1, Total, Numbers),
-    maplist({R, C, Cells}/[Number, Spot]>>spot(R, C, Cells, Number, Spot), Numbers, Spots),
+% keep_givens(+GivenRow, ?Row): the cells of Row with a given number (not 0) hold that number
+keep_givens(GivenRow, Row) :-
+    maplist(keep_given, GivenRow, Row).
 
-    % number k+1 is at most one row and one column away from number k. The two
-    % cannot be the same cell, because every number has a cell of its own.
-    consecutive(Spots, Pairs),
-    maplist([(Row1-Col1)-(Row2-Col2)]>>(abs(Row1 - Row2) #=< 1, abs(Col1 - Col2) #=< 1),
-            Pairs),
+keep_given(Given, Cell) :-
+    (   Given =:= 0
+    ->  true
+    ;   Cell #= Given
+    ).
 
-    % the search decides the row and column of number 1, then of number 2, ...
-    maplist([Row-Col, [Row, Col]]>>true, Spots, SpotLists),
-    append(SpotLists, Vars).
-
-% Search along the path 1, 2, 3, ...
-labeling_options([leftmost]).
-
-% spot(+R, +C, +Cells, +Number, -Row-Col): Row-Col is the cell of the R x C grid
-% holding Number; Cells lists the grid row by row.
-spot(R, C, Cells, Number, Row-Col) :-
-    Row in 1..R,
-    Col in 1..C,
-    Position #= (Row - 1) * C + Col,
+% position_of(+Cells, +Number, -Position): the flattened position of Number is the one holding it
+position_of(Cells, Number, Position) :-
     element(Position, Cells, Number).
 
-% consecutive(+List, -Pairs): the pairs X, Y of neighbours in List, written
-% X-Y.
-consecutive([_], []) :- !.
-consecutive([X, Y|Rest], [X-Y|Pairs]) :-
-    consecutive([Y|Rest], Pairs).
+% touching_chain(+Width, +Positions): each position touches the next one, in row and column terms
+touching_chain(_, [_]).
+touching_chain(Width, [P, Q|Rest]) :-
+    touch(Width, P, Q),
+    touching_chain(Width, [Q|Rest]).
+
+% touch(+Width, +P, +Q): the cells at positions P and Q differ by at most one row and one column
+touch(Width, P, Q) :-
+    RowP #= (P - 1) // Width,
+    ColP #= (P - 1) mod Width,
+    RowQ #= (Q - 1) // Width,
+    ColQ #= (Q - 1) mod Width,
+    abs(RowP - RowQ) #=< 1,
+    abs(ColP - ColQ) #=< 1.
+
+% Reads the data file, builds the model for its first instance (or the N-th), solves it and prints each output.
+solve_file(File) :- solve_file(File, 1).
+solve_file(File, N) :-
+    setup_call_cleanup(open(File, read, Stream),
+                       json_read_dict(Stream, Data, [value_string_as(atom)]),
+                       close(Stream)),
+    (   is_list(Data) -> nth1(N, Data, Instance) ; Instance = Data ),
+    solve_model(Instance).
+
+solve_model(Instance) :-
+    (   current_predicate(model/4)
+    ->  model(Instance, Vars, Outputs, Objective)
+    ;   model(Instance, Vars, Outputs), Objective = none
+    ),
+    (   current_predicate(labeling_options/1) -> labeling_options(Options) ; Options = [ff] ),
+    term_variables(Vars-Outputs, All),
+    (   Objective == none
+    ->  labeling(Options, All)
+    ;   once(labeling([Objective|Options], All))
+    ),
+    forall(member(Name-Value, Outputs), format("~w = ~w~n", [Name, Value])).

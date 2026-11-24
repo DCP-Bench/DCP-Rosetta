@@ -1,11 +1,15 @@
 {
   "attempt": {
-    "agent": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)",
-    "attempt_id": "attempt-001",
-    "created_at": 1791958803.4996536,
+    "agent": "claude-code (claude-haiku-5-5)",
+    "attempt_id": "attempt-002",
+    "contracts": {
+      "solvers/CONTRACT.md": "a60f2fbf130c99bd1457f4df5ad55d36e81140c6e9ae5bbb652bb008a71b3d78",
+      "solvers/pycsp3/python/CONTRACT.md": "ca37e2d464e28bfa3c834efb90c42fc26dafae4ed339fe036e945931ef50801c"
+    },
+    "created_at": 1794388404.7952592,
     "problem_id": "csplib_019_magic_squares_and_sequences",
     "profile": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "instance_count": 99,
@@ -14,30 +18,56 @@
       "solution_limit": 2,
       "tolerate_inconclusive": true
     },
-    "readiness_hash": "70f34dc51ecbf0c9005e1d69a49fc73d976461a67a8d6865eda2a41040bb4e26",
-    "run_id": "20261014-pycsp3-models",
-    "schema": 2,
-    "skill_bundle_hash": "893950c3c8ceb4ae0934a7f1f17382fb6fc91355ca3683463626294e83456dbe",
-    "skill_source": "solvers/pycsp3_ace/skills/pycsp3-ace",
+    "readiness_hash": "ef81bd60745420b4a07de7097e1ff358db3a2b34b1f2cd2518d5bfe486cb1fe3",
+    "run_id": "pycsp3-standalone",
+    "schema": 3,
+    "skill_bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+    "skill_source": "skills/model-generator",
     "skill_version": {
-      "commit": "10868ed38dbb1ae0bc1e6458eb8136e3d3e86485",
+      "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
       "modified": false,
-      "path": "solvers/pycsp3_ace/skills/pycsp3-ace"
+      "path": "skills/model-generator"
     },
+    "skills": [
+      {
+        "bundle_hash": "4283e487a1d9bb9b573316417bc2cd3adc32ee00d271b94bdd5dc5bd28d05f85",
+        "source": "skills/model-generator",
+        "version": {
+          "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
+          "modified": false,
+          "path": "skills/model-generator"
+        }
+      },
+      {
+        "bundle_hash": "b078659adab06263d373a86bbf94ce6ceaaaeb4ac0a344d54eaba97e6a4ba54d",
+        "source": "solvers/pycsp3/skills/dcp-pycsp3",
+        "version": {
+          "commit": "ed43886aed153dec5f0018a9b0a81985281a832f",
+          "modified": false,
+          "path": "solvers/pycsp3/skills/dcp-pycsp3"
+        }
+      }
+    ],
     "solver_id": "pycsp3_ace"
   },
   "evaluation": {
     "accepted": true,
+    "engine": {
+      "cpu_limit": "quota",
+      "name": "docker",
+      "version": "podman version 3.4.4"
+    },
     "evaluator_version": 1,
     "image": {
-      "id": "sha256:c41e40517b8076311d1026b76eca6a108d52a7d605c82cec755c6f9031b85f4d",
+      "id": "sha256:dee330ca3d316769499129f1ee037e96d5d038e4cf1e3f15c79d748cc8183ce7",
+      "recipe": "sha256:20f6e1d0b331e72459cae87d9cac166642bb481972aabe590df870e50f7ce36a",
       "tag": "dcp-eval/pycsp3_ace:v1"
     },
     "instances": [
       {
         "accepted": true,
-        "checking_seconds": 0.01769802102353424,
-        "execution_wall_seconds": 2.412969894008711,
+        "checking_seconds": 0.009451710007851943,
+        "execution_wall_seconds": 1.345463125006063,
         "first_solution": {
           "x": [
             8,
@@ -63,9 +93,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.6976739219971932,
+        "reference_setup_seconds": 0.265748355013784,
         "runner_status": {
+          "build_seconds": 0.08089208602905273,
           "detail": "",
+          "main_seconds": 0.616948286013212,
+          "read_seconds": 0.0006151160050649196,
           "status": "complete",
           "type": "status"
         },
@@ -75,8 +108,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.017191321006976068,
-        "execution_wall_seconds": 2.1028252210235223,
+        "checking_seconds": 0.010124163993168622,
+        "execution_wall_seconds": 1.497102121997159,
         "first_solution": {
           "x": [
             9,
@@ -103,9 +136,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.7164181849802844,
+        "reference_setup_seconds": 0.3406565750192385,
         "runner_status": {
+          "build_seconds": 0.08898186683654785,
           "detail": "",
+          "main_seconds": 0.857388775999425,
+          "read_seconds": 0.000662042002659291,
           "status": "complete",
           "type": "status"
         },
@@ -115,8 +151,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01922706898767501,
-        "execution_wall_seconds": 2.4089492090279236,
+        "checking_seconds": 0.009461415989790112,
+        "execution_wall_seconds": 1.600512926990632,
         "first_solution": {
           "x": [
             10,
@@ -144,9 +180,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8633317250059918,
+        "reference_setup_seconds": 0.3409358109929599,
         "runner_status": {
+          "build_seconds": 0.1272885799407959,
           "detail": "",
+          "main_seconds": 0.7812231159768999,
+          "read_seconds": 0.0008070649928413332,
           "status": "complete",
           "type": "status"
         },
@@ -156,8 +195,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.01664890698157251,
-        "execution_wall_seconds": 2.5422952210064977,
+        "checking_seconds": 0.0167277849977836,
+        "execution_wall_seconds": 1.3046276259992737,
         "first_solution": {
           "x": [
             11,
@@ -186,9 +225,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.749748737027403,
+        "reference_setup_seconds": 0.30525677400873974,
         "runner_status": {
+          "build_seconds": 0.12206625938415527,
           "detail": "",
+          "main_seconds": 0.6796099269995466,
+          "read_seconds": 0.0008587070042267442,
           "status": "complete",
           "type": "status"
         },
@@ -198,8 +240,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.030022287974134088,
-        "execution_wall_seconds": 2.8540998970274813,
+        "checking_seconds": 0.00963368098018691,
+        "execution_wall_seconds": 1.4981568719958887,
         "first_solution": {
           "x": [
             12,
@@ -229,9 +271,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8665785859921016,
+        "reference_setup_seconds": 0.36353158598649316,
         "runner_status": {
+          "build_seconds": 0.1002504825592041,
           "detail": "",
+          "main_seconds": 0.788197265996132,
+          "read_seconds": 0.0006755159993190318,
           "status": "complete",
           "type": "status"
         },
@@ -241,8 +286,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04501258401433006,
-        "execution_wall_seconds": 2.845696364005562,
+        "checking_seconds": 0.021962611994240433,
+        "execution_wall_seconds": 1.4118109190021642,
         "first_solution": {
           "x": [
             13,
@@ -273,9 +318,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 0.8648523379815742,
+        "reference_setup_seconds": 0.3137177969911136,
         "runner_status": {
+          "build_seconds": 0.10885143280029297,
           "detail": "",
+          "main_seconds": 0.6709171789989341,
+          "read_seconds": 0.0008138449920807034,
           "status": "complete",
           "type": "status"
         },
@@ -285,8 +333,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.045978477981407195,
-        "execution_wall_seconds": 2.496634800976608,
+        "checking_seconds": 0.013176912994822487,
+        "execution_wall_seconds": 1.5611500439990778,
         "first_solution": {
           "x": [
             14,
@@ -318,9 +366,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.061627816001419,
+        "reference_setup_seconds": 0.3340173340111505,
         "runner_status": {
+          "build_seconds": 0.09759974479675293,
           "detail": "",
+          "main_seconds": 0.9016158009762876,
+          "read_seconds": 0.0009178809996228665,
           "status": "complete",
           "type": "status"
         },
@@ -330,8 +381,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.026633072993718088,
-        "execution_wall_seconds": 2.8406627849908546,
+        "checking_seconds": 0.013277542020659894,
+        "execution_wall_seconds": 1.5813104300177656,
         "first_solution": {
           "x": [
             15,
@@ -364,9 +415,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0677188300178386,
+        "reference_setup_seconds": 0.3582944739900995,
         "runner_status": {
+          "build_seconds": 0.12700724601745605,
           "detail": "",
+          "main_seconds": 0.823213745985413,
+          "read_seconds": 0.0006785219884477556,
           "status": "complete",
           "type": "status"
         },
@@ -376,8 +430,8 @@
       },
       {
         "accepted": true,
-        "checking_seconds": 0.04314229899318889,
-        "execution_wall_seconds": 2.6615629909792915,
+        "checking_seconds": 0.04461867699865252,
+        "execution_wall_seconds": 1.6002650890150107,
         "first_solution": {
           "x": [
             16,
@@ -411,9 +465,12 @@
           "x"
         ],
         "reason": "accepted",
-        "reference_setup_seconds": 1.0202552159898914,
+        "reference_setup_seconds": 0.3789260069897864,
         "runner_status": {
+          "build_seconds": 0.09364461898803711,
           "detail": "",
+          "main_seconds": 0.8246625819883775,
+          "read_seconds": 0.000661141995806247,
           "status": "complete",
           "type": "status"
         },
@@ -425,21 +482,21 @@
     "instances_available": 9,
     "instances_checked": 9,
     "limits": {
-      "compilation_timeout": 300,
+      "compilation_timeout": 120,
       "cpus": 1,
       "execution_timeout": 180,
       "memory_mb": 2048,
       "reference_timeout": 180
     },
-    "model_hash": "5604963e9711a52791ef837a1b54fd079903c2d44fba76cd138010f91f03d0ec",
+    "model_hash": "0659405673d708a946c4f4a199a69a1a2d36bed1969721c2109539cb7d3d5dc6",
     "problem_id": "csplib_019_magic_squares_and_sequences",
     "reason": "accepted",
-    "reference_hash": "cc2929d40539231f17ca781e45fa46c85341f942c87027fc1b74275c90cb056b",
+    "reference_hash": "84be380aa3ba442d24e7b8d580c00f82f1a4d7889d6ee9f9ae4897fcfebd2de2",
     "reference_runtime": {
       "cpmpy": "1.0.0",
-      "numpy": "2.4.6",
+      "numpy": "2.5.4",
       "ortools": "9.15.6755",
-      "python": "3.13.2"
+      "python": "3.12.16"
     },
     "requested": {
       "instance_count": 99,
@@ -450,11 +507,11 @@
     "skipped_instances": [],
     "solutions_checked": 9,
     "solver_id": "pycsp3_ace",
-    "total_wall_seconds": 32.059031349024735,
+    "total_wall_seconds": 17.075147416006075,
     "unperformed_instances": []
   },
   "generated_by": {
-    "base_llm": "claude-code (claude-haiku-5-5 modelling subagents, claude-opus-5-5 coordinator)"
+    "base_llm": "claude-code (claude-haiku-5-5)"
   },
   "is_optimization": false,
   "model_file": "model.py",

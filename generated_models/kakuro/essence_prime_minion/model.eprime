@@ -1,0 +1,48 @@
+language ESSENCE' 1.0
+$ kakuro: an Essence' model from DCP Rosetta.
+$
+$ The object of the puzzle is to insert a digit from 1 to 9 inclusive into each white cell such that the sum of the numbers in each entry matches the clue associated with it and that no digit is duplicated in any entry. It is that lack of duplication that makes creating Kakuro puzzles with unique solutions possible, and which means solving a Kakuro puzzle involves investigating combinations more, compared to Sudoku in which the focus is on permutations. There is an unwritten rule for making Kakuro puzzles that each clue must have at least two numbers that add up to it. This is because including one number is mathematically trivial when solving Kakuro puzzles; one can simply disregard the number entirely and subtract it from the clue it indicates.
+$
+$ Save this file as model.eprime. Download `kakuro.json` and `dcp_convert_essence.py` from the
+$ problem's page:
+$   https://dcp-bench.github.io/DCP-Rosetta/problems/kakuro.html
+$ Convert the instances once, then run the first one with Savile Row 1.11 (it needs Java); the
+$ solution is written to `kakuro_1.param.solution`:
+$   python dcp_convert_essence.py kakuro.json
+$   savilerow model.eprime kakuro_1.param -run-solver
+
+$ the grid is n by n, rows and columns numbered 1 to n, derived from the data
+given n : int
+$ number of cells that are not white (black cells, which hold no digit; the data calls them blanks)
+given num_blanks : int
+$ blanks[b, 1] and blanks[b, 2]: the row and column of the b-th black cell (1-based)
+given blanks : matrix indexed by [int(1..num_blanks), int(1..2)] of int
+$ number of clues, derived from the data (the length of problem_1)
+given num_p : int
+$ problem_1[k]: the sum that clue k requires (the first number of each clue in the data)
+given problem_1 : matrix indexed by [int(1..num_p)] of int
+$ problem_2_dim2: the most cells in any clue, derived from the data
+given problem_2_dim2 : int
+$ problem_2_len[k]: the number of cells of clue k
+given problem_2_len : matrix indexed by [int(1..num_p)] of int
+$ problem_2[k, i, :]: the row and column of the i-th cell of clue k (1-based); cells past problem_2_len[k] are padded with [0, 0]
+given problem_2 : matrix indexed by [int(1..num_p), int(1..problem_2_dim2), int(1..2)] of int
+
+$ cells[r, c]: the digit in cell (r, c), 0 for a black cell; row 0 and column 0 are padding slots
+find cells : matrix indexed by [int(0..n), int(0..n)] of int(0..9)
+$ x[r, c]: the digit in white cell (r, c), from 1 to 9; 0 for a black cell
+find x : matrix indexed by [int(1..n), int(1..n)] of int(0..9)
+
+such that
+$ the padding slots (row 0 and column 0) are no cells, so they are fixed to 0
+forAll r : int(0..n) . forAll c : int(0..n) . ((r = 0) \/ (c = 0)) -> (cells[r, c] = 0),
+$ x is the grid of cells
+forAll r : int(1..n) . forAll c : int(1..n) . x[r, c] = cells[r, c],
+$ a black cell holds 0
+forAll b : int(1..num_blanks) . cells[blanks[b, 1], blanks[b, 2]] = 0,
+$ a cell that is not black is white, and holds a digit from 1 to 9: a cell holding 0 is one of the black cells
+forAll r : int(1..n) . forAll c : int(1..n) . (cells[r, c] = 0) -> (exists b : int(1..num_blanks) . (blanks[b, 1] = r) /\ (blanks[b, 2] = c)),
+$ the digits of each clue's cells add up to the clue's sum
+forAll k : int(1..num_p) . (sum i : int(1..problem_2_dim2) . toInt(i <= problem_2_len[k]) * cells[problem_2[k, i, 1], problem_2[k, i, 2]]) = problem_1[k],
+$ no digit is duplicated within a clue: the cells of a clue hold different digits
+forAll k : int(1..num_p) . forAll i : int(1..problem_2_dim2) . forAll j : int(1..problem_2_dim2) . ((i < j) /\ (j <= problem_2_len[k])) -> (cells[problem_2[k, i, 1], problem_2[k, i, 2]] != cells[problem_2[k, j, 1], problem_2[k, j, 2]])
