@@ -33,7 +33,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from evaluation import evaluate
+from evaluation import evaluate, improving_incumbents
 from evaluation.execution import image_identity
 from evaluation.results import EvaluationError
 
@@ -89,6 +89,11 @@ SHIFTED = (HEAD + "        store.impose(new XplusYgtC(x, y, n - 1));\n"
            + "        IntVar total = new IntVar(store, \"total\", -100, 100);\n"
            + "        store.impose(new LinearInt(new IntVar[]{x, y, total}, new int[]{1, 1, -1}, \"==\", -(OFFSET)));\n"
            + EXPORT + "        return m.DIRECTION(total);\n" + TAIL)
+# incumbents: labelling x then y from their largest values, the first solution (2, 2, total 4) is not the
+# minimum 2, so the branch and bound improves through 3 to 2. Maximised, OPTIMAL's default search starts at
+# (0, 2, total 2) and rises to 4.
+DESCENDING = OPTIMAL.replace("return m.DIRECTION(total);",
+                             "return m.search(new IntVar[]{x, y}, null, new IndomainMax<>()).DIRECTION(total);")
 MALFORMED = (HEAD + "        store.impose(new XplusYeqC(x, y, n));\n"
              + "        return new Model();\n" + TAIL)
 NOISY = (HEAD + "        System.out.println(\"this is not a protocol record\");\n"
@@ -363,6 +368,12 @@ def main():
                   reference=CONSTANT_MAXIMIZING, solution_limit=3)["accepted"]
             and check("objective_values", SHIFTED.replace("DIRECTION", "minimize").replace("OFFSET", "-10"),
                       reference=NEGATIVE_MINIMIZING, solution_limit=3)["accepted"])
+        # JaCoP's solution listener sees each solution of the branch and bound: strictly better, ending at the optimum.
+        results["incumbents"] = improving_incumbents(
+            check("incumbents", DESCENDING.replace("DIRECTION", "minimize"), reference=OPTIMIZING))
+        results["incumbents_maximize"] = improving_incumbents(
+            check("incumbents_maximize", OPTIMAL.replace("DIRECTION", "maximize"), reference=MAXIMIZING),
+            minimize=False)
         check("native_api", NATIVE)
         check("stdout_is_log", NOISY)
         check("partial_search", PARTIAL, solution_limit=5)

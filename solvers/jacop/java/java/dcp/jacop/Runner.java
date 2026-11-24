@@ -22,7 +22,10 @@ import org.jacop.core.Store;
 import org.jacop.core.Var;
 import org.jacop.search.DepthFirstSearch;
 import org.jacop.search.IndomainMin;
+import org.jacop.search.Search;
+import org.jacop.search.SelectChoicePoint;
 import org.jacop.search.SimpleSelect;
+import org.jacop.search.SimpleSolutionListener;
 import org.jacop.search.SmallestDomain;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -48,6 +51,8 @@ public final class Runner {
     // Seconds from the program's start until the request was read, and to build the model: the benchmark's phases.
     private static double readSeconds = 0;
     private static double buildSeconds = 0;
+    // When the branch and bound started: an incumbent's seconds count from here.
+    private long searchStarted = 0;
 
     private Runner(double budget) {
         this.budget = budget;
@@ -152,6 +157,7 @@ public final class Runner {
         }
 
         if (cost != null) {
+            searchStarted = System.nanoTime();
             Outcome optimum = solve(store, model, variables, leaves, cost, base);
             if (!optimum.found()) {
                 status(optimum.timedOut() ? "timeout" : "unsat", "");
@@ -215,6 +221,24 @@ public final class Runner {
         DepthFirstSearch<IntVar> search = new DepthFirstSearch<>();
         search.setPrintInfo(false);
         search.setTimeOutMilliseconds(Math.max(1, (long) (remaining() * 1000)));
+        if (cost != null) {
+            // Branch and bound: JaCoP calls the listener at each solution it finds, each strictly better than
+            // the last (it then bounds the cost below it), so each is an improving solution, the last the
+            // optimum once the search is exhausted. The cost is fixed there; the problem's objective is the
+            // cost, or its negation for a maximisation.
+            boolean negated = model.maximize;
+            search.setSolutionListener(new SimpleSolutionListener<IntVar>() {
+                @Override
+                public boolean executeAfterSolution(Search<IntVar> s, SelectChoicePoint<IntVar> choice) {
+                    boolean result = super.executeAfterSolution(s, choice);
+                    int value = cost.value();
+                    PROTOCOL.println(new JSONObject().put("type", "incumbent")
+                            .put("objective", negated ? -value : value)
+                            .put("seconds", (System.nanoTime() - searchStarted) / 1e9));
+                    return result;
+                }
+            });
+        }
         SimpleSelect<IntVar> select = new SimpleSelect<>(variables,
                 model.order == null ? new SmallestDomain<>() : model.comparator,
                 model.indomain == null ? new IndomainMin<>() : model.indomain);
