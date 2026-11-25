@@ -20,7 +20,7 @@ PILOTS = {"cpmpy_python": "model_cpmpy.py", "ortools_cp_sat_python": "model_cp_s
           "exact": "model_exact.py", "gurobipy_python": "model_gurobipy.py",
           "docplex_cplex": "model_docplex.py", "picat": "model_picat.pi",
           "jump_highs": "model_jump.jl",
-          "essence_prime_minion": "model_essence.eprime",
+          "essence_prime_minion": "model_essence.eprime", "groundfox_fox": "model_groundfox.py",
           "pycsp3_ace": "model_pycsp3.py",
           "gecode_cpp": "model_gecode.cpp",
           "highs_cpp": "model_highs_cpp.cpp",
