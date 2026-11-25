@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "skill_name": "dcp-groundfox",
+  "evals": [
+    {
+      "id": "nqueens-fox",
+      "prompt": "Use dcp-groundfox to solve 8-queens: write a Python script that builds the .fox file (rows and columns as data, attacking pairs precomputed), grounds it with groundfox and prints one placement as a list of column numbers.",
+      "prerequisites": ["groundfox on PATH", "python-sat installed"],
+      "expected_output": "A placement such as [3, 6, 4, 2, 8, 5, 7, 1] with no two queens attacking.",
+      "assertions": [
+        "The theory is accepted by groundfox without --arbitrary-fol",
+        "Diagonal attacks come from a relation computed in the structure, not from arithmetic in the theory",
+        "The printed placement is a valid 8-queens solution"
+      ]
+    },
+    {
+      "id": "subset-sum-all",
+      "prompt": "Use dcp-groundfox to list every subset of [3, 5, 7, 11, 2] that sums to 16.",
+      "prerequisites": ["groundfox on PATH", "python-sat installed"],
+      "expected_output": "Exactly two subsets: {5, 11} and {3, 11, 2}.",
+      "assertions": [
+        "The sum is encoded with partial-sum states and a precomputed addition relation",
+        "Enumeration blocks only the reported atoms",
+        "Both subsets and no others are printed"
+      ]
+    }
+  ]
+}

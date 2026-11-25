@@ -86,6 +86,8 @@ LANGUAGES = {
     "essence_prime": ("plaintext", "Essence'"),
     # highlight.js has no FO(.) grammar; label it correctly and leave it uncoloured.
     "idp": ("plaintext", "FO(\u00b7)"),
+    # No highlight.js grammar exists for FOX; the model is a Python file around a FOX string.
+    "fox": ("plaintext", "FOX"),
 }
 
 # Only for a model whose integration is no longer installed under solvers/.
@@ -1005,6 +1007,7 @@ BACKEND_NAMES = {
     "ace": "ACE",
     "minion": "Minion",
     "idp-z3": "IDP-Z3",
+    "groundfox, cadical300": "CaDiCaL 3.0.0",
 }
 
 # Where one paradigm row sees only part of an integration's backends. PySAT's
